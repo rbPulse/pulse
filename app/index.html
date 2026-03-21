@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pulse — Operator Platform</title>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="app.css"/>
+</head>
+<body>
+
+<!-- Password Gate -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#00ff6a" stroke-width="2"/>
+        <path d="M8 14 Q11 8, 14 14 Q17 20, 20 14" stroke="#00ff6a" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span>Pulse</span>
+    </div>
+    <p class="gate-label">Operator Access</p>
+    <div class="gate-field">
+      <input type="password" id="passwordInput" placeholder="Enter password" autocomplete="current-password"/>
+      <button id="loginBtn">Enter</button>
+    </div>
+    <p class="gate-error" id="gateError"></p>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="app" class="hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="#00ff6a" stroke-width="2"/>
+        <path d="M8 14 Q11 8, 14 14 Q17 20, 20 14" stroke="#00ff6a" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span>Pulse Ops</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="dashboard">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-page="roadmap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4H14M2 8H10M2 12H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Roadmap
+      </button>
+      <button class="nav-item" data-page="market-research">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12L6 7L9 10L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4H13V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Market Research
+      </button>
+      <button class="nav-item" data-page="orders">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 6H11M5 9H9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Orders
+      </button>
+      <button class="nav-item" data-page="customers">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14C2 11.2 4.7 9 8 9C11.3 9 14 11.2 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Customers
+      </button>
+      <button class="nav-item" data-page="inventory">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L14 4V8C14 11.3 11.3 14.6 8 15.5C4.7 14.6 2 11.3 2 8V4L8 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Inventory
+      </button>
+      <button class="nav-item" data-page="financials">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4V5M8 11V12M6 6.5C6 5.7 6.9 5 8 5C9.1 5 10 5.7 10 6.5C10 8 8 8.5 8 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Financials
+      </button>
+      <button class="nav-item" data-page="settings">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 1V2.5M8 13.5V15M1 8H2.5M13.5 8H15M3.3 3.3L4.4 4.4M11.6 11.6L12.7 12.7M3.3 12.7L4.4 11.6M11.6 4.4L12.7 3.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">OP</div>
+        <div>
+          <div class="sidebar-user-name">Operator</div>
+          <div class="sidebar-user-role">Admin</div>
+        </div>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="Log out">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2H2V12H5M9 4L12 7L9 10M12 7H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <span class="page-date" id="pageDate"></span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Active Subscribers</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">MRR</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Pods Shipped (MTD)</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Churn Rate</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">Awaiting data</div>
+        </div>
+      </div>
+      <div class="dashboard-row">
+        <div class="panel">
+          <div class="panel-header">Recent Orders</div>
+          <div class="empty-state">No orders yet</div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Top Pods by Volume</div>
+          <div class="empty-state">No data yet</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROADMAP -->
+    <section class="page" id="page-roadmap">
+      <div class="page-header">
+        <h1>Roadmap to First Subscriber</h1>
+        <span class="tag">Internal</span>
+      </div>
+
+      <div class="roadmap-legend">
+        <div class="legend-item"><span class="status-dot dot-done"></span>Done</div>
+        <div class="legend-item"><span class="status-dot dot-progress"></span>In Progress</div>
+        <div class="legend-item"><span class="status-dot dot-todo"></span>To Do</div>
+        <div class="legend-item"><span class="status-dot dot-blocked"></span>Blocked</div>
+      </div>
+
+      <div class="roadmap-tracks">
+
+        <!-- TRACK 1: Legal & Compliance -->
+        <div class="track">
+          <div class="track-header">
+            <div class="track-icon">⚖️</div>
+            <div>
+              <div class="track-title">Legal &amp; Compliance</div>
+              <div class="track-sub">Must be resolved before any sales or marketing</div>
+            </div>
+          </div>
+          <div class="track-items">
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Form legal entity (LLC or C-Corp)</div>
+                <div class="item-desc">Recommend Delaware C-Corp if raising. LLC if bootstrapping near-term.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Engage healthcare regulatory attorney</div>
+                <div class="item-desc">Review peptide classification under FDA, FTC marketing rules, compounding pharmacy partnership structure.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Draft Terms of Service &amp; Privacy Policy</div>
+                <div class="item-desc">Must be live on site before collecting any user data or payments.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Establish compounding pharmacy partnership</div>
+                <div class="item-desc">503A or 503B pharmacy. Verify they can fulfill direct-to-consumer pod format.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Medical director / telehealth physician partnership</div>
+                <div class="item-desc">Prescription pathway requires physician oversight in most states. Confirm model (async consult, affiliate MD, etc.).</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">State-by-state shipping compliance review</div>
+                <div class="item-desc">Identify states where compounded peptide shipment is restricted or requires additional licensing.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRACK 2: Product & Device -->
+        <div class="track">
+          <div class="track-header">
+            <div class="track-icon">💉</div>
+            <div>
+              <div class="track-title">Product &amp; Device</div>
+              <div class="track-sub">Pod system, device, and fulfillment</div>
+            </div>
+          </div>
+          <div class="track-items">
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Finalize pod form factor &amp; manufacturer</div>
+                <div class="item-desc">Source auto-injector device manufacturer. Confirm compatibility with compounded peptide cartridge specs.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Prototype pod + device for beta users</div>
+                <div class="item-desc">Minimum 10 functional units for beta testing. Validate ease-of-use with non-medical users.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Cold chain packaging solution</div>
+                <div class="item-desc">Validate temperature stability during 2–5 day shipping. Confirm insulated mailer specs with pharmacy.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Define initial pod SKUs for launch</div>
+                <div class="item-desc">Recommend starting with 2–3 pods max (Growth, Repair, Shred). Simplify ops before expanding catalog.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Third-party purity testing pipeline</div>
+                <div class="item-desc">Establish lot-by-lot COA (certificate of analysis) process. Required for trust and potential future regulatory review.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRACK 3: Tech & Payments -->
+        <div class="track">
+          <div class="track-header">
+            <div class="track-icon">💳</div>
+            <div>
+              <div class="track-title">Tech &amp; Payments</div>
+              <div class="track-sub">Subscription infrastructure and checkout</div>
+            </div>
+          </div>
+          <div class="track-items">
+            <div class="roadmap-item status-progress">
+              <span class="status-dot dot-progress"></span>
+              <div class="item-body">
+                <div class="item-title">Marketing site live</div>
+                <div class="item-desc">lichtensteinryan.github.io/pulse-core — homepage and platform page published.</div>
+              </div>
+              <span class="item-priority priority-done">Done</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Custom domain setup</div>
+                <div class="item-desc">Point domain to GitHub Pages or migrate to Vercel/Netlify. SSL required before payments.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Payment processor approval</div>
+                <div class="item-desc">Stripe requires healthcare/supplement category approval. Apply early — review can take 2–4 weeks. Have legal entity and site ready.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Subscription billing integration</div>
+                <div class="item-desc">Stripe Billing or Recurly. Handle monthly renewal, pause, cancel, and failed payment flows.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Customer portal / account dashboard</div>
+                <div class="item-desc">Subscribers need to manage their subscription, view order history, update shipping address.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Order management &amp; fulfillment webhook</div>
+                <div class="item-desc">Auto-trigger pharmacy fulfillment order on new subscription or renewal. Confirm tracking data flow back to customer.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Intake / health questionnaire flow</div>
+                <div class="item-desc">Required for physician sign-off. Async consult form covering contraindications, current medications, health history.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Transactional email setup</div>
+                <div class="item-desc">Order confirmation, shipping notification, renewal reminder, failed payment. Use Postmark or Resend.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRACK 4: Marketing & Launch -->
+        <div class="track">
+          <div class="track-header">
+            <div class="track-icon">📣</div>
+            <div>
+              <div class="track-title">Marketing &amp; Launch</div>
+              <div class="track-sub">Demand generation and waitlist</div>
+            </div>
+          </div>
+          <div class="track-items">
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Waitlist / email capture live on site</div>
+                <div class="item-desc">Collect early interest before launch. Use for beta recruitment and launch day notification.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Beta user recruitment (10–25 people)</div>
+                <div class="item-desc">Friends, network, biohacking communities. Goal: validate UX, generate testimonials, catch fulfillment issues.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Before/after content &amp; testimonials</div>
+                <div class="item-desc">Document beta users' experiences. Essential social proof for paid acquisition and influencer pitches.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Influencer outreach (5–10 seeding partnerships)</div>
+                <div class="item-desc">Target longevity/biohacking creators 50K–500K. Gifting + affiliate code. Prioritize authentic fit over reach.</div>
+              </div>
+              <span class="item-priority priority-medium">Medium</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Launch announcement content ready</div>
+                <div class="item-desc">Email to waitlist, social posts, Reddit community posts (r/Peptides, r/longevity). Prepare 1 week before go-live.</div>
+              </div>
+              <span class="item-priority priority-medium">Medium</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRACK 5: Operations -->
+        <div class="track">
+          <div class="track-header">
+            <div class="track-icon">📦</div>
+            <div>
+              <div class="track-title">Operations</div>
+              <div class="track-sub">Support, fulfillment, and internal processes</div>
+            </div>
+          </div>
+          <div class="track-items">
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Customer support channel live</div>
+                <div class="item-desc">Email or chat support before first subscriber. Intercom, Crisp, or just a monitored inbox. Response SLA defined.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Refund &amp; cancellation policy documented</div>
+                <div class="item-desc">Clear policy on refunds, returns, and cancellation. Required for payment processor and consumer trust.</div>
+              </div>
+              <span class="item-priority priority-high">High</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Adverse event reporting process</div>
+                <div class="item-desc">Define protocol if a customer reports a negative reaction. Loop in medical director. Document everything.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+            <div class="roadmap-item status-todo">
+              <span class="status-dot dot-todo"></span>
+              <div class="item-body">
+                <div class="item-title">Business insurance</div>
+                <div class="item-desc">Product liability and general liability insurance. Essential before shipping to paying customers.</div>
+              </div>
+              <span class="item-priority priority-critical">Critical</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- MARKET RESEARCH -->
+    <section class="page" id="page-market-research">
+      <div class="page-header">
+        <h1>Market Research</h1>
+        <span class="tag">Internal</span>
+      </div>
+
+      <div class="research-grid">
+
+        <div class="panel panel-full">
+          <div class="panel-header">Market Overview</div>
+          <div class="stat-row">
+            <div class="stat-block">
+              <div class="stat-block-value">$50.7B</div>
+              <div class="stat-block-label">Global peptide therapeutics market (2024)</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-block-value">7.1%</div>
+              <div class="stat-block-label">Projected CAGR through 2032</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-block-value">$92.7B</div>
+              <div class="stat-block-label">Projected market size by 2032</div>
+            </div>
+            <div class="stat-block">
+              <div class="stat-block-value">~4M</div>
+              <div class="stat-block-label">Est. US peptide therapy users (2024)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">Target Segments</div>
+          <div class="segment-list">
+            <div class="segment-item">
+              <div class="segment-dot" style="background:#00ff6a"></div>
+              <div>
+                <div class="segment-name">Biohackers / Longevity Enthusiasts</div>
+                <div class="segment-desc">Early adopters, high LTV, self-directed. Primary growth driver in pre-launch phase.</div>
+              </div>
+            </div>
+            <div class="segment-item">
+              <div class="segment-dot" style="background:#00c4ff"></div>
+              <div>
+                <div class="segment-name">Performance Athletes</div>
+                <div class="segment-desc">Recovery and performance focus. High frequency buyers, strong word-of-mouth.</div>
+              </div>
+            </div>
+            <div class="segment-item">
+              <div class="segment-dot" style="background:#a78bfa"></div>
+              <div>
+                <div class="segment-name">Wellness-Focused 35–55</div>
+                <div class="segment-desc">Anti-aging, metabolic health. Broad TAM. Requires more education pre-conversion.</div>
+              </div>
+            </div>
+            <div class="segment-item">
+              <div class="segment-dot" style="background:#fb923c"></div>
+              <div>
+                <div class="segment-name">Medical Weight Loss (GLP-1 Adjacent)</div>
+                <div class="segment-desc">High urgency, proven willingness to pay. Tesamorelin as entry pod.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">Competitive Landscape</div>
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Model</th>
+                <th>Gap vs Pulse</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tailor Made Health</td>
+                <td>Telehealth Rx</td>
+                <td>No device, complex UX</td>
+              </tr>
+              <tr>
+                <td>Limitless Life</td>
+                <td>Direct-to-consumer</td>
+                <td>Raw powder, DIY mixing</td>
+              </tr>
+              <tr>
+                <td>Peptide Sciences</td>
+                <td>Research supply</td>
+                <td>Not consumer-facing</td>
+              </tr>
+              <tr>
+                <td>Hone Health</td>
+                <td>TRT / hormone</td>
+                <td>Peptide-adjacent only</td>
+              </tr>
+              <tr>
+                <td class="comp-pulse">Pulse</td>
+                <td class="comp-pulse">Pod + device system</td>
+                <td class="comp-pulse accent">Full stack, turnkey</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">Demand Signals</div>
+          <div class="demand-list">
+            <div class="demand-item">
+              <div class="demand-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6L8 8L12 3" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="demand-label">Reddit r/Peptides</div>
+                <div class="demand-val">320K+ members, 40% YoY growth</div>
+              </div>
+            </div>
+            <div class="demand-item">
+              <div class="demand-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6L8 8L12 3" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="demand-label">Google Trends</div>
+                <div class="demand-val">"BPC-157" +210% search volume (2022–2024)</div>
+              </div>
+            </div>
+            <div class="demand-item">
+              <div class="demand-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6L8 8L12 3" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="demand-label">TikTok</div>
+                <div class="demand-val">#peptides 180M+ views</div>
+              </div>
+            </div>
+            <div class="demand-item">
+              <div class="demand-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6L8 8L12 3" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="demand-label">Huberman / Attia effect</div>
+                <div class="demand-val">Mainstream credibility driving non-biohacker adoption</div>
+              </div>
+            </div>
+            <div class="demand-item">
+              <div class="demand-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 6L8 8L12 3" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="demand-label">GLP-1 Spillover</div>
+                <div class="demand-val">Weight loss category normalizing injectable subscriptions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-full">
+          <div class="panel-header">Pricing Benchmarks</div>
+          <div class="pricing-bench">
+            <div class="bench-item">
+              <div class="bench-label">DIY (powder + BA water)</div>
+              <div class="bench-bar-wrap"><div class="bench-bar" style="width:28%"></div></div>
+              <div class="bench-val">~$40–80/mo</div>
+            </div>
+            <div class="bench-item">
+              <div class="bench-label">Telehealth Rx (compounded)</div>
+              <div class="bench-bar-wrap"><div class="bench-bar" style="width:60%"></div></div>
+              <div class="bench-val">~$150–250/mo</div>
+            </div>
+            <div class="bench-item">
+              <div class="bench-label">Pulse (pod system)</div>
+              <div class="bench-bar-wrap"><div class="bench-bar accent-bar" style="width:74%"></div></div>
+              <div class="bench-val">$129–219/mo</div>
+            </div>
+            <div class="bench-item">
+              <div class="bench-label">Medical clinic / IV</div>
+              <div class="bench-bar-wrap"><div class="bench-bar" style="width:100%"></div></div>
+              <div class="bench-val">~$400–800/mo</div>
+            </div>
+          </div>
+          <p class="bench-note">Pulse positions between DIY and telehealth Rx — capturing convenience premium without the clinic overhead.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">Key Risks</div>
+          <div class="risk-list">
+            <div class="risk-item risk-high">
+              <span class="risk-badge">High</span>
+              <span>FDA reclassification of compounded peptides</span>
+            </div>
+            <div class="risk-item risk-med">
+              <span class="risk-badge">Med</span>
+              <span>Payment processor restrictions on peptide categories</span>
+            </div>
+            <div class="risk-item risk-med">
+              <span class="risk-badge">Med</span>
+              <span>Large pharma entering DTC peptide market</span>
+            </div>
+            <div class="risk-item risk-low">
+              <span class="risk-badge">Low</span>
+              <span>Consumer education / misconception about injections</span>
+            </div>
+            <div class="risk-item risk-low">
+              <span class="risk-badge">Low</span>
+              <span>Cold chain logistics at scale</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">Go-To-Market Notes</div>
+          <div class="gtm-list">
+            <div class="gtm-item">
+              <div class="gtm-num">01</div>
+              <div>
+                <div class="gtm-title">Influencer-led launch</div>
+                <div class="gtm-desc">Target longevity / biohacking creators with 50K–500K followers. Seed gifting + affiliate.</div>
+              </div>
+            </div>
+            <div class="gtm-item">
+              <div class="gtm-num">02</div>
+              <div>
+                <div class="gtm-title">Community seeding</div>
+                <div class="gtm-desc">Reddit (r/Peptides, r/longevity), Discord biohacking communities, X/Twitter threads.</div>
+              </div>
+            </div>
+            <div class="gtm-item">
+              <div class="gtm-num">03</div>
+              <div>
+                <div class="gtm-title">Paid acquisition</div>
+                <div class="gtm-desc">Meta + YouTube for retargeting. Google search for high-intent peptide keywords.</div>
+              </div>
+            </div>
+            <div class="gtm-item">
+              <div class="gtm-num">04</div>
+              <div>
+                <div class="gtm-title">B2B / clinic channel</div>
+                <div class="gtm-desc">Partner with functional medicine and longevity clinics as a fulfillment layer.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="page" id="page-orders">
+      <div class="page-header"><h1>Orders</h1></div>
+      <div class="panel">
+        <div class="panel-header">All Orders</div>
+        <div class="empty-state">No orders yet. Orders will appear here once customers subscribe.</div>
+      </div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section class="page" id="page-customers">
+      <div class="page-header"><h1>Customers</h1></div>
+      <div class="panel">
+        <div class="panel-header">Customer List</div>
+        <div class="empty-state">No customers yet. Customer records will populate here.</div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section class="page" id="page-inventory">
+      <div class="page-header"><h1>Inventory</h1></div>
+      <div class="panel">
+        <div class="panel-header">Pod Inventory</div>
+        <div class="empty-state">Inventory tracking coming soon.</div>
+      </div>
+    </section>
+
+    <!-- FINANCIALS -->
+    <section class="page" id="page-financials">
+      <div class="page-header"><h1>Financials</h1></div>
+      <div class="panel">
+        <div class="panel-header">Revenue Overview</div>
+        <div class="empty-state">Financial data will appear here.</div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" id="page-settings">
+      <div class="page-header"><h1>Settings</h1></div>
+      <div class="panel">
+        <div class="panel-header">Operator Settings</div>
+        <div class="empty-state">Settings configuration coming soon.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

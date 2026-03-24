@@ -1,1 +1,1441 @@
-<html><body><h1>test</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pulse — Peptide Delivery System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+:root {
+  --bg: #050505;
+  --surface: #0e0e0e;
+  --card: #141414;
+  --card2: #1a1a1a;
+  --border: rgba(255,255,255,0.07);
+  --green: #00ff6a;
+  --green-dim: rgba(0,255,106,0.1);
+  --green-glow: rgba(0,255,106,0.2);
+  --white: #ffffff;
+  --grey: rgba(255,255,255,0.65);
+  --grey2: rgba(255,255,255,0.42);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:'Inter',sans-serif;font-weight:400;overflow-x:hidden;cursor:none;}
+/* GRAIN */
+#grain{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9998;opacity:.032;}
+/* CURSOR */
+.cur{position:fixed;width:8px;height:8px;background:var(--green);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 12px var(--green);transition:width .25s,height .25s;}
+.cur-ring{display:none;}
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 40px;background:linear-gradient(to bottom,rgba(5,5,5,0.95) 0%,transparent 100%);}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-icon{width:32px;height:32px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.nav-icon svg{width:16px;height:16px;stroke:var(--green);fill:none;stroke-width:2;}
+.nav-name{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:var(--white);letter-spacing:0.05em;}
+.nav-links{display:flex;gap:36px;list-style:none;}
+.nav-links a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey);text-decoration:none;transition:color .25s;}
+.nav-links a:hover{color:var(--green);}
+.nav-cta{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:10px 24px;border-radius:999px;cursor:none;font-weight:500;transition:all .25s;text-decoration:none;box-shadow:0 0 20px var(--green-glow);}
+.nav-cta:hover{background:#fff;box-shadow:0 0 28px rgba(255,255,255,0.2);}
+/* HERO */
+#hero{position:relative;height:100vh;min-height:700px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;padding-bottom:80px;}
+.hero-bg{position:absolute;inset:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(5,5,5,0.82) 0%,rgba(5,5,5,0.2) 35%,rgba(5,5,5,0.15) 60%,rgba(5,5,5,0.85) 85%,rgba(5,5,5,0.98) 100%);}
+.hero-content{position:relative;z-index:2;text-align:center;padding:0 24px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:var(--green);margin-bottom:24px;opacity:0;animation:fadeUp .7s ease .1s forwards;}
+.hero-badge-dot{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:blink 2s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero-logo{font-family:'Anybody',sans-serif;font-size:clamp(80px,15vw,200px);font-variation-settings:'wght' 200,'wdth' 100;letter-spacing:0.12em;line-height:1;color:#fff;margin-bottom:4px;opacity:0;animation:fadeUp .8s ease .25s forwards;text-shadow:0 0 60px rgba(5,5,5,0.6);}
+.hero-tagline{font-size:clamp(20px,2.8vw,32px);font-weight:300;color:rgba(255,255,255,0.9);letter-spacing:0.01em;line-height:1.35;margin-bottom:40px;opacity:0;animation:fadeUp .7s ease .45s forwards;}
+.hero-tagline strong{color:var(--green);font-weight:400;}
+.hero-actions{display:flex;gap:14px;justify-content:center;align-items:center;opacity:0;animation:fadeUp .7s ease .6s forwards;}
+.btn-green{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:14px 32px;border-radius:999px;cursor:none;font-weight:500;transition:all .25s;text-decoration:none;display:inline-block;box-shadow:0 0 24px var(--green-glow);}
+.btn-green:hover{background:#fff;box-shadow:0 0 32px rgba(255,255,255,0.25);}
+.btn-outline{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;background:transparent;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.2);padding:14px 32px;border-radius:999px;cursor:none;transition:all .25s;text-decoration:none;display:inline-block;}
+.btn-outline:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
+.hero-scroll{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:0;animation:fadeIn .8s ease 1.1s forwards;}
+.hero-scroll span{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3em;color:rgba(255,255,255,0.25);text-transform:uppercase;}
+.scroll-line{width:1px;height:28px;background:linear-gradient(to bottom,var(--green),transparent);animation:scrollpulse 2s ease infinite;}
+@keyframes scrollpulse{0%,100%{opacity:.4;}50%{opacity:1;}}
+/* STATS */
+.stats-bar{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;justify-content:center;}
+.stat-item{flex:1;max-width:260px;padding:28px 40px;text-align:center;border-right:1px solid var(--border);}
+.stat-item:last-child{border-right:none;}
+
+.stat-num{font-family:'DM Mono',monospace;font-size:36px;font-weight:400;color:var(--green);line-height:1;margin-bottom:6px;}
+.stat-label{font-size:11px;letter-spacing:0.1em;color:var(--grey);text-transform:uppercase;}
+/* SHARED SECTION STYLES */
+section{position:relative;padding:100px 40px;}
+.eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.4em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
+.section-h{font-size:clamp(32px,4vw,56px);font-weight:600;line-height:1.1;letter-spacing:-0.02em;margin-bottom:16px;}
+.section-sub{font-size:15px;font-weight:300;color:var(--grey);line-height:1.75;}
+/* PROBLEM SECTION */
+#problem{background:var(--bg);padding:0;overflow:hidden;}
+.problem-grid{display:grid;grid-template-columns:1fr 1fr;min-height:80vh;}
+.problem-img{position:relative;overflow:hidden;}
+.problem-img img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
+.problem-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,transparent 55%,var(--bg) 100%);}
+.problem-text{padding:80px 60px;display:flex;flex-direction:column;justify-content:center;background:var(--bg);}
+.friction-list{margin-top:36px;display:flex;flex-direction:column;gap:2px;}
+.friction-item{background:var(--card);padding:22px 24px;border-left:3px solid transparent;transition:all .3s;}
+.friction-item:hover{border-left-color:var(--green);background:var(--card2);}
+.friction-code{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.25em;color:var(--green);margin-bottom:6px;}
+.friction-title{font-size:14px;font-weight:500;color:#fff;margin-bottom:4px;}
+.friction-body{font-size:12px;font-weight:300;color:var(--grey);line-height:1.65;}
+/* PEPTIDE EDUCATION SECTION */
+#peptides{background:var(--surface);}
+.peptides-inner{max-width:1100px;margin:0 auto;}
+.peptides-header{text-align:center;margin-bottom:72px;}
+.peptide-explainer{display:grid;grid-template-columns:1fr 1fr;gap:2px;align-items:stretch;}
+.peptide-chain{margin-top:28px;display:flex;flex-direction:column;gap:2px;flex:1;}
+.chain-item{padding:18px 22px;background:rgba(255,255,255,0.03);border-left:2px solid transparent;transition:border-color .3s;}
+.chain-item:hover{border-left-color:var(--green);}
+.chain-label{font-size:13px;font-weight:500;margin-bottom:4px;}
+.chain-body{font-size:12px;font-weight:300;color:var(--grey);line-height:1.65;}
+.pep-molecule{background:var(--card);padding:36px 32px;border:1px solid rgba(255,255,255,0.06);}
+.pep-molecule-header{margin-bottom:28px;}
+.pep-pathway{display:flex;flex-direction:column;}
+.pep-step{display:flex;align-items:flex-start;gap:16px;}
+.pep-step-dot{width:10px;height:10px;border-radius:50%;background:var(--grey2);flex-shrink:0;margin-top:3px;}
+.pep-dot-green{background:var(--green);box-shadow:0 0 8px var(--green-glow);}
+.pep-step-label{font-size:13px;font-weight:500;margin-bottom:2px;}
+.pep-step-sub{font-size:11px;font-weight:300;color:var(--grey);}
+.pep-connector{width:1px;height:28px;background:rgba(255,255,255,0.08);margin-left:4px;}
+.pep-molecule-note{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--grey2);}
+.benefit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:2px;}
+.benefit-card{background:var(--card);padding:36px 30px;position:relative;overflow:hidden;transition:transform .3s;}
+.benefit-card:hover{transform:translateY(-2px);}
+.benefit-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent);opacity:0;transition:opacity .3s;}
+.benefit-card:hover::before{opacity:1;}
+.benefit-icon{font-family:'DM Mono',monospace;font-size:28px;color:rgba(0,255,106,0.3);line-height:1;margin-bottom:20px;}
+.benefit-title{font-size:17px;font-weight:600;margin-bottom:10px;}
+.benefit-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.7;}
+.benefit-compounds{margin-top:16px;display:flex;flex-wrap:wrap;gap:4px;}
+.benefit-compound{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--green);background:var(--green-dim);border:1px solid rgba(0,255,106,0.2);padding:3px 10px;border-radius:999px;}
+.audience-split{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:2px;}
+.audience-card{background:var(--card2);padding:32px 32px;}
+.audience-tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:20px;}
+.audience-h{font-size:20px;font-weight:700;color:var(--white);margin-bottom:12px;line-height:1.3;}
+.audience-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.75;margin-bottom:24px;}
+.audience-qs{display:flex;flex-direction:column;gap:10px;}
+.audience-q{font-size:12px;font-weight:400;color:var(--grey);line-height:1.6;padding-left:16px;border-left:2px solid rgba(0,255,106,0.3);}
+/* WHY PULSE COMPARISON */
+#problem{background:var(--bg);padding:100px 40px;}
+.compare-inner{max-width:1100px;margin:0 auto;}
+.compare-header{max-width:700px;margin:0 auto 64px;text-align:center;}
+.analogy-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:56px;}
+.analogy-card{background:var(--card);padding:32px 28px;}
+.analogy-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--grey2);margin-bottom:14px;}
+.analogy-text{font-size:15px;font-weight:400;line-height:1.55;color:rgba(255,255,255,0.85);}
+.analogy-text em{color:var(--green);font-style:normal;font-weight:500;}
+.experience-split{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:56px;align-items:stretch;}
+.exp-col-label{padding:0 0 20px 0;}
+.pain-row{display:flex;flex-direction:column;gap:2px;}
+.pain-item{display:flex;align-items:flex-start;gap:24px;padding:22px 26px;background:var(--card);border-left:3px solid rgba(255,80,80,0.3);transition:border-color .3s;}
+.pain-item:hover{border-left-color:rgba(255,80,80,0.7);}
+.pulse-item{border-left-color:rgba(0,255,106,0.3);}
+.pulse-item:hover{border-left-color:var(--green);}
+.pain-icon{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.25em;color:rgba(255,100,100,0.5);flex-shrink:0;padding-top:3px;}
+.pain-title{font-size:14px;font-weight:500;color:#fff;margin-bottom:4px;}
+.pain-body{font-size:12px;font-weight:300;color:var(--grey);line-height:1.65;}
+.cmp-table{width:100%;border-collapse:collapse;}
+.cmp-table thead th{padding:20px 24px;text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;background:var(--card);border-bottom:1px solid var(--border);vertical-align:bottom;}
+.cmp-table thead th.col-diy,.cmp-table thead th.col-spa{color:var(--grey);}
+.cmp-table thead th.col-label{color:var(--grey2);width:160px;}
+.cmp-table thead th.col-pulse{color:var(--green);background:rgba(0,255,106,0.04);border-bottom:2px solid var(--green);}
+.cmp-table tbody td{padding:18px 24px;font-size:13px;font-weight:300;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top;line-height:1.5;}
+.cmp-table tbody td.col-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);white-space:nowrap;font-weight:400;}
+.cmp-table tbody td.col-diy,.cmp-table tbody td.col-spa{color:var(--grey);}
+.cmp-table tbody td.col-pulse{background:rgba(0,255,106,0.03);border-bottom-color:rgba(0,255,106,0.06);}
+.cmp-table tbody tr:hover td{background:var(--card);}
+.cmp-table tbody tr:hover td.col-pulse{background:rgba(0,255,106,0.06);}
+.cmp-yes{color:var(--green);font-weight:400;}
+.cmp-no{color:rgba(255,90,90,0.8);}
+.cmp-mid{color:rgba(255,200,60,0.85);}
+/* HOW IT WORKS */
+#how{background:var(--surface);}
+.how-inner{max-width:1100px;margin:0 auto;}
+.how-header{text-align:center;margin-bottom:64px;}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.step-card{background:var(--card);padding:44px 36px;position:relative;overflow:hidden;transition:transform .35s;}
+.step-card:hover{transform:translateY(-3px);}
+.step-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity .35s;}
+.step-card:hover::after{opacity:1;}
+.step-num{font-family:'DM Mono',monospace;font-size:64px;font-weight:400;color:var(--green);opacity:0.7;line-height:1;margin-bottom:16px;}
+.step-title{font-size:22px;font-weight:600;margin-bottom:12px;}
+.step-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.75;}
+/* Load. Press. Done mini flow */
+.lpd-flow{display:flex;align-items:center;gap:8px;margin-top:16px;}
+.lpd-step{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--grey2);}
+.lpd-step.active{color:var(--green);}
+.lpd-arrow{color:var(--grey2);font-size:10px;}
+/* PODS SECTION */
+#pods{background:var(--bg);}
+.pods-inner{max-width:1100px;margin:0 auto;}
+.pods-header{text-align:center;margin-bottom:48px;}
+.filter-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:48px;}
+.filter-tab{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;padding:9px 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:var(--grey);cursor:none;transition:all .25s;}
+.filter-tab.active{background:var(--green);color:#000;border-color:var(--green);box-shadow:0 0 16px var(--green-glow);}
+.filter-tab:hover:not(.active){border-color:rgba(255,255,255,0.3);color:#fff;}
+.pods-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.pod-card{background:var(--card);border-radius:20px;padding:28px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.05);transition:border-color .3s;display:flex;flex-direction:column;}
+.pod-card:hover{border-color:rgba(0,255,106,0.2);transform:translateY(-2px);}
+.pod-card.hidden{display:none;}
+.pod-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.pod-card:nth-child(3) .pod-card-top,.pod-card:nth-child(4) .pod-card-top{margin-top:24px;}
+.pod-icon{width:48px;height:48px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;}
+.pod-icon svg{width:22px;height:22px;}
+.pod-category-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;padding:5px 12px;border-radius:999px;border:1px solid;}
+.badge-recovery{color:#00ff6a;border-color:rgba(0,255,106,0.4);}
+.badge-performance{color:#00c8ff;border-color:rgba(0,200,255,0.4);}
+.badge-bodycomp{color:#ff8c00;border-color:rgba(255,140,0,0.4);}
+.badge-longevity{color:#c084fc;border-color:rgba(192,132,252,0.4);}
+.pod-name{font-size:20px;font-weight:600;margin-bottom:4px;}
+.pod-compounds{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:12px;letter-spacing:0.05em;}
+.pod-desc{font-size:13px;font-weight:300;color:var(--grey);line-height:1.65;margin-bottom:20px;}
+.pod-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+.pod-spec{background:var(--card2);border-radius:10px;padding:12px;text-align:center;}
+.pod-spec-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;}
+.pod-spec-value{font-size:13px;font-weight:500;}
+.pod-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;}
+.pod-tag{font-size:11px;font-weight:400;color:var(--grey);background:var(--card2);border-radius:999px;padding:4px 12px;border:1px solid rgba(255,255,255,0.06);}
+.pod-footer{display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);margin-top:auto;}
+.pod-price{font-size:28px;font-weight:600;}.pod-price span{font-size:14px;font-weight:300;color:var(--grey);}
+.pod-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:12px 24px;border-radius:999px;cursor:none;font-weight:500;transition:all .25s;}
+.pod-btn:hover{background:#fff;}
+.popular-badge{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;background:var(--green);color:#000;padding:4px 14px;border-radius:999px;font-weight:500;white-space:nowrap;}
+/* STACKS */
+#stacks{background:var(--surface);}
+.stacks-inner{max-width:1100px;margin:0 auto;}
+.stacks-header{text-align:center;margin-bottom:56px;}
+.stacks-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.stack-card{background:var(--card);border-radius:20px;padding:28px;border:1px solid rgba(255,255,255,0.05);transition:border-color .3s;display:flex;flex-direction:column;}
+.stack-card:hover{border-color:rgba(0,255,106,0.2);}
+.stack-badge{display:inline-block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;padding:5px 14px;border-radius:999px;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,106,0.25);margin-bottom:20px;}
+.stack-pods{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.stack-pod-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;}
+.stack-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot-blue{background:#00c8ff;box-shadow:0 0 8px rgba(0,200,255,0.5);}
+.dot-green{background:#00ff6a;box-shadow:0 0 8px rgba(0,255,106,0.5);}
+.dot-orange{background:#ff8c00;box-shadow:0 0 8px rgba(255,140,0,0.5);}
+.dot-purple{background:#c084fc;box-shadow:0 0 8px rgba(192,132,252,0.5);}
+.stack-desc{font-size:13px;font-weight:300;color:var(--grey);line-height:1.65;margin-bottom:20px;}
+.stack-footer{display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);margin-top:auto;}
+.stack-price-old{font-size:13px;color:var(--grey2);text-decoration:line-through;margin-right:10px;}
+.stack-price{font-size:26px;font-weight:600;color:var(--green);}
+.stack-price span{font-size:14px;font-weight:300;color:var(--grey);}
+.stack-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;background:transparent;color:var(--green);border:1px solid rgba(0,255,106,0.4);padding:11px 22px;border-radius:999px;cursor:none;font-weight:500;transition:all .25s;}
+.stack-btn:hover{background:var(--green);color:#000;}
+/* KIT SECTION */
+#kit{background:var(--bg);padding:0;overflow:hidden;}
+.kit-grid{display:grid;grid-template-columns:1fr 1fr;min-height:75vh;}
+.kit-content{padding:80px 60px;display:flex;flex-direction:column;justify-content:center;}
+.kit-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:32px;}
+.kit-tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);border:1px solid rgba(0,255,106,0.25);padding:6px 14px;border-radius:999px;background:var(--green-dim);}
+.kit-img{position:relative;overflow:hidden;}
+.kit-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.kit-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to left,transparent 60%,var(--bg) 100%);}
+/* WAITLIST */
+#waitlist{background:#020804;text-align:center;position:relative;overflow:hidden;}
+#waitlist::after{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0.5;z-index:3;}
+#wl-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;display:block;}
+.waitlist-inner{position:relative;z-index:2;max-width:560px;margin:0 auto;}
+.waitlist-title{font-size:clamp(40px,5.5vw,72px);font-weight:600;line-height:1;margin-bottom:16px;letter-spacing:-0.02em;}
+.waitlist-title em{font-style:italic;color:var(--green);font-weight:400;}
+.waitlist-sub{font-size:15px;font-weight:300;color:var(--grey);line-height:1.75;margin-bottom:44px;}
+.waitlist-form{display:flex;max-width:440px;margin:0 auto 16px;}
+.waitlist-input{flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-right:none;color:#fff;font-family:'Inter',sans-serif;font-size:14px;padding:14px 20px;outline:none;border-radius:999px 0 0 999px;transition:border-color .25s,background .25s;}
+.waitlist-input::placeholder{color:rgba(255,255,255,0.2);}
+.waitlist-input:focus{border-color:rgba(0,255,106,0.4);background:rgba(0,255,106,0.03);}
+.waitlist-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:14px 26px;border-radius:0 999px 999px 0;cursor:none;font-weight:500;transition:all .25s;white-space:nowrap;box-shadow:0 0 20px var(--green-glow);}
+.waitlist-btn:hover{background:#fff;}
+.waitlist-note{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;color:rgba(255,255,255,0.18);text-transform:uppercase;}
+.success-msg{display:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);padding:16px;}
+/* REVIEWS */
+#reviews{background:var(--bg);}
+.reviews-inner{max-width:1100px;margin:0 auto;}
+.reviews-header{text-align:center;margin-bottom:56px;}
+.reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.review-card{background:var(--card);padding:32px 28px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.04);}
+.review-stars{display:flex;gap:4px;margin-bottom:16px;}
+.review-star{color:var(--green);font-size:13px;}
+.review-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.75;flex:1;margin-bottom:24px;}
+.review-author{padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);}
+.review-name{font-size:13px;font-weight:500;margin-bottom:3px;}
+.review-meta{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;color:var(--green);text-transform:uppercase;}
+/* TESTIMONIAL v2 */
+#testimonial{background:var(--surface);}
+.testimonial-inner{max-width:860px;margin:0 auto;text-align:center;}
+.testimonial-mark{font-size:72px;line-height:0.6;color:var(--green);opacity:0.4;font-family:Georgia,serif;margin-bottom:32px;display:block;}
+.testimonial-quote{font-size:clamp(17px,2vw,24px);font-weight:400;line-height:1.65;color:var(--white);font-style:italic;margin-bottom:40px;}
+.testimonial-divider{width:48px;height:1px;background:var(--green);margin:0 auto 28px;opacity:0.5;}
+.testimonial-name{font-size:15px;font-weight:600;margin-bottom:6px;}
+.testimonial-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;color:var(--grey);text-transform:uppercase;line-height:1.8;}
+
+/* FAQ */
+#faq{background:var(--bg);}
+.faq-inner{max-width:760px;margin:0 auto;}
+.faq-header{text-align:center;margin-bottom:56px;}
+details.faq-item{background:var(--card);border-left:3px solid transparent;transition:border-color .25s;margin-bottom:2px;}
+details.faq-item[open]{border-left-color:var(--green);}
+summary.faq-q{padding:22px 26px;font-size:14px;font-weight:500;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+summary.faq-q::-webkit-details-marker{display:none;}
+summary.faq-q::after{content:'+';font-family:'DM Mono',monospace;font-size:18px;color:var(--green);flex-shrink:0;transition:transform .2s;}
+details[open] summary.faq-q::after{content:'−';}
+.faq-a{padding:0 26px 22px;font-size:13px;font-weight:300;color:var(--grey);line-height:1.8;}
+
+/* FOOTER */
+footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px;display:flex;align-items:center;justify-content:space-between;}
+.footer-brand{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:0.3em;color:rgba(255,255,255,0.3);}
+.footer-brand span{color:var(--green);}
+.footer-copy{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;color:rgba(255,255,255,0.12);text-transform:uppercase;}
+.footer-links{display:flex;gap:24px;}
+.footer-links a{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.18);text-decoration:none;transition:color .25s;}
+.footer-links a:hover{color:var(--green);}
+/* ANIMATIONS */
+/* .reveal handled by GSAP ScrollTrigger */
+.d1{transition-delay:.1s;}.d2{transition-delay:.2s;}.d3{transition-delay:.3s;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* DISCLAIMER */
+.disclaimer{font-size:11px;color:rgba(255,255,255,0.15);text-align:center;margin-top:24px;font-style:italic;}
+/* ===== MOBILE ===== */
+@media(max-width:900px){
+  nav{padding:16px 20px;}
+  .nav-links{display:none;}
+  .theme-switcher{display:none;}
+  section{padding:64px 20px;}
+  .hero-logo{letter-spacing:0.15em;}
+  .hero-actions{flex-direction:column;gap:10px;align-items:stretch;padding:0 16px;}
+  .stats-bar{flex-wrap:wrap;}
+  .stat-item{min-width:50%;border-right:none;border-bottom:1px solid var(--border);}
+  .peptide-explainer{grid-template-columns:1fr;}
+  .benefit-grid{grid-template-columns:1fr;}
+  .audience-split{grid-template-columns:1fr;}
+  .audience-card{padding:28px 20px;}
+  .problem-grid{grid-template-columns:1fr;}
+  .problem-img{height:50vw;}
+  .problem-text{padding:40px 24px;}
+  .analogy-strip{grid-template-columns:1fr;}
+  .experience-split{grid-template-columns:1fr;}
+  .steps-grid{grid-template-columns:1fr;}
+  .step-card{padding:32px 24px;}
+  .pods-grid{grid-template-columns:1fr;}
+  .pod-specs{grid-template-columns:1fr 1fr;}
+  .pod-card{padding:24px 20px;}
+  .pod-card:nth-child(3) .pod-card-top,.pod-card:nth-child(4) .pod-card-top{margin-top:0;}
+  .stacks-grid{grid-template-columns:1fr;}
+  .stack-card{padding:24px 20px;}
+  .kit-grid{grid-template-columns:1fr;}
+  .kit-img{height:50vw;}
+  .kit-content{padding:40px 24px;}
+  .reviews-grid{grid-template-columns:1fr;}
+  .review-card{padding:24px 20px;}
+  .testimonial-inner{padding:0 8px;}
+  .faq-item{padding:18px 20px;}
+  .faq-a{padding:0 20px 18px;}
+  .faq-q{font-size:13px;}
+  .waitlist-form{flex-direction:column;max-width:100%;}
+  .waitlist-form input,.waitlist-form button{width:100%;}
+  footer{flex-direction:column;gap:14px;text-align:center;}
+  .footer-links{flex-wrap:wrap;justify-content:center;}
+  .cmp-table thead th,.cmp-table tbody td{padding:14px 16px;font-size:11px;}
+  .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
+}
+@media(max-width:480px){
+  section{padding:52px 16px;}
+  .stat-item{min-width:100%;text-align:center;}
+  .pod-specs{grid-template-columns:1fr;}
+  .chain-item{padding:14px 16px;}
+  .step-card{padding:28px 20px;}
+  .analogy-card{padding:20px;}
+}
+
+)();
+</script>
+</head>
+<body>
+<canvas id="grain"></canvas>
+<div class="cur" id="cur"></div>
+<div class="cur-ring" id="cur-ring"></div>
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">
+    <div class="nav-icon">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <span class="nav-name">Pulse</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#peptides">The Science</a></li>
+    <li><a href="#pods">Protocols</a></li>
+    <li><a href="#stacks">Stacks</a></li>
+    <li><a href="#how">How It Works</a></li>
+  </ul>
+  <div class="theme-switcher" id="theme-switcher">
+    <button class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch theme">
+      <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <span>Style</span>
+    </button>
+    <div class="theme-dropdown" id="theme-dropdown">
+      <div class="theme-option active" data-theme="base">
+        <div class="theme-swatch" style="background:#00ff6a;box-shadow:0 0 5px #00ff6a;"></div>
+        <span>Base</span>
+      </div>
+      <div class="theme-option" data-theme="neutral">
+        <div class="theme-swatch" style="background:#4ecdc4;box-shadow:0 0 5px #4ecdc4;"></div>
+        <span>Neutral</span>
+      </div>
+      <div class="theme-option" data-theme="clinical">
+        <div class="theme-swatch" style="background:#38bdf8;box-shadow:0 0 5px #38bdf8;"></div>
+        <span>Clinical</span>
+      </div>
+      <div class="theme-option" data-theme="aurora">
+        <div class="theme-swatch" style="background:#c084fc;box-shadow:0 0 5px #c084fc;"></div>
+        <span>Aurora</span>
+      </div>
+      <div class="theme-option" data-theme="carbon">
+        <div class="theme-swatch" style="background:#00ffff;box-shadow:0 0 5px #00ffff;"></div>
+        <span>Carbon</span>
+      </div>
+    </div>
+  </div>
+  <a href="#waitlist" class="nav-cta">Get Early Access</a>
+</nav>
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg">
+    <img src="hero1.jpg" alt="Pulse device" />
+  </div>
+  <div class="hero-content">
+    <div class="hero-logo">PULSE</div>
+    <p class="hero-tagline">Your peptide protocol.<br/><strong>Ready when you are.</strong></p>
+    <div class="hero-actions">
+      <a href="#pods" class="btn-green">Choose Your Protocol</a>
+      <a href="#how" class="btn-outline">See How It Works</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num">1</div><div class="stat-label">Pod per day<br/><em>pre-filled</em></div></div>
+  <div class="stat-item"><div class="stat-num">30</div><div class="stat-label">Pods per kit<br/><em>ready for use</em></div></div>
+  <div class="stat-item"><div class="stat-num">6</div><div class="stat-label">Protocols</div></div>
+  <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">Reasons not to start</div></div>
+</div>
+<!-- PEPTIDE EDUCATION -->
+<section id="peptides">
+  <div class="peptides-inner">
+    <div class="peptides-header">
+      <div class="eyebrow reveal">The Science</div>
+      <h2 class="section-h reveal">Peptides aren&rsquo;t new.<br/><em style="color:var(--green);font-style:italic">Using them correctly is.</em></h2>
+      <p class="section-sub reveal" style="max-width:640px;margin:16px auto 0;">Your body already makes thousands of peptides. The question was never whether they work &mdash; it&rsquo;s whether you can follow a protocol long enough for them to.</p>
+    </div>
+
+    <!-- What is a peptide -->
+    <div class="peptide-explainer">
+      <div style="display:flex;flex-direction:column;background:var(--card2);padding:32px;">
+        <div class="eyebrow">What is a peptide?</div>
+        <h3 style="font-size:clamp(22px,2.2vw,30px);font-weight:600;line-height:1.2;margin-bottom:14px;">Short chains of amino acids your body uses as signaling molecules.</h3>
+        <p class="section-sub reveal" style="font-size:13px;margin-top:0;">Peptides communicate with your biology rather than overriding it &mdash; triggering your body&rsquo;s own repair, growth, and regulation pathways.</p>
+        <div class="peptide-chain">
+          <div class="chain-item reveal">
+            <div class="chain-label">Naturally occurring</div>
+            <div class="chain-body">Supplemental peptides mimic signals your body already makes &mdash; amplifying biology, not replacing it.</div>
+          </div>
+          <div class="chain-item reveal d1">
+            <div class="chain-label">Receptor-targeted</div>
+            <div class="chain-body">Each peptide binds to specific receptors. Precise by design, not broad-spectrum.</div>
+          </div>
+          <div class="chain-item reveal d2">
+            <div class="chain-label">Protocol-dependent</div>
+            <div class="chain-body">Timing and consistency determine outcomes. Peptides compound over weeks &mdash; stopping early is why they &ldquo;don&rsquo;t work.&rdquo;</div>
+          </div>
+          <div class="chain-item reveal">
+            <div class="chain-label">Not a hormone — a signal</div>
+            <div class="chain-body">Peptides act upstream of hormones, nudging your own systems to respond. No override. No substitution.</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div class="audience-card reveal">
+          <div class="audience-tag">If you&rsquo;re new to peptides</div>
+          <div class="audience-h">Start with what matters: the outcome.</div>
+          <div class="audience-body">Pick a goal, follow the protocol. The science handles itself when the system works.</div>
+          <div class="audience-qs">
+            <div class="audience-q">Are they safe? Yes &mdash; when properly sourced and dosed.</div>
+            <div class="audience-q">When will I feel it? Some quickly. Most build over 4&ndash;12 weeks.</div>
+            <div class="audience-q">Do I need a doctor? Pulse protocols are clinically informed.</div>
+            <div class="audience-q">Is this like steroids? No. Peptides work with your biology, not around it.</div>
+          </div>
+        </div>
+        <div class="audience-card reveal d1" style="border-left:2px solid rgba(0,255,106,0.18);">
+          <div class="audience-tag" style="color:var(--green);">If you&rsquo;ve done your research</div>
+          <div class="audience-h">The bottleneck was never the compound.</div>
+          <div class="audience-body">The issue was never knowledge &mdash; it&rsquo;s that the workflow is built to fail. Inconsistent dosing. No protocol structure. No accountability. Pulse is what happens when the system is actually designed to work.</div>
+          <div class="audience-qs">
+            <div class="audience-q">Pre-filled pods. Exact dosing. No error.</div>
+            <div class="audience-q">BPC + TB-500, CJC + Ipamorelin &mdash; stacked correctly, out of the box.</div>
+            <div class="audience-q">30/60/90-day structure. Not a monthly refill situation.</div>
+            <div class="audience-q">Batch-tested, pharmaceutical-grade sourcing.</div>
+          </div>
+        </div>
+      </div>
+  </div>
+</section>
+
+<!-- WHY PULSE / COMPARISON -->
+<section id="problem">
+  <div class="compare-inner">
+
+    <div class="compare-header">
+      <div class="eyebrow reveal">Why Pulse</div>
+      <h2 class="section-h reveal">The problem isn&rsquo;t access.<br/><em style="color:var(--green);font-style:italic">It&rsquo;s everything else.</em></h2>
+      <p class="section-sub reveal" style="margin-top:16px;">Peptides are more accessible than ever. So why do most people who try them quit? Because the experience of actually using them is broken. We&rsquo;re not building a peptide company. We&rsquo;re building the system that makes peptide protocols actually work.</p>
+    </div>
+
+    <!-- Analogy strip -->
+    <div class="analogy-strip reveal">
+      <div class="analogy-card">
+        <div class="analogy-logo" style="margin-bottom:20px;display:flex;align-items:center;height:32px;">
+          <span style="font-family:'DM Mono',monospace;font-size:15px;letter-spacing:0.12em;color:rgba(255,255,255,0.55);font-weight:500;">STRIPE</span>
+        </div>
+        <div class="analogy-text">Didn&rsquo;t invent payments.<br/>Made them <em>usable</em>.</div>
+      </div>
+      <div class="analogy-card">
+        <div class="analogy-logo" style="margin-bottom:20px;display:flex;align-items:center;height:32px;">
+          <span style="font-family:'DM Mono',monospace;font-size:15px;letter-spacing:0.12em;color:rgba(255,255,255,0.55);font-weight:500;">UBER</span>
+        </div>
+        <div class="analogy-text">Didn&rsquo;t invent taxis.<br/>Made them <em>reliable</em>.</div>
+      </div>
+      <div class="analogy-card" style="background:rgba(0,255,106,0.05);border:1px solid rgba(0,255,106,0.2);">
+        <div class="analogy-logo" style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="15" stroke="#00ff6a" stroke-width="1.5" fill="rgba(0,255,106,0.08)"/>
+            <polyline points="6,16 10,16 12,10 15,22 18,13 20,19 22,16 26,16" stroke="#00ff6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+          <span style="font-family:'DM Mono',monospace;font-size:15px;letter-spacing:0.12em;color:var(--white);font-weight:500;">PULSE.</span>
+        </div>
+        <div class="analogy-text">Didn&rsquo;t invent peptides.<br/>Made them <em>actually work for people</em>.</div>
+      </div>
+    </div>
+
+    <!-- Current vs Pulse experience — flat grid so rows align exactly -->
+    <div class="experience-split reveal">
+      <div class="eyebrow exp-col-label" style="color:#ff4444;">The current experience</div>
+      <div class="eyebrow exp-col-label" style="color:var(--green);">The Pulse experience</div>
+      <div class="pain-item">
+        <div class="pain-icon">01</div>
+        <div>
+          <div class="pain-title">Manual reconstitution</div>
+          <div class="pain-body">BAC water, vials, syringes, calculations &mdash; every dose. DIY users mix blind. Med spas prep it in-clinic, but you&rsquo;re not there. Either way, the burden is real and the error rate is high.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">01</div>
+        <div>
+          <div class="pain-title">Pre-filled pods. Zero prep.</div>
+          <div class="pain-body">Your kit arrives ready. Snap in the pod, attach the needle, inject. No mixing, no measuring, no math. The entire reconstitution problem is designed out of the experience.</div>
+        </div>
+      </div>
+      <div class="pain-item">
+        <div class="pain-icon">02</div>
+        <div>
+          <div class="pain-title">Inconsistent dosing</div>
+          <div class="pain-body">Self-calculated or set once at intake and rarely revisited. Variability undermines the protocol &mdash; and the compound gets blamed for a delivery problem.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">02</div>
+        <div>
+          <div class="pain-title">Protocol-calibrated dosing</div>
+          <div class="pain-body">Every pod is filled to your exact protocol dose. No estimation, no error. The dose is right every time &mdash; because the system makes getting it wrong impossible.</div>
+        </div>
+      </div>
+      <div class="pain-item">
+        <div class="pain-icon">03</div>
+        <div>
+          <div class="pain-title">No protocol structure</div>
+          <div class="pain-body">Forums, scattered PDFs, quarterly check-ins that are mostly reactive. No clear 30/60/90-day roadmap. No way to know what&rsquo;s working or when to adjust.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">03</div>
+        <div>
+          <div class="pain-title">Guided 30/60/90-day protocols</div>
+          <div class="pain-body">Clear milestones from day one. You know what you&rsquo;re taking, why, and for how long. Protocol clarity removes the guesswork that causes most people to stop.</div>
+        </div>
+      </div>
+      <div class="pain-item">
+        <div class="pain-icon">04</div>
+        <div>
+          <div class="pain-title">Low adherence</div>
+          <div class="pain-body">Friction kills consistency. Skipping doses, stopping early, irregular timing &mdash; this is where most protocols fail. Not because the compound doesn&rsquo;t work, but because the system doesn&rsquo;t support following through.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">04</div>
+        <div>
+          <div class="pain-title">Designed for consistency</div>
+          <div class="pain-body">The whole experience is built around making following through the path of least resistance. Simple daily ritual. No friction. Behavioral scaffolding that makes adherence the default, not the exception.</div>
+        </div>
+      </div>
+      <div class="pain-item">
+        <div class="pain-icon">05</div>
+        <div>
+          <div class="pain-title">Fragmented sourcing and guidance</div>
+          <div class="pain-body">Grey-market suppliers, compounding pharmacies, or high-markup clinic supply &mdash; with no unified accountability. Quality and clinical guidance are completely disconnected.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">05</div>
+        <div>
+          <div class="pain-title">Verified sourcing, unified guidance</div>
+          <div class="pain-body">Batch-tested, pharmaceutical-grade compounds paired with clinically-informed protocols &mdash; from a single source. Quality and guidance are the same product.</div>
+        </div>
+      </div>
+      <div class="pain-item">
+        <div class="pain-icon">06</div>
+        <div>
+          <div class="pain-title">You have to go get it</div>
+          <div class="pain-body">Clinic appointments, pharmacy coordination, or waiting on grey-market orders with no tracking or guarantee. Access requires active effort &mdash; and that effort compounds the dropout rate.</div>
+        </div>
+      </div>
+      <div class="pain-item pulse-item">
+        <div class="pain-icon" style="color:var(--green);">06</div>
+        <div>
+          <div class="pain-title">Delivered to your door. Monthly.</div>
+          <div class="pain-body">Your 30-day kit ships directly to you, arrives ready to use. No appointments, no coordination, no waiting. The protocol comes to you &mdash; so the only thing left to do is follow it.</div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+</section>
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="how-inner">
+    <div class="how-header reveal">
+      <div class="eyebrow">How It Works</div>
+      <h2 class="section-h">We handle everything.</h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card reveal d1">
+        <div class="step-num">01</div>
+        <h3 class="step-title">Choose Your Protocol</h3>
+        <p class="step-body">Browse the pod catalog. Each kit is delivered with 30-day supply peptide pods matched to a specific goal — recovery, performance, body composition, or longevity. Select one or stack multiple.</p>
+      </div>
+      <div class="step-card reveal d2">
+        <div class="step-num">02</div>
+        <h3 class="step-title">Subscribe &amp; Customise</h3>
+        <p class="step-body">Start your subscription. Pulse ships your pre-measured pod directly to your door — no pharmacy visits, no reconstitution, no guesswork.</p>
+      </div>
+      <div class="step-card reveal d3">
+        <div class="step-num">03</div>
+        <h3 class="step-title">Load. Press. Done.</h3>
+        <p class="step-body">Snap in your pod. Attach a needle. Press the button once. That's the entire protocol. Same thing tomorrow.</p>
+        <div class="lpd-flow">
+          <span class="lpd-step">Load pod</span>
+          <span class="lpd-arrow">→</span>
+          <span class="lpd-step">Press</span>
+          <span class="lpd-arrow">→</span>
+          <span class="lpd-step active">Done</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- PODS -->
+<section id="pods">
+  <div class="pods-inner">
+    <div class="pods-header reveal">
+      <div class="eyebrow">Pulse Kits</div>
+      <h2 class="section-h">Built for your goals.<br/>Delivered to your door.</h2>
+      <p class="section-sub" style="max-width:560px;margin:0 auto;">Each kit comes with a 30-day supply of peptide pods, filled with clinically-informed dosing. Select a protocol and Pulse delivers it to you monthly.</p>
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all" onclick="filterPods(this,'all')">All Protocols</button>
+      <button class="filter-tab" data-filter="performance" onclick="filterPods(this,'performance')">Performance</button>
+      <button class="filter-tab" data-filter="recovery" onclick="filterPods(this,'recovery')">Recovery</button>
+      <button class="filter-tab" data-filter="bodycomp" onclick="filterPods(this,'bodycomp')">Body Comp</button>
+      <button class="filter-tab" data-filter="longevity" onclick="filterPods(this,'longevity')">Longevity</button>
+    </div>
+    <div class="pods-grid" id="pods-grid">
+      <!-- SLEEP POD $129 - Recovery -->
+      <div class="pod-card" data-category="recovery">
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#00ff6a" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <span class="pod-category-badge badge-recovery">Recovery</span>
+        </div>
+        <div class="pod-name">Sleep</div>
+        <div class="pod-compounds" style="font-family:'DM Mono',monospace;font-size:10px;">DSIP (Delta Sleep-Inducing Peptide)</div>
+        <p class="pod-desc">Optimises deep sleep architecture. Promotes delta wave sleep, reduces cortisol, and enhances overnight recovery for peak next-day readiness.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">30 days</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">100mcg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x nightly</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Deep sleep</span><span class="pod-tag">Cortisol reduction</span><span class="pod-tag">Recovery</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$129<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+      <!-- REPAIR POD $149 - Recovery -->
+      <div class="pod-card" data-category="recovery">
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#00ff6a" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <span class="pod-category-badge badge-recovery">Recovery</span>
+        </div>
+        <div class="pod-name">Repair</div>
+        <div class="pod-compounds">BPC-157 + TB-500</div>
+        <p class="pod-desc">Accelerated tissue recovery. Targets tendons, ligaments, and gut lining. The go-to protocol for active recovery from training or injury.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">30 days</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">250/500mcg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x daily</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Joint repair</span><span class="pod-tag">Gut healing</span><span class="pod-tag">Anti-inflammatory</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$149<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+      <!-- GROWTH POD $179 - Performance - Most Popular -->
+      <div class="pod-card" style="position:relative;">
+        <div class="popular-badge">Most Popular</div>
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <span class="pod-category-badge badge-performance">Performance</span>
+        </div>
+        <div class="pod-name">Growth</div>
+        <div class="pod-compounds">CJC-1295 + Ipamorelin</div>
+        <p class="pod-desc">Stimulates natural growth hormone release. Supports lean mass, deep sleep, and recovery. The foundational performance protocol.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">30 days</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">100/200mcg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x daily PM</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Lean mass</span><span class="pod-tag">Deep sleep</span><span class="pod-tag">Recovery</span><span class="pod-tag">Anti-aging</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$179<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+      <!-- ENDURANCE POD $189 - Performance -->
+      <div class="pod-card" data-category="performance">
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <span class="pod-category-badge badge-performance">Performance</span>
+        </div>
+        <div class="pod-name">Endurance</div>
+        <div class="pod-compounds">BPC-157 + MOTSc</div>
+        <p class="pod-desc">Mitochondrial performance and cardiovascular endurance. Enhances exercise capacity, AMPK activation, and metabolic efficiency.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">30 days</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">250mcg/5mg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x daily AM</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Cardio output</span><span class="pod-tag">Mitochondria</span><span class="pod-tag">Endurance</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$189<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+      <!-- SHRED POD $199 - Body Comp -->
+      <div class="pod-card" data-category="bodycomp">
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ff8c00" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          </div>
+          <span class="pod-category-badge badge-bodycomp">Body Comp</span>
+        </div>
+        <div class="pod-name">Shred</div>
+        <div class="pod-compounds">Tesamorelin</div>
+        <p class="pod-desc">Targets visceral fat reduction while preserving lean tissue. Clinically studied for abdominal fat loss with a clean metabolic profile.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">30 days</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">2mg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x daily</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Fat loss</span><span class="pod-tag">Body recomp</span><span class="pod-tag">Metabolic health</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$199<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+      <!-- VITALITY POD $219 - Longevity -->
+      <div class="pod-card" data-category="longevity">
+        <div class="pod-card-top">
+          <div class="pod-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="pod-category-badge badge-longevity">Longevity</span>
+        </div>
+        <div class="pod-name">Vitality</div>
+        <div class="pod-compounds">Epithalon (Epitalon)</div>
+        <p class="pod-desc">Supports telomere maintenance and cellular regeneration. A longevity-focused protocol for healthspan extension and anti-aging.</p>
+        <div class="pod-specs">
+          <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value">20/10 off</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value">5mg</div></div>
+          <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value">1x daily</div></div>
+        </div>
+        <div class="pod-tags">
+          <span class="pod-tag">Telomere support</span><span class="pod-tag">Cell regeneration</span><span class="pod-tag">Healthspan</span>
+        </div>
+        <div class="pod-footer">
+          <div class="pod-price">$219<span>/mo</span></div>
+          <button class="pod-btn">Select Pod</button>
+        </div>
+      </div>
+    </div>
+    <p class="disclaimer">These statements have not been evaluated by the FDA. All protocols require physician authorisation through Pulse's MSO/PC model. Not intended to diagnose, treat, cure, or prevent any disease.</p>
+  </div>
+</section>
+<!-- STACKS -->
+<section id="stacks">
+  <div class="stacks-inner">
+    <div class="stacks-header reveal">
+      <div class="eyebrow">Stack Protocols</div>
+      <h2 class="section-h">Combine pods.<br/>Compound results.</h2>
+      <p class="section-sub" style="max-width:520px;margin:0 auto;">Select multiple pods to build a personalized protocol stack. Each pod works independently — stacking unlocks synergistic benefits.</p>
+    </div>
+    <div class="stacks-grid">
+      <!-- Recovery $249 -->
+      <div class="stack-card reveal d1">
+        <div class="stack-badge">Recovery Stack</div>
+        <div class="stack-pods">
+          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
+          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+        </div>
+        <p class="stack-desc">Accelerated tissue repair paired with optimised sleep recovery. Train, heal, repeat.</p>
+        <div class="stack-footer">
+          <div><span class="stack-price-old">$278/mo</span><span class="stack-price">$249<span>/mo</span></span></div>
+          <button class="stack-btn">Select Stack</button>
+        </div>
+      </div>
+      <!-- Performance $299 -->
+      <div class="stack-card reveal d2">
+        <div class="stack-badge">Performance Stack</div>
+        <div class="stack-pods">
+          <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
+          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
+        </div>
+        <p class="stack-desc">GH secretion paired with tissue recovery. Train harder, recover faster. The athlete's foundational stack.</p>
+        <div class="stack-footer">
+          <div><span class="stack-price-old">$328/mo</span><span class="stack-price">$299<span>/mo</span></span></div>
+          <button class="stack-btn">Select Stack</button>
+        </div>
+      </div>
+      <!-- Longevity $319 -->
+      <div class="stack-card reveal d1">
+        <div class="stack-badge">Longevity Stack</div>
+        <div class="stack-pods">
+          <div class="stack-pod-row"><div class="stack-dot dot-purple"></div>Vitality</div>
+          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+        </div>
+        <p class="stack-desc">Cellular longevity meets sleep optimisation. The healthspan protocol.</p>
+        <div class="stack-footer">
+          <div><span class="stack-price-old">$348/mo</span><span class="stack-price">$319<span>/mo</span></span></div>
+          <button class="stack-btn">Select Stack</button>
+        </div>
+      </div>
+      <!-- Optimise $449 -->
+      <div class="stack-card reveal d2" style="border-color:rgba(0,255,106,0.15);background:rgba(0,255,106,0.03);">
+        <div class="stack-badge">Optimize Stack</div>
+        <div class="stack-pods">
+          <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
+          <div class="stack-pod-row"><div class="stack-dot dot-orange"></div>Shred</div>
+          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+        </div>
+        <p class="stack-desc">Full optimisation: body composition, performance, and sleep quality in one system.</p>
+        <div class="stack-footer">
+          <div><span class="stack-price-old">$507/mo</span><span class="stack-price">$449<span>/mo</span></span></div>
+          <button class="stack-btn">Select Stack</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- KIT -->
+<section id="kit">
+  <div class="kit-grid">
+    <div class="kit-content">
+      <div class="eyebrow reveal">The Ritual</div>
+      <h2 class="section-h reveal">Load. Press.<br/>Done.</h2>
+      <p class="section-sub reveal">Your kit arrives with pods ready to go, filled and measured to your exact doses. Snap it in, attach the needle, and you're ready. Pulse handles the rest.</p>
+      <div class="kit-tags reveal">
+        <span class="kit-tag">Pod snaps in</span>
+        <span class="kit-tag">One press to dose</span>
+        <span class="kit-tag">Same thing tomorrow</span>
+      </div>
+      <div style="margin-top:36px;" class="reveal">
+        <a href="#waitlist" class="btn-green">Reserve Your Kit</a>
+      </div>
+    </div>
+    <div class="kit-img reveal">
+      <img src="hero2.jpg" alt="Pulse device in use" />
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="reviews-inner">
+    <div class="reviews-header">
+      <div class="eyebrow reveal">Early Access Members</div>
+      <h2 class="section-h reveal">Real protocols.<br/><em style="color:var(--green);font-style:italic">Real results.</em></h2>
+    </div>
+    <div class="reviews-grid">
+      <div class="review-card reveal">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"Three months on the Growth protocol and my body composition has shifted more than two years of training optimization. The fact that it arrives ready to use is what made me actually stick with it. I'm not someone who follows through on complex routines — this removed the complexity entirely."</div>
+        <div class="review-author">
+          <div class="review-name">Jake M., 34</div>
+          <div class="review-meta">Growth Protocol · Month 3</div>
+        </div>
+      </div>
+      <div class="review-card reveal d1">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"I've dealt with chronic joint inflammation for years. Six weeks in and my morning stiffness is noticeably better. I was anxious about self-injecting — the pod system took that completely off the table. Load, press, done. That's actually what it is."</div>
+        <div class="review-author">
+          <div class="review-name">Sarah K., 41</div>
+          <div class="review-meta">Recovery Pod · Month 2</div>
+        </div>
+      </div>
+      <div class="review-card reveal d2">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"I train twice a day. Recovery used to be the ceiling on everything. Eight weeks on the Growth + Recovery stack and I'm hitting numbers I couldn't get near before. The protocol structure made it easy to know exactly what I was doing and why."</div>
+        <div class="review-author">
+          <div class="review-name">Marcus T., 29</div>
+          <div class="review-meta">Performance Stack · Month 2</div>
+        </div>
+      </div>
+      <div class="review-card reveal">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"Sleep quality improved within the first two weeks — I didn't expect it that fast. By month three the recovery benefits had compounded noticeably. My HRV is up, I wake up without an alarm. It's become the one thing I won't cancel."</div>
+        <div class="review-author">
+          <div class="review-name">Dana R., 47</div>
+          <div class="review-meta">Sleep &amp; Recovery Pod · Month 3</div>
+        </div>
+      </div>
+      <div class="review-card reveal d1">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"I'd tried to source peptides through a clinic before. Expensive, slow, zero support, and I still had to figure out the protocol myself. Pulse is a completely different category of product. I actually understand what I'm doing and why — for the first time."</div>
+        <div class="review-author">
+          <div class="review-name">Chris W., 38</div>
+          <div class="review-meta">Body Composition Pod · Month 1</div>
+        </div>
+      </div>
+      <div class="review-card reveal d2">
+        <div class="review-stars">
+          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
+        </div>
+        <div class="review-body">"I've been into biohacking for years and tried a lot of things. This is the first peptide protocol I've actually completed from start to finish. The delivery system removes every excuse. Results-wise — leaner, recovering faster, sleeping deeper. Exactly what the protocol promised."</div>
+        <div class="review-author">
+          <div class="review-name">Alison F., 36</div>
+          <div class="review-meta">Growth + Sleep Stack · Month 3</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section id="testimonial">
+  <div class="testimonial-inner reveal">
+    <div class="testimonial-content">
+        <span class="testimonial-mark">&ldquo;</span>
+        <p class="testimonial-quote">As an orthopedic surgeon, I see firsthand what poor recovery does to long-term outcomes. The clinical literature on peptides like BPC-157 and TB-500 is compelling — but the barrier has always been the workflow. Manual reconstitution, inconsistent dosing, no protocol structure. Pulse eliminates all of it. The pre-filled pod system is the first delivery format I&rsquo;d feel confident recommending to my patients.</p>
+        <div class="testimonial-divider"></div>
+        <div class="testimonial-name">Sameh Elguizaoui, M.D.</div>
+        <div class="testimonial-title">Board-Certified Orthopedic Surgeon &amp; Sports Medicine Specialist<br/>Lenox Hill Hospital &nbsp;·&nbsp; Mount Sinai &nbsp;·&nbsp; New York</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="faq-inner">
+    <div class="faq-header">
+      <div class="eyebrow reveal">FAQ</div>
+      <h2 class="section-h reveal">Questions worth asking.</h2>
+    </div>
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary class="faq-q">Do I need a prescription?</summary>
+        <div class="faq-a">Pulse protocols are structured with clinical guidance built in. Specific requirements vary by compound and location — we walk you through everything during onboarding and ensure every protocol is set up appropriately before your first kit ships.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Do I have to inject myself?</summary>
+        <div class="faq-a">Yes — peptides are administered via subcutaneous injection, which sounds more intimidating than it is. The Pulse pod system is specifically designed to make this as simple as possible. Load the pod, attach the needle, press. The needle is short, the dose is pre-set, and most members describe it as less uncomfortable than expected after the first use.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">How quickly will I see results?</summary>
+        <div class="faq-a">It depends on the protocol. Some compounds — particularly those targeting sleep and recovery — produce noticeable effects within the first 1–2 weeks. Body composition and performance protocols typically show meaningful results between weeks 4–8, with the most significant changes coming in months 2–3. Peptides compound over time. Consistency is what drives outcomes.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">What's actually in the pods? Are they safe?</summary>
+        <div class="faq-a">Every Pulse pod contains a pre-measured, pharmaceutical-grade peptide compound — the same class of compounds increasingly used in clinical settings for recovery, performance, and longevity. All compounds are batch-tested for purity and potency. When used as directed at appropriate doses, peptides have a strong safety profile. We&rsquo;ll never ship a protocol we wouldn&rsquo;t use ourselves.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Can I use more than one pod at a time?</summary>
+        <div class="faq-a">Yes — stacking multiple pods is one of the most effective ways to use Pulse. Certain combinations, like Growth + Recovery or Sleep + Body Composition, produce synergistic effects. Our curated stacks are pre-designed with this in mind. You can also build your own combination from the catalog.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">What if I miss a dose?</summary>
+        <div class="faq-a">Skip it and continue your normal schedule the next day. Don&rsquo;t double-dose. Missing occasional doses won&rsquo;t derail your protocol — but consistent skipping will. The Pulse system is designed to make daily use simple enough that this rarely becomes an issue.</div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Can I cancel anytime?</summary>
+        <div class="faq-a">Yes. No contracts, no cancellation fees. We&rsquo;d rather you stay because the protocol is working than because leaving is a hassle. That said — most members who reach week 6 don&rsquo;t cancel.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- WAITLIST -->
+<section id="waitlist">
+  <canvas id="wl-canvas"></canvas>
+  <div class="waitlist-inner">
+    <div class="eyebrow" style="justify-content:center;display:flex;">Early Access</div>
+    <h2 class="waitlist-title">Be first.<br/><em>Feel different.</em></h2>
+    <p class="waitlist-sub">We're onboarding our founding cohort. Join the waitlist for early access, founding-member pricing, and direct input into protocol design.</p>
+    <div class="waitlist-form" id="wl-form">
+      <input type="email" class="waitlist-input" id="wl-email" placeholder="your@email.com"/>
+      <button class="waitlist-btn" onclick="joinWaitlist()">Get Access</button>
+    </div>
+    <div class="success-msg" id="wl-success">✦ &nbsp; You're on the list. We'll be in touch.</div>
+    <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
+  </div>
+</section>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">PULSE<span>.</span></div>
+  <div class="footer-copy">© 2026 Pulse Health Technologies. All rights reserved.</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a>
+  </div>
+</footer>
+<script>
+// Cursor
+const cur = document.getElementById('cur'), ring = document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{ mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'; });
+(function animRing(){ rx+=(mx-rx)*.11;ry+=(my-ry)*.11;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing); })();
+document.querySelectorAll('a,button,input').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='12px';cur.style.height='12px';ring.style.width='48px';ring.style.height='48px';});
+  el.addEventListener('mouseleave',()=>{cur.style.width='8px';cur.style.height='8px';ring.style.width='32px';ring.style.height='32px';});
+});
+// Scroll reveal handled by GSAP ScrollTrigger (see below)
+// Parallax hero
+window.addEventListener('scroll',()=>{
+  const y=window.scrollY;
+  const bg=document.querySelector('.hero-bg img');
+  if(bg) bg.style.transform=`translateY(${y*0.12}px)`;
+});
+// Pod filter
+function filterPods(btn, cat) {
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pod-card').forEach(card=>{
+    const c=card.dataset.category;
+    card.classList.toggle('hidden', cat!=='all' && c!==cat);
+  });
+}
+// Waitlist
+function joinWaitlist() {
+  const email=document.getElementById('wl-email').value;
+  if(!email||!email.includes('@')){ document.getElementById('wl-email').style.borderColor='rgba(0,255,106,0.8)'; setTimeout(()=>document.getElementById('wl-email').style.borderColor='',900); return; }
+  document.getElementById('wl-form').style.display='none';
+  document.getElementById('wl-success').style.display='block';
+}
+document.getElementById('wl-email').addEventListener('keydown',e=>{ if(e.key==='Enter') joinWaitlist(); });
+// === WEBGL AURORA — WAITLIST ===
+(function(){
+var VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
+var FS=`precision highp float;uniform float T;uniform vec2 R,M;uniform vec3 C;
+float h(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float n(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),u.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.8,1.2,-1.2,1.8);v+=a*n(p);p=m*p;a*=.5;v+=a*n(p);p=m*p;a*=.5;v+=a*n(p);p=m*p;a*=.5;v+=a*n(p);p=m*p;a*=.5;v+=a*n(p);p=m*p;a*=.5;return v+a*.5*n(p);}
+float vor(vec2 p){vec2 i=floor(p),f=fract(p);float d=8.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y)),o=vec2(h(i+g+vec2(.7,1.3)),h(i+g+vec2(3.7,2.1)));o=.5+.5*sin(T*.25+6.2832*o);d=min(d,length(g+o-f));}return d;}
+vec3 pal(float t){t=clamp(t,0.,1.);vec3 c=mix(vec3(0.),C*.07,smoothstep(0.,.2,t));c=mix(c,C*.25,smoothstep(.18,.42,t));c=mix(c,C*.72,smoothstep(.38,.62,t));c=mix(c,C,smoothstep(.58,.8,t));return mix(c,mix(C,vec3(1.),.2),smoothstep(.75,1.,t));}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/min(R.x,R.y);
+  vec2 ms=M/R-.5;ms.y*=-1.;
+  float t=T*.07;
+  vec2 q=vec2(fbm(uv+t*.5),fbm(uv+vec2(5.2,1.3)+t*.45));
+  vec2 r=vec2(fbm(uv+3.8*q+vec2(1.7,9.2)+t*.35),fbm(uv+3.8*q+vec2(8.3,2.8)+t*.3));
+  r+=ms*.15*exp(-length(ms-uv)*2.8);
+  float f=fbm(uv+3.*r+t*.22);
+  float v=vor((uv+q)*3.5+t*.1);
+  float val=f*.85+(1.-smoothstep(0.,.25,v))*.18;
+  val=smoothstep(.05,.95,val);
+  val=pow(val,1.15);
+  vec3 col=pal(val);
+  col+=C*.15*exp(-dot(ms-uv,ms-uv)*12.)*val;
+  col*=1.-smoothstep(.38,.9,length(uv*.85))*.72;
+  col*=1.+(sin(uv.y*10.+q.x*4.+t*2.)*.5+.5)*.035*smoothstep(.3,.8,val);
+  col=pow(clamp(col,0.,1.),vec3(.88));
+  gl_FragColor=vec4(col,1.);
+}`;
+var canvas=document.getElementById('wl-canvas'),section=document.getElementById('waitlist');
+if(!canvas||!window.WebGLRenderingContext)return;
+var gl=canvas.getContext('webgl',{antialias:false,alpha:false})||canvas.getContext('experimental-webgl',{antialias:false,alpha:false});
+if(!gl)return;
+function sh(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s;}
+var prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);gl.useProgram(prog);
+var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+var al=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(al);gl.vertexAttribPointer(al,2,gl.FLOAT,false,0,0);
+var uT=gl.getUniformLocation(prog,'T'),uR=gl.getUniformLocation(prog,'R'),uM=gl.getUniformLocation(prog,'M'),uC=gl.getUniformLocation(prog,'C');
+var ac=[0,1,0.416];
+function syncAc(){var v=getComputedStyle(document.documentElement).getPropertyValue('--green').trim();if(v&&v[0]==='#'){v=v.replace('#','');ac=[parseInt(v.slice(0,2),16)/255,parseInt(v.slice(2,4),16)/255,parseInt(v.slice(4,6),16)/255];}}
+syncAc();
+window.addEventListener('themechange',syncAc);
+var mx=0,my=0,tmx=0,tmy=0;
+section.addEventListener('mousemove',function(e){var r=section.getBoundingClientRect();tmx=e.clientX-r.left;tmy=e.clientY-r.top;});
+function resize(){var dpr=Math.min(window.devicePixelRatio||1,1.5);canvas.width=Math.round(section.clientWidth*dpr);canvas.height=Math.round(section.clientHeight*dpr);gl.viewport(0,0,canvas.width,canvas.height);}
+new ResizeObserver(resize).observe(section);resize();
+var raf,active=false;
+function draw(ts){raf=requestAnimationFrame(draw);mx+=(tmx-mx)*.06;my+=(tmy-my)*.06;gl.uniform1f(uT,ts*.001);gl.uniform2f(uR,canvas.width,canvas.height);gl.uniform2f(uM,mx*(canvas.width/section.clientWidth),my*(canvas.height/section.clientHeight));gl.uniform3fv(uC,ac);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
+new IntersectionObserver(function(entries){if(entries[0].isIntersecting){if(!active){active=true;raf=requestAnimationFrame(draw);}}else{active=false;cancelAnimationFrame(raf);}},{threshold:.05}).observe(section);
+})();
+
+// ═══════════════════════════════════════════════════════
+// GSAP SCROLLTRIGGER — Section-by-section reveal system
+// ═══════════════════════════════════════════════════════
+gsap.registerPlugin(ScrollTrigger);
+
+// ── STATS BAR ─────────────────────────────────────────
+gsap.from('.stat-item', {
+  y: 48, opacity: 0, duration: 0.9, stagger: 0.13, ease: 'expo.out',
+  scrollTrigger: { trigger: '.stats-bar', start: 'top 88%' }
+});
+// Number count-up
+document.querySelectorAll('.stat-num').forEach(el => {
+  const raw = el.textContent.trim();
+  const num = parseInt(raw);
+  if (!isNaN(num) && num > 0) {
+    ScrollTrigger.create({
+      trigger: el, start: 'top 90%',
+      onEnter: () => {
+        const obj = { val: 0 };
+        gsap.to(obj, { val: num, duration: 1.6, ease: 'power2.out',
+          onUpdate: () => { el.textContent = Math.round(obj.val); } });
+      }
+    });
+  }
+});
+
+// ── PROBLEM ───────────────────────────────────────────
+// Image sweeps in from the left with scale
+gsap.from('.problem-img', {
+  x: -100, opacity: 0, scale: 0.97, duration: 1.3, ease: 'expo.out',
+  scrollTrigger: { trigger: '#problem', start: 'top 78%' }
+});
+// Text children cascade up
+gsap.from('.problem-text > *', {
+  y: 56, opacity: 0, duration: 1.0, stagger: 0.11, ease: 'expo.out',
+  scrollTrigger: { trigger: '#problem', start: 'top 78%' }
+});
+// Friction bullets slide in with longer stagger
+gsap.from('.friction-item', {
+  y: 44, opacity: 0, duration: 0.9, stagger: 0.14, ease: 'power3.out',
+  scrollTrigger: { trigger: '.friction-list', start: 'top 84%' }
+});
+
+// ── HOW IT WORKS ──────────────────────────────────────
+gsap.from('.how-header', {
+  y: 52, opacity: 0, duration: 1.0, ease: 'expo.out',
+  scrollTrigger: { trigger: '#how', start: 'top 80%' }
+});
+// Step cards: lift + subtle 3D perspective tilt → land
+gsap.from('.step-card', {
+  y: 88, opacity: 0, rotateX: 6, scale: 0.96,
+  duration: 1.1, stagger: 0.16, ease: 'expo.out',
+  transformOrigin: 'top center',
+  scrollTrigger: { trigger: '.steps-grid', start: 'top 82%' }
+});
+
+// ── PODS ──────────────────────────────────────────────
+gsap.from('.pods-header', {
+  y: 52, opacity: 0, duration: 1.0, ease: 'expo.out',
+  scrollTrigger: { trigger: '#pods', start: 'top 80%' }
+});
+gsap.from('.filter-tabs', {
+  y: 28, opacity: 0, duration: 0.75, ease: 'power3.out',
+  scrollTrigger: { trigger: '.filter-tabs', start: 'top 88%' }
+});
+gsap.utils.toArray('.pod-card').forEach((card) => {
+  gsap.from(card, {
+    y: 56, opacity: 0, duration: 1.0, ease: 'expo.out',
+    clearProps: 'transform,opacity',
+    scrollTrigger: { trigger: card, start: 'top 92%' }
+  });
+});
+
+// ── STACKS — alternating horizontal momentum ──────────
+gsap.from('.stacks-header', {
+  y: 52, opacity: 0, duration: 1.0, ease: 'expo.out',
+  scrollTrigger: { trigger: '#stacks', start: 'top 80%' }
+});
+gsap.utils.toArray('.stack-card').forEach((card, i) => {
+  gsap.from(card, {
+    x: i % 2 === 0 ? -80 : 80,
+    opacity: 0, duration: 1.1, ease: 'expo.out',
+    scrollTrigger: { trigger: card, start: 'top 86%' }
+  });
+});
+
+// ── KIT — cinematic split reveal ──────────────────────
+// Content flies in from left, staggered children
+gsap.from('.kit-content > *', {
+  x: -64, y: 16, opacity: 0, duration: 1.1, stagger: 0.13, ease: 'expo.out',
+  scrollTrigger: { trigger: '#kit', start: 'top 76%' }
+});
+// Image rushes in from right
+gsap.from('.kit-img', {
+  x: 88, opacity: 0, duration: 1.3, ease: 'expo.out',
+  scrollTrigger: { trigger: '#kit', start: 'top 76%' }
+});
+// Slow parallax scroll on kit image — Apple-style
+gsap.to('.kit-img img', {
+  yPercent: -14, ease: 'none',
+  scrollTrigger: { trigger: '#kit', start: 'top bottom', end: 'bottom top', scrub: 1.5 }
+});
+
+// ── WAITLIST — large cinematic entrance ───────────────
+(function() {
+  const inner = document.querySelector('.waitlist-inner');
+  if (!inner) return;
+  const kids = Array.from(inner.children);
+  // Eyebrow drops in from above
+  gsap.from(kids[0], {
+    y: -28, opacity: 0, duration: 0.8, ease: 'power3.out',
+    scrollTrigger: { trigger: '#waitlist', start: 'top 82%' }
+  });
+  // Title slams up with big momentum
+  if (kids[1]) gsap.from(kids[1], {
+    y: 80, opacity: 0, duration: 1.2, ease: 'expo.out',
+    scrollTrigger: { trigger: '#waitlist', start: 'top 82%' }, delay: 0.08
+  });
+  // Remaining elements follow
+  if (kids.length > 2) gsap.from(kids.slice(2), {
+    y: 48, opacity: 0, duration: 1.0, stagger: 0.12, ease: 'expo.out',
+    scrollTrigger: { trigger: '#waitlist', start: 'top 82%' }, delay: 0.2
+  });
+})();
+
+// ── FOOTER ────────────────────────────────────────────
+gsap.from('.footer-brand', {
+  x: -40, opacity: 0, duration: 0.9, ease: 'power3.out',
+  scrollTrigger: { trigger: 'footer', start: 'top 94%' }
+});
+gsap.from('.footer-copy', {
+  y: 20, opacity: 0, duration: 0.7, ease: 'power3.out',
+  scrollTrigger: { trigger: 'footer', start: 'top 94%' }
+});
+gsap.from('.footer-links', {
+  x: 40, opacity: 0, duration: 0.9, ease: 'power3.out',
+  scrollTrigger: { trigger: 'footer', start: 'top 94%' }
+});
+
+// ═══════════════════════════════════════════════════════
+// FEATURE 1 — Variable font kinetic typography
+// ═══════════════════════════════════════════════════════
+(function(){
+  const logo = document.querySelector('.hero-logo');
+  const hero = document.getElementById('hero');
+  if (!logo || !hero) return;
+  // Shared variation state — scroll drives wght, mouse drives wdth
+  const vf = { wght: 200, wdth: 100 };
+  function applyVF() {
+    logo.style.fontVariationSettings = `'wght' ${vf.wght.toFixed(0)}, 'wdth' ${vf.wdth.toFixed(2)}`;
+  }
+  // Scroll: wght 200 → 800 as hero scrolls out
+  gsap.to(vf, {
+    wght: 800,
+    ease: 'none',
+    onUpdate: applyVF,
+    scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 1.2 }
+  });
+  // Mouse: wdth breathes 82–118 across hero width
+  let targetWdth = 100;
+  hero.addEventListener('mousemove', e => {
+    const rect = hero.getBoundingClientRect();
+    targetWdth = 82 + (e.clientX - rect.left) / rect.width * 36;
+  });
+  hero.addEventListener('mouseleave', () => { targetWdth = 100; });
+  (function animWdth() {
+    requestAnimationFrame(animWdth);
+    vf.wdth += (targetWdth - vf.wdth) * 0.08;
+    applyVF();
+  })();
+})();
+
+// ═══════════════════════════════════════════════════════
+// FEATURE 2 — Noise/grain canvas overlay
+// ═══════════════════════════════════════════════════════
+(function(){
+  const canvas = document.getElementById('grain');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const SIZE = 200;
+  const offscreen = document.createElement('canvas');
+  offscreen.width = offscreen.height = SIZE;
+  const octx = offscreen.getContext('2d');
+  let frame = 0, pattern;
+  function makeGrain() {
+    const img = octx.createImageData(SIZE, SIZE);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (Math.random() * 255) | 0;
+      d[i] = d[i+1] = d[i+2] = v;
+      d[i+3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    pattern = ctx.createPattern(offscreen, 'repeat');
+  }
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  makeGrain();
+  function tick() {
+    requestAnimationFrame(tick);
+    frame++;
+    if (frame % 4 !== 0) return;
+    makeGrain();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  tick();
+})();
+
+// ═══════════════════════════════════════════════════════
+// FEATURE 4 — Magnetic button interactions
+// ═══════════════════════════════════════════════════════
+(function(){
+  if (window.matchMedia('(hover: none)').matches) return;
+  const RANGE = 80, STRENGTH = 0.35, LERP = 0.12;
+  const buttons = Array.from(document.querySelectorAll('button, .nav-cta, .btn-green, .btn-outline'));
+  buttons.forEach(btn => { btn.style.willChange = 'transform'; });
+  const state = new Map();
+  buttons.forEach(btn => state.set(btn, { tx: 0, ty: 0, cx: 0, cy: 0 }));
+  let mouseX = -9999, mouseY = -9999;
+  window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+  function loop() {
+    requestAnimationFrame(loop);
+    buttons.forEach(btn => {
+      const s = state.get(btn);
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = mouseX - cx;
+      const dy = mouseY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < RANGE) {
+        const pull = (1 - dist / RANGE);
+        s.tx = dx * pull * STRENGTH;
+        s.ty = dy * pull * STRENGTH;
+      } else {
+        s.tx = 0;
+        s.ty = 0;
+      }
+      s.cx += (s.tx - s.cx) * LERP;
+      s.cy += (s.ty - s.cy) * LERP;
+      btn.style.transform = `translate(${s.cx.toFixed(2)}px, ${s.cy.toFixed(2)}px)`;
+    });
+  }
+  loop();
+})();
+
+/* ===== THEME SWITCHER ===== */
+(function() {
+  var toggleBtn = document.getElementById('theme-toggle-btn');
+  var dropdown  = document.getElementById('theme-dropdown');
+  var options   = document.querySelectorAll('.theme-option');
+
+  function applyTheme(theme) {
+    if (theme === 'base') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    localStorage.setItem('pulse-theme', theme);
+    options.forEach(function(opt) {
+      opt.classList.toggle('active', opt.getAttribute('data-theme') === theme);
+    });
+    window.dispatchEvent(new CustomEvent('themechange'));
+  }
+
+  /* Sync active state on load and fire themechange so bg.js picks up saved theme */
+  var saved = localStorage.getItem('pulse-theme') || 'base';
+  options.forEach(function(opt) {
+    opt.classList.toggle('active', opt.getAttribute('data-theme') === saved);
+  });
+  window.dispatchEvent(new CustomEvent('themechange'));
+
+  toggleBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+
+  options.forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      applyTheme(this.getAttribute('data-theme'));
+      dropdown.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('click', function() {
+    dropdown.classList.remove('open');
+  });
+})();
+
+</script>
+</body>
+</html>

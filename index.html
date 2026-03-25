@@ -45,8 +45,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .nav-links{display:flex;gap:36px;list-style:none;}
 .nav-links a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey);text-decoration:none;transition:color .25s;}
 .nav-links a:hover{color:var(--green);}
-.nav-cta{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:10px 24px;border-radius:999px;cursor:none;font-weight:500;transition:all .25s;text-decoration:none;box-shadow:0 0 20px var(--green-glow);}
+.nav-cta{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:10px 24px;border-radius:999px;cursor:none;font-weight:500;transition:background .25s, box-shadow .25s, opacity 0.35s ease;text-decoration:none;box-shadow:0 0 20px var(--green-glow);opacity:0;pointer-events:none;}
 .nav-cta:hover{background:#fff;box-shadow:0 0 28px rgba(255,255,255,0.2);}
+.nav-cta.visible{opacity:1;pointer-events:auto;}
 /* HERO */
 #hero{position:relative;height:100vh;min-height:700px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;padding-bottom:80px;}
 .hero-bg{position:absolute;inset:0;}
@@ -439,6 +440,18 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   /* Pods: switch to 1 column on mobile */
   .pods-grid{grid-template-columns:1fr;}
   .pod-card:nth-child(3) .pod-card-top,.pod-card:nth-child(4) .pod-card-top{margin-top:0;}
+  /* Tab nav: horizontal scroll on mobile */
+  .tab-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:8px;}
+  /* Tab panel pods: single column */
+  .tab-panel-pods{grid-template-columns:1fr;}
+  /* Comparison table: horizontal scroll */
+  .compare-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Sticky nav CTA: hide on mobile */
+  .nav-cta{display:none;}
+  /* Section padding */
+  section{padding:60px 20px;}
+  /* Testimonial attribution: wrap gracefully */
+  .testimonial-attribution{flex-wrap:wrap;justify-content:center;text-align:center;}
 }
 
 @media(max-width:480px){
@@ -485,6 +498,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   /* Hero */
   #hero{padding-bottom:48px;}
   .hero-tagline{font-size:clamp(15px,4.5vw,20px);}
+  /* Hero CTA button: full width on very small */
+  .btn-green{width:100%;}
+
+  /* Bento grid: single column on very small */
+  .bento-grid{grid-template-columns:1fr;}
 
   /* Testimonial attribution stack on very small */
   .testimonial-attribution{flex-direction:column;align-items:center;text-align:center;gap:12px;}

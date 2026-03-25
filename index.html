@@ -323,51 +323,142 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   nav{padding:16px 20px;}
   .nav-links{display:none;}
   .theme-switcher{display:none;}
+  /* Nav CTA: keep but reduce size so it doesn't overflow */
+  .nav-cta{padding:9px 16px;font-size:10px;letter-spacing:0.1em;}
+
+  /* General section padding */
   section{padding:64px 20px;}
-  .hero-logo{letter-spacing:0.15em;}
+
+  /* Hero */
+  #hero{padding-bottom:60px;min-height:600px;}
+  .hero-content{padding:0 12px;}
+  .hero-logo{letter-spacing:0.08em;}
+  .hero-tagline{font-size:clamp(16px,4vw,24px);margin-bottom:28px;}
   .hero-actions{flex-direction:column;gap:10px;align-items:stretch;padding:0 16px;}
+  .btn-green,.btn-outline{width:100%;text-align:center;padding:16px 24px;min-height:48px;display:flex;align-items:center;justify-content:center;}
+
+  /* Stats */
   .stats-bar{flex-wrap:wrap;}
   .stat-item{min-width:50%;border-right:none;border-bottom:1px solid var(--border);}
+  .stat-num{font-size:28px;}
+
+  /* Peptides / audience */
   .benefit-grid{grid-template-columns:1fr;}
   .audience-split{grid-template-columns:1fr;}
   .audience-card{padding:28px 20px;}
   .peptide-audience-wrap>div{grid-template-columns:1fr!important;}
+
+  /* Problem / comparison */
   .problem-grid{grid-template-columns:1fr;}
   .problem-img{height:50vw;}
   .problem-text{padding:40px 24px;}
   .analogy-strip{grid-template-columns:1fr;}
   .experience-split{grid-template-columns:1fr;}
-  .steps-grid{grid-template-columns:1fr;}
+  .cmp-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .cmp-table thead th,.cmp-table tbody td{padding:14px 16px;font-size:11px;}
+  .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
+
+  /* How It Works */
+  .steps-grid{grid-template-columns:1fr 1fr;}
   .step-card{padding:32px 24px;}
-  .pods-grid{grid-template-columns:1fr;}
+  .step-num{font-size:48px;}
+  .step-title{font-size:18px;}
+
+  /* Pods */
+  .pods-grid{grid-template-columns:repeat(2,1fr);}
   .pod-specs{grid-template-columns:1fr 1fr;}
   .pod-card{padding:24px 20px;}
   .pod-card:nth-child(3) .pod-card-top,.pod-card:nth-child(4) .pod-card-top{margin-top:0;}
+
+  /* Stacks */
   .stacks-grid{grid-template-columns:1fr;}
   .stack-card{padding:24px 20px;}
+
+  /* Kit / Ritual */
   .kit-grid{grid-template-columns:1fr;}
-  .kit-img{height:50vw;}
+  .kit-img{height:50vw;order:-1;}
   .kit-content{padding:40px 24px;}
+  .btn-outline-ritual{width:100%;text-align:center;display:block;min-height:48px;line-height:48px;padding:0 24px;}
+
+  /* Reviews */
   .reviews-grid{grid-template-columns:1fr;}
   .review-card{padding:24px 20px;}
   .testimonial-inner{padding:0 8px;}
-  .faq-item{padding:18px 20px;}
+  .testimonial-photo{width:52px;height:52px;}
+
+  /* FAQ — ensure touch target */
+  details.faq-item{margin-bottom:2px;}
+  summary.faq-q{padding:16px 20px;font-size:13px;min-height:44px;}
   .faq-a{padding:0 20px 18px;}
-  .faq-q{font-size:13px;}
-  .waitlist-form{flex-direction:column;max-width:100%;}
-  .waitlist-form input,.waitlist-form button{width:100%;}
-  footer{flex-direction:column;gap:14px;text-align:center;}
-  .footer-links{flex-wrap:wrap;justify-content:center;}
-  .cmp-table thead th,.cmp-table tbody td{padding:14px 16px;font-size:11px;}
-  .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
+
+  /* Waitlist */
+  .waitlist-title{font-size:clamp(32px,7vw,56px);}
+  .waitlist-form{flex-direction:column;gap:10px;max-width:100%;margin-bottom:12px;}
+  .waitlist-input{width:100%;border-right:1px solid rgba(255,255,255,0.1);border-radius:999px;min-height:48px;}
+  .waitlist-btn{width:100%;border-radius:999px;min-height:48px;}
+
+  /* Footer */
+  footer{flex-direction:column;gap:14px;text-align:center;padding:28px 20px;}
+  .footer-links{flex-wrap:wrap;justify-content:center;gap:16px;}
+  .footer-links a{padding:4px 0;min-height:44px;display:inline-flex;align-items:center;}
+
+  /* Video modal */
+  .video-modal-container{width:96vw;}
 }
+
+@media(max-width:768px){
+  /* Pods: switch to 1 column on mobile */
+  .pods-grid{grid-template-columns:1fr;}
+  .pod-card:nth-child(3) .pod-card-top,.pod-card:nth-child(4) .pod-card-top{margin-top:0;}
+}
+
 @media(max-width:480px){
   section{padding:52px 16px;}
+
+  /* Nav CTA: hide on very small screens */
+  .nav-cta{display:none;}
+
+  /* Stats */
   .stat-item{min-width:100%;text-align:center;}
-  .pod-specs{grid-template-columns:1fr;}
-  .chain-item{padding:14px 16px;}
+  .stat-num{font-size:24px;}
+
+  /* How It Works: single column */
+  .steps-grid{grid-template-columns:1fr;}
   .step-card{padding:28px 20px;}
+  .step-num{font-size:40px;}
+
+  /* Pods */
+  .pod-specs{grid-template-columns:1fr;}
+  .pod-name{font-size:18px;}
+  .pod-price{font-size:22px;}
+
+  /* Kit/Ritual */
+  .kit-img{height:60vw;}
+  .kit-content{padding:32px 16px;}
+
+  /* Problem */
+  .chain-item{padding:14px 16px;}
   .analogy-card{padding:20px;}
+
+  /* Section inner containers: prevent edge clipping */
+  .peptides-inner,.compare-inner,.how-inner,.pods-inner,.stacks-inner,.reviews-inner,.faq-inner{padding:0;}
+
+  /* FAQ touch targets */
+  summary.faq-q{min-height:52px;font-size:13px;}
+
+  /* Waitlist */
+  .waitlist-title{font-size:clamp(28px,8vw,44px);}
+  .waitlist-sub{font-size:14px;}
+
+  /* Footer */
+  footer{padding:24px 16px;}
+
+  /* Hero */
+  #hero{padding-bottom:48px;}
+  .hero-tagline{font-size:clamp(15px,4.5vw,20px);}
+
+  /* Testimonial attribution stack on very small */
+  .testimonial-attribution{flex-direction:column;align-items:center;text-align:center;gap:12px;}
 }
 
 /* ── Option A: Light cream sections ── */

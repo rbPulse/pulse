@@ -167,7 +167,7 @@ section{position:relative;padding:100px 40px;}
 #how{background:var(--surface);}
 .how-inner{max-width:1100px;margin:0 auto;}
 .how-header{text-align:center;margin-bottom:64px;}
-.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
 .step-card{background:var(--card);padding:44px 36px;position:relative;overflow:hidden;transition:transform .35s;}
 .step-card:hover{transform:translateY(-3px);}
 .step-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity .35s;}
@@ -190,9 +190,7 @@ section{position:relative;padding:100px 40px;}
 .filter-tab:hover:not(.active){border-color:rgba(255,255,255,0.3);color:#fff;}
 .stack-tab{position:relative;}
 .stack-tab-badge{display:inline-block;font-size:8px;background:var(--green);color:#000;padding:2px 6px;border-radius:999px;margin-left:6px;vertical-align:middle;letter-spacing:0.05em;}
-.protocol-finder-cta{text-align:center;margin-bottom:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:0.05em;}
-.protocol-finder-link{color:var(--green);text-decoration:none;margin-left:8px;transition:opacity .2s;}
-.protocol-finder-link:hover{opacity:0.75;}
+/* .protocol-finder-cta replaced by .protocol-finder-banner */
 .stacks-container{margin-top:0;}
 .pods-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
 .pod-card{background:var(--card);border-radius:20px;padding:28px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.05);transition:border-color .3s;display:flex;flex-direction:column;}
@@ -415,6 +413,39 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 /* Testimonial — dark sage */
 #testimonial .testimonial-mark{color:var(--green);}
 #testimonial .testimonial-divider{background:var(--green);}
+
+/* ── WAITLIST legibility ── */
+#waitlist .waitlist-title{text-shadow:0 2px 20px rgba(0,0,0,0.8),0 1px 4px rgba(0,0,0,0.9);}
+#waitlist .eyebrow{text-shadow:0 2px 20px rgba(0,0,0,0.8),0 1px 4px rgba(0,0,0,0.9);}
+#waitlist .waitlist-sub{text-shadow:0 1px 8px rgba(0,0,0,0.8);}
+#waitlist .waitlist-note{text-shadow:0 1px 8px rgba(0,0,0,0.8);}
+.waitlist-inner{position:relative;z-index:2;}
+.waitlist-inner::before{content:'';position:absolute;inset:-60px -80px;background:radial-gradient(ellipse at center,rgba(0,0,0,0.55) 0%,transparent 75%);z-index:-1;pointer-events:none;}
+.waitlist-input::placeholder{color:rgba(255,255,255,0.45);}
+.waitlist-btn{text-shadow:none;}
+
+/* ── PROTOCOL FINDER BANNER ── */
+.protocol-finder-banner{display:flex;align-items:center;justify-content:space-between;gap:20px;background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.3);border-radius:14px;padding:20px 28px;margin-bottom:36px;}
+.protocol-finder-banner-left{display:flex;align-items:center;gap:16px;}
+.protocol-finder-banner-icon{font-size:22px;color:var(--green);font-family:'DM Mono',monospace;flex-shrink:0;}
+.protocol-finder-banner-title{font-size:16px;font-weight:600;color:#fff;margin-bottom:3px;}
+.protocol-finder-banner-sub{font-size:13px;color:var(--grey);line-height:1.4;}
+.protocol-finder-banner-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:12px 24px;border-radius:999px;cursor:pointer;white-space:nowrap;text-decoration:none;font-weight:600;transition:opacity .2s;}
+.protocol-finder-banner-btn:hover{opacity:0.85;}
+@media(max-width:600px){.protocol-finder-banner{flex-direction:column;align-items:flex-start;}.protocol-finder-banner-btn{width:100%;text-align:center;display:block;padding:13px;}}
+
+/* ── VIDEO MODAL ── */
+#video-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;}
+#video-modal.open{display:flex;}
+.video-modal-container{position:relative;width:90vw;max-width:860px;background:#111;border-radius:12px;overflow:hidden;}
+.video-modal-close{position:absolute;top:12px;right:16px;font-size:28px;line-height:1;color:#fff;background:none;border:none;cursor:pointer;z-index:1;opacity:0.7;transition:opacity .2s;}
+.video-modal-close:hover{opacity:1;}
+.video-modal-ratio{position:relative;padding-bottom:56.25%;height:0;}
+.video-modal-ratio iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+
+/* ── RITUAL section watch button ── */
+.btn-outline-ritual{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;background:transparent;color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:14px 32px;border-radius:999px;cursor:pointer;transition:all .25s;display:inline-block;}
+.btn-outline-ritual:hover{border-color:rgba(255,255,255,0.6);color:#fff;}
 </style>
 </head>
 <body>
@@ -600,25 +631,23 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <div class="steps-grid">
       <div class="step-card reveal d1">
         <div class="step-num">01</div>
-        <h3 class="step-title">Choose Your Protocol</h3>
-        <p class="step-body">Browse the pod catalog. Each kit is delivered with 30-day supply peptide pods matched to a specific goal — recovery, performance, body composition, or longevity. Select one or stack multiple.</p>
+        <h3 class="step-title">Tell us what you're after</h3>
+        <p class="step-body">Start with the protocol finder. Answer a few questions about your goals and we'll recommend the right kit — whether that's a single pod or a curated stack. No guesswork, no trial and error.</p>
       </div>
       <div class="step-card reveal d2">
         <div class="step-num">02</div>
-        <h3 class="step-title">Subscribe &amp; Customise</h3>
-        <p class="step-body">Start your subscription. Pulse ships your pre-measured pod directly to your door — no pharmacy visits, no reconstitution, no guesswork.</p>
+        <h3 class="step-title">Your protocol arrives, structured</h3>
+        <p class="step-body">Your kit ships with everything you need — pre-filled pods, your auto-injector pen, and a 30/60/90-day protocol guide designed around your goal. Day one has a plan. So does day 90.</p>
       </div>
       <div class="step-card reveal d3">
         <div class="step-num">03</div>
-        <h3 class="step-title">Load. Press. Done.</h3>
-        <p class="step-body">Snap in your pod, attach the needle, and press the button. The auto-injector pen keeps the needle concealed inside its shell — you never see it enter, never manage a syringe. That's the entire protocol. Same thing tomorrow.</p>
-        <div class="lpd-flow">
-          <span class="lpd-step">Load pod</span>
-          <span class="lpd-arrow">→</span>
-          <span class="lpd-step">Press</span>
-          <span class="lpd-arrow">→</span>
-          <span class="lpd-step active">Done</span>
-        </div>
+        <h3 class="step-title">We stay with you</h3>
+        <p class="step-body">Pulse tracks your progress across your protocol cycle. As you check in, your protocol adapts. We adjust your stack based on how you respond — and when the cycle ends, we're already planning the next one.</p>
+      </div>
+      <div class="step-card reveal d3">
+        <div class="step-num">04</div>
+        <h3 class="step-title">A relationship, not a subscription</h3>
+        <p class="step-body">Most companies ship the product and disappear. Pulse is designed to be your long-term guide — continuously optimizing your protocol as your goals evolve.</p>
       </div>
     </div>
   </div>
@@ -639,9 +668,15 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
       <button class="filter-tab" data-filter="longevity" onclick="filterPods(this,'longevity')">Longevity</button>
       <button class="filter-tab stack-tab" data-filter="stacks" onclick="filterPods(this,'stacks')">Stacks <span class="stack-tab-badge">Save up to 15%</span></button>
     </div>
-    <div class="protocol-finder-cta">
-      <span>Not sure where to start?</span>
-      <a href="quiz.html" class="protocol-finder-link">Find your protocol →</a>
+    <div class="protocol-finder-banner">
+      <div class="protocol-finder-banner-left">
+        <div class="protocol-finder-banner-icon">→</div>
+        <div>
+          <div class="protocol-finder-banner-title">Not sure where to start?</div>
+          <div class="protocol-finder-banner-sub">Answer 5 questions and we'll match you with the right protocol.</div>
+        </div>
+      </div>
+      <a href="quiz.html" class="protocol-finder-banner-btn">Find My Protocol</a>
     </div>
     <div class="pods-grid" id="pods-grid">
       <!-- SLEEP POD $129 - Recovery -->
@@ -850,16 +885,18 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 <section id="kit">
   <div class="kit-grid">
     <div class="kit-content">
-      <div class="eyebrow reveal">The Ritual</div>
-      <h2 class="section-h reveal">Load. Press.<br/>Done.</h2>
-      <p class="section-sub reveal">Your kit arrives with pods ready to go, filled and measured to your exact doses. Snap in the pod, attach the needle, press once — the auto-injector pen keeps the needle concealed inside its shell the entire time. You never see it go in. Pulse handles the rest.</p>
+      <div class="eyebrow reveal">Your Journey</div>
+      <h2 class="section-h reveal">Your protocol.<br/>Guided from day one.</h2>
+      <p class="section-sub reveal">Pulse doesn't just ship you a kit — we design your 30, 60, and 90-day protocol and stay with you beyond it. Every cycle is built around your specific goal, structured from the first day so you're never guessing what comes next.</p>
+      <p class="section-sub reveal" style="margin-top:16px;">As you progress, your protocol adapts. We track how you respond and adjust your stack accordingly — refining dosing, timing, and compounds based on real feedback from your cycle.</p>
+      <p class="section-sub reveal" style="margin-top:16px;">The relationship doesn't end at checkout. It starts there.</p>
       <div class="kit-tags reveal">
-        <span class="kit-tag">Pod snaps in</span>
-        <span class="kit-tag">One press to dose</span>
-        <span class="kit-tag">Same thing tomorrow</span>
+        <span class="kit-tag">30/60/90-day protocol</span>
+        <span class="kit-tag">Adaptive stack</span>
+        <span class="kit-tag">Continuous guidance</span>
       </div>
       <div style="margin-top:36px;" class="reveal">
-        <a href="#waitlist" class="btn-green">Reserve Your Kit</a>
+        <button class="btn-outline-ritual" onclick="openVideoModal()">Watch how it works</button>
       </div>
     </div>
     <div class="kit-img reveal">
@@ -1009,6 +1046,16 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
   </div>
 </section>
+<!-- VIDEO MODAL -->
+<div id="video-modal" onclick="handleModalOverlayClick(event)">
+  <div class="video-modal-container">
+    <button class="video-modal-close" onclick="closeVideoModal()">×</button>
+    <div class="video-modal-ratio">
+      <!-- TODO: replace with real video URL -->
+      <iframe id="video-modal-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
 <!-- FOOTER -->
 <footer>
   <div class="footer-brand" style="display:flex;align-items:center;gap:10px;">
@@ -1403,6 +1450,25 @@ gsap.from('.footer-links', {
     dropdown.classList.remove('open');
   });
 })();
+
+// Video modal
+function openVideoModal() {
+  var modal = document.getElementById('video-modal');
+  var iframe = document.getElementById('video-modal-iframe');
+  iframe.src = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeVideoModal() {
+  var modal = document.getElementById('video-modal');
+  var iframe = document.getElementById('video-modal-iframe');
+  modal.classList.remove('open');
+  iframe.src = '';
+  document.body.style.overflow = '';
+}
+function handleModalOverlayClick(e) {
+  if (e.target === document.getElementById('video-modal')) closeVideoModal();
+}
 
 </script>
 </body>

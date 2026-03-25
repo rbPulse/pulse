@@ -169,12 +169,19 @@ section{position:relative;padding:120px 48px;}
 #how{background:var(--surface);}
 .how-inner{max-width:1100px;margin:0 auto;}
 .how-header{text-align:center;margin-bottom:64px;}
-.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
-.step-card{background:var(--card);padding:44px 36px;position:relative;overflow:hidden;transition:transform .35s;}
-.step-card:hover{transform:translateY(-3px);}
-.step-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity .35s;}
-.step-card:hover::after{opacity:1;}
-.step-num{font-family:'DM Mono',monospace;font-size:64px;font-weight:400;color:var(--green);opacity:0.7;line-height:1;margin-bottom:16px;}
+/* HOW IT WORKS — 3-Act + Progress Line */
+.how-acts{display:flex;flex-direction:column;max-width:640px;margin:0 auto;position:relative;padding-left:48px;}
+.how-acts::before{content:'';position:absolute;left:11px;top:8px;bottom:8px;width:2px;background:rgba(255,255,255,0.08);}
+.how-act{position:relative;padding-bottom:56px;opacity:0;transform:translateY(20px);transition:opacity 0.5s ease,transform 0.5s ease;}
+.how-act:last-child{padding-bottom:0;}
+.how-act-dot{position:absolute;left:-41px;top:4px;width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,0.15);background:var(--bg);display:flex;align-items:center;justify-content:center;transition:border-color 0.4s,background 0.4s;}
+.how-act-dot::after{content:'';width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);transition:background 0.4s,box-shadow 0.4s;}
+.how-act.active .how-act-dot{border-color:var(--green);}
+.how-act.active .how-act-dot::after{background:var(--green);box-shadow:0 0 10px rgba(0,255,106,0.6);}
+.how-act-num{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.25em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-bottom:8px;transition:color 0.4s;}
+.how-act.active .how-act-num{color:var(--green);}
+.how-act-title{font-size:clamp(24px,3vw,36px);font-weight:600;color:#fff;line-height:1.15;margin-bottom:10px;}
+.how-act-body{font-size:14px;font-weight:300;color:var(--grey);line-height:1.7;max-width:480px;}
 .step-title{font-size:22px;font-weight:600;margin-bottom:12px;}
 .step-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.75;}
 /* Load. Press. Done mini flow */
@@ -367,9 +374,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
 
   /* How It Works */
-  .steps-grid{grid-template-columns:1fr 1fr;}
-  .step-card{padding:32px 24px;}
-  .step-num{font-size:48px;}
+  .how-acts{padding-left:36px;}
   .step-title{font-size:18px;}
 
   /* Pods */
@@ -446,9 +451,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .stat-num{font-size:24px;}
 
   /* How It Works: single column */
-  .steps-grid{grid-template-columns:1fr;}
-  .step-card{padding:28px 20px;}
-  .step-num{font-size:40px;}
+  .how-acts{padding-left:28px;}
+  .how-act-title{font-size:22px;}
 
   /* Pods */
   .pod-specs{grid-template-columns:1fr;}
@@ -695,30 +699,28 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 <!-- HOW IT WORKS -->
 <section id="how">
   <div class="how-inner">
-    <div class="how-header reveal">
-      <div class="eyebrow">How It Works</div>
-      <h2 class="section-h">We handle everything.</h2>
+    <div class="how-header" style="text-align:center;margin-bottom:72px;">
+      <div class="eyebrow reveal">How It Works</div>
+      <h2 class="section-h reveal">Three acts.<br/><em style="color:var(--green);font-style:italic">One system.</em></h2>
     </div>
-    <div class="steps-grid">
-      <div class="step-card reveal d1">
-        <div class="step-num">01</div>
-        <h3 class="step-title">Tell us what you're after</h3>
-        <p class="step-body">Answer a few questions about your goals and we'll recommend the right kit.</p>
+    <div class="how-acts" id="how-acts">
+      <div class="how-act" data-act="0">
+        <div class="how-act-dot"></div>
+        <div class="how-act-num">01 / Assess</div>
+        <h3 class="how-act-title">We match you to the right protocol.</h3>
+        <p class="how-act-body">Answer five questions. We recommend a pod or stack built around your goal, your timeline, and where you are right now.</p>
       </div>
-      <div class="step-card reveal d2">
-        <div class="step-num">02</div>
-        <h3 class="step-title">Your protocol arrives, structured</h3>
-        <p class="step-body">Your kit ships with pre-filled pods, an auto-injector pen, and a 30/60/90-day protocol guide structured around your goal.</p>
+      <div class="how-act" data-act="1">
+        <div class="how-act-dot"></div>
+        <div class="how-act-num">02 / Deliver</div>
+        <h3 class="how-act-title">Your kit ships. Structured for 90 days.</h3>
+        <p class="how-act-body">Pre-filled pods, auto-injector pen, and a day-by-day protocol guide. Day one has a plan. So does day ninety.</p>
       </div>
-      <div class="step-card reveal d3">
-        <div class="step-num">03</div>
-        <h3 class="step-title">We stay with you</h3>
-        <p class="step-body">Pulse tracks your progress and adjusts your stack based on how you respond across the protocol cycle.</p>
-      </div>
-      <div class="step-card reveal d3">
-        <div class="step-num">04</div>
-        <h3 class="step-title">Protocol optimisation, ongoing</h3>
-        <p class="step-body">Protocols are continuously refined across cycles as your goals and biomarker responses evolve.</p>
+      <div class="how-act" data-act="2">
+        <div class="how-act-dot"></div>
+        <div class="how-act-num">03 / Evolve</div>
+        <h3 class="how-act-title">We adjust. You progress.</h3>
+        <p class="how-act-body">Pulse tracks your response across each cycle. Compounds, timing, and dosing are refined continuously. The protocol never stops improving.</p>
       </div>
     </div>
   </div>
@@ -1120,6 +1122,18 @@ window.addEventListener('scroll',()=>{
   if(bg) bg.style.transform=`translateY(${y*0.12}px)`;
 });
 // Kit carousel
+// HOW IT WORKS — scroll-activated acts
+(function(){
+  var acts = document.querySelectorAll('.how-act');
+  if(!acts.length) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting) e.target.classList.add('active');
+    });
+  }, {threshold: 0.3});
+  acts.forEach(function(a){ io.observe(a); });
+})();
+
 var carouselIdx = 0;
 var carouselTotal = 5;
 function carouselGo(idx) {

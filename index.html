@@ -188,6 +188,12 @@ section{position:relative;padding:100px 40px;}
 .filter-tab{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;padding:9px 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:var(--grey);cursor:none;transition:all .25s;}
 .filter-tab.active{background:var(--green);color:#000;border-color:var(--green);box-shadow:0 0 16px var(--green-glow);}
 .filter-tab:hover:not(.active){border-color:rgba(255,255,255,0.3);color:#fff;}
+.stack-tab{position:relative;}
+.stack-tab-badge{display:inline-block;font-size:8px;background:var(--green);color:#000;padding:2px 6px;border-radius:999px;margin-left:6px;vertical-align:middle;letter-spacing:0.05em;}
+.protocol-finder-cta{text-align:center;margin-bottom:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:0.05em;}
+.protocol-finder-link{color:var(--green);text-decoration:none;margin-left:8px;transition:opacity .2s;}
+.protocol-finder-link:hover{opacity:0.75;}
+.stacks-container{margin-top:0;}
 .pods-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
 .pod-card{background:var(--card);border-radius:20px;padding:28px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.05);transition:border-color .3s;display:flex;flex-direction:column;}
 .pod-card:hover{border-color:rgba(0,255,106,0.2);transform:translateY(-2px);}
@@ -428,7 +434,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <li><a href="#problem">Why Pulse</a></li>
     <li><a href="#how">How It Works</a></li>
     <li><a href="#pods">Protocols</a></li>
-    <li><a href="#stacks">Stacks</a></li>
+    <li><a href="quiz.html">Find My Protocol</a></li>
     <li><a href="#kit">The Device</a></li>
     <li><a href="#reviews">Reviews</a></li>
     <li><a href="#faq">FAQ</a></li>
@@ -631,6 +637,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
       <button class="filter-tab" data-filter="recovery" onclick="filterPods(this,'recovery')">Recovery</button>
       <button class="filter-tab" data-filter="bodycomp" onclick="filterPods(this,'bodycomp')">Body Comp</button>
       <button class="filter-tab" data-filter="longevity" onclick="filterPods(this,'longevity')">Longevity</button>
+      <button class="filter-tab stack-tab" data-filter="stacks" onclick="filterPods(this,'stacks')">Stacks <span class="stack-tab-badge">Save up to 15%</span></button>
+    </div>
+    <div class="protocol-finder-cta">
+      <span>Not sure where to start?</span>
+      <a href="quiz.html" class="protocol-finder-link">Find your protocol →</a>
     </div>
     <div class="pods-grid" id="pods-grid">
       <!-- SLEEP POD $129 - Recovery -->
@@ -779,72 +790,60 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
         </div>
       </div>
     </div>
+    <div class="stacks-container" id="stacks-container" style="display:none;">
+      <div class="stacks-grid">
+        <div class="stack-card reveal d1">
+          <div class="stack-badge">Recovery Stack</div>
+          <div class="stack-pods">
+            <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
+            <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+          </div>
+          <p class="stack-desc">Accelerated tissue repair paired with optimised sleep recovery. Train, heal, repeat.</p>
+          <div class="stack-footer">
+            <div><span class="stack-price-old">$278/mo</span><span class="stack-price">$249<span>/mo</span></span></div>
+            <button class="stack-btn">Select Stack</button>
+          </div>
+        </div>
+        <div class="stack-card reveal d2">
+          <div class="stack-badge">Performance Stack</div>
+          <div class="stack-pods">
+            <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
+            <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
+          </div>
+          <p class="stack-desc">GH secretion paired with tissue recovery. Train harder, recover faster. The athlete's foundational stack.</p>
+          <div class="stack-footer">
+            <div><span class="stack-price-old">$328/mo</span><span class="stack-price">$299<span>/mo</span></span></div>
+            <button class="stack-btn">Select Stack</button>
+          </div>
+        </div>
+        <div class="stack-card reveal d1">
+          <div class="stack-badge">Longevity Stack</div>
+          <div class="stack-pods">
+            <div class="stack-pod-row"><div class="stack-dot dot-purple"></div>Vitality</div>
+            <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+          </div>
+          <p class="stack-desc">Cellular longevity meets sleep optimisation. The healthspan protocol.</p>
+          <div class="stack-footer">
+            <div><span class="stack-price-old">$348/mo</span><span class="stack-price">$319<span>/mo</span></span></div>
+            <button class="stack-btn">Select Stack</button>
+          </div>
+        </div>
+        <div class="stack-card reveal d2" style="border-color:rgba(58,122,92,0.25);background:rgba(58,122,92,0.04);">
+          <div class="stack-badge">Optimize Stack</div>
+          <div class="stack-pods">
+            <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
+            <div class="stack-pod-row"><div class="stack-dot dot-orange"></div>Shred</div>
+            <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
+          </div>
+          <p class="stack-desc">Full optimisation: body composition, performance, and sleep quality in one system.</p>
+          <div class="stack-footer">
+            <div><span class="stack-price-old">$507/mo</span><span class="stack-price">$449<span>/mo</span></span></div>
+            <button class="stack-btn">Select Stack</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <p class="disclaimer">These statements have not been evaluated by the FDA. All protocols require physician authorisation through Pulse's MSO/PC model. Not intended to diagnose, treat, cure, or prevent any disease.</p>
-  </div>
-</section>
-<!-- STACKS -->
-<section id="stacks">
-  <div class="stacks-inner">
-    <div class="stacks-header reveal">
-      <div class="eyebrow">Stack Protocols</div>
-      <h2 class="section-h">Combine pods.<br/>Compound results.</h2>
-      <p class="section-sub" style="max-width:520px;margin:0 auto;">Select multiple pods to build a personalized protocol stack. Each pod works independently — stacking unlocks synergistic benefits.</p>
-    </div>
-    <div class="stacks-grid">
-      <!-- Recovery $249 -->
-      <div class="stack-card reveal d1">
-        <div class="stack-badge">Recovery Stack</div>
-        <div class="stack-pods">
-          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
-          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-        </div>
-        <p class="stack-desc">Accelerated tissue repair paired with optimised sleep recovery. Train, heal, repeat.</p>
-        <div class="stack-footer">
-          <div><span class="stack-price-old">$278/mo</span><span class="stack-price">$249<span>/mo</span></span></div>
-          <button class="stack-btn">Select Stack</button>
-        </div>
-      </div>
-      <!-- Performance $299 -->
-      <div class="stack-card reveal d2">
-        <div class="stack-badge">Performance Stack</div>
-        <div class="stack-pods">
-          <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
-          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
-        </div>
-        <p class="stack-desc">GH secretion paired with tissue recovery. Train harder, recover faster. The athlete's foundational stack.</p>
-        <div class="stack-footer">
-          <div><span class="stack-price-old">$328/mo</span><span class="stack-price">$299<span>/mo</span></span></div>
-          <button class="stack-btn">Select Stack</button>
-        </div>
-      </div>
-      <!-- Longevity $319 -->
-      <div class="stack-card reveal d1">
-        <div class="stack-badge">Longevity Stack</div>
-        <div class="stack-pods">
-          <div class="stack-pod-row"><div class="stack-dot dot-purple"></div>Vitality</div>
-          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-        </div>
-        <p class="stack-desc">Cellular longevity meets sleep optimisation. The healthspan protocol.</p>
-        <div class="stack-footer">
-          <div><span class="stack-price-old">$348/mo</span><span class="stack-price">$319<span>/mo</span></span></div>
-          <button class="stack-btn">Select Stack</button>
-        </div>
-      </div>
-      <!-- Optimise $449 -->
-      <div class="stack-card reveal d2" style="border-color:rgba(0,255,106,0.15);background:rgba(0,255,106,0.03);">
-        <div class="stack-badge">Optimize Stack</div>
-        <div class="stack-pods">
-          <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
-          <div class="stack-pod-row"><div class="stack-dot dot-orange"></div>Shred</div>
-          <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-        </div>
-        <p class="stack-desc">Full optimisation: body composition, performance, and sleep quality in one system.</p>
-        <div class="stack-footer">
-          <div><span class="stack-price-old">$507/mo</span><span class="stack-price">$449<span>/mo</span></span></div>
-          <button class="stack-btn">Select Stack</button>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 <!-- KIT -->
@@ -1042,10 +1041,15 @@ window.addEventListener('scroll',()=>{
 function filterPods(btn, cat) {
   document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.pod-card').forEach(card=>{
-    const c=card.dataset.category;
-    card.classList.toggle('hidden', cat!=='all' && c!==cat);
-  });
+  var isStacks = cat === 'stacks';
+  document.getElementById('pods-grid').style.display = isStacks ? 'none' : '';
+  document.getElementById('stacks-container').style.display = isStacks ? '' : 'none';
+  if (!isStacks) {
+    document.querySelectorAll('.pod-card').forEach(function(card){
+      var c = card.dataset.category;
+      card.classList.toggle('hidden', cat !== 'all' && c !== cat);
+    });
+  }
 }
 // Waitlist
 function joinWaitlist() {

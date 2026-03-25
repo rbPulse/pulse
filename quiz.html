@@ -115,6 +115,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .speak-cta{text-align:center;background:rgba(58,122,92,0.06);border:1px solid rgba(58,122,92,0.2);border-radius:14px;padding:24px 28px;margin-bottom:24px;}
 .speak-cta p{font-size:14px;font-weight:300;color:var(--grey);margin-bottom:16px;line-height:1.65;}
 
+/* INTAKE DISCLAIMER */
+.intake-disclaimer{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);text-align:center;letter-spacing:0.05em;line-height:1.6;margin-bottom:32px;max-width:540px;margin-left:auto;margin-right:auto;}
+
 @media(max-width:768px){
   nav{padding:16px 20px;}
   .quiz-wrap{padding:90px 20px 48px;}
@@ -195,13 +198,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <!-- QUIZ -->
 <div class="quiz-wrap">
 
+  <!-- INTAKE DISCLAIMER -->
+  <p class="intake-disclaimer">This intake is for protocol matching only. It does not constitute medical advice or a clinical diagnosis.</p>
+
   <!-- INTRO -->
   <div class="screen active" id="screen-intro">
     <div class="intro-eyebrow">Protocol Finder</div>
-    <h1 class="intro-title">Let's find your<br/><em>protocol.</em></h1>
-    <p class="intro-sub">Answer 5 quick questions and we'll match you with the right Pulse kit. This takes about 2 minutes.</p>
+    <h1 class="intro-title">Clinical Intake</h1>
+    <p class="intro-sub">Complete a brief assessment so we can configure the right protocol for you.</p>
     <div class="intro-meta">Reviewed by our clinical team &nbsp;·&nbsp; For informational purposes only</div>
-    <button class="btn-primary" onclick="startQuiz()">Get Started</button>
+    <button class="btn-primary" onclick="startQuiz()">Begin Assessment</button>
   </div>
 
   <!-- Q1 -->
@@ -230,7 +236,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     </div>
     <div class="question-nav">
       <button class="btn-back" onclick="goToScreen('screen-intro')">← Back</button>
-      <button class="btn-continue" id="continue-q1" onclick="goToScreen('screen-q2')">Continue →</button>
+      <button class="btn-continue" id="continue-q1" onclick="goToScreen('screen-q2')">Confirm →</button>
     </div>
   </div>
 
@@ -257,7 +263,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     </div>
     <div class="question-nav">
       <button class="btn-back" onclick="goToScreen('screen-q1')">← Back</button>
-      <button class="btn-continue" id="continue-q2" onclick="goToScreen('screen-q3')">Continue →</button>
+      <button class="btn-continue" id="continue-q2" onclick="goToScreen('screen-q3')">Confirm →</button>
     </div>
   </div>
 
@@ -281,7 +287,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     </div>
     <div class="question-nav">
       <button class="btn-back" onclick="goToScreen('screen-q2')">← Back</button>
-      <button class="btn-continue" id="continue-q3" onclick="goToScreen('screen-q4')">Continue →</button>
+      <button class="btn-continue" id="continue-q3" onclick="goToScreen('screen-q4')">Confirm →</button>
     </div>
   </div>
 
@@ -305,7 +311,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     </div>
     <div class="question-nav">
       <button class="btn-back" onclick="goToScreen('screen-q3')">← Back</button>
-      <button class="btn-continue" id="continue-q4" onclick="goToScreen('screen-q5')">Continue →</button>
+      <button class="btn-continue" id="continue-q4" onclick="goToScreen('screen-q5')">Confirm →</button>
     </div>
   </div>
 
@@ -339,7 +345,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <strong>Medical disclaimer:</strong> These suggestions are for informational purposes only and do not constitute medical advice. All Pulse protocols require physician authorization through our clinician network. A licensed provider will review your profile before any protocol is prescribed.
     </div>
     <div class="intro-eyebrow">Your Match</div>
-    <h2 class="results-heading" id="results-heading">Recommended for you</h2>
+    <h2 class="results-heading" id="results-heading">Protocol Recommendation</h2>
     <p class="results-sub" id="results-sub">Based on your answers, here's what we'd suggest starting with.</p>
     <div class="result-cards" id="result-cards"></div>
     <div class="results-cta-row">
@@ -603,7 +609,7 @@ function buildAllOptionsCards() {
 function showResults() {
   var recs = getRecommendations();
   var cardsHtml = '';
-  var heading = 'Recommended for you';
+  var heading = 'Protocol Recommendation';
   var sub = 'Based on your answers, here\'s what we\'d suggest starting with.';
 
   if (recs === null) {

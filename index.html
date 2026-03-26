@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg: #050505;
@@ -1277,16 +1277,18 @@ async function joinWaitlist() {
   var btn = document.querySelector('.waitlist-btn');
   var origText = btn.textContent;
   btn.textContent = '…'; btn.disabled = true;
-  var res = await window.db.from('waitlist').insert({ email: email });
-  btn.disabled = false;
-  if (res.error && res.error.code !== '23505') {
+  try {
+    var res = await window.db.from('waitlist').insert({ email: email });
+    if (res.error && res.error.code !== '23505') throw new Error(res.error.message);
+    document.getElementById('wl-form').style.display = 'none';
+    document.getElementById('wl-success').style.display = 'block';
+  } catch(e) {
+    console.error('Waitlist error:', e);
     btn.textContent = origText;
+    btn.disabled = false;
     emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
     setTimeout(function(){ emailEl.style.borderColor = ''; }, 900);
-    return;
   }
-  document.getElementById('wl-form').style.display = 'none';
-  document.getElementById('wl-success').style.display = 'block';
 }
 document.getElementById('wl-email').addEventListener('keydown', function(e){ if (e.key === 'Enter') joinWaitlist(); });
 // === WEBGL AURORA — WAITLIST ===

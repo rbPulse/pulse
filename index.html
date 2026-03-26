@@ -640,6 +640,48 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .nav-drawer-links a{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.6);text-decoration:none;display:block;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);transition:color .2s;}
 .nav-drawer-links a:hover{color:#fff;}
 .nav-drawer-cta{background:var(--green)!important;color:#000!important;border-radius:999px;text-align:center;margin-top:16px;border:none!important;padding:16px 24px!important;}
+
+/* ── POD GRID ── */
+.pod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:40px;}
+.pod-card2{background:var(--card);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;transition:border-color .25s;}
+.pod-card2:hover{border-color:rgba(58,122,92,0.3);}
+.pod2-popular{font-family:"DM Mono",monospace;font-size:7px;letter-spacing:0.2em;text-transform:uppercase;background:var(--green);color:#000;padding:3px 10px;border-radius:999px;font-weight:500;display:inline-block;margin-bottom:4px;}
+.pod2-header{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.pod2-name{font-size:16px;font-weight:600;color:#fff;}
+.pod2-tag{font-family:"DM Mono",monospace;font-size:8px;letter-spacing:0.15em;text-transform:uppercase;padding:3px 10px;border-radius:999px;border:1px solid;}
+.tag-recovery{color:rgba(0,255,106,0.8);border-color:rgba(0,255,106,0.25);}
+.tag-performance{color:rgba(0,200,255,0.8);border-color:rgba(0,200,255,0.25);}
+.tag-bodycomp{color:rgba(255,165,0,0.8);border-color:rgba(255,165,0,0.25);}
+.tag-longevity{color:rgba(180,100,255,0.8);border-color:rgba(180,100,255,0.25);}
+.pod2-compounds{font-family:"DM Mono",monospace;font-size:9px;color:var(--green);letter-spacing:0.04em;}
+.pod2-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.pod2-spec{background:var(--card2);border-radius:6px;padding:6px 4px;text-align:center;}
+.pod2-spec-l{font-family:"DM Mono",monospace;font-size:6.5px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);margin-bottom:2px;}
+.pod2-spec-v{font-size:10px;font-weight:500;color:#fff;}
+.pod2-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:auto;}
+.pod2-price{font-size:18px;font-weight:600;color:#fff;}.pod2-price span{font-size:12px;font-weight:300;color:var(--grey);}
+.pod2-btn{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;background:transparent;color:var(--green);border:1px solid rgba(58,122,92,0.5);padding:7px 14px;border-radius:999px;cursor:pointer;transition:background .2s,color .2s;}
+.pod2-btn:hover{background:var(--green);color:#000;}
+/* ── STACKS GRID ── */
+.stacks-subhead{margin-top:16px;}
+.stacks-grid2{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stack-card2{background:var(--card);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;transition:border-color .25s;}
+.stack-card2:hover{border-color:rgba(58,122,92,0.3);}
+.stack2-name{font-size:13px;font-weight:600;color:#fff;}
+.stack2-pods{font-family:"DM Mono",monospace;font-size:9px;color:var(--grey);letter-spacing:0.05em;}
+.stack2-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:auto;}
+.stack2-price{font-size:15px;font-weight:600;color:#fff;}.stack2-price span{font-size:11px;font-weight:300;color:var(--grey);}.stack2-old{font-size:11px;font-weight:300;color:var(--grey2);text-decoration:line-through;margin-right:4px;}
+@media(max-width:900px){
+  .pod-grid{grid-template-columns:repeat(2,1fr);}
+  .stacks-grid2{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:480px){
+  .pod-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .pod-card2{padding:12px;}
+  .pod2-name{font-size:14px;}
+  .pod2-price{font-size:15px;}
+  .stacks-grid2{grid-template-columns:repeat(2,1fr);gap:8px;}
+}
 @media(max-width:900px){
   .nav-hamburger{display:flex;}
   .nav-drawer{display:block;}
@@ -791,213 +833,151 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
       </div>
       <a href="quiz.html" class="protocol-finder-banner-btn">Find My Protocol</a>
     </div>
-    <div class="kit-carousel">
-      <div class="kit-carousel-nav">
-        <div class="kit-cat active" data-idx="0">Recovery</div>
-        <div class="kit-cat" data-idx="1">Performance</div>
-        <div class="kit-cat" data-idx="2">Body Comp</div>
-        <div class="kit-cat" data-idx="3">Longevity</div>
-        <div class="kit-cat" data-idx="4">Stacks</div>
-      </div>
-      <div class="kit-carousel-stage">
-        <button class="kit-arrow kit-arrow-left" onclick="carouselPrev()" aria-label="Previous protocol">&#8249;</button>
-        <div class="kit-slides" id="kit-slides">
+    <!-- POD GRID -->
+    <div class="pod-grid">
 
-          <div class="kit-slide active" data-slide="0">
-            <!-- Sleep pod - Recovery -->
-            <div class="pod-card" data-category="recovery">
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#00ff6a" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                </div>
-                <span class="pod-category-badge badge-recovery">Recovery</span>
-              </div>
-              <div class="pod-name">Sleep</div>
-              <div class="pod-compounds" style="font-family:'DM Mono',monospace;font-size:10px;">DSIP (Delta Sleep-Inducing Peptide)</div>
-              <p class="pod-desc">Optimises deep sleep architecture. Promotes delta wave sleep, reduces cortisol, and enhances overnight recovery for peak next-day readiness.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">30 days</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">100mcg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x nightly</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$129</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-            <!-- Repair pod - Recovery -->
-            <div class="pod-card" data-category="recovery">
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#00ff6a" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </div>
-                <span class="pod-category-badge badge-recovery">Recovery</span>
-              </div>
-              <div class="pod-name">Repair</div>
-              <div class="pod-compounds">BPC-157 + TB-500</div>
-              <p class="pod-desc">Accelerated tissue recovery. Targets tendons, ligaments, and gut lining. The go-to protocol for active recovery from training or injury.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">30 days</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">250/500mcg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x daily</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$149</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="kit-slide" data-slide="1">
-            <!-- Growth pod - Performance - Most Popular -->
-            <div class="pod-card" style="position:relative;">
-              <div class="popular-badge">Most Popular</div>
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                </div>
-                <span class="pod-category-badge badge-performance">Performance</span>
-              </div>
-              <div class="pod-name">Growth</div>
-              <div class="pod-compounds">CJC-1295 + Ipamorelin</div>
-              <p class="pod-desc">Stimulates natural growth hormone release. Supports lean mass, deep sleep, and recovery. The foundational performance protocol.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">30 days</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">100/200mcg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x daily PM</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$179</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-            <!-- Endurance pod - Performance -->
-            <div class="pod-card" data-category="performance">
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <span class="pod-category-badge badge-performance">Performance</span>
-              </div>
-              <div class="pod-name">Endurance</div>
-              <div class="pod-compounds">BPC-157 + MOTSc</div>
-              <p class="pod-desc">Mitochondrial performance and cardiovascular endurance. Enhances exercise capacity, AMPK activation, and metabolic efficiency.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">30 days</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">250mcg/5mg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x daily AM</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$189</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="kit-slide" data-slide="2">
-            <!-- Shred pod - Body Comp -->
-            <div class="pod-card" data-category="bodycomp">
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#ff8c00" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-                </div>
-                <span class="pod-category-badge badge-bodycomp">Body Comp</span>
-              </div>
-              <div class="pod-name">Shred</div>
-              <div class="pod-compounds">Tesamorelin</div>
-              <p class="pod-desc">Targets visceral fat reduction while preserving lean tissue. Clinically studied for abdominal fat loss with a clean metabolic profile.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">30 days</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">2mg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x daily</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$199</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="kit-slide" data-slide="3">
-            <!-- Vitality pod - Longevity -->
-            <div class="pod-card" data-category="longevity">
-              <div class="pod-card-top">
-                <div class="pod-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                </div>
-                <span class="pod-category-badge badge-longevity">Longevity</span>
-              </div>
-              <div class="pod-name">Vitality</div>
-              <div class="pod-compounds">Epithalon (Epitalon)</div>
-              <p class="pod-desc">Supports telomere maintenance and cellular regeneration. A longevity-focused protocol for healthspan extension and anti-aging.</p>
-              <div class="pod-specs">
-                <div class="pod-spec"><div class="pod-spec-label">Cycle</div><div class="pod-spec-value"><span class="mono-data">20/10 off</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Dose</div><div class="pod-spec-value"><span class="mono-data">5mg</span></div></div>
-                <div class="pod-spec"><div class="pod-spec-label">Frequency</div><div class="pod-spec-value"><span class="mono-data">1x daily</span></div></div>
-              </div>
-              <div class="pod-footer">
-                <div class="pod-price"><span class="mono-data">$219</span><span>/mo</span></div>
-                <button class="pod-btn">Select Pod</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="kit-slide" data-slide="4">
-            <div class="stacks-grid">
-              <div class="stack-card reveal d1">
-                <div class="stack-badge">Recovery Stack</div>
-                <div class="stack-pods">
-                  <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
-                  <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-                </div>
-                <p class="stack-desc">Accelerated tissue repair paired with optimised sleep recovery. Train, heal, repeat.</p>
-                <div class="stack-footer">
-                  <div><span class="stack-price-old">$278/mo</span><span class="stack-price"><span class="mono-data">$249</span><span>/mo</span></span></div>
-                  <button class="stack-btn">Select Stack</button>
-                </div>
-              </div>
-              <div class="stack-card reveal d2">
-                <div class="stack-badge">Performance Stack</div>
-                <div class="stack-pods">
-                  <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
-                  <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Repair</div>
-                </div>
-                <p class="stack-desc">GH secretion paired with tissue recovery. Train harder, recover faster. The athlete's foundational stack.</p>
-                <div class="stack-footer">
-                  <div><span class="stack-price-old">$328/mo</span><span class="stack-price"><span class="mono-data">$299</span><span>/mo</span></span></div>
-                  <button class="stack-btn">Select Stack</button>
-                </div>
-              </div>
-              <div class="stack-card reveal d1">
-                <div class="stack-badge">Longevity Stack</div>
-                <div class="stack-pods">
-                  <div class="stack-pod-row"><div class="stack-dot dot-purple"></div>Vitality</div>
-                  <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-                </div>
-                <p class="stack-desc">Cellular longevity meets sleep optimisation. The healthspan protocol.</p>
-                <div class="stack-footer">
-                  <div><span class="stack-price-old">$348/mo</span><span class="stack-price"><span class="mono-data">$319</span><span>/mo</span></span></div>
-                  <button class="stack-btn">Select Stack</button>
-                </div>
-              </div>
-              <div class="stack-card reveal d2" style="border-color:rgba(58,122,92,0.25);background:rgba(58,122,92,0.04);">
-                <div class="stack-badge">Optimize Stack</div>
-                <div class="stack-pods">
-                  <div class="stack-pod-row"><div class="stack-dot dot-blue"></div>Growth</div>
-                  <div class="stack-pod-row"><div class="stack-dot dot-orange"></div>Shred</div>
-                  <div class="stack-pod-row"><div class="stack-dot dot-green"></div>Sleep</div>
-                </div>
-                <p class="stack-desc">Full optimisation: body composition, performance, and sleep quality in one system.</p>
-                <div class="stack-footer">
-                  <div><span class="stack-price-old">$507/mo</span><span class="stack-price"><span class="mono-data">$449</span><span>/mo</span></span></div>
-                  <button class="stack-btn">Select Stack</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
+      <div class="pod-card2">
+        <div class="pod2-header">
+          <div class="pod2-name">Sleep</div>
+          <span class="pod2-tag tag-recovery">Recovery</span>
         </div>
-        <button class="kit-arrow kit-arrow-right" onclick="carouselNext()" aria-label="Next protocol">&#8250;</button>
+        <div class="pod2-compounds">DSIP (Delta Sleep-Inducing Peptide)</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">100mcg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x nightly</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$129<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+      <div class="pod-card2">
+        <div class="pod2-header">
+          <div class="pod2-name">Repair</div>
+          <span class="pod2-tag tag-recovery">Recovery</span>
+        </div>
+        <div class="pod2-compounds">BPC-157 + TB-500</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">250/500mcg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x daily</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$149<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+      <div class="pod-card2" style="position:relative;">
+        <div class="pod2-popular">Most Popular</div>
+        <div class="pod2-header">
+          <div class="pod2-name">Growth</div>
+          <span class="pod2-tag tag-performance">Performance</span>
+        </div>
+        <div class="pod2-compounds">CJC-1295 + Ipamorelin</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">100/200mcg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x daily PM</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$179<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+      <div class="pod-card2">
+        <div class="pod2-header">
+          <div class="pod2-name">Endurance</div>
+          <span class="pod2-tag tag-performance">Performance</span>
+        </div>
+        <div class="pod2-compounds">BPC-157 + MOTSc</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">250mcg/5mg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x daily AM</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$189<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+      <div class="pod-card2">
+        <div class="pod2-header">
+          <div class="pod2-name">Shred</div>
+          <span class="pod2-tag tag-bodycomp">Body Comp</span>
+        </div>
+        <div class="pod2-compounds">Tesamorelin</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">1mg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x daily</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$199<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+      <div class="pod-card2">
+        <div class="pod2-header">
+          <div class="pod2-name">Vitality</div>
+          <span class="pod2-tag tag-longevity">Longevity</span>
+        </div>
+        <div class="pod2-compounds">Epithalon</div>
+        <div class="pod2-specs">
+          <div class="pod2-spec"><div class="pod2-spec-l">Cycle</div><div class="pod2-spec-v">30 days</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Dose</div><div class="pod2-spec-v">5mg</div></div>
+          <div class="pod2-spec"><div class="pod2-spec-l">Freq</div><div class="pod2-spec-v">1x daily</div></div>
+        </div>
+        <div class="pod2-footer">
+          <div class="pod2-price">$219<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STACKS -->
+    <div class="stacks-subhead">
+      <div class="eyebrow" style="text-align:center;margin-bottom:12px;">Stacks</div>
+      <p style="text-align:center;font-size:13px;color:var(--grey);margin-bottom:32px;">Bundle two or more pods and save.</p>
+    </div>
+    <div class="stacks-grid2">
+      <div class="stack-card2">
+        <div class="stack2-name">Recovery Stack</div>
+        <div class="stack2-pods">Repair + Sleep</div>
+        <div class="stack2-footer">
+          <div class="stack2-price"><span class="stack2-old">$278</span> $249<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+      <div class="stack-card2">
+        <div class="stack2-name">Performance Stack</div>
+        <div class="stack2-pods">Growth + Repair</div>
+        <div class="stack2-footer">
+          <div class="stack2-price"><span class="stack2-old">$328</span> $299<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+      <div class="stack-card2">
+        <div class="stack2-name">Longevity Stack</div>
+        <div class="stack2-pods">Vitality + Sleep</div>
+        <div class="stack2-footer">
+          <div class="stack2-price"><span class="stack2-old">$348</span> $319<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
+      </div>
+      <div class="stack-card2" style="border-color:rgba(58,122,92,0.3);">
+        <div class="stack2-name">Optimize Stack</div>
+        <div class="stack2-pods">Growth + Shred + Sleep</div>
+        <div class="stack2-footer">
+          <div class="stack2-price"><span class="stack2-old">$507</span> $449<span>/mo</span></div>
+          <button class="pod2-btn">Select</button>
+        </div>
       </div>
     </div>
     <p class="disclaimer">These statements have not been evaluated by the FDA. All protocols require physician authorisation through Pulse's MSO/PC model. Not intended to diagnose, treat, cure, or prevent any disease.</p>

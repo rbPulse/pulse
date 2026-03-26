@@ -760,7 +760,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <p class="hero-tagline"><span style="white-space:nowrap">Your peptide protocol.</span><br/><em>Ready when you are.</em></p>
     <div class="hero-actions">
       <a href="consultation.html" class="btn-green">I'm ready.</a>
-      <a href="#stats-bar" class="btn-outline" onclick="event.preventDefault();premiumScroll(document.getElementById('stats-bar'),1800);">Tell me more.</a>
+      <a href="#stats-bar" class="btn-outline" onclick="event.preventDefault();premiumScroll(document.getElementById('stats-bar'),1200);">Tell me more.</a>
     </div>
   </div>
   <div class="hero-scroll">
@@ -1163,12 +1163,12 @@ function premiumScroll(el, duration){
   var start = window.scrollY;
   var distance = target - start;
   var startTime = null;
-  function easeInOutCubic(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+  function easeInOutSine(t){ return -(Math.cos(Math.PI * t) - 1) / 2; }
   function step(timestamp){
     if(!startTime) startTime = timestamp;
     var elapsed = timestamp - startTime;
     var progress = Math.min(elapsed / duration, 1);
-    window.scrollTo(0, start + distance * easeInOutCubic(progress));
+    window.scrollTo(0, start + distance * easeInOutSine(progress));
     if(progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);

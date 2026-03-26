@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
@@ -1500,6 +1501,42 @@ buildCalendar();
 
 // Init first step
 gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1});
+
+// ── Supabase ──
+(function(){
+  var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_orH5atr2jU3wmXg6n6rMlw_ll04dDGS';
+  window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+})();
+
+// Override goToStep to save consultation data on step 6
+var _origGoToStep = goToStep;
+goToStep = function(n) {
+  _origGoToStep(n);
+  if (n === 6) { saveConsultation(); }
+};
+
+async function saveConsultation() {
+  try {
+    var session = (await window.db.auth.getSession()).data.session;
+    var data = {
+      first_name: (document.getElementById('firstName') || {}).value || null,
+      last_name: (document.getElementById('lastName') || {}).value || null,
+      sex: (document.getElementById('sex') || {}).value || null,
+      dob: (document.getElementById('dateOfBirth') || {}).value || null,
+      current_weight: (document.getElementById('currentWeight') || {}).value || null,
+      target_weight: (document.getElementById('targetWeight') || {}).value || null,
+      goals: typeof selectedGoals !== 'undefined' ? selectedGoals : [],
+      booking_date: typeof selectedDate !== 'undefined' ? selectedDate : null,
+      booking_slot: typeof selectedSlot !== 'undefined' ? selectedSlot : null,
+      protocol: (document.getElementById('protoName') || {}).textContent || null,
+      submitted_at: new Date().toISOString()
+    };
+    var payload = { data: data };
+    if (session && session.user) { payload.user_id = session.user.id; }
+    await window.db.from('consultations').insert(payload);
+  } catch(e) { /* silent fail — don't interrupt the UX */ }
+}
 </script>
 </body>
 </html>

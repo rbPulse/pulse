@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #050505;
@@ -718,6 +719,33 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .kit-carousel-nav{grid-template-columns:repeat(3,1fr);gap:5px;}
   .kit-cat{padding:10px 4px;font-size:8px;}
 }
+/* ── AUTH MODAL ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.auth-overlay.open{opacity:1;pointer-events:all;}
+.auth-box{background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:40px;width:100%;max-width:400px;margin:16px;position:relative;}
+.auth-close{position:absolute;top:14px;right:18px;background:none;border:none;color:rgba(255,255,255,0.35);font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;transition:color .2s;}
+.auth-close:hover{color:#fff;}
+.auth-tabs{display:flex;gap:0;margin-bottom:32px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.auth-tab{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,0.35);padding:0 0 14px;cursor:pointer;margin-bottom:-1px;transition:color .2s,border-color .2s;}
+.auth-tab+.auth-tab{margin-left:24px;}
+.auth-tab.active{color:#fff;border-bottom-color:var(--green);}
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:7px;}
+.auth-field input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-family:'Inter',sans-serif;font-size:15px;padding:12px 16px;outline:none;transition:border-color .2s;-webkit-appearance:none;}
+.auth-field input:focus{border-color:rgba(58,122,92,0.7);}
+.auth-submit{width:100%;background:var(--green);color:#000;border:none;border-radius:999px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:600;padding:14px;cursor:pointer;margin-top:10px;transition:opacity .2s;}
+.auth-submit:hover{opacity:0.85;}
+.auth-submit:disabled{opacity:0.5;cursor:not-allowed;}
+.auth-msg{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;margin-top:14px;text-align:center;min-height:16px;line-height:1.5;}
+.auth-msg.err{color:#ff6b6b;}
+.auth-msg.ok{color:var(--green);}
+.nav-auth-btn{background:none;border:1px solid rgba(255,255,255,0.18);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.55);padding:8px 16px;cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap;}
+.nav-auth-btn:hover{border-color:rgba(255,255,255,0.45);color:#fff;}
+.nav-user-pill{display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:rgba(255,255,255,0.5);}
+.nav-user-pill span{color:var(--green);}
+.nav-signout{background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);cursor:pointer;padding:0;transition:color .2s;}
+.nav-signout:hover{color:#fff;}
+@media(max-width:600px){.auth-box{padding:28px 24px;}.auth-tabs{margin-bottom:24px;}}
 </style>
 </head>
 <body>
@@ -740,6 +768,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <li><a href="#faq">FAQ</a></li>
   </ul>
   <div style="display:flex;align-items:center;gap:12px;">
+    <div id="navAuthArea"></div>
     <a href="#waitlist" class="nav-cta">Get Early Access</a>
     <button class="nav-hamburger" id="navHamburger" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -1236,14 +1265,30 @@ document.querySelectorAll('.kit-cat').forEach(function(c){
     if(Math.abs(diff) > 40){ diff > 0 ? carouselNext() : carouselPrev(); }
   }, {passive:true});
 })();
-// Waitlist
-function joinWaitlist() {
-  const email=document.getElementById('wl-email').value;
-  if(!email||!email.includes('@')){ document.getElementById('wl-email').style.borderColor='rgba(0,255,106,0.8)'; setTimeout(()=>document.getElementById('wl-email').style.borderColor='',900); return; }
-  document.getElementById('wl-form').style.display='none';
-  document.getElementById('wl-success').style.display='block';
+// Waitlist (Supabase)
+async function joinWaitlist() {
+  var emailEl = document.getElementById('wl-email');
+  var email = emailEl.value.trim();
+  if (!email || !email.includes('@')) {
+    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    setTimeout(function(){ emailEl.style.borderColor = ''; }, 900);
+    return;
+  }
+  var btn = document.querySelector('.waitlist-btn');
+  var origText = btn.textContent;
+  btn.textContent = '…'; btn.disabled = true;
+  var res = await window.db.from('waitlist').insert({ email: email });
+  btn.disabled = false;
+  if (res.error && res.error.code !== '23505') {
+    btn.textContent = origText;
+    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    setTimeout(function(){ emailEl.style.borderColor = ''; }, 900);
+    return;
+  }
+  document.getElementById('wl-form').style.display = 'none';
+  document.getElementById('wl-success').style.display = 'block';
 }
-document.getElementById('wl-email').addEventListener('keydown',e=>{ if(e.key==='Enter') joinWaitlist(); });
+document.getElementById('wl-email').addEventListener('keydown', function(e){ if (e.key === 'Enter') joinWaitlist(); });
 // === WEBGL AURORA — WAITLIST ===
 (function(){
 var VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
@@ -1647,6 +1692,127 @@ function handleModalOverlayClick(e) {
     }
   }, {passive:true});
 })();
+
+// ═══════════════════════════════════════════════════════
+// SUPABASE — Auth + Waitlist
+// ═══════════════════════════════════════════════════════
+(function(){
+  var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_orH5atr2jU3wmXg6n6rMlw_ll04dDGS';
+  window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Auth state listener → update nav
+  window.db.auth.onAuthStateChange(function(event, session){
+    updateNavAuth(session ? session.user : null);
+  });
+
+  // Init nav with current session
+  window.db.auth.getSession().then(function(r){
+    updateNavAuth(r.data && r.data.session ? r.data.session.user : null);
+  });
+})();
+
+function updateNavAuth(user) {
+  var area = document.getElementById('navAuthArea');
+  if (!area) return;
+  if (user) {
+    var name = user.email.split('@')[0];
+    area.innerHTML =
+      '<div class="nav-user-pill">' +
+        '<span>' + name + '</span>' +
+        '<button class="nav-signout" onclick="doSignOut()">Sign Out</button>' +
+      '</div>';
+  } else {
+    area.innerHTML =
+      '<button class="nav-auth-btn" onclick="openAuthModal(\'signin\')">Sign In</button>';
+  }
+}
+
+function openAuthModal(tab) {
+  document.getElementById('authOverlay').classList.add('open');
+  switchAuthTab(tab || 'signin');
+  document.body.style.overflow = 'hidden';
+  setTimeout(function(){
+    var f = document.getElementById(tab === 'signup' ? 'signupEmail' : 'signinEmail');
+    if (f) f.focus();
+  }, 150);
+}
+function closeAuthModal() {
+  document.getElementById('authOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleAuthOverlayClick(e) {
+  if (e.target === document.getElementById('authOverlay')) closeAuthModal();
+}
+function switchAuthTab(tab) {
+  document.getElementById('authSignin').style.display = tab === 'signin' ? '' : 'none';
+  document.getElementById('authSignup').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+  document.getElementById('signinMsg').textContent = '';
+  document.getElementById('signupMsg').textContent = '';
+}
+async function doSignIn() {
+  var email = document.getElementById('signinEmail').value.trim();
+  var password = document.getElementById('signinPassword').value;
+  var msgEl = document.getElementById('signinMsg');
+  msgEl.className = 'auth-msg'; msgEl.textContent = '';
+  if (!email || !password) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Please fill in all fields.'; return; }
+  var btn = document.getElementById('signinSubmit');
+  btn.disabled = true; btn.textContent = '…';
+  var r = await window.db.auth.signInWithPassword({ email: email, password: password });
+  btn.disabled = false; btn.textContent = 'Sign In';
+  if (r.error) { msgEl.className = 'auth-msg err'; msgEl.textContent = r.error.message; return; }
+  closeAuthModal();
+}
+async function doSignUp() {
+  var email = document.getElementById('signupEmail').value.trim();
+  var password = document.getElementById('signupPassword').value;
+  var msgEl = document.getElementById('signupMsg');
+  msgEl.className = 'auth-msg'; msgEl.textContent = '';
+  if (!email || !password) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Please fill in all fields.'; return; }
+  if (password.length < 6) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Password must be at least 6 characters.'; return; }
+  var btn = document.getElementById('signupSubmit');
+  btn.disabled = true; btn.textContent = '…';
+  var r = await window.db.auth.signUp({ email: email, password: password });
+  btn.disabled = false; btn.textContent = 'Create Account';
+  if (r.error) { msgEl.className = 'auth-msg err'; msgEl.textContent = r.error.message; return; }
+  // Also add to waitlist table
+  await window.db.from('waitlist').insert({ email: email });
+  msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email to confirm your account.';
+}
+async function doSignOut() {
+  await window.db.auth.signOut();
+}
+// Close auth modal on Escape
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
 </script>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="authOverlay" onclick="handleAuthOverlayClick(event)">
+  <div class="auth-box">
+    <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabSignin" onclick="switchAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <!-- Sign In -->
+    <div id="authSignin">
+      <div class="auth-field"><label>Email</label><input type="email" id="signinEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
+      <button class="auth-submit" id="signinSubmit" onclick="doSignIn()">Sign In</button>
+      <div class="auth-msg" id="signinMsg"></div>
+      <p style="text-align:center;margin-top:18px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);">No account? <button onclick="switchAuthTab('signup')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--green);cursor:pointer;padding:0;text-transform:uppercase;">Sign Up</button></p>
+    </div>
+    <!-- Sign Up -->
+    <div id="authSignup" style="display:none;">
+      <div class="auth-field"><label>Email</label><input type="email" id="signupEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
+      <button class="auth-submit" id="signupSubmit" onclick="doSignUp()">Create Account</button>
+      <div class="auth-msg" id="signupMsg"></div>
+      <p style="text-align:center;margin-top:18px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);">Have an account? <button onclick="switchAuthTab('signin')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--green);cursor:pointer;padding:0;text-transform:uppercase;">Sign In</button></p>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -356,6 +356,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 
   /* Hero */
   #hero{padding-bottom:60px;min-height:600px;}
+  .hero-bg img{object-position:center center;}
   .hero-content{padding:0 12px;}
   .hero-logo{letter-spacing:0.08em;}
   .hero-tagline{font-size:clamp(16px,4vw,24px);margin-bottom:28px;}
@@ -384,9 +385,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
 
   /* How It Works */
-  .how-layout{grid-template-columns:1fr;gap:48px;}
+  .how-layout{grid-template-columns:1fr;gap:40px;}
   .how-image-col{position:static;order:-1;}
-  .how-acts{padding-left:36px;}
+  .how-acts{display:flex;flex-direction:column;gap:32px;padding-left:36px;}
   .step-title{font-size:18px;}
 
   /* Pods */
@@ -463,10 +464,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .stat-num{font-size:24px;}
 
   /* How It Works: single column */
-  .how-layout{grid-template-columns:1fr;gap:40px;}
+  .how-layout{grid-template-columns:1fr;gap:32px;}
   .how-image-col{position:static;order:-1;}
-  .how-acts{padding-left:28px;}
-  .how-act-title{font-size:22px;}
+  .how-acts{display:flex;flex-direction:column;gap:28px;padding-left:28px;}
+  .how-act-title{font-size:20px;}
 
   /* Pods */
   .pod-specs{grid-template-columns:1fr;}
@@ -607,6 +608,24 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .kit-slide.active{display:flex;}
 .kit-arrow{background:none;border:1px solid rgba(255,255,255,0.15);color:#fff;width:48px;height:48px;border-radius:50%;font-size:24px;cursor:pointer;flex-shrink:0;transition:border-color .2s,color .2s;display:flex;align-items:center;justify-content:center;line-height:1;}
 .kit-arrow:hover{border-color:var(--green);color:var(--green);}
+
+/* HAMBURGER */
+.nav-hamburger{display:none;flex-direction:column;justify-content:center;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;width:36px;height:36px;}
+.nav-hamburger span{display:block;width:20px;height:1.5px;background:#fff;border-radius:2px;transition:transform .3s,opacity .3s;}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg);}
+.nav-hamburger.open span:nth-child(2){opacity:0;}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg);}
+/* MOBILE NAV DRAWER */
+.nav-drawer{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99;background:rgba(5,5,5,0.97);backdrop-filter:blur(16px);padding:100px 32px 40px;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
+.nav-drawer.open{opacity:1;transform:translateY(0);pointer-events:all;}
+.nav-drawer-links{list-style:none;display:flex;flex-direction:column;gap:4px;}
+.nav-drawer-links a{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.6);text-decoration:none;display:block;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);transition:color .2s;}
+.nav-drawer-links a:hover{color:#fff;}
+.nav-drawer-cta{background:var(--green)!important;color:#000!important;border-radius:999px;text-align:center;margin-top:16px;border:none!important;padding:16px 24px!important;}
+@media(max-width:900px){
+  .nav-hamburger{display:flex;}
+  .nav-drawer{display:block;}
+}
 </style>
 </head>
 <body>
@@ -631,8 +650,27 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <li><a href="#reviews">Reviews</a></li>
     <li><a href="#faq">FAQ</a></li>
   </ul>
-  <a href="#waitlist" class="nav-cta">Get Early Access</a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="#waitlist" class="nav-cta">Get Early Access</a>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 </nav>
+<!-- MOBILE NAV DRAWER -->
+<div class="nav-drawer" id="navDrawer">
+  <ul class="nav-drawer-links">
+    <li><a href="science.html">The Science</a></li>
+    <li><a href="why-pulse.html">Why Pulse</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#pods">Protocols</a></li>
+    <li><a href="quiz.html">Find My Protocol</a></li>
+    <li><a href="your-protocol.html">Your Protocol</a></li>
+    <li><a href="#reviews">Reviews</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#waitlist" class="nav-drawer-cta">Get Early Access</a></li>
+  </ul>
+</div>
 <!-- HERO -->
 <section id="hero">
   <div class="hero-bg">
@@ -1516,6 +1554,25 @@ function handleModalOverlayClick(e) {
   if (e.target === document.getElementById('video-modal')) closeVideoModal();
 }
 
+
+// Hamburger menu
+(function(){
+  var btn = document.getElementById('navHamburger');
+  var drawer = document.getElementById('navDrawer');
+  if(!btn || !drawer) return;
+  btn.addEventListener('click', function(){
+    var open = drawer.classList.toggle('open');
+    btn.classList.toggle('open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  });
+  drawer.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){
+      drawer.classList.remove('open');
+      btn.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  });
+})();
 </script>
 </body>
 </html>

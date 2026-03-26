@@ -114,6 +114,71 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 /* DISCLAIMER */
 .disclaimer-footer{text-align:center;padding:24px;font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.08em;line-height:1.8;max-width:640px;margin:0 auto;border-top:1px solid var(--border);}
 
+/* ── BOOKING (STEP 3) ── */
+.clinician-card{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:28px;}
+.clinician-avatar{width:52px;height:52px;border-radius:50%;background:var(--card2);border:1.5px solid rgba(58,122,92,0.3);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.clinician-avatar svg{width:26px;height:26px;stroke:var(--green);fill:none;stroke-width:1.5;}
+.clinician-info{flex:1;}
+.clinician-name{font-size:15px;font-weight:500;margin-bottom:2px;}
+.clinician-cred{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);}
+.clinician-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;background:var(--green-dim);border:1px solid rgba(58,122,92,0.25);color:var(--green);padding:4px 10px;border-radius:999px;margin-top:6px;display:inline-block;}
+
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-month{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#fff;}
+.cal-nav{display:flex;gap:8px;}
+.cal-nav button{background:var(--card);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;color:var(--grey);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
+.cal-nav button:hover{border-color:rgba(255,255,255,0.25);color:#fff;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:24px;}
+.cal-day-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);text-align:center;padding-bottom:4px;}
+.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:400;cursor:pointer;transition:all .2s;border:1px solid transparent;background:transparent;color:var(--grey2);}
+.cal-day.has-slots{background:var(--card);border-color:var(--border);color:#fff;cursor:pointer;}
+.cal-day.has-slots:hover{border-color:rgba(58,122,92,0.4);background:rgba(58,122,92,0.06);}
+.cal-day.selected{background:var(--green);border-color:var(--green);color:#000;font-weight:600;}
+.cal-day.today{border-color:rgba(255,255,255,0.2);}
+.cal-day.empty{cursor:default;}
+.cal-day.past{opacity:0.25;cursor:default;}
+
+.slots-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;}
+.slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:28px;}
+.slot-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .2s;}
+.slot-btn:hover{border-color:rgba(58,122,92,0.4);background:rgba(58,122,92,0.06);}
+.slot-btn.selected{border-color:var(--green);background:var(--green-dim);}
+.slot-btn.booked{opacity:0.3;cursor:not-allowed;}
+.slot-time{font-size:13px;font-weight:500;color:#fff;margin-bottom:2px;}
+.slot-tz{font-family:'DM Mono',monospace;font-size:8px;color:var(--grey2);letter-spacing:0.1em;}
+.slot-avail{font-family:'DM Mono',monospace;font-size:7.5px;color:var(--green);letter-spacing:0.08em;margin-top:3px;}
+
+.booking-summary{background:var(--card);border:1px solid rgba(58,122,92,0.2);border-radius:12px;padding:16px 20px;margin-bottom:24px;display:none;}
+.booking-summary.visible{display:block;}
+.booking-summary-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;}
+.booking-summary-row{display:flex;justify-content:space-between;font-size:13px;color:var(--grey);margin-bottom:6px;}
+.booking-summary-row span:last-child{color:#fff;font-weight:500;}
+
+/* ── WAITING ROOM (STEP 4) ── */
+.waiting-center{text-align:center;padding:0 16px;}
+.waiting-icon{width:72px;height:72px;border-radius:50%;background:rgba(58,122,92,0.08);border:1.5px solid rgba(58,122,92,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:0 0 32px rgba(58,122,92,0.12);}
+.waiting-icon svg{width:32px;height:32px;stroke:var(--green);fill:none;stroke-width:1.5;}
+.waiting-headline{font-size:clamp(22px,3vw,30px);font-weight:600;margin-bottom:10px;}
+.waiting-sub{font-size:14px;color:var(--grey);margin-bottom:36px;line-height:1.6;max-width:480px;margin-left:auto;margin-right:auto;}
+.countdown-ring{position:relative;width:140px;height:140px;margin:0 auto 28px;}
+.countdown-ring svg{transform:rotate(-90deg);}
+.countdown-ring-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:6;}
+.countdown-ring-fill{fill:none;stroke:var(--green);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear;}
+.countdown-time{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.countdown-digits{font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:#fff;line-height:1;}
+.countdown-unit{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-top:4px;}
+.waiting-checklist{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:28px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto;}
+.waiting-checklist-title{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px;}
+.waiting-check-item{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px;color:var(--grey);}
+.waiting-check-item:last-child{margin-bottom:0;}
+.wci-dot{width:18px;height:18px;border-radius:50%;background:rgba(58,122,92,0.12);border:1.5px solid rgba(58,122,92,0.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.wci-dot svg{width:9px;height:9px;stroke:var(--green);fill:none;stroke-width:2.5;}
+.join-btn-wrap{margin-bottom:12px;}
+.join-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:16px 44px;border-radius:999px;cursor:pointer;font-weight:500;transition:all .25s;display:inline-flex;align-items:center;gap:10px;opacity:0.35;pointer-events:none;}
+.join-btn.ready{opacity:1;pointer-events:auto;box-shadow:0 0 24px rgba(58,122,92,0.3);}
+.join-btn.ready:hover{background:#fff;}
+.join-hint{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--grey2);text-align:center;}
+
 @media(max-width:768px){
   nav{padding:14px 20px;}
   .progress-wrap{padding:12px 16px;}
@@ -122,6 +187,9 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
   .step{padding:0 16px;}
   .form-row{grid-template-columns:1fr;}
   .check-grid{grid-template-columns:1fr;}
+  .slots-grid{grid-template-columns:repeat(2,1fr);}
+  .cal-grid{gap:4px;}
+  .cal-day{font-size:12px;}
 }
 </style>
 </head>
@@ -368,6 +436,121 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     </div>
   </div>
 
+  <!-- STEP 3: CLINICIAN BOOKING -->
+  <div class="step" id="step-3">
+    <div class="step-eyebrow">Step 3 of 6</div>
+    <h1 class="step-title">Book your consultation</h1>
+    <p class="step-sub">Select a date and time that works for you. All consultations are 20 minutes via secure video.</p>
+
+    <div class="clinician-card">
+      <div class="clinician-avatar">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="clinician-info">
+        <div class="clinician-name">Dr. Hana Elguizaoui</div>
+        <div class="clinician-cred">MD — Internal Medicine &amp; Longevity</div>
+        <div class="clinician-badge">Pulse Preferred Clinician</div>
+      </div>
+    </div>
+
+    <div class="cal-header">
+      <div class="cal-month" id="calMonthLabel"></div>
+      <div class="cal-nav">
+        <button onclick="calPrev()" id="calPrevBtn">&#8249;</button>
+        <button onclick="calNext()" id="calNextBtn">&#8250;</button>
+      </div>
+    </div>
+
+    <div class="cal-grid" id="calGrid">
+      <div class="cal-day-label">Su</div>
+      <div class="cal-day-label">Mo</div>
+      <div class="cal-day-label">Tu</div>
+      <div class="cal-day-label">We</div>
+      <div class="cal-day-label">Th</div>
+      <div class="cal-day-label">Fr</div>
+      <div class="cal-day-label">Sa</div>
+    </div>
+
+    <div id="slotsWrap" style="display:none;">
+      <div class="slots-label" id="slotsLabel">Available times</div>
+      <div class="slots-grid" id="slotsGrid"></div>
+    </div>
+
+    <div class="booking-summary" id="bookingSummary">
+      <div class="booking-summary-label">Appointment confirmed</div>
+      <div class="booking-summary-row"><span>Clinician</span><span>Dr. Hana Elguizaoui</span></div>
+      <div class="booking-summary-row"><span>Date</span><span id="summDate"></span></div>
+      <div class="booking-summary-row"><span>Time</span><span id="summTime"></span></div>
+      <div class="booking-summary-row"><span>Format</span><span>Secure video, 20 min</span></div>
+    </div>
+
+    <div class="step-actions">
+      <button class="btn-secondary" onclick="goToStep(2)">← Back</button>
+      <button class="btn-primary" id="bookingContinueBtn" onclick="submitStep3()" disabled style="opacity:0.35;cursor:not-allowed;">Confirm booking <span>→</span></button>
+    </div>
+
+    <div class="disclaimer-footer">
+      Appointments are held on a secure, HIPAA-compliant video platform. You will receive a link via email 15 minutes before your session.
+    </div>
+  </div>
+
+  <!-- STEP 4: WAITING ROOM -->
+  <div class="step" id="step-4">
+    <div class="waiting-center">
+      <div class="step-eyebrow" style="text-align:center;">Step 4 of 6</div>
+      <div style="height:28px;"></div>
+      <div class="waiting-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <h1 class="waiting-headline">Your session starts soon</h1>
+      <p class="waiting-sub">Dr. Elguizaoui is preparing for your consultation. Your session room opens automatically when your clinician is ready.</p>
+
+      <div class="countdown-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="countdown-ring-bg" cx="70" cy="70" r="60"/>
+          <circle class="countdown-ring-fill" id="countRingFill" cx="70" cy="70" r="60"
+            stroke-dasharray="377" stroke-dashoffset="0"/>
+        </svg>
+        <div class="countdown-time">
+          <div class="countdown-digits" id="countDigits">15:00</div>
+          <div class="countdown-unit">until session</div>
+        </div>
+      </div>
+
+      <div class="waiting-checklist">
+        <div class="waiting-checklist-title">Pre-session checklist</div>
+        <div class="waiting-check-item">
+          <div class="wci-dot"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          Find a private, quiet space
+        </div>
+        <div class="waiting-check-item">
+          <div class="wci-dot"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          Test your camera and microphone
+        </div>
+        <div class="waiting-check-item">
+          <div class="wci-dot"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          Have your medication list ready
+        </div>
+        <div class="waiting-check-item">
+          <div class="wci-dot"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          Stable internet connection
+        </div>
+      </div>
+
+      <div class="join-btn-wrap">
+        <button class="join-btn" id="joinSessionBtn" onclick="goToStep(5)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Join session
+        </button>
+      </div>
+      <div class="join-hint" id="joinHint">Opens when your clinician is ready</div>
+    </div>
+
+    <div class="disclaimer-footer" style="margin-top:40px;">
+      If you experience technical issues, contact support at support@pulsepeptides.com. Do not refresh this page.
+    </div>
+  </div>
+
 </div><!-- end main -->
 
 <script>
@@ -498,6 +681,187 @@ function updateProgress(n){
     if(line) line.classList.toggle('done', i < n);
   }
 }
+
+// ── STEP 3: CALENDAR ──
+var calOffset = 0; // weeks offset from today
+var selectedDate = null;
+var selectedSlot = null;
+var TOTAL_WEEKS = 4;
+
+// Slot data: day-of-week (0=Sun) -> times (some booked)
+var SLOT_TEMPLATES = {
+  1: [{t:'8:00 AM'},{t:'9:30 AM'},{t:'11:00 AM'},{t:'1:00 PM',b:true},{t:'2:30 PM'},{t:'4:00 PM'}],
+  2: [{t:'9:00 AM'},{t:'10:30 AM',b:true},{t:'12:00 PM'},{t:'2:00 PM'},{t:'3:30 PM'}],
+  3: [{t:'8:30 AM'},{t:'10:00 AM'},{t:'11:30 AM',b:true},{t:'1:30 PM'},{t:'3:00 PM'},{t:'4:30 PM'}],
+  4: [{t:'9:00 AM',b:true},{t:'10:30 AM'},{t:'12:30 PM'},{t:'2:00 PM'},{t:'3:30 PM'}],
+  5: [{t:'8:00 AM'},{t:'9:30 AM'},{t:'11:00 AM'},{t:'1:00 PM'}]
+};
+
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function buildCalendar(){
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var refDate = new Date(today);
+  refDate.setDate(refDate.getDate() + calOffset * 7);
+
+  // Find start of the display month (first day of week containing the 1st)
+  var displayStart = new Date(refDate);
+  // Show a rolling 4-week window starting from today's week start
+  var weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + calOffset * 7);
+
+  var label = MONTHS[weekStart.getMonth()] + ' ' + weekStart.getFullYear();
+  // Check if spans two months
+  var weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 27);
+  if(weekEnd.getMonth() !== weekStart.getMonth()){
+    label = MONTHS[weekStart.getMonth()] + ' / ' + MONTHS[weekEnd.getMonth()];
+  }
+  document.getElementById('calMonthLabel').textContent = label;
+
+  // Build 4-week grid
+  var grid = document.getElementById('calGrid');
+  // Remove old day cells (keep the 7 header labels)
+  var children = Array.from(grid.children);
+  children.slice(7).forEach(function(c){c.remove();});
+
+  for(var d=0; d<28; d++){
+    var day = new Date(weekStart);
+    day.setDate(day.getDate() + d);
+    var cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = day.getDate();
+
+    var isPast = day < today;
+    var isToday = day.getTime() === today.getTime();
+    var dow = day.getDay();
+    var hasSlots = SLOT_TEMPLATES[dow] && !isPast;
+
+    if(isPast){ cell.classList.add('past'); }
+    else if(hasSlots){ cell.classList.add('has-slots'); }
+    if(isToday){ cell.classList.add('today'); }
+    if(selectedDate && day.getTime() === selectedDate.getTime()){ cell.classList.add('selected'); }
+
+    if(hasSlots){
+      (function(d2){
+        cell.addEventListener('click', function(){
+          selectedDate = new Date(d2);
+          selectedSlot = null;
+          buildCalendar();
+          buildSlots(d2);
+        });
+      })(new Date(day));
+    }
+    grid.appendChild(cell);
+  }
+
+  // Prev/next nav
+  document.getElementById('calPrevBtn').disabled = calOffset <= 0;
+  document.getElementById('calPrevBtn').style.opacity = calOffset <= 0 ? '0.3' : '1';
+  document.getElementById('calNextBtn').disabled = calOffset >= TOTAL_WEEKS - 1;
+  document.getElementById('calNextBtn').style.opacity = calOffset >= TOTAL_WEEKS - 1 ? '0.3' : '1';
+}
+
+function calPrev(){ if(calOffset > 0){ calOffset--; buildCalendar(); } }
+function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; buildCalendar(); } }
+
+function buildSlots(day){
+  var dow = day.getDay();
+  var slots = SLOT_TEMPLATES[dow] || [];
+  var grid = document.getElementById('slotsGrid');
+  grid.innerHTML = '';
+  var label = MONTHS[day.getMonth()] + ' ' + day.getDate();
+  document.getElementById('slotsLabel').textContent = label + ' — Available times';
+  document.getElementById('slotsWrap').style.display = 'block';
+  gsap.fromTo('#slotsWrap',{opacity:0,y:10},{opacity:1,y:0,duration:0.3,ease:'power2.out'});
+
+  slots.forEach(function(s){
+    var btn = document.createElement('div');
+    btn.className = 'slot-btn' + (s.b ? ' booked' : '');
+    btn.innerHTML = '<div class="slot-time">'+s.t+'</div><div class="slot-tz">EST</div>'+(s.b?'<div class="slot-avail" style="color:var(--grey2)">Unavailable</div>':'<div class="slot-avail">Available</div>');
+    if(!s.b){
+      btn.addEventListener('click', function(){
+        document.querySelectorAll('.slot-btn').forEach(function(b){b.classList.remove('selected');});
+        btn.classList.add('selected');
+        selectedSlot = s.t;
+        updateBookingSummary();
+      });
+    }
+    grid.appendChild(btn);
+  });
+}
+
+function updateBookingSummary(){
+  if(!selectedDate || !selectedSlot){ return; }
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var dateStr = days[selectedDate.getDay()]+', '+MONTHS[selectedDate.getMonth()]+' '+selectedDate.getDate();
+  document.getElementById('summDate').textContent = dateStr;
+  document.getElementById('summTime').textContent = selectedSlot + ' EST';
+  var summary = document.getElementById('bookingSummary');
+  summary.classList.add('visible');
+  gsap.fromTo('#bookingSummary',{opacity:0,y:8},{opacity:1,y:0,duration:0.3,ease:'power2.out'});
+  var btn = document.getElementById('bookingContinueBtn');
+  btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+}
+
+function submitStep3(){
+  if(!selectedDate || !selectedSlot){ return; }
+  goToStep(4);
+}
+
+// ── STEP 4: COUNTDOWN ──
+var countdownSeconds = 15 * 60; // 15 minutes
+var countdownInterval = null;
+var CIRCUMFERENCE = 2 * Math.PI * 60; // r=60
+
+function startCountdown(){
+  var ring = document.getElementById('countRingFill');
+  var digits = document.getElementById('countDigits');
+  var joinBtn = document.getElementById('joinSessionBtn');
+  var joinHint = document.getElementById('joinHint');
+  if(countdownInterval) clearInterval(countdownInterval);
+
+  function tick(){
+    var m = Math.floor(countdownSeconds / 60);
+    var s = countdownSeconds % 60;
+    digits.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    var progress = 1 - countdownSeconds / (15 * 60);
+    ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+
+    if(countdownSeconds <= 0){
+      clearInterval(countdownInterval);
+      digits.textContent = '00:00';
+      joinBtn.classList.add('ready');
+      joinHint.textContent = 'Dr. Elguizaoui is ready';
+      gsap.to(joinBtn,{scale:1.03,repeat:-1,yoyo:true,duration:1.2,ease:'sine.inOut'});
+    } else {
+      countdownSeconds--;
+    }
+  }
+  ring.style.strokeDasharray = CIRCUMFERENCE;
+  ring.style.strokeDashoffset = CIRCUMFERENCE;
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+// Hook into showStep to start countdown when step 4 becomes active
+var _origShowStep = showStep;
+showStep = function(n){
+  _origShowStep(n);
+  if(n === 4){
+    countdownSeconds = 15 * 60;
+    var joinBtn = document.getElementById('joinSessionBtn');
+    joinBtn.classList.remove('ready');
+    gsap.killTweensOf(joinBtn);
+    gsap.set(joinBtn,{scale:1});
+    document.getElementById('joinHint').textContent = 'Opens when your clinician is ready';
+    startCountdown();
+  }
+};
+
+// Init calendar on load
+buildCalendar();
 
 // Init first step
 gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1});

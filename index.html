@@ -651,7 +651,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .nav-hamburger.open span:nth-child(2){opacity:0;}
 .nav-hamburger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg);}
 /* MOBILE NAV DRAWER */
-.nav-drawer{display:none;position:fixed;top:61px;left:0;right:0;z-index:98;background:rgba(5,5,5,0.97);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.07);transform:translateY(-6px);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;}
+.nav-drawer{display:none;position:fixed;top:60px;left:0;right:0;z-index:98;background:rgba(5,5,5,0.97);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.07);transform:translateY(-6px);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;}
 .nav-drawer.open{opacity:1;transform:translateY(0);pointer-events:all;}
 .nav-drawer-links{list-style:none;display:flex;flex-direction:column;padding:8px 0 16px;}
 .nav-drawer-links a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.6);text-decoration:none;display:block;padding:14px 24px;transition:color .15s,background .15s;}
@@ -1617,16 +1617,23 @@ function handleModalOverlayClick(e) {
   var drawer = document.getElementById('navDrawer');
   if(!btn || !drawer) return;
   btn.addEventListener('click', function(){
+    var navH = document.querySelector('nav').offsetHeight;
+    drawer.style.top = navH + 'px';
     var open = drawer.classList.toggle('open');
     btn.classList.toggle('open', open);
-    document.body.style.overflow = open ? 'hidden' : '';
   });
   drawer.querySelectorAll('a').forEach(function(a){
     a.addEventListener('click', function(){
       drawer.classList.remove('open');
       btn.classList.remove('open');
-      document.body.style.overflow = '';
     });
+  });
+  // Close on outside tap
+  document.addEventListener('click', function(e){
+    if(drawer.classList.contains('open') && !drawer.contains(e.target) && !btn.contains(e.target)){
+      drawer.classList.remove('open');
+      btn.classList.remove('open');
+    }
   });
 })();
 </script>

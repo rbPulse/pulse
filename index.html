@@ -750,20 +750,14 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .nav-signout{background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);cursor:pointer;padding:0;transition:color .2s;}
 .nav-signout:hover{color:#fff;}
 @media(max-width:600px){.auth-box{padding:28px 24px;}.auth-tabs{margin-bottom:24px;}}
-/* ── SSO / SIGNUP SECTION ── */
-.signup-options{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:360px;margin:0 auto 24px;}
-.sso-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:999px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:14px 28px;cursor:pointer;transition:opacity .2s;letter-spacing:0;}
-.sso-google-btn:hover{opacity:0.9;}
-.sso-google-btn svg{flex-shrink:0;}
-.sso-email-btn{width:100%;background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:14px 28px;cursor:pointer;transition:border-color .2s,color .2s;}
-.sso-email-btn:hover{border-color:rgba(255,255,255,0.45);color:#fff;}
-.signup-or{display:flex;align-items:center;gap:14px;width:100%;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2);}
-.signup-or::before,.signup-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.08);}
-/* Google button in auth modal */
-.auth-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:12px 20px;cursor:pointer;transition:opacity .2s;margin-bottom:20px;}
-.auth-google-btn:hover{opacity:0.9;}
-.auth-or{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2);}
-.auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
+/* ── MAGIC LINK SIGNUP SECTION ── */
+.magic-form{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:400px;margin:0 auto 24px;}
+.magic-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:999px;color:#fff;font-family:'Inter',sans-serif;font-size:15px;padding:15px 24px;outline:none;transition:border-color .2s;cursor:text;user-select:text;-webkit-user-select:text;text-align:center;}
+.magic-input::placeholder{color:rgba(255,255,255,0.3);}
+.magic-input:focus{border-color:rgba(58,122,92,0.7);}
+.magic-submit{width:100%;background:var(--green);color:#000;border:none;border-radius:999px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;padding:15px;cursor:pointer;transition:opacity .2s;box-shadow:0 0 20px var(--green-glow);}
+.magic-submit:hover{opacity:0.85;}
+.magic-submit:disabled{opacity:0.5;cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -1174,13 +1168,14 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <div class="eyebrow" style="justify-content:center;display:flex;">Get Started</div>
     <h2 class="waitlist-title">Be first.<br/><em>Feel different.</em></h2>
     <p class="waitlist-sub">Create your account for early access, founding-member pricing, and your personal protocol portal.</p>
-    <div class="signup-options">
-      <button class="sso-google-btn" onclick="signInWithGoogle()">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-        Continue with Google
-      </button>
-      <div class="signup-or">or</div>
-      <button class="sso-email-btn" onclick="openAuthModal('signup')">Continue with Email</button>
+    <div class="magic-form" id="wl-form">
+      <input type="email" class="magic-input" id="wl-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendMagicLink('wl')"/>
+      <button class="magic-submit" id="wl-btn" onclick="sendMagicLink('wl')">Get Access</button>
+    </div>
+    <div class="success-msg" id="wl-success">
+      <div class="success-msg-icon">✦</div>
+      <div class="success-msg-title">Check your email.</div>
+      <div class="success-msg-sub">We sent you a sign-in link. Click it to access<br/>your portal — no password needed.</div>
     </div>
     <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
   </div>
@@ -1746,18 +1741,18 @@ function updateNavAuth(user) {
       '</div>';
   } else {
     area.innerHTML =
-      '<button class="nav-auth-btn" onclick="openAuthModal(\'signin\')">Sign In</button>';
+      '<button class="nav-auth-btn" onclick="openAuthModal()">Sign In</button>';
   }
 }
 
-function openAuthModal(tab) {
+function getPortalUrl() {
+  var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
+  return window.location.origin + path + 'portal.html';
+}
+function openAuthModal() {
   document.getElementById('authOverlay').classList.add('open');
-  switchAuthTab(tab || 'signin');
   document.body.style.overflow = 'hidden';
-  setTimeout(function(){
-    var f = document.getElementById(tab === 'signup' ? 'signupEmail' : 'signinEmail');
-    if (f) f.focus();
-  }, 150);
+  setTimeout(function(){ var f = document.getElementById('modalEmail'); if(f) f.focus(); }, 150);
 }
 function closeAuthModal() {
   document.getElementById('authOverlay').classList.remove('open');
@@ -1766,56 +1761,50 @@ function closeAuthModal() {
 function handleAuthOverlayClick(e) {
   if (e.target === document.getElementById('authOverlay')) closeAuthModal();
 }
-function switchAuthTab(tab) {
-  document.getElementById('authSignin').style.display = tab === 'signin' ? '' : 'none';
-  document.getElementById('authSignup').style.display = tab === 'signup' ? '' : 'none';
-  document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
-  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
-  document.getElementById('signinMsg').textContent = '';
-  document.getElementById('signupMsg').textContent = '';
-}
-async function doSignIn() {
-  var email = document.getElementById('signinEmail').value.trim();
-  var password = document.getElementById('signinPassword').value;
-  var msgEl = document.getElementById('signinMsg');
-  msgEl.className = 'auth-msg'; msgEl.textContent = '';
-  if (!email || !password) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Please fill in all fields.'; return; }
-  var btn = document.getElementById('signinSubmit');
-  btn.disabled = true; btn.textContent = '…';
-  var r = await window.db.auth.signInWithPassword({ email: email, password: password });
-  btn.disabled = false; btn.textContent = 'Sign In';
-  if (r.error) { msgEl.className = 'auth-msg err'; msgEl.textContent = r.error.message; return; }
-  closeAuthModal();
-  window.location.href = 'portal.html';
-}
-async function doSignUp() {
-  var email = document.getElementById('signupEmail').value.trim();
-  var password = document.getElementById('signupPassword').value;
-  var msgEl = document.getElementById('signupMsg');
-  msgEl.className = 'auth-msg'; msgEl.textContent = '';
-  if (!email || !password) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Please fill in all fields.'; return; }
-  if (password.length < 6) { msgEl.className = 'auth-msg err'; msgEl.textContent = 'Password must be at least 6 characters.'; return; }
-  var btn = document.getElementById('signupSubmit');
-  btn.disabled = true; btn.textContent = '…';
-  var r = await window.db.auth.signUp({ email: email, password: password });
-  btn.disabled = false; btn.textContent = 'Create Account';
-  if (r.error) { msgEl.className = 'auth-msg err'; msgEl.textContent = r.error.message; return; }
-  // Also add to waitlist table
-  await window.db.from('waitlist').insert({ email: email });
-  msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email to confirm your account.';
-}
-function signInWithGoogle() {
-  var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
-  var redirectTo = window.location.origin + path + 'portal.html';
-  window.db.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: redirectTo }
-  });
+async function sendMagicLink(source) {
+  var emailEl, btnEl, msgEl, formEl, successEl;
+  if (source === 'modal') {
+    emailEl = document.getElementById('modalEmail');
+    btnEl   = document.getElementById('modalSubmit');
+    msgEl   = document.getElementById('modalMsg');
+  } else {
+    emailEl   = document.getElementById('wl-email');
+    btnEl     = document.getElementById('wl-btn');
+    formEl    = document.getElementById('wl-form');
+    successEl = document.getElementById('wl-success');
+  }
+  var email = emailEl.value.trim();
+  if (!email || !email.includes('@')) {
+    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    setTimeout(function(){ emailEl.style.borderColor=''; }, 900);
+    return;
+  }
+  var origText = btnEl.textContent;
+  btnEl.disabled = true; btnEl.textContent = '…';
+  try {
+    var r = await window.db.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: getPortalUrl() }
+    });
+    if (r.error) throw r.error;
+    // Also save to waitlist
+    await window.db.from('waitlist').insert({ email: email }).then(function(){});
+    if (source === 'modal') {
+      if (msgEl) { msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email for a sign-in link.'; }
+      btnEl.disabled = false; btnEl.textContent = origText;
+    } else {
+      if (formEl) formEl.style.display = 'none';
+      if (successEl) successEl.style.display = 'block';
+    }
+  } catch(e) {
+    btnEl.disabled = false; btnEl.textContent = origText;
+    if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }
+    else { emailEl.style.borderColor = 'rgba(255,80,80,0.8)'; setTimeout(function(){ emailEl.style.borderColor=''; }, 900); }
+  }
 }
 async function doSignOut() {
   await window.db.auth.signOut();
 }
-// Close auth modal on Escape
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
 </script>
 
@@ -1823,35 +1812,15 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeA
 <div class="auth-overlay" id="authOverlay" onclick="handleAuthOverlayClick(event)">
   <div class="auth-box">
     <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabSignin" onclick="switchAuthTab('signin')">Sign In</button>
-      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.32em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Member Access</div>
+      <div style="font-size:20px;font-weight:600;line-height:1.2;margin-bottom:6px;">Sign in to Pulse.</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6;">Enter your email and we'll send you a sign-in link. No password needed.</div>
     </div>
-    <!-- Sign In -->
-    <div id="authSignin">
-      <button class="auth-google-btn" onclick="signInWithGoogle()">
-        <svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-        Continue with Google
-      </button>
-      <div class="auth-or">or</div>
-      <div class="auth-field"><label>Email</label><input type="email" id="signinEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
-      <button class="auth-submit" id="signinSubmit" onclick="doSignIn()">Sign In</button>
-      <div class="auth-msg" id="signinMsg"></div>
-      <p style="text-align:center;margin-top:18px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);">No account? <button onclick="switchAuthTab('signup')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--green);cursor:pointer;padding:0;text-transform:uppercase;">Sign Up</button></p>
-    </div>
-    <!-- Sign Up -->
-    <div id="authSignup" style="display:none;">
-      <button class="auth-google-btn" onclick="signInWithGoogle()">
-        <svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-        Continue with Google
-      </button>
-      <div class="auth-or">or</div>
-      <div class="auth-field"><label>Email</label><input type="email" id="signupEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
-      <div class="auth-field"><label>Password</label><input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
-      <button class="auth-submit" id="signupSubmit" onclick="doSignUp()">Create Account</button>
-      <div class="auth-msg" id="signupMsg"></div>
-      <p style="text-align:center;margin-top:18px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);">Have an account? <button onclick="switchAuthTab('signin')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--green);cursor:pointer;padding:0;text-transform:uppercase;">Sign In</button></p>
+    <div id="authFormWrap">
+      <div class="auth-field"><label>Email</label><input type="email" id="modalEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')sendMagicLink('modal')"/></div>
+      <button class="auth-submit" id="modalSubmit" onclick="sendMagicLink('modal')">Send Sign-In Link</button>
+      <div class="auth-msg" id="modalMsg"></div>
     </div>
   </div>
 </div>

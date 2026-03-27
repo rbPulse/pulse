@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg: #050505;
@@ -1172,6 +1172,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
       <input type="email" class="magic-input" id="wl-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendMagicLink('wl')"/>
       <button class="magic-submit" id="wl-btn" onclick="sendMagicLink('wl')">Get Access</button>
     </div>
+    <div id="wl-error" style="display:none;color:rgba(255,90,90,0.9);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.05em;margin-top:12px;text-align:center;"></div>
     <div class="success-msg" id="wl-success">
       <div class="success-msg-icon">✦</div>
       <div class="success-msg-title">Check your email.</div>
@@ -1281,31 +1282,6 @@ document.querySelectorAll('.kit-cat').forEach(function(c){
     if(Math.abs(diff) > 40){ diff > 0 ? carouselNext() : carouselPrev(); }
   }, {passive:true});
 })();
-// Waitlist (Supabase)
-async function joinWaitlist() {
-  var emailEl = document.getElementById('wl-email');
-  var email = emailEl.value.trim();
-  if (!email || !email.includes('@')) {
-    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
-    setTimeout(function(){ emailEl.style.borderColor = ''; }, 900);
-    return;
-  }
-  var btn = document.querySelector('.waitlist-btn');
-  var origText = btn.textContent;
-  btn.textContent = '…'; btn.disabled = true;
-  try {
-    var res = await window.db.from('waitlist').insert({ email: email });
-    if (res.error && res.error.code !== '23505') throw new Error(res.error.message);
-    document.getElementById('wl-form').style.display = 'none';
-    document.getElementById('wl-success').style.display = 'block';
-  } catch(e) {
-    console.error('Waitlist error:', e);
-    btn.textContent = origText;
-    btn.disabled = false;
-    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
-    setTimeout(function(){ emailEl.style.borderColor = ''; }, 900);
-  }
-}
 // === WEBGL AURORA — WAITLIST ===
 (function(){
 var VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
@@ -1797,8 +1773,14 @@ async function sendMagicLink(source) {
     }
   } catch(e) {
     btnEl.disabled = false; btnEl.textContent = origText;
-    if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }
-    else { emailEl.style.borderColor = 'rgba(255,80,80,0.8)'; setTimeout(function(){ emailEl.style.borderColor=''; }, 900); }
+    if (source === 'modal') {
+      if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }
+    } else {
+      var errEl = document.getElementById('wl-error');
+      if (errEl) { errEl.textContent = e.message || 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
+      emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
+      setTimeout(function(){ emailEl.style.borderColor=''; }, 1500);
+    }
   }
 }
 async function doSignOut() {

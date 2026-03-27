@@ -1176,7 +1176,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <div class="success-msg" id="wl-success">
       <div class="success-msg-icon">✦</div>
       <div class="success-msg-title">Account created.</div>
-      <div class="success-msg-sub">Welcome to Pulse. Taking you to your portal...</div>
+      <div class="success-msg-sub">Welcome to Pulse. Starting your consultation...</div>
     </div>
     <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
   </div>
@@ -1789,7 +1789,10 @@ async function doSignUp() {
     }).catch(function(){});
     document.getElementById('wl-form').style.display = 'none';
     document.getElementById('wl-success').style.display = 'block';
-    setTimeout(function(){ window.location.href = getPortalUrl(); }, 1500);
+    setTimeout(function(){
+      var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
+      window.location.href = window.location.origin + path + 'consultation.html';
+    }, 1500);
   } catch(e) {
     btnEl.disabled = false; btnEl.textContent = origText;
     if (errEl) { errEl.textContent = e.message || 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
@@ -1824,7 +1827,12 @@ async function doModalAuth() {
     }
     if (r.error) throw r.error;
     closeAuthModal();
-    window.location.href = getPortalUrl();
+    var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
+    if (window._modalMode === 'signup') {
+      window.location.href = window.location.origin + path + 'consultation.html';
+    } else {
+      window.location.href = window.location.origin + path + 'portal.html';
+    }
   } catch(e) {
     btnEl.disabled = false; btnEl.textContent = origText;
     if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }

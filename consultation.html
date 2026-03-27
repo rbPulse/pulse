@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
@@ -1502,13 +1501,7 @@ buildCalendar();
 // Init first step
 gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1});
 
-// ── Supabase ──
-(function(){
-  var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
-  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
-  window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-})();
-
+// ── Supabase (loaded via ES module) ──
 // Override goToStep to save consultation data on step 6
 var _origGoToStep = goToStep;
 goToStep = function(n) {
@@ -1518,7 +1511,10 @@ goToStep = function(n) {
 
 async function saveConsultation() {
   try {
-    var session = (await window.db.auth.getSession()).data.session;
+    var client = window._sbClient;
+    if (!client) return;
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) return; // not logged in — skip save
     var data = {
       first_name: (document.getElementById('firstName') || {}).value || null,
       last_name: (document.getElementById('lastName') || {}).value || null,
@@ -1532,11 +1528,18 @@ async function saveConsultation() {
       protocol: (document.getElementById('protoName') || {}).textContent || null,
       submitted_at: new Date().toISOString()
     };
-    var payload = { data: data };
-    if (session && session.user) { payload.user_id = session.user.id; }
-    await window.db.from('consultations').insert(payload);
+    await client.from('consultations').insert({ user_id: session.user.id, data: data });
+    // Redirect to portal after a short delay so user sees confirmation screen
+    setTimeout(function(){ window.location.href = 'portal.html'; }, 2500);
   } catch(e) { /* silent fail — don't interrupt the UX */ }
 }
+</script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+window._sbClient = createClient(
+  'https://zvfqukbbglxongvuymzt.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw'
+);
 </script>
 </body>
 </html>

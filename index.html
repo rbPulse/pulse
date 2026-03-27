@@ -1167,15 +1167,16 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <div class="eyebrow" style="justify-content:center;display:flex;">Get Started</div>
     <h2 class="waitlist-title">Be first.<br/><em>Feel different.</em></h2>
     <p class="waitlist-sub">Create your account for early access, founding-member pricing, and your personal protocol portal.</p>
-    <div class="magic-form" id="wl-form">
-      <input type="email" class="magic-input" id="wl-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendMagicLink('wl')"/>
-      <button class="magic-submit" id="wl-btn" onclick="sendMagicLink('wl')">Get Access</button>
+    <div class="magic-form" id="wl-form" style="flex-direction:column;gap:10px;">
+      <input type="email" class="magic-input" id="wl-email" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('wl-pass').focus()"/>
+      <input type="password" class="magic-input" id="wl-pass" placeholder="choose a password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"/>
+      <button class="magic-submit" id="wl-btn" onclick="doSignUp()">Get Access</button>
     </div>
     <div id="wl-error" style="display:none;color:rgba(255,90,90,0.9);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.05em;margin-top:12px;text-align:center;"></div>
     <div class="success-msg" id="wl-success">
       <div class="success-msg-icon">✦</div>
-      <div class="success-msg-title">Check your email.</div>
-      <div class="success-msg-sub">We sent you a sign-in link. Click it to access<br/>your portal — no password needed.</div>
+      <div class="success-msg-title">Account created.</div>
+      <div class="success-msg-sub">Welcome to Pulse. Taking you to your portal...</div>
     </div>
     <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
   </div>
@@ -1721,7 +1722,23 @@ function getPortalUrl() {
   var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
   return window.location.origin + path + 'portal.html';
 }
-function openAuthModal() {
+function openAuthModal(mode) {
+  window._modalMode = mode || 'signin';
+  var title = document.getElementById('modalTitle');
+  var btn = document.getElementById('modalSubmit');
+  var toggle = document.getElementById('modalToggle');
+  var passEl = document.getElementById('modalPass');
+  if (window._modalMode === 'signup') {
+    if (title) title.textContent = 'Create your account.';
+    if (btn) btn.textContent = 'Create Account';
+    if (toggle) toggle.textContent = 'Sign in instead';
+    if (passEl) passEl.setAttribute('autocomplete', 'new-password');
+  } else {
+    if (title) title.textContent = 'Sign in to Pulse.';
+    if (btn) btn.textContent = 'Sign In';
+    if (toggle) toggle.textContent = 'Create one';
+    if (passEl) passEl.setAttribute('autocomplete', 'current-password');
+  }
   document.getElementById('authOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   setTimeout(function(){ var f = document.getElementById('modalEmail'); if(f) f.focus(); }, 150);
@@ -1729,69 +1746,93 @@ function openAuthModal() {
 function closeAuthModal() {
   document.getElementById('authOverlay').classList.remove('open');
   document.body.style.overflow = '';
+  var msg = document.getElementById('modalMsg');
+  if (msg) { msg.textContent = ''; msg.className = 'auth-msg'; }
 }
 function handleAuthOverlayClick(e) {
   if (e.target === document.getElementById('authOverlay')) closeAuthModal();
 }
+function toggleModalMode(e) {
+  e.preventDefault();
+  openAuthModal(window._modalMode === 'signup' ? 'signin' : 'signup');
+}
 
-async function sendMagicLink(source) {
-  var emailEl, btnEl, msgEl, formEl, successEl;
-  if (source === 'modal') {
-    emailEl = document.getElementById('modalEmail');
-    btnEl   = document.getElementById('modalSubmit');
-    msgEl   = document.getElementById('modalMsg');
-  } else {
-    emailEl   = document.getElementById('wl-email');
-    btnEl     = document.getElementById('wl-btn');
-    formEl    = document.getElementById('wl-form');
-    successEl = document.getElementById('wl-success');
-  }
+// Sign up from the waitlist section
+async function doSignUp() {
+  var emailEl = document.getElementById('wl-email');
+  var passEl  = document.getElementById('wl-pass');
+  var btnEl   = document.getElementById('wl-btn');
+  var errEl   = document.getElementById('wl-error');
   var email = emailEl.value.trim();
+  var pass  = passEl.value;
   if (!email || !email.includes('@')) {
     emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
-    setTimeout(function(){ emailEl.style.borderColor=''; }, 900);
-    return;
+    setTimeout(function(){ emailEl.style.borderColor=''; }, 900); return;
   }
+  if (!pass || pass.length < 6) {
+    passEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    if (errEl) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display = 'block'; }
+    setTimeout(function(){ passEl.style.borderColor=''; }, 900); return;
+  }
+  if (errEl) errEl.style.display = 'none';
   var origText = btnEl.textContent;
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
-    // Send magic link via SDK (loaded from esm.sh)
-    if (!window._sbClient) throw new Error('Auth service not ready. Please refresh and try again.');
-    var r = await window._sbClient.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: getPortalUrl(), shouldCreateUser: true }
-    });
+    if (!window._sbClient) throw new Error('Auth service loading. Please wait a moment and try again.');
+    var r = await window._sbClient.auth.signUp({ email: email, password: pass });
     if (r.error) throw r.error;
-    // Save email to waitlist table (fire and forget)
+    // Save to waitlist
     fetch(SB_URL + '/rest/v1/waitlist', {
       method: 'POST',
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ email: email })
     }).catch(function(){});
-
-    if (source === 'modal') {
-      if (msgEl) { msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email for a sign-in link.'; }
-      btnEl.disabled = false; btnEl.textContent = origText;
-    } else {
-      if (formEl) formEl.style.display = 'none';
-      if (successEl) successEl.style.display = 'block';
-    }
+    document.getElementById('wl-form').style.display = 'none';
+    document.getElementById('wl-success').style.display = 'block';
+    setTimeout(function(){ window.location.href = getPortalUrl(); }, 1500);
   } catch(e) {
     btnEl.disabled = false; btnEl.textContent = origText;
-    if (source === 'modal') {
-      if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }
+    if (errEl) { errEl.textContent = e.message || 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
+  }
+}
+
+// Sign in / sign up from the modal
+async function doModalAuth() {
+  var emailEl = document.getElementById('modalEmail');
+  var passEl  = document.getElementById('modalPass');
+  var btnEl   = document.getElementById('modalSubmit');
+  var msgEl   = document.getElementById('modalMsg');
+  var email = emailEl.value.trim();
+  var pass  = passEl.value;
+  if (!email || !email.includes('@')) {
+    emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    setTimeout(function(){ emailEl.style.borderColor=''; }, 900); return;
+  }
+  if (!pass || pass.length < 6) {
+    passEl.style.borderColor = 'rgba(255,80,80,0.8)';
+    setTimeout(function(){ passEl.style.borderColor=''; }, 900); return;
+  }
+  var origText = btnEl.textContent;
+  btnEl.disabled = true; btnEl.textContent = '…';
+  try {
+    if (!window._sbClient) throw new Error('Auth service loading. Please wait a moment and try again.');
+    var r;
+    if (window._modalMode === 'signup') {
+      r = await window._sbClient.auth.signUp({ email: email, password: pass });
     } else {
-      var errEl = document.getElementById('wl-error');
-      if (errEl) { errEl.textContent = e.message || 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
-      emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
-      setTimeout(function(){ emailEl.style.borderColor=''; }, 1500);
+      r = await window._sbClient.auth.signInWithPassword({ email: email, password: pass });
     }
+    if (r.error) throw r.error;
+    closeAuthModal();
+    window.location.href = getPortalUrl();
+  } catch(e) {
+    btnEl.disabled = false; btnEl.textContent = origText;
+    if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = e.message || 'Something went wrong. Try again.'; }
   }
 }
 
 async function doSignOut() {
   if (window._sbClient) await window._sbClient.auth.signOut();
-  localStorage.removeItem('sb-zvfqukbbglxongvuymzt-auth-token');
   updateNavAuth(null);
 }
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
@@ -1815,13 +1856,16 @@ window._sbClient.auth.onAuthStateChange(function(event, session){
     <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
     <div style="margin-bottom:28px;">
       <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.32em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Member Access</div>
-      <div style="font-size:20px;font-weight:600;line-height:1.2;margin-bottom:6px;">Sign in to Pulse.</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6;">Enter your email and we'll send you a sign-in link. No password needed.</div>
+      <div id="modalTitle" style="font-size:20px;font-weight:600;line-height:1.2;margin-bottom:6px;">Sign in to Pulse.</div>
     </div>
     <div id="authFormWrap">
-      <div class="auth-field"><label>Email</label><input type="email" id="modalEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')sendMagicLink('modal')"/></div>
-      <button class="auth-submit" id="modalSubmit" onclick="sendMagicLink('modal')">Send Sign-In Link</button>
+      <div class="auth-field"><label>Email</label><input type="email" id="modalEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('modalPass').focus()"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="modalPass" placeholder="your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doModalAuth()"/></div>
+      <button class="auth-submit" id="modalSubmit" onclick="doModalAuth()">Sign In</button>
       <div class="auth-msg" id="modalMsg"></div>
+      <div style="text-align:center;margin-top:16px;font-size:12px;color:rgba(255,255,255,0.4);">
+        No account? <a href="#" onclick="toggleModalMode(event)" id="modalToggle" style="color:var(--green);text-decoration:none;">Create one</a>
+      </div>
     </div>
   </div>
 </div>

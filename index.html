@@ -754,6 +754,38 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .magic-submit{width:100%;background:var(--green);color:#000;border:none;border-radius:999px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;padding:15px;cursor:pointer;transition:opacity .2s;box-shadow:0 0 20px var(--green-glow);}
 .magic-submit:hover{opacity:0.85;}
 .magic-submit:disabled{opacity:0.5;cursor:not-allowed;}
+/* ── PRODUCT MODAL ── */
+.pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(12px);z-index:9500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+@media(min-width:600px){.pm-overlay{align-items:center;}}
+.pm-overlay.open{opacity:1;pointer-events:all;}
+.pm-modal{background:#111;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;position:relative;transform:translateY(40px);transition:transform .3s ease;-webkit-overflow-scrolling:touch;}
+@media(min-width:600px){.pm-modal{border-radius:20px;transform:translateY(0) scale(0.96);}}
+.pm-overlay.open .pm-modal{transform:translateY(0);}
+@media(min-width:600px){.pm-overlay.open .pm-modal{transform:scale(1);}}
+.pm-header{padding:28px 24px 24px;position:relative;}
+.pm-close{position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.6);width:30px;height:30px;border-radius:50%;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.pm-close:hover{background:rgba(255,255,255,0.15);}
+.pm-hbadge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.15em;text-transform:uppercase;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);padding:4px 10px;border-radius:999px;display:inline-block;margin-bottom:12px;}
+.pm-hname{font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:6px;}
+.pm-htagline{font-size:14px;font-weight:400;}
+.pm-tabs{display:flex;background:rgba(255,255,255,0.06);border-radius:999px;padding:4px;margin:0 24px 4px;}
+.pm-tab{flex:1;padding:9px 8px;background:none;border:none;border-radius:999px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s;}
+.pm-tab.active{background:rgba(255,255,255,0.12);color:#fff;}
+.pm-body{padding:20px 24px;}
+.pm-panel{display:none;}.pm-panel.active{display:block;}
+.pm-benefit{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;}
+.pm-benefit-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.pm-benefit-text{font-size:14px;color:rgba(255,255,255,0.75);line-height:1.55;}
+.pm-price-heading{font-size:16px;font-weight:600;color:#fff;margin-bottom:16px;}
+.pm-price-row{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.pm-price-label{font-size:13px;color:rgba(255,255,255,0.5);}
+.pm-price-amount{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
+.pm-price-amount span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.4);}
+.pm-price-save{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:0.08em;color:#6ecfa0;margin-top:2px;text-align:right;}
+.pm-price-was{font-size:11px;color:rgba(255,255,255,0.3);text-decoration:line-through;}
+.pm-desc{font-size:14px;color:rgba(255,255,255,0.7);line-height:1.7;}
+.pm-footer{padding:16px 24px 28px;border-top:1px solid rgba(255,255,255,0.06);}
+.pm-footer .btn-green{width:100%;text-align:center;display:block;padding:16px;font-size:11px;}
 </style>
 </head>
 <body>
@@ -906,42 +938,42 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
     <!-- POD GRID -->
     <div class="pod-grid">
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);cursor:pointer;" onclick="openPM('sleep')">
         <span class="pod2-badge">Recovery</span>
         <div class="pod2-name">Sleep</div>
         <div class="pod2-sub" style="color:#6ecfa0;">for deep, restorative sleep</div>
         <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
       </div>
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);cursor:pointer;" onclick="openPM('repair')">
         <span class="pod2-badge">Recovery</span>
         <div class="pod2-name">Repair</div>
         <div class="pod2-sub" style="color:#6ecfa0;">for tissue and joint recovery</div>
         <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
       </div>
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);cursor:pointer;" onclick="openPM('growth')">
         <span class="pod2-badge">Performance</span>
         <div class="pod2-name">Growth</div>
         <div class="pod2-sub" style="color:#6ea8e0;">for lean muscle and strength</div>
         <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
       </div>
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);cursor:pointer;" onclick="openPM('endurance')">
         <span class="pod2-badge">Performance</span>
         <div class="pod2-name">Endurance</div>
         <div class="pod2-sub" style="color:#6ea8e0;">for stamina and output</div>
         <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
       </div>
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#2a1a08 0%,#3d2610 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#2a1a08 0%,#3d2610 100%);cursor:pointer;" onclick="openPM('shred')">
         <span class="pod2-badge">Body Comp</span>
         <div class="pod2-name">Shred</div>
         <div class="pod2-sub" style="color:#e0a86e;">for fat loss and definition</div>
         <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
       </div>
 
-      <div class="pod-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);">
+      <div class="pod-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);cursor:pointer;" onclick="openPM('vitality')">
         <span class="pod2-badge">Longevity</span>
         <div class="pod2-name">Vitality</div>
         <div class="pod2-sub" style="color:#b08ee0;">for longevity and cellular health</div>
@@ -956,25 +988,25 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
       <p style="text-align:center;font-size:13px;color:var(--grey);margin-bottom:32px;">Bundle two or more pods and save.</p>
     </div>
     <div class="stacks-grid2">
-      <div class="stack-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
+      <div class="stack-card2" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);cursor:pointer;" onclick="openPM('recovery_stack')">
         <div class="stack2-name">Recovery</div>
         <div class="stack2-sub" style="color:#6ecfa0;">for repair and rest</div>
         <div class="stack2-pods">Repair + Sleep</div>
         <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
       </div>
-      <div class="stack-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);">
+      <div class="stack-card2" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);cursor:pointer;" onclick="openPM('performance_stack')">
         <div class="stack2-name">Performance</div>
         <div class="stack2-sub" style="color:#6ea8e0;">for strength and speed</div>
         <div class="stack2-pods">Growth + Repair</div>
         <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
       </div>
-      <div class="stack-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);">
+      <div class="stack-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);cursor:pointer;" onclick="openPM('longevity_stack')">
         <div class="stack2-name">Longevity</div>
         <div class="stack2-sub" style="color:#b08ee0;">for aging well</div>
         <div class="stack2-pods">Vitality + Sleep</div>
         <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
       </div>
-      <div class="stack-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);">
+      <div class="stack-card2" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);cursor:pointer;" onclick="openPM('optimize_stack')">
         <div class="stack2-name">Optimize</div>
         <div class="stack2-sub" style="color:#b08ee0;">for total optimization</div>
         <div class="stack2-pods">Growth + Shred + Sleep</div>
@@ -1773,7 +1805,61 @@ async function doSignOut() {
   if (window._sbClient) await window._sbClient.auth.signOut();
   updateNavAuth(null);
 }
-document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeAuthModal(); closePM(null,true); } });
+
+// ═══════════════════════════════════════════════════════
+// PRODUCT MODAL
+// ═══════════════════════════════════════════════════════
+var PM_DATA = {
+  sleep:{name:'Sleep',category:'Recovery',gradient:'linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%)',accent:'#6ecfa0',tagline:'for deep, restorative sleep',benefits:['Promotes deep, restorative sleep cycles without sedation or grogginess','Supports natural HGH release during slow-wave sleep phases','Reduces sleep latency — fall asleep faster and stay asleep longer','Compounded in the USA to pharmaceutical-grade standards'],price:129,description:'DSIP (Delta Sleep-Inducing Peptide) is a naturally occurring neuropeptide that works with your body\'s existing sleep architecture. Unlike pharmaceutical sleep aids that sedate, DSIP modulates your sleep cycle at a biological level — improving depth and quality of rest without next-day grogginess or dependency.'},
+  repair:{name:'Repair',category:'Recovery',gradient:'linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%)',accent:'#6ecfa0',tagline:'for tissue and joint recovery',benefits:['Accelerates healing of tendons, ligaments, and muscle tissue','Reduces local and systemic inflammation','BPC-157 + TB-500 — two of the most studied recovery peptides in research','Supports gut lining integrity and full-body repair'],price:149,description:'The Repair pod combines BPC-157 and TB-500 — two peptides with extensive research backing for tissue healing. BPC-157 accelerates local repair at the site of injury while TB-500 promotes systemic recovery and flexibility. Together they form a comprehensive healing protocol used by athletes and clinicians worldwide.'},
+  growth:{name:'Growth',category:'Performance',gradient:'linear-gradient(135deg,#0f1e35 0%,#1a3052 100%)',accent:'#6ea8e0',tagline:'for lean muscle and strength',benefits:['Stimulates your pituitary\'s natural HGH release — no synthetic hormones','Supports lean muscle development and improved body composition','Reduces recovery time between training sessions','Non-suppressive — preserves your body\'s own hormonal feedback loops'],price:179,description:'CJC-1295 and Ipamorelin are a gold-standard combination for growth hormone optimization. Rather than introducing synthetic HGH, this protocol stimulates your pituitary gland to produce more of its own — maintaining your body\'s natural regulatory mechanisms while driving measurable gains in composition, strength, and recovery.'},
+  endurance:{name:'Endurance',category:'Performance',gradient:'linear-gradient(135deg,#0f1e35 0%,#1a3052 100%)',accent:'#6ea8e0',tagline:'for stamina and output',benefits:['Enhances mitochondrial function and cellular energy efficiency','Improves aerobic capacity and VO₂ utilization','Accelerates recovery between high-output training sessions','MOTSc — a mitochondrial-derived peptide with emerging clinical research'],price:189,description:'MOTSc is a mitochondrial-derived peptide that signals cellular energy adaptation — increasing mitochondrial efficiency and improving how your body utilizes oxygen under load. Paired with BPC-157\'s tissue protection, the Endurance pod is designed for athletes pushing aerobic and muscular limits without accumulating injury.'},
+  shred:{name:'Shred',category:'Body Comp',gradient:'linear-gradient(135deg,#2a1a08 0%,#3d2610 100%)',accent:'#e0a86e',tagline:'for fat loss and definition',benefits:['Targets visceral adiposity — the metabolically active fat surrounding organs','Preserves lean muscle mass throughout a caloric deficit','Tesamorelin is FDA-approved with robust clinical data on fat reduction','Amplifies natural GH pulses without suppressing your hormonal axis'],price:199,description:'Tesamorelin is an FDA-approved growth hormone-releasing hormone (GHRH) analog with clinical evidence for visceral fat reduction. It works by amplifying your body\'s natural GH pulses — improving body composition without the risks associated with exogenous growth hormone. Designed for those targeting stubborn fat while protecting hard-earned muscle.'},
+  vitality:{name:'Vitality',category:'Longevity',gradient:'linear-gradient(135deg,#1a1028 0%,#2a1a40 100%)',accent:'#b08ee0',tagline:'for longevity and cellular health',benefits:['Supports telomere health and cellular longevity at the chromosomal level','Potent antioxidant activity — reduces oxidative stress in aging cells','Regulates circadian rhythm and improves deep sleep quality','Studied in longevity research for over three decades'],price:219,description:'Epithalon is a tetrapeptide derived from the pineal gland, studied extensively for its role in telomere regulation and cellular aging. Research suggests it activates telomerase — the enzyme responsible for maintaining chromosome integrity over time. Used in longevity protocols worldwide, Epithalon addresses aging at its most fundamental biological level.'},
+  recovery_stack:{name:'Recovery',category:'Stack',pods:'Repair + Sleep',gradient:'linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%)',accent:'#6ecfa0',tagline:'for repair and rest',benefits:['Complete overnight recovery system — tissue repair + deep sleep optimization','BPC-157, TB-500, and DSIP working synergistically in one protocol','Addresses structural recovery and sleep quality simultaneously','Save $29/mo versus purchasing Repair and Sleep individually'],price:249,originalPrice:278,description:'The Recovery stack pairs the tissue-healing power of Repair (BPC-157 + TB-500) with the sleep optimization of Sleep (DSIP). These two pods are naturally complementary — your body does its deepest repair work during slow-wave sleep, and this stack ensures both processes are fully optimized at the same time.'},
+  performance_stack:{name:'Performance',category:'Stack',pods:'Growth + Repair',gradient:'linear-gradient(135deg,#0f1e35 0%,#1a3052 100%)',accent:'#6ea8e0',tagline:'for strength and speed',benefits:['HGH stimulation + tissue protection in one comprehensive protocol','Build while protecting — muscle growth alongside injury prevention','CJC-1295, Ipamorelin, BPC-157, and TB-500 in one daily protocol','Designed for athletes and serious trainers pushing high training loads'],price:299,originalPrice:328,description:'Growth hormone stimulation from CJC-1295/Ipamorelin combined with BPC-157/TB-500\'s tissue repair creates the complete performance stack. As you train harder, the Repair component protects your joints and connective tissue — allowing you to sustain higher training intensity with significantly reduced injury risk.'},
+  longevity_stack:{name:'Longevity',category:'Stack',pods:'Vitality + Sleep',gradient:'linear-gradient(135deg,#1a1028 0%,#2a1a40 100%)',accent:'#b08ee0',tagline:'for aging well',benefits:['Cellular longevity support + restorative sleep in one daily protocol','Epithalon and DSIP work synergistically through pineal gland pathways','Addresses aging at both the cellular and systemic regulatory level','Save $29/mo versus purchasing Vitality and Sleep individually'],price:319,originalPrice:348,description:'Epithalon\'s cellular longevity support and DSIP\'s sleep optimization are a natural pairing — both act through the pineal gland\'s regulatory pathways. This stack supports telomere health, deep sleep architecture, and the circadian regulation that underlies long-term healthspan and quality of life.'},
+  optimize_stack:{name:'Optimize',category:'Stack',pods:'Growth + Shred + Sleep',gradient:'linear-gradient(135deg,#1a1028 0%,#2a1a40 100%)',accent:'#b08ee0',tagline:'for total optimization',benefits:['Our most comprehensive protocol — performance, body composition, and recovery','HGH stimulation + visceral fat targeting + deep sleep optimization','CJC-1295, Ipamorelin, Tesamorelin, and DSIP in one protocol','Maximum results for those committed to full-spectrum optimization'],price:449,originalPrice:507,description:'The Optimize stack is Pulse\'s most complete protocol — combining growth hormone stimulation (Growth), visceral fat reduction (Shred), and deep sleep optimization (Sleep). Each pod targets a distinct axis of performance and body composition, working together to produce results that individual pods cannot achieve alone.'}
+};
+
+function openPM(key){
+  var d=PM_DATA[key]; if(!d) return;
+  var overlay=document.getElementById('pmOverlay');
+  var header=document.getElementById('pmHeader');
+  header.style.background=d.gradient;
+  document.getElementById('pmBadge').textContent=d.category+(d.pods?' — '+d.pods:'');
+  document.getElementById('pmName').textContent=d.name;
+  document.getElementById('pmTagline').style.color=d.accent;
+  document.getElementById('pmTagline').textContent=d.tagline;
+  // Benefits
+  var bHtml='';
+  d.benefits.forEach(function(b){ bHtml+='<div class="pm-benefit"><span class="pm-benefit-dot" style="background:'+d.accent+'"></span><span class="pm-benefit-text">'+b+'</span></div>'; });
+  document.getElementById('pmPanel0').innerHTML=bHtml;
+  // Pricing
+  var pHtml='<div class="pm-price-heading">Your protocol, your plan.</div>';
+  pHtml+='<div class="pm-price-row"><div><div class="pm-price-label">Monthly</div></div><div style="text-align:right"><div class="pm-price-amount">$'+d.price+'<span>/mo</span></div>'+(d.originalPrice?'<div class="pm-price-save">Save $'+(d.originalPrice-d.price)+'/mo vs. individual pods</div>':'')+'</div></div>';
+  pHtml+='<div class="pm-price-row"><div><div class="pm-price-label">3-Month Protocol</div><div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Recommended cycle length</div></div><div style="text-align:right"><div class="pm-price-amount">$'+Math.round(d.price*0.9)+'<span>/mo</span></div><div class="pm-price-save">Save 10% — $'+d.price+' billed monthly</div></div></div>';
+  document.getElementById('pmPanel1').innerHTML=pHtml;
+  // Description
+  document.getElementById('pmPanel2').innerHTML='<p class="pm-desc">'+d.description+'</p>';
+  // Reset tabs
+  pmSwitch(0);
+  overlay.classList.add('open');
+  document.body.style.overflow='hidden';
+  document.getElementById('pmModal').scrollTop=0;
+}
+function closePM(e,force){
+  if(!force && e && document.getElementById('pmModal').contains(e.target)) return;
+  document.getElementById('pmOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function pmSwitch(idx){
+  for(var i=0;i<3;i++){
+    document.getElementById('pmTab'+i).classList.toggle('active',i===idx);
+    document.getElementById('pmPanel'+i).classList.toggle('active',i===idx);
+  }
+}
 </script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -1804,6 +1890,31 @@ window._sbClient.auth.onAuthStateChange(function(event, session){
       <div style="text-align:center;margin-top:16px;font-size:12px;color:rgba(255,255,255,0.4);">
         No account? <a href="#" onclick="toggleModalMode(event)" id="modalToggle" style="color:var(--green);text-decoration:none;">Create one</a>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="pm-overlay" id="pmOverlay" onclick="closePM(event)">
+  <div class="pm-modal" id="pmModal">
+    <div class="pm-header" id="pmHeader">
+      <button class="pm-close" onclick="closePM(null,true)">×</button>
+      <span class="pm-hbadge" id="pmBadge"></span>
+      <div class="pm-hname" id="pmName"></div>
+      <div class="pm-htagline" id="pmTagline"></div>
+    </div>
+    <div class="pm-tabs">
+      <button class="pm-tab active" id="pmTab0" onclick="pmSwitch(0)">Benefits</button>
+      <button class="pm-tab" id="pmTab1" onclick="pmSwitch(1)">Pricing</button>
+      <button class="pm-tab" id="pmTab2" onclick="pmSwitch(2)">Description</button>
+    </div>
+    <div class="pm-body">
+      <div class="pm-panel active" id="pmPanel0"></div>
+      <div class="pm-panel" id="pmPanel1"></div>
+      <div class="pm-panel" id="pmPanel2"></div>
+    </div>
+    <div class="pm-footer">
+      <a href="consultation.html" class="btn-green">Book Your Consultation</a>
     </div>
   </div>
 </div>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Cards Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#070709;color:#fff;padding:48px 32px;}
+
+h2{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:24px;}
+.section{margin-bottom:56px;}
+
+/* ── POD GRID ── */
+.pod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:900px;}
+
+.pod-card2{
+  border-radius:16px;padding:22px 20px 24px;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  cursor:pointer;min-height:170px;
+  transition:filter .2s, transform .2s;
+  border:1px solid transparent;
+}
+.pod-card2:hover{filter:brightness(1.08);transform:translateY(-2px);}
+.pod-card2::after{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:110px;height:110px;border-radius:50%;
+  background:rgba(255,255,255,0.04);pointer-events:none;
+}
+
+.pod2-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(255,255,255,0.10);color:rgba(255,255,255,0.7);padding:4px 10px;border-radius:999px;display:inline-block;margin-bottom:14px;align-self:flex-start;}
+.pod2-name{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:6px;}
+.pod2-sub{font-size:13px;font-weight:400;line-height:1.4;flex:1;padding-bottom:18px;}
+.pod2-cta{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);}
+.pod2-cta-arrow{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,0.5);}
+
+/* ── STACK GRID ── */
+.stacks-grid2{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:900px;}
+.stack-card2{
+  border-radius:16px;padding:22px 20px 24px;
+  display:flex;flex-direction:column;
+  cursor:pointer;position:relative;overflow:hidden;
+  min-height:150px;
+  transition:filter .2s, transform .2s;
+  border:1px solid transparent;
+}
+.stack-card2:hover{filter:brightness(1.08);transform:translateY(-2px);}
+.stack-card2::after{content:'';position:absolute;top:-30px;right:-30px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.03);pointer-events:none;}
+.stack2-name{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:6px;}
+.stack2-sub{font-size:13px;font-weight:400;line-height:1.4;flex:1;padding-bottom:18px;}
+.stack2-pods{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.06em;color:rgba(255,255,255,0.30);margin-bottom:auto;padding-bottom:18px;}
+.stack2-cta{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);}
+.stack2-cta-arrow{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,0.5);}
+
+/* ────────────────────────────────────────
+   POD COLORS
+──────────────────────────────────────── */
+
+/* SLEEP — softer, lighter Recovery green */
+.card-sleep{
+  background: linear-gradient(145deg, #162d22 0%, #1f4432 55%, #172e24 100%);
+  border-color: rgba(90,200,140,0.10);
+  box-shadow: 0 0 32px rgba(80,190,130,0.09), 0 4px 20px rgba(0,0,0,0.55);
+}
+
+/* REPAIR — deeper, richer Recovery green */
+.card-repair{
+  background: linear-gradient(145deg, #0c1c12 0%, #132018 55%, #0c1a10 100%);
+  border-color: rgba(50,155,90,0.10);
+  box-shadow: 0 0 32px rgba(45,145,85,0.12), 0 4px 20px rgba(0,0,0,0.6);
+}
+
+/* GROWTH — brighter, energetic Performance blue */
+.card-growth{
+  background: linear-gradient(145deg, #112448 0%, #1c3a68 55%, #102240 100%);
+  border-color: rgba(90,160,235,0.10);
+  box-shadow: 0 0 32px rgba(80,150,225,0.09), 0 4px 20px rgba(0,0,0,0.55);
+}
+
+/* ENDURANCE — darker, grounded Performance blue */
+.card-endurance{
+  background: linear-gradient(145deg, #090f20 0%, #101c36 55%, #090e1e 100%);
+  border-color: rgba(55,105,185,0.10);
+  box-shadow: 0 0 32px rgba(50,100,175,0.12), 0 4px 20px rgba(0,0,0,0.65);
+}
+
+/* SHRED — amber / burnt orange */
+.card-shred{
+  background: linear-gradient(145deg, #251608 0%, #3e2812 55%, #221408 100%);
+  border-color: rgba(210,130,55,0.10);
+  box-shadow: 0 0 32px rgba(200,120,50,0.10), 0 4px 20px rgba(0,0,0,0.6);
+}
+
+/* VITALITY — rich purple */
+.card-vitality{
+  background: linear-gradient(145deg, #170b2e 0%, #281542 55%, #160b2c 100%);
+  border-color: rgba(165,115,225,0.10);
+  box-shadow: 0 0 32px rgba(155,105,215,0.09), 0 4px 20px rgba(0,0,0,0.55);
+}
+
+/* ────────────────────────────────────────
+   STACK COLORS — muted, elevated vs pods
+──────────────────────────────────────── */
+
+/* RECOVERY STACK — muted green, slightly more restrained */
+.card-recovery-stack{
+  background: linear-gradient(145deg, #0f2018 0%, #18302200%, #102018 100%);
+  background: linear-gradient(150deg, #0f2018 0%, #172c20 100%);
+  border-color: rgba(75,175,115,0.08);
+  box-shadow: 0 0 28px rgba(70,165,110,0.08), 0 4px 16px rgba(0,0,0,0.55);
+}
+
+/* PERFORMANCE STACK — muted navy */
+.card-performance-stack{
+  background: linear-gradient(150deg, #0d1c38 0%, #152640 100%);
+  border-color: rgba(75,135,215,0.08);
+  box-shadow: 0 0 28px rgba(70,130,205,0.08), 0 4px 16px rgba(0,0,0,0.55);
+}
+
+/* LONGEVITY STACK — muted purple */
+.card-longevity-stack{
+  background: linear-gradient(150deg, #130c24 0%, #1c1238 100%);
+  border-color: rgba(155,105,215,0.08);
+  box-shadow: 0 0 28px rgba(145,100,205,0.08), 0 4px 16px rgba(0,0,0,0.55);
+}
+
+/* OPTIMIZE STACK — dark charcoal, multi-category flagship */
+.card-optimize-stack{
+  background: linear-gradient(150deg, #131316 0%, #1a1a1e 100%);
+  border-color: rgba(255,255,255,0.07);
+  box-shadow:
+    0 0 28px rgba(80,185,125,0.05),
+    0 0 40px rgba(75,135,215,0.04),
+    0 0 30px rgba(205,125,55,0.03),
+    0 4px 20px rgba(0,0,0,0.65);
+}
+</style>
+</head>
+<body>
+
+<div class="section">
+  <h2>Pulse Kits — Pods</h2>
+  <div class="pod-grid">
+
+    <!-- Sleep: softer/lighter green -->
+    <div class="pod-card2 card-sleep">
+      <span class="pod2-badge">Recovery</span>
+      <div class="pod2-name">Sleep</div>
+      <div class="pod2-sub" style="color:#7dd4a6;">for deep, restorative sleep</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Repair: deeper/richer green -->
+    <div class="pod-card2 card-repair">
+      <span class="pod2-badge">Recovery</span>
+      <div class="pod2-name">Repair</div>
+      <div class="pod2-sub" style="color:#52bc78;">for tissue and joint recovery</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Growth: brighter/energetic blue -->
+    <div class="pod-card2 card-growth">
+      <span class="pod2-badge">Performance</span>
+      <div class="pod2-name">Growth</div>
+      <div class="pod2-sub" style="color:#7ab4ea;">for lean muscle and strength</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Endurance: darker/grounded blue -->
+    <div class="pod-card2 card-endurance">
+      <span class="pod2-badge">Performance</span>
+      <div class="pod2-name">Endurance</div>
+      <div class="pod2-sub" style="color:#5a8ccc;">for stamina and output</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Shred: amber/burnt orange -->
+    <div class="pod-card2 card-shred">
+      <span class="pod2-badge">Body Comp</span>
+      <div class="pod2-name">Shred</div>
+      <div class="pod2-sub" style="color:#d4924c;">for fat loss and definition</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Vitality: rich purple -->
+    <div class="pod-card2 card-vitality">
+      <span class="pod2-badge">Longevity</span>
+      <div class="pod2-name">Vitality</div>
+      <div class="pod2-sub" style="color:#aa80d8;">for longevity and cellular health</div>
+      <div class="pod2-cta">Learn more <span class="pod2-cta-arrow">→</span></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h2>Pulse Stacks</h2>
+  <div class="stacks-grid2">
+
+    <!-- Recovery Stack: muted green -->
+    <div class="stack-card2 card-recovery-stack">
+      <div class="stack2-name">Recovery</div>
+      <div class="stack2-sub" style="color:#6ecfa0;">for repair and rest</div>
+      <div class="stack2-pods">Repair + Sleep</div>
+      <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Performance Stack: muted navy -->
+    <div class="stack-card2 card-performance-stack">
+      <div class="stack2-name">Performance</div>
+      <div class="stack2-sub" style="color:#6ea8e0;">for strength and speed</div>
+      <div class="stack2-pods">Growth + Repair</div>
+      <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Longevity Stack: muted purple -->
+    <div class="stack-card2 card-longevity-stack">
+      <div class="stack2-name">Longevity</div>
+      <div class="stack2-sub" style="color:#b08ee0;">for aging well</div>
+      <div class="stack2-pods">Vitality + Sleep</div>
+      <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
+    </div>
+
+    <!-- Optimize Stack: dark charcoal flagship -->
+    <div class="stack-card2 card-optimize-stack">
+      <div class="stack2-name">Optimize</div>
+      <div class="stack2-sub" style="color:rgba(255,255,255,0.5);">for total optimization</div>
+      <div class="stack2-pods">Growth + Shred + Sleep</div>
+      <div class="stack2-cta">Learn more <span class="stack2-cta-arrow">→</span></div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -774,11 +774,12 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .pm-benefit-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px;}
 .pm-benefit-text{font-size:12px;color:rgba(255,255,255,0.75);line-height:1.4;}
 .pm-price-heading{font-size:12px;font-weight:600;color:#fff;margin-bottom:10px;}
-.pm-price-row{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-.pm-price-label{font-size:11px;color:rgba(255,255,255,0.5);}
-.pm-price-amount{font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
+.pm-price-row{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.pm-price-label{font-size:12px;color:rgba(255,255,255,0.6);font-weight:500;}
+.pm-price-note{font-size:10px;color:rgba(255,255,255,0.28);margin-top:2px;}
+.pm-price-amount{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.02em;white-space:nowrap;}
 .pm-price-amount span{font-size:10px;font-weight:400;color:rgba(255,255,255,0.4);}
-.pm-price-save{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:0.08em;color:#6ecfa0;margin-top:2px;text-align:right;}
+.pm-price-save{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:0.08em;color:#6ecfa0;margin-top:3px;text-align:right;white-space:nowrap;}
 .pm-price-was{font-size:10px;color:rgba(255,255,255,0.3);text-decoration:line-through;}
 .pm-desc{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.55;}
 .pm-footer{padding:12px 20px 22px;border-top:1px solid rgba(255,255,255,0.06);}
@@ -1830,8 +1831,8 @@ function openPM(key){
   d.benefits.forEach(function(b){ bHtml+='<div class="pm-benefit"><span class="pm-benefit-dot" style="background:'+d.accent+'"></span><span class="pm-benefit-text">'+b+"</span></div>"; });
   document.getElementById("pmPanel0").innerHTML=bHtml;
   var pHtml='<div class="pm-price-heading">Your protocol, your plan.</div>';
-  pHtml+='<div class="pm-price-row"><div><div class="pm-price-label">Monthly</div></div><div style="text-align:right"><div class="pm-price-amount">$'+d.price+'<span>/mo</span></div>'+(d.originalPrice?'<div class="pm-price-save">Save $'+(d.originalPrice-d.price)+"/mo vs. individual pods</div>":"")+"</div></div>";
-  pHtml+='<div class="pm-price-row"><div><div class="pm-price-label">3-Month Protocol</div><div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Recommended cycle length</div></div><div style="text-align:right"><div class="pm-price-amount">$'+Math.round(d.price*0.9)+'<span>/mo</span></div><div class="pm-price-save">Save 10% &mdash; $'+d.price+" billed monthly</div></div></div>";
+  pHtml+='<div class="pm-price-row"><div class="pm-price-label">Monthly</div><div style="text-align:right"><div class="pm-price-amount">$'+d.price+'<span>/mo</span></div>'+(d.originalPrice?'<div class="pm-price-save">Save $'+(d.originalPrice-d.price)+'/mo</div>':"")+"</div></div>";
+  pHtml+='<div class="pm-price-row"><div><div class="pm-price-label">3-Month Protocol</div><div class="pm-price-note">Recommended cycle</div></div><div style="text-align:right"><div class="pm-price-amount">$'+Math.round(d.price*0.9)+'<span>/mo</span></div><div class="pm-price-save">Save 10%</div></div></div>';
   document.getElementById("pmPanel1").innerHTML=pHtml;
   document.getElementById("pmPanel2").innerHTML='<p class="pm-desc">'+d.description+"</p>";
   pmSwitch(0);

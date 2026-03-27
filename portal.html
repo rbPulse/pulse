@@ -334,9 +334,14 @@ var PROTOCOL_MAP = {
 };
 
 // ── Auth check ──
+var PREVIEW_MODE = new URLSearchParams(window.location.search).get('preview') === 'pulse2025';
 db.auth.getSession().then(function(r) {
   if (!r.data || !r.data.session) {
-    window.location.href = 'index.html';
+    if (PREVIEW_MODE) {
+      initPortal({ email: 'preview@pulse.com', id: 'preview', created_at: new Date().toISOString() });
+    } else {
+      window.location.href = 'index.html';
+    }
     return;
   }
   initPortal(r.data.session.user);
@@ -361,6 +366,13 @@ function initPortal(user) {
   document.getElementById('memberSince').textContent = 'Member since ' + sinceStr;
 
   // Fetch consultation
+  if (PREVIEW_MODE) {
+    // Inject a fake consultation for preview
+    populatePortal(user, {
+      data: { first_name: 'Alex', goals: ['performance'], age: 32, gender: 'male' }
+    }, greeting);
+    return;
+  }
   db.from('consultations')
     .select('*')
     .eq('user_id', user.id)

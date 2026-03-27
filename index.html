@@ -1755,17 +1755,28 @@ async function sendMagicLink(source) {
   var origText = btnEl.textContent;
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
-    // Save email to waitlist table
-    var wlRes = await fetch(SB_URL + '/rest/v1/waitlist', {
+    // Send magic link — match exact format the Supabase SDK uses
+    var redirectTo = encodeURIComponent(getPortalUrl());
+    var authRes = await fetch(SB_URL + '/auth/v1/otp?redirect_to=' + redirectTo, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'X-Client-Info': 'supabase-js-web/2.39.7'
+      },
+      body: JSON.stringify({ email: email, data: {}, create_user: true, gotrue_meta_security: {} })
+    });
+    if (!authRes.ok) {
+      var errBody = await authRes.text().catch(function(){ return ''; });
+      throw new Error('[' + authRes.status + '] ' + (errBody || 'Auth request failed'));
+    }
+    // Save email to waitlist table (fire and forget)
+    fetch(SB_URL + '/rest/v1/waitlist', {
       method: 'POST',
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ email: email })
-    });
-    if (!wlRes.ok && wlRes.status !== 409) { // 409 = duplicate, that's fine
-      var errBody = await wlRes.text().catch(function(){ return ''; });
-      throw new Error('[' + wlRes.status + '] ' + (errBody || 'Could not save email'));
-    }
-    // TODO: send magic link once Supabase auth service is confirmed active
+    }).catch(function(){});
 
     if (source === 'modal') {
       if (msgEl) { msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email for a sign-in link.'; }

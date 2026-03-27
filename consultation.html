@@ -665,10 +665,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
             stroke-dasharray="377" stroke-dashoffset="0"/>
         </svg>
         <div class="countdown-time">
-          <div class="countdown-digits" id="countDigits">15:00</div>
-          <div class="countdown-unit">until session</div>
+          <div class="countdown-digits" id="countDigits">--:--</div>
+          <div class="countdown-unit" id="countUnit">until session</div>
         </div>
       </div>
+      <div id="apptDateTime" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;color:var(--grey2);text-align:center;margin-top:4px;margin-bottom:24px;"></div>
 
       <div class="waiting-checklist">
         <div class="waiting-checklist-title">Pre-session checklist</div>
@@ -1265,55 +1266,102 @@ function submitStep3(){
   goToStep(4);
 }
 
-// ── STEP 4: COUNTDOWN ──
-var countdownSeconds = 15 * 60; // 15 minutes
+/// ── STEP 4: COUNTDOWN ──
 var countdownInterval = null;
 var CIRCUMFERENCE = 2 * Math.PI * 60; // r=60
+var apptTimestamp = null; // ms since epoch for the appointment
 
-function startCountdown(){
-  var ring = document.getElementById('countRingFill');
-  var digits = document.getElementById('countDigits');
-  var joinBtn = document.getElementById('joinSessionBtn');
-  var joinHint = document.getElementById('joinHint');
-  if(countdownInterval) clearInterval(countdownInterval);
-
-  function tick(){
-    var m = Math.floor(countdownSeconds / 60);
-    var s = countdownSeconds % 60;
-    digits.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-    var progress = 1 - countdownSeconds / (15 * 60);
-    ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
-
-    if(countdownSeconds <= 0){
-      clearInterval(countdownInterval);
-      digits.textContent = '00:00';
-      joinBtn.classList.add('ready');
-      joinHint.textContent = 'Dr. Elguizaoui is ready';
-      gsap.to(joinBtn,{scale:1.03,repeat:-1,yoyo:true,duration:1.2,ease:'sine.inOut'});
-    } else {
-      countdownSeconds--;
-    }
-  }
-  ring.style.strokeDasharray = CIRCUMFERENCE;
-  ring.style.strokeDashoffset = CIRCUMFERENCE;
-  tick();
-  countdownInterval = setInterval(tick, 1000);
+function formatApptDisplay(ts) {
+  var d = new Date(ts);
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var h = d.getHours(), m = d.getMinutes();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate() + '  ·  ' +
+    h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
 }
 
-// Hook into showStep to start countdown when step 4 becomes active
+function runCountdownTick() {
+  var ring   = document.getElementById('countRingFill');
+  var digits = document.getElementById('countDigits');
+  var unit   = document.getElementById('countUnit');
+  var joinBtn = document.getElementById('joinSessionBtn');
+  var joinHint = document.getElementById('joinHint');
+
+  var now = Date.now();
+  var secsUntil = Math.max(0, Math.round((apptTimestamp - now) / 1000));
+  var WINDOW = 15 * 60; // 15 minutes in seconds
+
+  if (secsUntil > WINDOW) {
+    // More than 15 min away — show waiting state, no active countdown
+    digits.textContent = '--:--';
+    unit.textContent = 'session not yet open';
+    ring.style.strokeDasharray = CIRCUMFERENCE;
+    ring.style.strokeDashoffset = CIRCUMFERENCE; // empty ring
+    return;
+  }
+
+  // Within 15-min window — count down
+  var m = Math.floor(secsUntil / 60);
+  var s = secsUntil % 60;
+  digits.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  unit.textContent = 'until session';
+  var progress = 1 - secsUntil / WINDOW;
+  ring.style.strokeDasharray = CIRCUMFERENCE;
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+
+  if (secsUntil <= 0) {
+    clearInterval(countdownInterval);
+    digits.textContent = '00:00';
+    joinBtn.classList.add('ready');
+    joinHint.textContent = 'Dr. Elguizaoui is ready';
+    gsap.to(joinBtn, {scale:1.03, repeat:-1, yoyo:true, duration:1.2, ease:'sine.inOut'});
+  }
+}
+
+function startCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  runCountdownTick();
+  countdownInterval = setInterval(runCountdownTick, 1000);
+}
+
+// Hook into showStep to initialise step 4
 var _origShowStep = showStep;
 showStep = function(n){
   _origShowStep(n);
-  if(n === 4){
-    countdownSeconds = 15 * 60;
+  if (n === 4) {
     var joinBtn = document.getElementById('joinSessionBtn');
     joinBtn.classList.remove('ready');
     gsap.killTweensOf(joinBtn);
-    gsap.set(joinBtn,{scale:1});
+    gsap.set(joinBtn, {scale:1});
     document.getElementById('joinHint').textContent = 'Opens when your clinician is ready';
+
+    // Build appointment timestamp from selected date + slot
+    var apptEl = document.getElementById('apptDateTime');
+    if (typeof selectedDate !== 'undefined' && selectedDate && typeof selectedSlot !== 'undefined' && selectedSlot) {
+      // selectedDate: "YYYY-MM-DD", selectedSlot: "H:MM AM/PM" or similar
+      var combined = new Date(selectedDate + 'T' + to24h(selectedSlot));
+      apptTimestamp = combined.getTime();
+      if (apptEl) apptEl.textContent = formatApptDisplay(apptTimestamp);
+    } else {
+      apptTimestamp = Date.now() + 15 * 60 * 1000; // fallback: 15 min from now
+      if (apptEl) apptEl.textContent = '';
+    }
     startCountdown();
   }
 };
+
+function to24h(slot) {
+  // Convert "9:00 AM" / "2:30 PM" to "09:00:00"
+  if (!slot) return '00:00:00';
+  var m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return '00:00:00';
+  var h = parseInt(m[1]), min = m[2], ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return (h < 10 ? '0' : '') + h + ':' + min + ':00';
+}
 
 // ── STEP 5: LIVE SESSION ──
 var sessionInterval = null;

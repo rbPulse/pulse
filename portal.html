@@ -88,7 +88,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .btn-ghost:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
 
 /* ── QUICK STATS ── */
-.quick-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.quick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-bottom:20px;}
 .stat-tile{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;text-align:center;}
 .stat-tile-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#fff;margin-bottom:6px;}
 .stat-tile-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);}
@@ -132,13 +132,51 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .resources-title{font-size:20px;font-weight:600;margin-bottom:10px;}
 .resources-body{font-size:14px;color:var(--grey);line-height:1.75;max-width:420px;margin:0 auto;}
 
+/* ── TRACKER ── */
+.log-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.log-card-info{flex:1;}
+.log-card-title{font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;}
+.log-card-sub{font-size:12px;color:var(--grey2);}
+.log-card-logged{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--green);}
+.cal-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:20px;}
+.cal-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--green);margin-bottom:18px;}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
+.cal-dow{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.22);text-align:center;padding-bottom:4px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-cell{aspect-ratio:1;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.25);transition:background .15s;}
+.cal-cell.logged{background:rgba(58,122,92,0.28);border-color:rgba(58,122,92,0.45);color:rgba(100,200,150,0.9);}
+.cal-cell.today{border-color:rgba(255,255,255,0.28);color:rgba(255,255,255,0.6);}
+.cal-cell.today.logged{border-color:rgba(58,122,92,0.7);}
+.cal-cell.empty{background:transparent;border-color:transparent;color:transparent;}
+.streak-row{display:flex;align-items:center;gap:36px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05);}
+.streak-block{text-align:center;}
+.streak-num{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:#fff;line-height:1;}
+.streak-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-top:5px;}
+
+/* ── RESOURCES (Phase 4) ── */
+.resource-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.resource-card-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 24px;transition:border-color .2s,background .2s;}
+.resource-card-item:hover{border-color:rgba(255,255,255,0.1);background:var(--card2);}
+.rc-icon{width:34px;height:34px;border-radius:8px;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.rc-icon svg{width:15px;height:15px;stroke:var(--green);fill:none;stroke-width:1.5;}
+.rc-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;}
+.rc-body{font-size:12px;color:var(--grey2);line-height:1.65;}
+.support-request-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:20px;}
+.support-request-title{font-size:16px;font-weight:500;color:#fff;margin-bottom:6px;}
+.support-request-sub{font-size:13px;color:var(--grey);line-height:1.65;margin-bottom:16px;}
+.support-textarea{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:300;padding:13px 16px;resize:none;min-height:90px;outline:none;line-height:1.6;transition:border-color .2s;}
+.support-textarea::placeholder{color:rgba(255,255,255,0.2);}
+.support-textarea:focus{border-color:rgba(58,122,92,0.4);}
+.support-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:12px;}
+.support-sent-msg{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);display:none;}
+
 /* ── MOBILE ── */
 @media(max-width:768px){
   nav{padding:16px 20px;}
   .nav-user-email{display:none;}
   .portal-sidebar{position:static;width:100%;height:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,0.05);flex-direction:row;padding:0;overflow-x:auto;overflow-y:visible;top:62px;background:var(--surface);}
   .portal-sidebar .sidebar-section-label{display:none;}
-  .sidebar-item{padding:14px 20px;border-left:none;border-bottom:2px solid transparent;flex-direction:column;gap:4px;font-size:9px;min-width:80px;justify-content:center;}
+  .sidebar-item{padding:14px 16px;border-left:none;border-bottom:2px solid transparent;flex-direction:column;gap:4px;font-size:9px;min-width:70px;justify-content:center;}
   .sidebar-item svg{width:16px;height:16px;}
   .sidebar-item.active{border-bottom-color:var(--green);border-left-color:transparent;background:rgba(255,255,255,0.03);}
   .portal-layout{flex-direction:column;}
@@ -150,6 +188,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .tl-dot{flex-shrink:0;margin-bottom:0;margin-top:2px;}
   .member-card{flex-direction:column;align-items:flex-start;}
   .portal-main{max-width:100%;}
+  .resource-grid{grid-template-columns:1fr;}
+  .streak-row{gap:20px;}
 }
 </style>
 </head>
@@ -189,6 +229,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="sidebar-item" id="nav-protocol" onclick="switchTab('protocol')">
         <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
         My Protocol
+      </div>
+      <div class="sidebar-item" id="nav-tracker" onclick="switchTab('tracker')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Tracker
       </div>
       <div class="sidebar-item" id="nav-resources" onclick="switchTab('resources')">
         <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -233,6 +277,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="stat-tile">
             <div class="stat-tile-val" id="statCycle">—</div>
             <div class="stat-tile-label">Cycle Length</div>
+          </div>
+          <div class="stat-tile" id="streakTile" style="display:none;">
+            <div class="stat-tile-val" id="statStreak">0</div>
+            <div class="stat-tile-label">Day Streak</div>
           </div>
         </div>
       </div>
@@ -304,15 +352,87 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
 
+      <!-- ── TRACKER TAB ── -->
+      <div class="portal-tab" id="tab-tracker">
+        <div class="tab-eyebrow">Injection Tracker</div>
+        <div class="tab-title">Track your doses.</div>
+
+        <!-- Log today -->
+        <div class="log-card">
+          <div class="log-card-info">
+            <div class="log-card-title">Log today's dose</div>
+            <div class="log-card-sub">Keep your protocol on track. Record each injection as you go.</div>
+          </div>
+          <div>
+            <button class="btn-green" id="logDoseBtn" onclick="logDose()">Log Dose</button>
+            <div class="log-card-logged" id="loggedMsg" style="display:none;">✓ Logged today</div>
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="cal-card">
+          <div class="cal-label">Last 28 Days</div>
+          <div class="cal-dow-row">
+            <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div>
+            <div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div>
+            <div class="cal-dow">S</div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="streak-row">
+            <div class="streak-block">
+              <div class="streak-num" id="streakNum">—</div>
+              <div class="streak-lbl">Day Streak</div>
+            </div>
+            <div class="streak-block">
+              <div class="streak-num" id="consistencyNum">—</div>
+              <div class="streak-lbl">28-Day Rate</div>
+            </div>
+            <div class="streak-block">
+              <div class="streak-num" id="totalLogged">—</div>
+              <div class="streak-lbl">Total Logged</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── RESOURCES TAB ── -->
       <div class="portal-tab" id="tab-resources">
-        <div class="resources-card">
-          <div class="resources-icon">
-            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <div class="tab-eyebrow">Resources</div>
+        <div class="tab-title">Your protocol library.</div>
+
+        <div class="resource-grid">
+          <div class="resource-card-item">
+            <div class="rc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <div class="rc-title">Injection Guide</div>
+            <div class="rc-body">Step-by-step instructions for subcutaneous injections. Covers site rotation, needle selection, and sterile preparation techniques.</div>
           </div>
-          <div class="tab-eyebrow" style="justify-content:center;">Coming Soon</div>
-          <div class="resources-title">Your resource library.</div>
-          <div class="resources-body">Injection guides, storage instructions, what to expect in weeks 1 through 12, and protocol-specific FAQs will live here.</div>
+          <div class="resource-card-item">
+            <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+            <div class="rc-title">Storage Instructions</div>
+            <div class="rc-body">Refrigeration requirements, shelf life by compound, and how to store your kit safely during travel or extended periods.</div>
+          </div>
+          <div class="resource-card-item">
+            <div class="rc-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="rc-title">What to Expect</div>
+            <div class="rc-body">Week-by-week expectations for your first 12 weeks. Early indicators, adaptation windows, and when to expect the clearest changes.</div>
+          </div>
+          <div class="resource-card-item">
+            <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="rc-title">Protocol FAQ</div>
+            <div class="rc-body">Common questions about your compounds, timing, cycling, and what to do if you miss a dose. Reviewed by your clinical team.</div>
+          </div>
+        </div>
+
+        <!-- Support / adjustment request -->
+        <div class="support-request-card">
+          <div class="support-request-title">Request a protocol adjustment.</div>
+          <div class="support-request-sub">If you're experiencing side effects, want to discuss dosing, or have questions about your protocol, send a message to your clinical team. We typically respond within 24 hours.</div>
+          <textarea class="support-textarea" id="supportMsg" placeholder="Describe what you'd like to discuss or adjust..."></textarea>
+          <div class="support-footer">
+            <div class="support-sent-msg" id="supportSentMsg">Message sent. We'll follow up within 24 hours.</div>
+            <div style="flex:1;"></div>
+            <button class="btn-green" onclick="submitSupportRequest()">Send Message</button>
+          </div>
         </div>
       </div>
 
@@ -335,10 +455,11 @@ var PROTOCOL_MAP = {
 
 // ── Auth check ──
 var PREVIEW_MODE = new URLSearchParams(window.location.search).get('preview') === 'pulse2025';
+var currentUserId = null;
 db.auth.getSession().then(function(r) {
   if (!r.data || !r.data.session) {
     if (PREVIEW_MODE) {
-      initPortal({ email: 'preview@pulse.com', id: 'preview', created_at: new Date().toISOString() });
+      initPortal({ email: 'preview@pulse.com', id: 'preview-uid', created_at: new Date().toISOString() });
     } else {
       window.location.href = 'index.html';
     }
@@ -348,6 +469,7 @@ db.auth.getSession().then(function(r) {
 });
 
 function initPortal(user) {
+  currentUserId = user.id;
   // Show nav + app, hide loading
   document.getElementById('portal-loading').style.display = 'none';
   document.getElementById('portal-nav').style.display = 'flex';
@@ -367,10 +489,10 @@ function initPortal(user) {
 
   // Fetch consultation
   if (PREVIEW_MODE) {
-    // Inject a fake consultation for preview
     populatePortal(user, {
       data: { first_name: 'Alex', goals: ['performance'], age: 32, gender: 'male' }
     }, greeting);
+    loadDoseLogs();
     return;
   }
   db.from('consultations')
@@ -385,6 +507,7 @@ function initPortal(user) {
     .catch(function() {
       populatePortal(user, null, greeting);
     });
+  loadDoseLogs();
 }
 
 function populatePortal(user, consultation, greeting) {
@@ -396,6 +519,7 @@ function populatePortal(user, consultation, greeting) {
     firstName = d.first_name || '';
     var goalKey = d.goals && d.goals.length > 0 ? d.goals[0] : 'recovery';
     proto = PROTOCOL_MAP[goalKey] || PROTOCOL_MAP.recovery;
+    window._userProto = goalKey;
   }
 
   var displayName = firstName || user.email.split('@')[0];
@@ -450,11 +574,171 @@ function populatePortal(user, consultation, greeting) {
 
 // ── Tab switching ──
 function switchTab(name) {
-  ['overview','protocol','resources'].forEach(function(t) {
+  ['overview','protocol','tracker','resources'].forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('nav-' + t).classList.toggle('active', t === name);
   });
+  if (name === 'tracker') { loadDoseLogs(); }
   window.scrollTo(0, 0);
+}
+
+// ── TRACKER ──
+var loggedDates = [];
+
+function localDateStr(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function loadDoseLogs() {
+  if (!currentUserId) return;
+  if (PREVIEW_MODE) {
+    var fakeDates = [];
+    var t = new Date();
+    [0,1,2,4,5,7,8,9,12,13,14,15,19,20].forEach(function(ago) {
+      var d = new Date(t); d.setDate(d.getDate() - ago);
+      fakeDates.push(localDateStr(d));
+    });
+    loggedDates = fakeDates;
+    renderCalendar();
+    checkTodayLogged();
+    return;
+  }
+  var today = new Date(); today.setHours(0,0,0,0);
+  var start = new Date(today); start.setDate(start.getDate() - 27);
+  db.from('dose_logs')
+    .select('logged_at')
+    .eq('user_id', currentUserId)
+    .gte('logged_at', localDateStr(start))
+    .then(function(res) {
+      loggedDates = (res.data || []).map(function(r) {
+        return r.logged_at.split('T')[0];
+      });
+      renderCalendar();
+      checkTodayLogged();
+    })
+    .catch(function() {
+      loggedDates = [];
+      renderCalendar();
+    });
+}
+
+function renderCalendar() {
+  var grid = document.getElementById('calGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = localDateStr(today);
+
+  // Window = last 28 days
+  var windowStart = new Date(today); windowStart.setDate(windowStart.getDate() - 27);
+
+  // Grid starts on the Sunday on or before windowStart
+  var gridStart = new Date(windowStart); gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+
+  // Grid ends on the Saturday on or after today
+  var gridEnd = new Date(today); gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
+  var loggedSet = new Set(loggedDates);
+
+  var d = new Date(gridStart);
+  while (d <= gridEnd) {
+    var dStr = localDateStr(d);
+    var inWindow = d >= windowStart && d <= today;
+    var cell = document.createElement('div');
+
+    if (!inWindow) {
+      cell.className = 'cal-cell empty';
+    } else {
+      cell.className = 'cal-cell';
+      if (loggedSet.has(dStr)) cell.classList.add('logged');
+      if (dStr === todayStr) cell.classList.add('today');
+      cell.textContent = d.getDate();
+    }
+    grid.appendChild(cell);
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Streak (consecutive days ending today)
+  var streak = 0;
+  var check = new Date(today);
+  while (loggedSet.has(localDateStr(check))) {
+    streak++;
+    check.setDate(check.getDate() - 1);
+  }
+
+  // 28-day consistency
+  var logged28 = 0;
+  for (var i = 0; i < 28; i++) {
+    var c = new Date(today); c.setDate(c.getDate() - i);
+    if (loggedSet.has(localDateStr(c))) logged28++;
+  }
+
+  var el = function(id){ return document.getElementById(id); };
+  if (el('streakNum')) el('streakNum').textContent = streak;
+  if (el('consistencyNum')) el('consistencyNum').textContent = Math.round((logged28/28)*100) + '%';
+  if (el('totalLogged')) el('totalLogged').textContent = loggedDates.length;
+
+  // Overview streak tile
+  if (el('statStreak')) el('statStreak').textContent = streak + (streak === 1 ? ' day' : 'd');
+  if (el('streakTile') && streak > 0) el('streakTile').style.display = '';
+}
+
+function checkTodayLogged() {
+  var todayStr = localDateStr(new Date());
+  if (loggedDates.indexOf(todayStr) !== -1) {
+    var btn = document.getElementById('logDoseBtn');
+    var msg = document.getElementById('loggedMsg');
+    if (btn) btn.style.display = 'none';
+    if (msg) msg.style.display = 'block';
+  }
+}
+
+function logDose() {
+  var todayStr = localDateStr(new Date());
+  if (loggedDates.indexOf(todayStr) !== -1) return;
+  var btn = document.getElementById('logDoseBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Logging...'; }
+
+  function onSuccess() {
+    loggedDates.push(todayStr);
+    renderCalendar();
+    if (btn) btn.style.display = 'none';
+    var msg = document.getElementById('loggedMsg');
+    if (msg) msg.style.display = 'block';
+  }
+
+  if (PREVIEW_MODE) { onSuccess(); return; }
+
+  db.from('dose_logs').insert({
+    user_id: currentUserId,
+    logged_at: todayStr,
+    protocol: window._userProto || 'unknown'
+  }).then(onSuccess).catch(function() {
+    if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; }
+  });
+}
+
+// ── SUPPORT REQUEST ──
+function submitSupportRequest() {
+  var msgEl = document.getElementById('supportMsg');
+  var sentEl = document.getElementById('supportSentMsg');
+  if (!msgEl || !msgEl.value.trim()) return;
+
+  function onSent() {
+    msgEl.disabled = true;
+    if (sentEl) sentEl.style.display = 'block';
+  }
+
+  if (PREVIEW_MODE) { onSent(); return; }
+
+  db.from('support_requests').insert({
+    user_id: currentUserId,
+    message: msgEl.value.trim(),
+    type: 'adjustment'
+  }).then(onSent).catch(onSent);
 }
 
 // ── Sign out ──

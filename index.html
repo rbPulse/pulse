@@ -1755,22 +1755,13 @@ async function sendMagicLink(source) {
   var origText = btnEl.textContent;
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
-    // Send magic link — match exact format the Supabase SDK uses
-    var redirectTo = encodeURIComponent(getPortalUrl());
-    var authRes = await fetch(SB_URL + '/auth/v1/otp?redirect_to=' + redirectTo, {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': 'application/json',
-        'X-Client-Info': 'supabase-js-web/2.39.7'
-      },
-      body: JSON.stringify({ email: email, data: {}, create_user: true, gotrue_meta_security: {} })
+    // Send magic link via SDK (loaded from esm.sh)
+    if (!window._sbClient) throw new Error('Auth service not ready. Please refresh and try again.');
+    var r = await window._sbClient.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: getPortalUrl(), shouldCreateUser: true }
     });
-    if (!authRes.ok) {
-      var errBody = await authRes.text().catch(function(){ return ''; });
-      throw new Error('[' + authRes.status + '] ' + (errBody || 'Auth request failed'));
-    }
+    if (r.error) throw r.error;
     // Save email to waitlist table (fire and forget)
     fetch(SB_URL + '/rest/v1/waitlist', {
       method: 'POST',
@@ -1798,11 +1789,24 @@ async function sendMagicLink(source) {
   }
 }
 
-function doSignOut() {
+async function doSignOut() {
+  if (window._sbClient) await window._sbClient.auth.signOut();
   localStorage.removeItem('sb-zvfqukbbglxongvuymzt-auth-token');
   updateNavAuth(null);
 }
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
+</script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+window._sbClient = createClient(SB_URL, SB_KEY);
+window._sbClient.auth.getSession().then(function(r){
+  if (r.data && r.data.session) updateNavAuth(r.data.session.user);
+});
+window._sbClient.auth.onAuthStateChange(function(event, session){
+  updateNavAuth(session ? session.user : null);
+});
 </script>
 
 <!-- AUTH MODAL -->

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Modal Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;}
+
+/* Fake site background to show bleed-through effect */
+.fake-bg{position:fixed;inset:0;background:linear-gradient(160deg,#0d1a0f 0%,#0a0a0a 40%,#0a0f1a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.fake-bg-text{font-size:36px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:-0.03em;}
+.fake-cards{display:flex;gap:12px;opacity:0.4;}
+.fake-card{width:120px;height:80px;border-radius:12px;background:linear-gradient(135deg,#152b1f,#1e3d2a);}
+.fake-card:nth-child(2){background:linear-gradient(135deg,#0f1e35,#1a3052);}
+.fake-card:nth-child(3){background:linear-gradient(135deg,#2a1a08,#3d2610);}
+
+/* ── PRODUCT MODAL ── */
+.pm-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  z-index:9500;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:1;
+  pointer-events:auto;
+  transition:opacity .25s;
+}
+.pm-modal{
+  background:#111;
+  width:70%;
+  max-width:420px;
+  border-radius:20px;
+  max-height:82vh;
+  overflow-y:auto;
+  position:relative;
+  transform:scale(1);
+  transition:transform .3s ease;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:0 32px 80px rgba(0,0,0,0.6);
+}
+.pm-header{padding:22px 20px 18px;position:relative;}
+.pm-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.6);width:26px;height:26px;border-radius:50%;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.pm-close:hover{background:rgba(255,255,255,0.15);}
+.pm-hbadge{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:0.15em;text-transform:uppercase;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);padding:3px 9px;border-radius:999px;display:inline-block;margin-bottom:10px;}
+.pm-hname{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:4px;}
+.pm-htagline{font-size:13px;font-weight:400;}
+.pm-tabs{display:flex;background:rgba(255,255,255,0.06);border-radius:999px;padding:3px;margin:0 20px 2px;}
+.pm-tab{flex:1;padding:7px 6px;background:none;border:none;border-radius:999px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s;}
+.pm-tab.active{background:rgba(255,255,255,0.12);color:#fff;}
+.pm-body{padding:16px 20px;}
+.pm-panel{display:none;}.pm-panel.active{display:block;}
+.pm-benefit{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;}
+.pm-benefit-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.pm-benefit-text{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;}
+.pm-price-heading{font-size:14px;font-weight:600;color:#fff;margin-bottom:12px;}
+.pm-price-row{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.pm-price-label{font-size:12px;color:rgba(255,255,255,0.5);}
+.pm-price-amount{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
+.pm-price-amount span{font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);}
+.pm-price-save{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:0.08em;color:#6ecfa0;margin-top:2px;text-align:right;}
+.pm-desc{font-size:13px;color:rgba(255,255,255,0.7);line-height:1.65;}
+.pm-footer{padding:12px 20px 22px;border-top:1px solid rgba(255,255,255,0.06);}
+.btn-green{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;background:#4CAF82;color:#000;border:none;padding:13px 28px;border-radius:999px;cursor:pointer;font-weight:500;transition:all .25s;text-decoration:none;display:block;width:100%;text-align:center;box-shadow:0 0 20px rgba(76,175,130,0.3);}
+.btn-green:hover{background:#fff;}
+</style>
+</head>
+<body>
+
+<!-- Fake blurred background to simulate site content -->
+<div class="fake-bg">
+  <div class="fake-bg-text">Pulse Kit</div>
+  <div class="fake-cards">
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+  </div>
+  <div class="fake-bg-text" style="font-size:18px;margin-top:8px;">Sleep · Repair · Growth</div>
+</div>
+
+<!-- Modal overlay (shown open by default for preview) -->
+<div class="pm-overlay" id="pmOverlay">
+  <div class="pm-modal" id="pmModal">
+
+    <div class="pm-header" id="pmHeader" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
+      <button type="button" class="pm-close" onclick="document.getElementById('pmOverlay').style.opacity=0">×</button>
+      <span class="pm-hbadge">Recovery</span>
+      <div class="pm-hname">Sleep</div>
+      <div class="pm-htagline" style="color:#6ecfa0;">for deep, restorative sleep</div>
+    </div>
+
+    <div class="pm-tabs">
+      <button class="pm-tab active" onclick="pmSwitch(0,this)">Benefits</button>
+      <button class="pm-tab" onclick="pmSwitch(1,this)">Pricing</button>
+      <button class="pm-tab" onclick="pmSwitch(2,this)">Description</button>
+    </div>
+
+    <div class="pm-body">
+
+      <!-- Panel 0: Benefits -->
+      <div class="pm-panel active" id="panel0">
+        <div class="pm-benefit">
+          <span class="pm-benefit-dot" style="background:#6ecfa0;"></span>
+          <span class="pm-benefit-text">Promotes deep, restorative sleep cycles without sedation or grogginess</span>
+        </div>
+        <div class="pm-benefit">
+          <span class="pm-benefit-dot" style="background:#6ecfa0;"></span>
+          <span class="pm-benefit-text">Supports natural HGH release during slow-wave sleep phases</span>
+        </div>
+        <div class="pm-benefit">
+          <span class="pm-benefit-dot" style="background:#6ecfa0;"></span>
+          <span class="pm-benefit-text">Reduces sleep latency — fall asleep faster and stay asleep longer</span>
+        </div>
+        <div class="pm-benefit">
+          <span class="pm-benefit-dot" style="background:#6ecfa0;"></span>
+          <span class="pm-benefit-text">Compounded in the USA to pharmaceutical-grade standards</span>
+        </div>
+      </div>
+
+      <!-- Panel 1: Pricing -->
+      <div class="pm-panel" id="panel1">
+        <div class="pm-price-heading">Your protocol, your plan.</div>
+        <div class="pm-price-row">
+          <div><div class="pm-price-label">Monthly</div></div>
+          <div style="text-align:right">
+            <div class="pm-price-amount">$129<span>/mo</span></div>
+          </div>
+        </div>
+        <div class="pm-price-row">
+          <div>
+            <div class="pm-price-label">3-Month Protocol</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">Recommended cycle length</div>
+          </div>
+          <div style="text-align:right">
+            <div class="pm-price-amount">$116<span>/mo</span></div>
+            <div class="pm-price-save">Save 10%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Description -->
+      <div class="pm-panel" id="panel2">
+        <p class="pm-desc">DSIP (Delta Sleep-Inducing Peptide) is a naturally occurring neuropeptide that works with your body's existing sleep architecture. Unlike pharmaceutical sleep aids that sedate, DSIP modulates your sleep cycle at a biological level — improving depth and quality of rest without next-day grogginess or dependency.</p>
+      </div>
+
+    </div>
+
+    <div class="pm-footer">
+      <a href="#" class="btn-green">Book Your Consultation</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function pmSwitch(idx, btn) {
+  document.querySelectorAll('.pm-tab').forEach(function(t,i){
+    t.classList.toggle('active', i===idx);
+  });
+  document.querySelectorAll('.pm-panel').forEach(function(p,i){
+    p.classList.toggle('active', i===idx);
+  });
+}
+</script>
+</body>
+</html>

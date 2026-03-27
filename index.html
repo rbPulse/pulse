@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg: #050505;
@@ -1687,25 +1686,21 @@ function handleModalOverlayClick(e) {
 })();
 
 // ═══════════════════════════════════════════════════════
-// SUPABASE — Auth + Waitlist
+// SUPABASE — Auth + Waitlist (no SDK, direct REST API)
 // ═══════════════════════════════════════════════════════
+var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+
+// Check for existing Supabase session in localStorage → update nav
 (function(){
   try {
-  var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
-  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
-  if (typeof supabase === 'undefined') { console.error('Supabase SDK not loaded'); return; }
-  window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  // Auth state listener → update nav
-  window.db.auth.onAuthStateChange(function(event, session){
-    updateNavAuth(session ? session.user : null);
-  });
-
-  // Init nav with current session
-  window.db.auth.getSession().then(function(r){
-    updateNavAuth(r.data && r.data.session ? r.data.session.user : null);
-  });
-  } catch(e) { console.error('Supabase init failed:', e); }
+    var raw = localStorage.getItem('sb-zvfqukbbglxongvuymzt-auth-token');
+    if (raw) {
+      var sess = JSON.parse(raw);
+      if (sess && sess.user) { updateNavAuth(sess.user); return; }
+    }
+  } catch(e) {}
+  updateNavAuth(null);
 })();
 
 function updateNavAuth(user) {
@@ -1718,8 +1713,7 @@ function updateNavAuth(user) {
         '<button class="nav-signout" onclick="doSignOut()">Sign Out</button>' +
       '</div>';
   } else {
-    area.innerHTML =
-      '<button class="nav-auth-btn" onclick="openAuthModal()">Sign In</button>';
+    area.innerHTML = '<button class="nav-auth-btn" onclick="openAuthModal()">Sign In</button>';
   }
 }
 
@@ -1739,6 +1733,7 @@ function closeAuthModal() {
 function handleAuthOverlayClick(e) {
   if (e.target === document.getElementById('authOverlay')) closeAuthModal();
 }
+
 async function sendMagicLink(source) {
   var emailEl, btnEl, msgEl, formEl, successEl;
   if (source === 'modal') {
@@ -1757,23 +1752,26 @@ async function sendMagicLink(source) {
     setTimeout(function(){ emailEl.style.borderColor=''; }, 900);
     return;
   }
-  if (!window.db) {
-    var errEl2 = source === 'wl' ? document.getElementById('wl-error') : null;
-    var msg2 = 'Service failed to load. Please hard-refresh (Ctrl+Shift+R) and try again.';
-    if (errEl2) { errEl2.textContent = msg2; errEl2.style.display = 'block'; }
-    else if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = msg2; }
-    return;
-  }
   var origText = btnEl.textContent;
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
-    var r = await window.db.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: getPortalUrl() }
+    // Send magic link via Supabase Auth REST API (no SDK needed)
+    var res = await fetch(SB_URL + '/auth/v1/otp', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, create_user: true, options: { emailRedirectTo: getPortalUrl() } })
     });
-    if (r.error) throw r.error;
-    // Also save to waitlist
-    await window.db.from('waitlist').insert({ email: email }).then(function(){});
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return {}; });
+      throw new Error(err.msg || err.message || ('Request failed: ' + res.status));
+    }
+    // Save email to waitlist table
+    fetch(SB_URL + '/rest/v1/waitlist', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ email: email })
+    }).catch(function(){});
+
     if (source === 'modal') {
       if (msgEl) { msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email for a sign-in link.'; }
       btnEl.disabled = false; btnEl.textContent = origText;
@@ -1793,8 +1791,10 @@ async function sendMagicLink(source) {
     }
   }
 }
-async function doSignOut() {
-  await window.db.auth.signOut();
+
+function doSignOut() {
+  localStorage.removeItem('sb-zvfqukbbglxongvuymzt-auth-token');
+  updateNavAuth(null);
 }
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeAuthModal(); });
 </script>

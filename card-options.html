@@ -3,416 +3,188 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Card Options</title>
+<title>Card Options — Option 2 Refined</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0a0a0a;color:#fff;font-family:'Inter',sans-serif;padding:48px 24px;}
-h1{font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#666;margin-bottom:48px;font-family:'DM Mono',monospace;}
-.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#555;margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;}
-.option-block{margin-bottom:72px;}
-.option-title{font-size:18px;font-weight:600;color:#fff;margin-bottom:6px;}
-.option-desc{font-size:13px;color:#666;margin-bottom:32px;line-height:1.6;}
+.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#555;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:520px;}
-.grid3{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:520px;margin-top:24px;}
+.gap{margin-top:32px;}
 
-/* ───────────────────────────────────────────
-   OPTION 1 — Gradient Glow
-─────────────────────────────────────────── */
-.o1-card{
-  background:#0e1510;
-  border:1px solid rgba(255,255,255,0.07);
-  border-radius:14px;
-  padding:18px 18px 20px;
+/* Card */
+.card{
+  border-radius:16px;
+  padding:22px 20px 24px;
   position:relative;
   overflow:hidden;
-  transition:border-color .25s,box-shadow .25s;
+  background:var(--bg);
+  transition:filter .2s;
+  cursor:pointer;
 }
-.o1-card::before{
+.card:hover{filter:brightness(1.1);}
+
+/* Soft circular glow top-right */
+.card::after{
   content:'';
   position:absolute;
-  top:0;left:0;right:0;
-  height:2px;
-  background:var(--accent,#3a7a5c);
-  opacity:0.7;
-}
-.o1-card:hover{border-color:var(--accent,#3a7a5c);box-shadow:0 0 24px rgba(58,122,92,0.12);}
-.o1-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
-.o1-name{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.01em;}
-.o1-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.15em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:var(--accent,#3a7a5c);color:#000;font-weight:600;white-space:nowrap;margin-top:2px;}
-.o1-compound{font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:14px;font-style:italic;}
-.o1-stats{display:flex;gap:6px;margin-bottom:16px;}
-.o1-stat{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:7px 10px;flex:1;text-align:center;}
-.o1-stat-label{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:4px;}
-.o1-stat-val{font-size:11px;font-weight:600;color:rgba(255,255,255,0.85);}
-.o1-divider{height:1px;background:rgba(255,255,255,0.05);margin-bottom:14px;}
-.o1-price{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o1-price span{font-size:13px;font-weight:400;color:rgba(255,255,255,0.35);}
-.o1-popular{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent,#3a7a5c);margin-top:8px;}
-
-/* stack card v1 */
-.o1-stack{
-  background:#0e1510;
-  border:1px solid rgba(255,255,255,0.07);
-  border-radius:14px;
-  padding:18px 18px 20px;
-  transition:border-color .25s;
-}
-.o1-stack:hover{border-color:rgba(58,122,92,0.35);}
-.o1-stack-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
-.o1-stack-name{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.01em;}
-.o1-stack-was{font-size:11px;color:rgba(255,255,255,0.25);text-decoration:line-through;}
-.o1-stack-includes{font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:14px;font-style:italic;}
-.o1-stack-divider{height:1px;background:rgba(255,255,255,0.05);margin-bottom:14px;}
-.o1-stack-price{font-size:22px;font-weight:700;color:#fff;}
-.o1-stack-price span{font-size:13px;font-weight:400;color:rgba(255,255,255,0.35);}
-
-/* ───────────────────────────────────────────
-   OPTION 2 — Color Immersion (Eden-style)
-─────────────────────────────────────────── */
-.o2-card{
-  border-radius:16px;
-  padding:20px 18px 22px;
-  position:relative;
-  overflow:hidden;
-  background:var(--bg2,#1a3528);
-  transition:filter .25s;
-}
-.o2-card:hover{filter:brightness(1.08);}
-.o2-glow{
-  position:absolute;top:-40px;right:-40px;
-  width:120px;height:120px;
+  top:-30px;right:-30px;
+  width:110px;height:110px;
   border-radius:50%;
-  background:rgba(255,255,255,0.06);
+  background:rgba(255,255,255,0.05);
   pointer-events:none;
 }
-.o2-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.15em;text-transform:uppercase;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);color:#fff;padding:4px 10px;border-radius:999px;display:inline-block;margin-bottom:12px;}
-.o2-name{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:4px;}
-.o2-compound{font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:18px;}
-.o2-stats{display:flex;gap:0;margin-bottom:18px;background:rgba(0,0,0,0.2);border-radius:10px;overflow:hidden;}
-.o2-stat{flex:1;padding:8px 6px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);}
-.o2-stat:last-child{border-right:none;}
-.o2-stat-label{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:3px;}
-.o2-stat-val{font-size:11px;font-weight:600;color:#fff;}
-.o2-price{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o2-price span{font-size:14px;font-weight:400;color:rgba(255,255,255,0.5);}
-.o2-popular{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-top:8px;}
 
-/* stack v2 */
-.o2-stack{
-  border-radius:16px;
-  padding:20px 18px 22px;
-  background:var(--bg2,#1a3528);
-  transition:filter .25s;
+.card-badge{
+  font-family:'DM Mono',monospace;
+  font-size:8px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  background:rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.8);
+  padding:4px 10px;
+  border-radius:999px;
+  display:inline-block;
+  margin-bottom:14px;
 }
-.o2-stack:hover{filter:brightness(1.08);}
-.o2-stack-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
-.o2-stack-name{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o2-stack-was{font-size:11px;color:rgba(255,255,255,0.3);text-decoration:line-through;}
-.o2-stack-includes{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:16px;}
-.o2-stack-price{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o2-stack-price span{font-size:14px;font-weight:400;color:rgba(255,255,255,0.5);}
+.card-name{
+  font-size:22px;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.02em;
+  margin-bottom:6px;
+  line-height:1.1;
+}
+.card-sub{
+  font-size:13px;
+  font-weight:400;
+  color:var(--accent);
+  line-height:1.4;
+  margin-bottom:20px;
+}
+.card-cta{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.5);
+}
+.card-cta-arrow{
+  width:26px;height:26px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;
+  color:rgba(255,255,255,0.6);
+}
 
-/* ───────────────────────────────────────────
-   OPTION 3 — Precision Minimal
-─────────────────────────────────────────── */
-.o3-card{
-  background:#111;
+/* Stack card — slightly simplified, no badge */
+.stack-card{
   border-radius:16px;
-  padding:20px 18px;
-  border:1px solid #1c1c1c;
-  transition:border-color .25s,transform .2s;
+  padding:22px 20px 24px;
+  background:var(--bg);
   position:relative;
+  overflow:hidden;
+  transition:filter .2s;
+  cursor:pointer;
 }
-.o3-card:hover{border-color:#2a2a2a;transform:translateY(-2px);}
-.o3-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
-.o3-name{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#fff;}
-.o3-badge{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent3,#5a9a78);font-family:'DM Mono',monospace;font-weight:500;border:1px solid var(--accent3,#5a9a78);padding:3px 9px;border-radius:999px;margin-top:2px;white-space:nowrap;}
-.o3-compound{font-size:11px;color:#444;margin-bottom:16px;}
-.o3-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1c1c1c;border-radius:10px;overflow:hidden;margin-bottom:16px;}
-.o3-stat{background:#111;padding:10px 8px;text-align:center;}
-.o3-stat-label{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:#333;margin-bottom:5px;}
-.o3-stat-val{font-size:12px;font-weight:600;color:#ccc;}
-.o3-bottom{display:flex;align-items:baseline;justify-content:space-between;}
-.o3-price{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o3-price span{font-size:12px;font-weight:400;color:#555;}
-.o3-popular{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent3,#5a9a78);}
-
-/* stack v3 */
-.o3-stack{
-  background:#111;
-  border-radius:16px;
-  padding:20px 18px;
-  border:1px solid #1c1c1c;
-  transition:border-color .25s,transform .2s;
+.stack-card:hover{filter:brightness(1.1);}
+.stack-card::after{
+  content:'';
+  position:absolute;
+  top:-30px;right:-30px;
+  width:110px;height:110px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.04);
+  pointer-events:none;
 }
-.o3-stack:hover{border-color:#2a2a2a;transform:translateY(-2px);}
-.o3-stack-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
-.o3-stack-name{font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#fff;}
-.o3-stack-was{font-size:11px;color:#333;text-decoration:line-through;}
-.o3-stack-includes{font-size:11px;color:#444;margin-bottom:16px;}
-.o3-stack-divider{height:1px;background:#1c1c1c;margin-bottom:14px;}
-.o3-stack-price{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.02em;}
-.o3-stack-price span{font-size:12px;font-weight:400;color:#555;}
+.stack-name{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em;margin-bottom:6px;}
+.stack-sub{font-size:13px;color:var(--accent);margin-bottom:20px;}
+.stack-cta{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);}
+.stack-cta-arrow{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,0.6);}
 </style>
 </head>
 <body>
 
-<h1>Pulse Kit &amp; Stack Card Options</h1>
+<div class="section-label">Pulse Kits</div>
+<div class="grid">
 
-<!-- ═══════════════════════════════════ OPTION 1 ═══ -->
-<div class="option-block">
-  <div class="option-title">Option 1 — Gradient Glow</div>
-  <div class="option-desc">Dark green-tinted cards with a colored top-edge accent per category, subtle stat pills, and a glow border on hover. Elevated version of the current dark aesthetic.</div>
-
-  <div class="section-label">Pulse Kits</div>
-  <div class="grid">
-    <div class="o1-card" style="--accent:#3a7a5c;">
-      <div class="o1-header"><div class="o1-name">Sleep</div><div class="o1-badge" style="background:#3a7a5c;">Recovery</div></div>
-      <div class="o1-compound">DSIP (Delta Sleep-Inducing Peptide)</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">100mcg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x nightly</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$129<span>/mo</span></div>
-    </div>
-    <div class="o1-card" style="--accent:#3a7a5c;">
-      <div class="o1-header"><div class="o1-name">Repair</div><div class="o1-badge" style="background:#3a7a5c;">Recovery</div></div>
-      <div class="o1-compound">BPC-157 + TB-500</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">250/500mcg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x daily</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$149<span>/mo</span></div>
-    </div>
-    <div class="o1-card" style="--accent:#3a6b9a;">
-      <div class="o1-header"><div class="o1-name">Growth</div><div class="o1-badge" style="background:#3a6b9a;">Performance</div></div>
-      <div class="o1-compound">CJC-1295 + Ipamorelin</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">100/200mcg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x daily PM</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$179<span>/mo</span></div>
-      <div class="o1-popular">★ Most Popular</div>
-    </div>
-    <div class="o1-card" style="--accent:#3a6b9a;">
-      <div class="o1-header"><div class="o1-name">Endurance</div><div class="o1-badge" style="background:#3a6b9a;">Performance</div></div>
-      <div class="o1-compound">BPC-157 + MOTSc</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">250mcg/5mg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x daily AM</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$189<span>/mo</span></div>
-    </div>
-    <div class="o1-card" style="--accent:#c87c3a;">
-      <div class="o1-header"><div class="o1-name">Shred</div><div class="o1-badge" style="background:#c87c3a;">Body Comp</div></div>
-      <div class="o1-compound">Tesamorelin</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">1mg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x daily</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$199<span>/mo</span></div>
-    </div>
-    <div class="o1-card" style="--accent:#7a5aaa;">
-      <div class="o1-header"><div class="o1-name">Vitality</div><div class="o1-badge" style="background:#7a5aaa;">Longevity</div></div>
-      <div class="o1-compound">Epithalon</div>
-      <div class="o1-stats">
-        <div class="o1-stat"><div class="o1-stat-label">Cycle</div><div class="o1-stat-val">30 days</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Dose</div><div class="o1-stat-val">5mg</div></div>
-        <div class="o1-stat"><div class="o1-stat-label">Freq</div><div class="o1-stat-val">1x daily</div></div>
-      </div>
-      <div class="o1-divider"></div>
-      <div class="o1-price">$219<span>/mo</span></div>
-    </div>
+  <div class="card" style="--bg:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);--accent:#6ecfa0;">
+    <div class="card-badge">Recovery</div>
+    <div class="card-name">Sleep</div>
+    <div class="card-sub">for deep, restorative sleep</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
   </div>
 
-  <div class="section-label" style="margin-top:32px;">Stacks</div>
-  <div class="grid3">
-    <div class="o1-stack"><div class="o1-stack-header"><div class="o1-stack-name">Recovery</div><div class="o1-stack-was">$278</div></div><div class="o1-stack-includes">Repair + Sleep</div><div class="o1-stack-divider"></div><div class="o1-stack-price">$249<span>/mo</span></div></div>
-    <div class="o1-stack"><div class="o1-stack-header"><div class="o1-stack-name">Performance</div><div class="o1-stack-was">$328</div></div><div class="o1-stack-includes">Growth + Repair</div><div class="o1-stack-divider"></div><div class="o1-stack-price">$299<span>/mo</span></div></div>
-    <div class="o1-stack"><div class="o1-stack-header"><div class="o1-stack-name">Longevity</div><div class="o1-stack-was">$348</div></div><div class="o1-stack-includes">Vitality + Sleep</div><div class="o1-stack-divider"></div><div class="o1-stack-price">$319<span>/mo</span></div></div>
-    <div class="o1-stack"><div class="o1-stack-header"><div class="o1-stack-name">Optimize</div><div class="o1-stack-was">$507</div></div><div class="o1-stack-includes">Growth + Shred + Sleep</div><div class="o1-stack-divider"></div><div class="o1-stack-price">$449<span>/mo</span></div></div>
+  <div class="card" style="--bg:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);--accent:#6ecfa0;">
+    <div class="card-badge">Recovery</div>
+    <div class="card-name">Repair</div>
+    <div class="card-sub">for tissue and joint recovery</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
   </div>
+
+  <div class="card" style="--bg:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);--accent:#6ea8e0;">
+    <div class="card-badge">Performance</div>
+    <div class="card-name">Growth</div>
+    <div class="card-sub">for lean muscle and strength</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
+  </div>
+
+  <div class="card" style="--bg:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);--accent:#6ea8e0;">
+    <div class="card-badge">Performance</div>
+    <div class="card-name">Endurance</div>
+    <div class="card-sub">for stamina and output</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
+  </div>
+
+  <div class="card" style="--bg:linear-gradient(135deg,#2a1a08 0%,#3d2610 100%);--accent:#e0a86e;">
+    <div class="card-badge">Body Comp</div>
+    <div class="card-name">Shred</div>
+    <div class="card-sub">for fat loss and definition</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
+  </div>
+
+  <div class="card" style="--bg:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);--accent:#b08ee0;">
+    <div class="card-badge">Longevity</div>
+    <div class="card-name">Vitality</div>
+    <div class="card-sub">for longevity and cellular health</div>
+    <div class="card-cta">Learn more <div class="card-cta-arrow">→</div></div>
+  </div>
+
 </div>
 
-<!-- ═══════════════════════════════════ OPTION 2 ═══ -->
-<div class="option-block">
-  <div class="option-title">Option 2 — Color Immersion</div>
-  <div class="option-desc">Each category has its own full card color. Recovery = forest green, Performance = deep blue, Body Comp = burnt amber, Longevity = deep violet. Directly inspired by Eden's treatment cards.</div>
+<div class="gap"></div>
+<div class="section-label">Stacks</div>
+<div class="grid">
 
-  <div class="section-label">Pulse Kits</div>
-  <div class="grid">
-    <div class="o2-card" style="--bg2:#152b1f;background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Recovery</div>
-      <div class="o2-name">Sleep</div>
-      <div class="o2-compound">DSIP (Delta Sleep-Inducing Peptide)</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">100mcg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">nightly</div></div>
-      </div>
-      <div class="o2-price">$129<span>/mo</span></div>
-    </div>
-    <div class="o2-card" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Recovery</div>
-      <div class="o2-name">Repair</div>
-      <div class="o2-compound">BPC-157 + TB-500</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">250/500mcg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">daily</div></div>
-      </div>
-      <div class="o2-price">$149<span>/mo</span></div>
-    </div>
-    <div class="o2-card" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Performance</div>
-      <div class="o2-name">Growth</div>
-      <div class="o2-compound">CJC-1295 + Ipamorelin</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">100/200mcg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">daily PM</div></div>
-      </div>
-      <div class="o2-price">$179<span>/mo</span></div>
-      <div class="o2-popular">★ Most Popular</div>
-    </div>
-    <div class="o2-card" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Performance</div>
-      <div class="o2-name">Endurance</div>
-      <div class="o2-compound">BPC-157 + MOTSc</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">250mcg/5mg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">daily AM</div></div>
-      </div>
-      <div class="o2-price">$189<span>/mo</span></div>
-    </div>
-    <div class="o2-card" style="background:linear-gradient(135deg,#2a1a08 0%,#3d2610 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Body Comp</div>
-      <div class="o2-name">Shred</div>
-      <div class="o2-compound">Tesamorelin</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">1mg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">1x daily</div></div>
-      </div>
-      <div class="o2-price">$199<span>/mo</span></div>
-    </div>
-    <div class="o2-card" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);">
-      <div class="o2-glow"></div>
-      <div class="o2-badge">Longevity</div>
-      <div class="o2-name">Vitality</div>
-      <div class="o2-compound">Epithalon</div>
-      <div class="o2-stats">
-        <div class="o2-stat"><div class="o2-stat-label">Cycle</div><div class="o2-stat-val">30 days</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Dose</div><div class="o2-stat-val">5mg</div></div>
-        <div class="o2-stat"><div class="o2-stat-label">Freq</div><div class="o2-stat-val">1x daily</div></div>
-      </div>
-      <div class="o2-price">$219<span>/mo</span></div>
-    </div>
+  <div class="stack-card" style="--bg:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);--accent:#6ecfa0;">
+    <div class="stack-name">Recovery</div>
+    <div class="stack-sub">for repair and rest</div>
+    <div class="stack-cta">Learn more <div class="stack-cta-arrow">→</div></div>
   </div>
 
-  <div class="section-label" style="margin-top:32px;">Stacks</div>
-  <div class="grid3">
-    <div class="o2-stack" style="background:linear-gradient(135deg,#152b1f 0%,#1e3d2a 100%);"><div class="o2-stack-header"><div class="o2-stack-name">Recovery</div><div class="o2-stack-was">$278</div></div><div class="o2-stack-includes">Repair + Sleep</div><div class="o2-stack-price">$249<span>/mo</span></div></div>
-    <div class="o2-stack" style="background:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);"><div class="o2-stack-header"><div class="o2-stack-name">Performance</div><div class="o2-stack-was">$328</div></div><div class="o2-stack-includes">Growth + Repair</div><div class="o2-stack-price">$299<span>/mo</span></div></div>
-    <div class="o2-stack" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);"><div class="o2-stack-header"><div class="o2-stack-name">Longevity</div><div class="o2-stack-was">$348</div></div><div class="o2-stack-includes">Vitality + Sleep</div><div class="o2-stack-price">$319<span>/mo</span></div></div>
-    <div class="o2-stack" style="background:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);"><div class="o2-stack-header"><div class="o2-stack-name">Optimize</div><div class="o2-stack-was">$507</div></div><div class="o2-stack-includes">Growth + Shred + Sleep</div><div class="o2-stack-price">$449<span>/mo</span></div></div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════ OPTION 3 ═══ -->
-<div class="option-block">
-  <div class="option-title">Option 3 — Precision Minimal</div>
-  <div class="option-desc">Pure black cards with borderless stat grids and outlined category badges. Ultra-clean typography, no decorative flourishes. The price is the hero.</div>
-
-  <div class="section-label">Pulse Kits</div>
-  <div class="grid">
-    <div class="o3-card" style="--accent3:#3a7a5c;">
-      <div class="o3-top"><div class="o3-name">Sleep</div><div class="o3-badge" style="--accent3:#3a7a5c;">Recovery</div></div>
-      <div class="o3-compound">DSIP (Delta Sleep-Inducing Peptide)</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">100mcg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">nightly</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$129<span>/mo</span></div></div>
-    </div>
-    <div class="o3-card" style="--accent3:#3a7a5c;">
-      <div class="o3-top"><div class="o3-name">Repair</div><div class="o3-badge" style="--accent3:#3a7a5c;">Recovery</div></div>
-      <div class="o3-compound">BPC-157 + TB-500</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">250/500mcg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">daily</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$149<span>/mo</span></div></div>
-    </div>
-    <div class="o3-card" style="--accent3:#3a6b9a;">
-      <div class="o3-top"><div class="o3-name">Growth</div><div class="o3-badge" style="--accent3:#3a6b9a;">Performance</div></div>
-      <div class="o3-compound">CJC-1295 + Ipamorelin</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">100/200mcg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">daily PM</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$179<span>/mo</span></div><div class="o3-popular">★ Most Popular</div></div>
-    </div>
-    <div class="o3-card" style="--accent3:#3a6b9a;">
-      <div class="o3-top"><div class="o3-name">Endurance</div><div class="o3-badge" style="--accent3:#3a6b9a;">Performance</div></div>
-      <div class="o3-compound">BPC-157 + MOTSc</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">250mcg/5mg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">daily AM</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$189<span>/mo</span></div></div>
-    </div>
-    <div class="o3-card" style="--accent3:#c87c3a;">
-      <div class="o3-top"><div class="o3-name">Shred</div><div class="o3-badge" style="--accent3:#c87c3a;">Body Comp</div></div>
-      <div class="o3-compound">Tesamorelin</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">1mg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">1x daily</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$199<span>/mo</span></div></div>
-    </div>
-    <div class="o3-card" style="--accent3:#7a5aaa;">
-      <div class="o3-top"><div class="o3-name">Vitality</div><div class="o3-badge" style="--accent3:#7a5aaa;">Longevity</div></div>
-      <div class="o3-compound">Epithalon</div>
-      <div class="o3-stats">
-        <div class="o3-stat"><div class="o3-stat-label">Cycle</div><div class="o3-stat-val">30 days</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Dose</div><div class="o3-stat-val">5mg</div></div>
-        <div class="o3-stat"><div class="o3-stat-label">Freq</div><div class="o3-stat-val">1x daily</div></div>
-      </div>
-      <div class="o3-bottom"><div class="o3-price">$219<span>/mo</span></div></div>
-    </div>
+  <div class="stack-card" style="--bg:linear-gradient(135deg,#0f1e35 0%,#1a3052 100%);--accent:#6ea8e0;">
+    <div class="stack-name">Performance</div>
+    <div class="stack-sub">for strength and speed</div>
+    <div class="stack-cta">Learn more <div class="stack-cta-arrow">→</div></div>
   </div>
 
-  <div class="section-label" style="margin-top:32px;">Stacks</div>
-  <div class="grid3">
-    <div class="o3-stack"><div class="o3-stack-top"><div class="o3-stack-name">Recovery</div><div class="o3-stack-was">$278</div></div><div class="o3-stack-includes">Repair + Sleep</div><div class="o3-stack-divider"></div><div class="o3-stack-price">$249<span>/mo</span></div></div>
-    <div class="o3-stack"><div class="o3-stack-top"><div class="o3-stack-name">Performance</div><div class="o3-stack-was">$328</div></div><div class="o3-stack-includes">Growth + Repair</div><div class="o3-stack-divider"></div><div class="o3-stack-price">$299<span>/mo</span></div></div>
-    <div class="o3-stack"><div class="o3-stack-top"><div class="o3-stack-name">Longevity</div><div class="o3-stack-was">$348</div></div><div class="o3-stack-includes">Vitality + Sleep</div><div class="o3-stack-divider"></div><div class="o3-stack-price">$319<span>/mo</span></div></div>
-    <div class="o3-stack"><div class="o3-stack-top"><div class="o3-stack-name">Optimize</div><div class="o3-stack-was">$507</div></div><div class="o3-stack-includes">Growth + Shred + Sleep</div><div class="o3-stack-divider"></div><div class="o3-stack-price">$449<span>/mo</span></div></div>
+  <div class="stack-card" style="--bg:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);--accent:#b08ee0;">
+    <div class="stack-name">Longevity</div>
+    <div class="stack-sub">for aging well</div>
+    <div class="stack-cta">Learn more <div class="stack-cta-arrow">→</div></div>
   </div>
+
+  <div class="stack-card" style="--bg:linear-gradient(135deg,#1a1028 0%,#2a1a40 100%);--accent:#b08ee0;">
+    <div class="stack-name">Optimize</div>
+    <div class="stack-sub">for total optimization</div>
+    <div class="stack-cta">Learn more <div class="stack-cta-arrow">→</div></div>
+  </div>
+
 </div>
 
 </body>

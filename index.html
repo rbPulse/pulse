@@ -721,7 +721,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 }
 /* ── AUTH MODAL ── */
 .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
-.auth-overlay.open{opacity:1;pointer-events:all;}
+.auth-overlay.open{opacity:1;pointer-events:auto;}
 .auth-box{background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:40px;width:100%;max-width:400px;margin:16px;position:relative;}
 .auth-close{position:absolute;top:14px;right:18px;background:none;border:none;color:rgba(255,255,255,0.35);font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;transition:color .2s;}
 .auth-close:hover{color:#fff;}
@@ -757,7 +757,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 /* ── PRODUCT MODAL ── */
 .pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(12px);z-index:9500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
 @media(min-width:600px){.pm-overlay{align-items:center;}}
-.pm-overlay.open{opacity:1;pointer-events:all;}
+.pm-overlay.open{opacity:1;pointer-events:auto;}
 .pm-modal{background:#111;width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;position:relative;transform:translateY(40px);transition:transform .3s ease;-webkit-overflow-scrolling:touch;}
 @media(min-width:600px){.pm-modal{border-radius:20px;transform:translateY(0) scale(0.96);}}
 .pm-overlay.open .pm-modal{transform:translateY(0);}
@@ -1892,7 +1892,7 @@ window._sbClient.auth.onAuthStateChange(function(event, session){
 <div class="pm-overlay" id="pmOverlay" onclick="closePM(event)">
   <div class="pm-modal" id="pmModal">
     <div class="pm-header" id="pmHeader">
-      <button class="pm-close" onclick="closePM(null,true)">×</button>
+      <button type="button" class="pm-close" onclick="closePM(null,true)">×</button>
       <span class="pm-hbadge" id="pmBadge"></span>
       <div class="pm-hname" id="pmName"></div>
       <div class="pm-htagline" id="pmTagline"></div>

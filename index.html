@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg: #050505;
@@ -1690,8 +1690,10 @@ function handleModalOverlayClick(e) {
 // SUPABASE — Auth + Waitlist
 // ═══════════════════════════════════════════════════════
 (function(){
+  try {
   var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
   var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+  if (typeof supabase === 'undefined') { console.error('Supabase SDK not loaded'); return; }
   window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Auth state listener → update nav
@@ -1703,6 +1705,7 @@ function handleModalOverlayClick(e) {
   window.db.auth.getSession().then(function(r){
     updateNavAuth(r.data && r.data.session ? r.data.session.user : null);
   });
+  } catch(e) { console.error('Supabase init failed:', e); }
 })();
 
 function updateNavAuth(user) {
@@ -1752,6 +1755,13 @@ async function sendMagicLink(source) {
   if (!email || !email.includes('@')) {
     emailEl.style.borderColor = 'rgba(255,80,80,0.8)';
     setTimeout(function(){ emailEl.style.borderColor=''; }, 900);
+    return;
+  }
+  if (!window.db) {
+    var errEl2 = source === 'wl' ? document.getElementById('wl-error') : null;
+    var msg2 = 'Service failed to load. Please hard-refresh (Ctrl+Shift+R) and try again.';
+    if (errEl2) { errEl2.textContent = msg2; errEl2.style.display = 'block'; }
+    else if (msgEl) { msgEl.className = 'auth-msg err'; msgEl.textContent = msg2; }
     return;
   }
   var origText = btnEl.textContent;

@@ -1756,10 +1756,11 @@ async function sendMagicLink(source) {
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
     // Send magic link via Supabase Auth REST API (no SDK needed)
-    var res = await fetch(SB_URL + '/auth/v1/otp', {
+    var redirectTo = encodeURIComponent(getPortalUrl());
+    var res = await fetch(SB_URL + '/auth/v1/magiclink?redirect_to=' + redirectTo, {
       method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, create_user: true, options: { emailRedirectTo: getPortalUrl() } })
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, create_user: true })
     });
     if (!res.ok) {
       var err = await res.json().catch(function(){ return {}; });

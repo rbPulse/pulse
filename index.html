@@ -1763,8 +1763,8 @@ async function sendMagicLink(source) {
       body: JSON.stringify({ email: email, create_user: true })
     });
     if (!res.ok) {
-      var err = await res.json().catch(function(){ return {}; });
-      throw new Error(err.msg || err.message || ('Request failed: ' + res.status));
+      var errBody = await res.text().catch(function(){ return ''; });
+      throw new Error('[' + res.status + '] ' + (errBody || 'No response body'));
     }
     // Save email to waitlist table
     fetch(SB_URL + '/rest/v1/waitlist', {

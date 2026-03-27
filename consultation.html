@@ -420,8 +420,31 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="field-label" for="height">Height</label>
-          <input type="text" id="height" placeholder='e.g. 5&apos;10" or 178cm'/>
+          <label class="field-label">Height</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <select id="heightFt">
+              <option value="">ft</option>
+              <option value="4">4 ft</option>
+              <option value="5">5 ft</option>
+              <option value="6">6 ft</option>
+              <option value="7">7 ft</option>
+            </select>
+            <select id="heightIn">
+              <option value="">in</option>
+              <option value="0">0 in</option>
+              <option value="1">1 in</option>
+              <option value="2">2 in</option>
+              <option value="3">3 in</option>
+              <option value="4">4 in</option>
+              <option value="5">5 in</option>
+              <option value="6">6 in</option>
+              <option value="7">7 in</option>
+              <option value="8">8 in</option>
+              <option value="9">9 in</option>
+              <option value="10">10 in</option>
+              <option value="11">11 in</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
           <label class="field-label" for="weight">Weight</label>
@@ -1516,6 +1539,7 @@ async function saveConsultation() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) return; // not logged in — skip save
     var data = {
+      height: (function(){ var ft = (document.getElementById('heightFt')||{}).value; var inc = (document.getElementById('heightIn')||{}).value; return (ft && inc !== '') ? ft + "'" + inc + '"' : null; })(),
       first_name: (document.getElementById('firstName') || {}).value || null,
       last_name: (document.getElementById('lastName') || {}).value || null,
       sex: (document.getElementById('sex') || {}).value || null,

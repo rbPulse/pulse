@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Portal | Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
+  --border:rgba(255,255,255,0.06);--green:#3a7a5c;--green-dim:rgba(58,122,92,0.1);
+  --green-glow:rgba(58,122,92,0.2);--white:#ffffff;
+  --grey:rgba(255,255,255,0.65);--grey2:rgba(255,255,255,0.42);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:'Inter',sans-serif;font-weight:300;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+
+/* ── LOADING ── */
+#portal-loading{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.loading-icon{width:40px;height:40px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(58,122,92,0.5);animation:pulse-glow 2.4s ease-in-out infinite;}
+.loading-icon svg{width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:2;}
+.loading-wordmark{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:0.3em;color:var(--grey2);text-transform:uppercase;}
+@keyframes pulse-glow{0%,100%{opacity:0.7;}50%{opacity:1.0;}}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:18px 40px;background:rgba(5,5,5,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.05);}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-icon{width:28px;height:28px;border:1.5px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(58,122,92,0.4);}
+.nav-icon svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;}
+.nav-name{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.nav-user-email{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--grey2);}
+.nav-signout{background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);cursor:pointer;padding:0;transition:color .2s;}
+.nav-signout:hover{color:#fff;}
+
+/* ── LAYOUT ── */
+#portal-app{display:none;min-height:100vh;}
+.portal-layout{display:flex;padding-top:62px;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.portal-sidebar{position:fixed;top:62px;left:0;bottom:0;width:220px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;padding:32px 0;z-index:50;overflow-y:auto;}
+.sidebar-section-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.2);padding:0 24px;margin-bottom:8px;margin-top:24px;}
+.sidebar-section-label:first-child{margin-top:0;}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:11px 24px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--grey2);cursor:pointer;border-left:2px solid transparent;transition:color .2s,background .2s,border-color .2s;user-select:none;}
+.sidebar-item:hover{color:#fff;background:rgba(255,255,255,0.03);}
+.sidebar-item.active{color:#fff;background:rgba(255,255,255,0.05);border-left-color:var(--green);}
+.sidebar-item svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;flex-shrink:0;opacity:0.7;}
+
+/* ── MAIN ── */
+.portal-main{margin-left:220px;flex:1;padding:48px 52px;max-width:1000px;}
+.portal-tab{display:none;}
+.portal-tab.active{display:block;}
+
+/* ── SECTION HEADER ── */
+.tab-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.32em;text-transform:uppercase;color:var(--green);margin-bottom:12px;}
+.tab-title{font-size:clamp(24px,2.8vw,36px);font-weight:600;line-height:1.1;letter-spacing:-0.01em;margin-bottom:32px;}
+
+/* ── CARDS ── */
+.p-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:20px;}
+.p-card-sm{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+
+/* ── GREETING ── */
+.greeting-line{font-size:clamp(26px,3vw,40px);font-weight:600;letter-spacing:-0.01em;line-height:1.1;margin-bottom:6px;}
+.greeting-sub{font-size:14px;color:var(--grey);font-weight:300;margin-bottom:36px;}
+
+/* ── MEMBER CARD ── */
+.member-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.member-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.3);border-radius:999px;padding:5px 12px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--green);margin-bottom:8px;}
+.member-badge-dot{width:5px;height:5px;background:var(--green);border-radius:50%;box-shadow:0 0 6px var(--green);}
+.member-since{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--grey2);}
+.status-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;padding:6px 14px;border-radius:999px;white-space:nowrap;}
+.status-pill.waitlist{background:rgba(255,255,255,0.06);color:var(--grey2);border:1px solid rgba(255,255,255,0.1);}
+.status-pill.active{background:rgba(58,122,92,0.15);color:var(--green);border:1px solid rgba(58,122,92,0.35);}
+
+/* ── ACTION CARD ── */
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:20px;}
+.action-card-title{font-size:20px;font-weight:600;margin-bottom:8px;}
+.action-card-sub{font-size:14px;color:var(--grey);line-height:1.7;margin-bottom:24px;max-width:480px;}
+.action-card-proto{font-size:14px;color:var(--grey);line-height:1.7;margin-bottom:24px;}
+.action-card-proto strong{color:var(--green);font-weight:500;}
+.btn-green{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:12px 28px;border-radius:999px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;transition:opacity .2s;}
+.btn-green:hover{opacity:0.85;}
+.btn-ghost{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);padding:12px 28px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;transition:border-color .2s,color .2s;}
+.btn-ghost:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
+
+/* ── QUICK STATS ── */
+.quick-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.stat-tile{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;text-align:center;}
+.stat-tile-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#fff;margin-bottom:6px;}
+.stat-tile-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);}
+
+/* ── PROTOCOL TAB ── */
+.proto-header-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:20px;}
+.proto-name{font-size:clamp(22px,2.5vw,32px);font-weight:600;margin-bottom:10px;line-height:1.15;}
+.proto-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.proto-category-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.3);color:var(--green);padding:4px 12px;border-radius:999px;}
+.proto-reviewed{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--grey2);}
+
+.compounds-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:20px;}
+.compounds-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
+.compounds-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.compound-tag{background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.25);color:#fff;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:400;}
+.compounds-note{font-size:14px;color:var(--grey);line-height:1.75;padding-top:18px;border-top:1px solid rgba(255,255,255,0.05);}
+
+/* ── TIMELINE ── */
+.timeline-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:20px;}
+.timeline-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--green);margin-bottom:28px;}
+.timeline-track{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;}
+.timeline-track::before{content:'';position:absolute;top:14px;left:14px;right:14px;height:1px;background:rgba(255,255,255,0.08);z-index:0;}
+.timeline-milestone{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 8px;}
+.tl-dot{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.12);background:var(--card2);display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex-shrink:0;}
+.tl-dot.first{border-color:var(--green);background:rgba(58,122,92,0.15);}
+.tl-dot svg{width:11px;height:11px;stroke:var(--green);fill:none;stroke-width:2.5;}
+.tl-day{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px;font-weight:500;}
+.tl-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;line-height:1.25;}
+.tl-body{font-size:12px;color:var(--grey2);line-height:1.55;}
+.timeline-note{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-top:24px;text-align:center;}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:80px 40px;}
+.empty-title{font-size:22px;font-weight:600;color:rgba(255,255,255,0.5);margin-bottom:10px;}
+.empty-sub{font-size:14px;color:var(--grey2);line-height:1.7;margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto;}
+
+/* ── RESOURCES ── */
+.resources-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:60px 48px;text-align:center;}
+.resources-icon{width:48px;height:48px;border:1px solid rgba(255,255,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.resources-icon svg{width:22px;height:22px;stroke:var(--grey2);fill:none;stroke-width:1.5;}
+.resources-title{font-size:20px;font-weight:600;margin-bottom:10px;}
+.resources-body{font-size:14px;color:var(--grey);line-height:1.75;max-width:420px;margin:0 auto;}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  nav{padding:16px 20px;}
+  .nav-user-email{display:none;}
+  .portal-sidebar{position:static;width:100%;height:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,0.05);flex-direction:row;padding:0;overflow-x:auto;overflow-y:visible;top:62px;background:var(--surface);}
+  .portal-sidebar .sidebar-section-label{display:none;}
+  .sidebar-item{padding:14px 20px;border-left:none;border-bottom:2px solid transparent;flex-direction:column;gap:4px;font-size:9px;min-width:80px;justify-content:center;}
+  .sidebar-item svg{width:16px;height:16px;}
+  .sidebar-item.active{border-bottom-color:var(--green);border-left-color:transparent;background:rgba(255,255,255,0.03);}
+  .portal-layout{flex-direction:column;}
+  .portal-main{margin-left:0;padding:24px 16px;}
+  .quick-stats{grid-template-columns:1fr 1fr;}
+  .timeline-track{grid-template-columns:1fr;gap:20px;}
+  .timeline-track::before{display:none;}
+  .timeline-milestone{flex-direction:row;align-items:flex-start;text-align:left;gap:14px;}
+  .tl-dot{flex-shrink:0;margin-bottom:0;margin-top:2px;}
+  .member-card{flex-direction:column;align-items:flex-start;}
+  .portal-main{max-width:100%;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="portal-loading">
+  <div class="loading-icon">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+  </div>
+  <div class="loading-wordmark">Pulse</div>
+</div>
+
+<!-- NAV -->
+<nav id="portal-nav" style="display:none;">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+    <span class="nav-name">PULSE</span>
+  </a>
+  <div class="nav-right">
+    <span class="nav-user-email" id="navEmail"></span>
+    <button class="nav-signout" onclick="doSignOut()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- PORTAL APP -->
+<div id="portal-app">
+  <div class="portal-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="portal-sidebar">
+      <div class="sidebar-section-label">Dashboard</div>
+      <div class="sidebar-item active" id="nav-overview" onclick="switchTab('overview')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </div>
+      <div class="sidebar-item" id="nav-protocol" onclick="switchTab('protocol')">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        My Protocol
+      </div>
+      <div class="sidebar-item" id="nav-resources" onclick="switchTab('resources')">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Resources
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="portal-main">
+
+      <!-- ── OVERVIEW TAB ── -->
+      <div class="portal-tab active" id="tab-overview">
+        <div class="greeting-line" id="greetingLine">Good evening.</div>
+        <div class="greeting-sub" id="greetingSub">Welcome to your Pulse member portal.</div>
+
+        <!-- Member card -->
+        <div class="member-card">
+          <div>
+            <div class="member-badge"><span class="member-badge-dot"></span>Founding Member</div>
+            <div class="member-since" id="memberSince">Member since —</div>
+          </div>
+          <div class="status-pill waitlist" id="statusPill">Waitlist Member</div>
+        </div>
+
+        <!-- Action card -->
+        <div class="action-card" id="actionCard">
+          <div class="action-card-title">Start your protocol.</div>
+          <div class="action-card-sub" id="actionSub">Complete a clinical intake with our live medical specialists to receive your personalized protocol.</div>
+          <a href="consultation.html" class="btn-green" id="actionBtn">Book Your Consultation</a>
+        </div>
+
+        <!-- Quick stats (hidden until consultation loaded) -->
+        <div class="quick-stats" id="quickStats" style="display:none;">
+          <div class="stat-tile">
+            <div class="stat-tile-val" id="statCategory">—</div>
+            <div class="stat-tile-label">Protocol</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-val" id="statCompounds">—</div>
+            <div class="stat-tile-label">Compounds</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-val" id="statCycle">—</div>
+            <div class="stat-tile-label">Cycle Length</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PROTOCOL TAB ── -->
+      <div class="portal-tab" id="tab-protocol">
+        <!-- Empty state (shown by default, hidden when consultation loaded) -->
+        <div id="protoEmpty" class="empty-state">
+          <div class="empty-title">No protocol on file.</div>
+          <div class="empty-sub">Your recommended protocol will appear here after you complete your clinical consultation.</div>
+          <a href="consultation.html" class="btn-green">Book Your Consultation</a>
+        </div>
+
+        <!-- Protocol content (hidden until loaded) -->
+        <div id="protoContent" style="display:none;">
+          <div class="proto-header-card">
+            <div class="tab-eyebrow">Your Protocol</div>
+            <div class="proto-name" id="protoName">—</div>
+            <div class="proto-meta">
+              <span class="proto-category-badge" id="protoCategoryBadge">—</span>
+              <span class="proto-reviewed" id="protoReviewed">—</span>
+            </div>
+          </div>
+
+          <div class="compounds-card">
+            <div class="compounds-label">Compounds</div>
+            <div class="compounds-tags" id="compoundTags"></div>
+            <div class="compounds-note" id="compoundsNote">—</div>
+          </div>
+
+          <div class="timeline-card">
+            <div class="timeline-label">30 · 60 · 90 Day Timeline</div>
+            <div class="timeline-track">
+              <div class="timeline-milestone">
+                <div class="tl-dot first"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div>
+                  <div class="tl-day">Day 1</div>
+                  <div class="tl-title">Kit ships.</div>
+                  <div class="tl-body">Your pre-filled pods and injector pen are dispatched with your protocol guide.</div>
+                </div>
+              </div>
+              <div class="timeline-milestone">
+                <div class="tl-dot"></div>
+                <div>
+                  <div class="tl-day">Day 30</div>
+                  <div class="tl-title">First window.</div>
+                  <div class="tl-body">Early indicators of recovery, energy, and sleep quality typically emerge in weeks 2–4.</div>
+                </div>
+              </div>
+              <div class="timeline-milestone">
+                <div class="tl-dot"></div>
+                <div>
+                  <div class="tl-day">Day 60</div>
+                  <div class="tl-title">Adaptation phase.</div>
+                  <div class="tl-body">Compound levels stabilize. Most users report the clearest changes in this window.</div>
+                </div>
+              </div>
+              <div class="timeline-milestone">
+                <div class="tl-dot"></div>
+                <div>
+                  <div class="tl-day">Day 90+</div>
+                  <div class="tl-title">Protocol review.</div>
+                  <div class="tl-body">Your clinician reviews progress and adjusts dosing or compounds for the next cycle.</div>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-note">Timeline begins when your kit ships.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RESOURCES TAB ── -->
+      <div class="portal-tab" id="tab-resources">
+        <div class="resources-card">
+          <div class="resources-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div class="tab-eyebrow" style="justify-content:center;">Coming Soon</div>
+          <div class="resources-title">Your resource library.</div>
+          <div class="resources-body">Injection guides, storage instructions, what to expect in weeks 1 through 12, and protocol-specific FAQs will live here.</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_orH5atr2jU3wmXg6n6rMlw_ll04dDGS';
+var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var PROTOCOL_MAP = {
+  recovery:{name:'Recovery + Repair',category:'Recovery',compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg'],note:'Designed for tissue repair and anti-inflammatory support. BPC-157 administered subcutaneously daily, TB-500 bi-weekly. First cycle is 8 weeks.',cycle:'8 weeks'},
+  performance:{name:'Performance Stack',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'],note:'GH-axis optimization for lean mass and recovery. Administered before bed on an empty stomach. Cycle: 12 weeks on, 4 weeks off.',cycle:'12 weeks'},
+  bodycomp:{name:'Body Composition Protocol',category:'Body Comp',compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','CJC-1295 1mg'],note:'Progressive dose titration over 4 weeks. Administered subcutaneously once weekly. Includes appetite and metabolic support.',cycle:'4 weeks'},
+  longevity:{name:'Longevity Protocol',category:'Longevity',compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg'],note:'Telomere and immune support cycle. 10-day on, 20-day off cadence for Epithalon. Full cycle duration: 60 days.',cycle:'60 days'},
+  sleep:{name:'Sleep + Recovery Protocol',category:'Sleep',compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg'],note:'Peptides administered 30 minutes before bed. Semax optional for stress support. Minimum cycle length: 4 weeks.',cycle:'4 weeks'}
+};
+
+// ── Auth check ──
+db.auth.getSession().then(function(r) {
+  if (!r.data || !r.data.session) {
+    window.location.href = 'index.html';
+    return;
+  }
+  initPortal(r.data.session.user);
+});
+
+function initPortal(user) {
+  // Show nav + app, hide loading
+  document.getElementById('portal-loading').style.display = 'none';
+  document.getElementById('portal-nav').style.display = 'flex';
+  document.getElementById('portal-app').style.display = 'block';
+
+  // Nav email
+  document.getElementById('navEmail').textContent = user.email;
+
+  // Greeting
+  var hour = new Date().getHours();
+  var greeting = hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,';
+
+  // Member since
+  var since = new Date(user.created_at);
+  var sinceStr = since.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  document.getElementById('memberSince').textContent = 'Member since ' + sinceStr;
+
+  // Fetch consultation
+  db.from('consultations')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', {ascending: false})
+    .limit(1)
+    .then(function(res) {
+      var consultation = res.data && res.data.length > 0 ? res.data[0] : null;
+      populatePortal(user, consultation, greeting);
+    })
+    .catch(function() {
+      populatePortal(user, null, greeting);
+    });
+}
+
+function populatePortal(user, consultation, greeting) {
+  var firstName = '';
+  var proto = null;
+
+  if (consultation && consultation.data) {
+    var d = consultation.data;
+    firstName = d.first_name || '';
+    var goalKey = d.goals && d.goals.length > 0 ? d.goals[0] : 'recovery';
+    proto = PROTOCOL_MAP[goalKey] || PROTOCOL_MAP.recovery;
+  }
+
+  var displayName = firstName || user.email.split('@')[0];
+
+  // Greeting
+  document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
+  document.getElementById('greetingSub').textContent = 'Welcome to your Pulse member portal.';
+
+  if (proto) {
+    // Status pill
+    var pill = document.getElementById('statusPill');
+    pill.textContent = 'Protocol Recommended';
+    pill.className = 'status-pill active';
+
+    // Action card → protocol ready
+    document.getElementById('actionCard').querySelector('.action-card-title').textContent = 'Your protocol is ready.';
+    var sub = document.getElementById('actionSub');
+    sub.className = 'action-card-proto';
+    sub.innerHTML = 'You\'ve been recommended the <strong>' + proto.name + '</strong>. View your full protocol, compounds, and 30/60/90 day timeline.';
+    var btn = document.getElementById('actionBtn');
+    btn.textContent = 'View Protocol →';
+    btn.removeAttribute('href');
+    btn.onclick = function(){ switchTab('protocol'); };
+
+    // Quick stats
+    document.getElementById('quickStats').style.display = 'grid';
+    document.getElementById('statCategory').textContent = proto.category;
+    document.getElementById('statCompounds').textContent = proto.compounds.length;
+    document.getElementById('statCycle').textContent = proto.cycle;
+
+    // Protocol tab
+    document.getElementById('protoEmpty').style.display = 'none';
+    document.getElementById('protoContent').style.display = 'block';
+    document.getElementById('protoName').textContent = proto.name;
+    document.getElementById('protoCategoryBadge').textContent = proto.category;
+
+    var reviewDate = consultation.created_at ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '—';
+    document.getElementById('protoReviewed').textContent = 'Reviewed ' + reviewDate;
+
+    // Compounds
+    var tagsEl = document.getElementById('compoundTags');
+    tagsEl.innerHTML = '';
+    proto.compounds.forEach(function(c) {
+      var span = document.createElement('span');
+      span.className = 'compound-tag';
+      span.textContent = c;
+      tagsEl.appendChild(span);
+    });
+    document.getElementById('compoundsNote').textContent = proto.note;
+  }
+}
+
+// ── Tab switching ──
+function switchTab(name) {
+  ['overview','protocol','resources'].forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('nav-' + t).classList.toggle('active', t === name);
+  });
+  window.scrollTo(0, 0);
+}
+
+// ── Sign out ──
+async function doSignOut() {
+  await db.auth.signOut();
+  window.location.href = 'index.html';
+}
+</script>
+</body>
+</html>

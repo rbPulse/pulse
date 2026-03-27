@@ -743,13 +743,27 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .auth-msg{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;margin-top:14px;text-align:center;min-height:16px;line-height:1.5;}
 .auth-msg.err{color:#ff6b6b;}
 .auth-msg.ok{color:var(--green);}
-.nav-auth-btn{background:none;border:1px solid rgba(255,255,255,0.18);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.55);padding:8px 16px;cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap;}
-.nav-auth-btn:hover{border-color:rgba(255,255,255,0.45);color:#fff;}
+.nav-auth-btn{background:var(--green);border:none;border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:#000;padding:10px 20px;cursor:pointer;transition:opacity .2s;white-space:nowrap;font-weight:600;text-decoration:none;display:inline-block;box-shadow:0 0 16px var(--green-glow);}
+.nav-auth-btn:hover{opacity:0.82;}
 .nav-user-pill{display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:rgba(255,255,255,0.5);}
 .nav-user-pill span{color:var(--green);}
 .nav-signout{background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);cursor:pointer;padding:0;transition:color .2s;}
 .nav-signout:hover{color:#fff;}
 @media(max-width:600px){.auth-box{padding:28px 24px;}.auth-tabs{margin-bottom:24px;}}
+/* ── SSO / SIGNUP SECTION ── */
+.signup-options{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:360px;margin:0 auto 24px;}
+.sso-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:999px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:14px 28px;cursor:pointer;transition:opacity .2s;letter-spacing:0;}
+.sso-google-btn:hover{opacity:0.9;}
+.sso-google-btn svg{flex-shrink:0;}
+.sso-email-btn{width:100%;background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:14px 28px;cursor:pointer;transition:border-color .2s,color .2s;}
+.sso-email-btn:hover{border-color:rgba(255,255,255,0.45);color:#fff;}
+.signup-or{display:flex;align-items:center;gap:14px;width:100%;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2);}
+.signup-or::before,.signup-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.08);}
+/* Google button in auth modal */
+.auth-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:12px 20px;cursor:pointer;transition:opacity .2s;margin-bottom:20px;}
+.auth-google-btn:hover{opacity:0.9;}
+.auth-or{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.2);}
+.auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
 </style>
 </head>
 <body>
@@ -1153,21 +1167,20 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   </div>
 </section>
 
-<!-- WAITLIST -->
+<!-- WAITLIST / SIGNUP -->
 <section id="waitlist">
   <canvas id="wl-canvas"></canvas>
   <div class="waitlist-inner">
-    <div class="eyebrow" style="justify-content:center;display:flex;">Early Access</div>
+    <div class="eyebrow" style="justify-content:center;display:flex;">Get Started</div>
     <h2 class="waitlist-title">Be first.<br/><em>Feel different.</em></h2>
-    <p class="waitlist-sub">We're onboarding our founding cohort. Join the waitlist for early access, founding-member pricing, and direct input into protocol design.</p>
-    <div class="waitlist-form" id="wl-form">
-      <input type="email" class="waitlist-input" id="wl-email" placeholder="your@email.com"/>
-      <button class="waitlist-btn" onclick="joinWaitlist()">Get Access</button>
-    </div>
-    <div class="success-msg" id="wl-success">
-      <div class="success-msg-icon">✦</div>
-      <div class="success-msg-title">You're on the list.</div>
-      <div class="success-msg-sub">We'll be in touch with early access details,<br/>founding-member pricing, and next steps.</div>
+    <p class="waitlist-sub">Create your account for early access, founding-member pricing, and your personal protocol portal.</p>
+    <div class="signup-options">
+      <button class="sso-google-btn" onclick="signInWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="signup-or">or</div>
+      <button class="sso-email-btn" onclick="openAuthModal('signup')">Continue with Email</button>
     </div>
     <p class="waitlist-note">Founding-member pricing locked at sign-up &nbsp;·&nbsp; No commitment</p>
   </div>
@@ -1726,11 +1739,9 @@ function updateNavAuth(user) {
   var area = document.getElementById('navAuthArea');
   if (!area) return;
   if (user) {
-    var name = user.email.split('@')[0];
     area.innerHTML =
       '<div class="nav-user-pill">' +
-        '<a href="portal.html" style="color:var(--green);font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;text-decoration:none;transition:opacity .2s;" onmouseenter="this.style.opacity=\'0.7\'" onmouseleave="this.style.opacity=\'1\'">My Portal</a>' +
-        '<span>' + name + '</span>' +
+        '<a href="portal.html" class="nav-auth-btn">My Portal</a>' +
         '<button class="nav-signout" onclick="doSignOut()">Sign Out</button>' +
       '</div>';
   } else {
@@ -1775,6 +1786,7 @@ async function doSignIn() {
   btn.disabled = false; btn.textContent = 'Sign In';
   if (r.error) { msgEl.className = 'auth-msg err'; msgEl.textContent = r.error.message; return; }
   closeAuthModal();
+  window.location.href = 'portal.html';
 }
 async function doSignUp() {
   var email = document.getElementById('signupEmail').value.trim();
@@ -1791,6 +1803,14 @@ async function doSignUp() {
   // Also add to waitlist table
   await window.db.from('waitlist').insert({ email: email });
   msgEl.className = 'auth-msg ok'; msgEl.textContent = '✓ Check your email to confirm your account.';
+}
+function signInWithGoogle() {
+  var path = window.location.pathname.replace(/\/[^\/]*$/, '/');
+  var redirectTo = window.location.origin + path + 'portal.html';
+  window.db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: redirectTo }
+  });
 }
 async function doSignOut() {
   await window.db.auth.signOut();
@@ -1809,6 +1829,11 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeA
     </div>
     <!-- Sign In -->
     <div id="authSignin">
+      <button class="auth-google-btn" onclick="signInWithGoogle()">
+        <svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-or">or</div>
       <div class="auth-field"><label>Email</label><input type="email" id="signinEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
       <div class="auth-field"><label>Password</label><input type="password" id="signinPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"/></div>
       <button class="auth-submit" id="signinSubmit" onclick="doSignIn()">Sign In</button>
@@ -1817,6 +1842,11 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeA
     </div>
     <!-- Sign Up -->
     <div id="authSignup" style="display:none;">
+      <button class="auth-google-btn" onclick="signInWithGoogle()">
+        <svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-or">or</div>
       <div class="auth-field"><label>Email</label><input type="email" id="signupEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
       <div class="auth-field"><label>Password</label><input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()"/></div>
       <button class="auth-submit" id="signupSubmit" onclick="doSignUp()">Create Account</button>

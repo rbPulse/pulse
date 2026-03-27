@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clinician Access | Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#050505;--surface:#0e0e0e;--card:#141414;--border:rgba(255,255,255,0.06);
+  --green:#3a7a5c;--white:#ffffff;--grey:rgba(255,255,255,0.65);--grey2:rgba(255,255,255,0.42);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{min-height:100vh;}
+body{background:var(--bg);color:var(--white);font-family:'Inter',sans-serif;font-weight:300;-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:32px 20px;}
+
+.access-wrap{width:100%;max-width:390px;}
+
+/* Brand */
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:48px;}
+.brand-icon{width:28px;height:28px;border:1.5px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(58,122,92,0.4);}
+.brand-icon svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;}
+.brand-name{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;}
+
+/* Header */
+.access-eyebrow{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.32em;text-transform:uppercase;color:var(--green);margin-bottom:10px;}
+.access-title{font-size:22px;font-weight:600;margin-bottom:32px;line-height:1.2;}
+
+/* Form */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.field label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);}
+.field input{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:9px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;outline:none;transition:border-color .2s;width:100%;}
+.field input:focus{border-color:rgba(58,122,92,0.4);}
+.field input::placeholder{color:rgba(255,255,255,0.2);}
+.btn-submit{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:13px 28px;border-radius:999px;cursor:pointer;font-weight:600;width:100%;margin-top:8px;transition:opacity .2s;}
+.btn-submit:hover{opacity:0.85;}
+.btn-submit:disabled{opacity:0.45;cursor:not-allowed;}
+.access-msg{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(200,80,80,0.85);margin-top:12px;min-height:18px;line-height:1.5;}
+.access-msg.ok{color:var(--green);}
+.access-toggle{text-align:center;margin-top:20px;font-size:12px;color:rgba(255,255,255,0.4);}
+.access-toggle a{color:var(--green);text-decoration:none;}
+.access-footer{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;color:rgba(255,255,255,0.18);text-align:center;margin-top:48px;line-height:1.9;}
+</style>
+</head>
+<body>
+
+<div class="access-wrap">
+  <a href="index.html" class="brand">
+    <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+    <span class="brand-name">PULSE</span>
+  </a>
+
+  <div class="access-eyebrow">Clinician Access</div>
+  <div class="access-title" id="accessTitle">Create your account.</div>
+
+  <div class="field"><label>Email</label><input type="email" id="accEmail" placeholder="you@domain.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('accPass').focus()"/></div>
+  <div class="field"><label>Password</label><input type="password" id="accPass" placeholder="at least 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitAccess()"/></div>
+  <button class="btn-submit" id="accBtn" onclick="submitAccess()">Create Account</button>
+  <div class="access-msg" id="accMsg"></div>
+  <div class="access-toggle" id="accessToggle">Already have an account? <a href="#" onclick="toggleAccessMode(event)">Sign in</a></div>
+
+  <div class="access-footer">
+    Clinician access is by invitation only.<br>
+    Contact Pulse to request access.
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Redirect if already signed in
+db.auth.getSession().then(function(r) {
+  if (r.data && r.data.session) window.location.href = 'portal.html';
+});
+
+// Optional invite token from URL — stored in metadata for future validation
+var params   = new URLSearchParams(window.location.search);
+var inviteToken = params.get('invite') || '';
+var _mode = 'signup';
+
+function toggleAccessMode(e) {
+  e.preventDefault();
+  _mode = _mode === 'signup' ? 'signin' : 'signup';
+  var titleEl  = document.getElementById('accessTitle');
+  var btnEl    = document.getElementById('accBtn');
+  var passEl   = document.getElementById('accPass');
+  var toggleEl = document.getElementById('accessToggle');
+  if (_mode === 'signin') {
+    titleEl.textContent  = 'Sign in to your account.';
+    btnEl.textContent    = 'Sign In';
+    passEl.setAttribute('autocomplete', 'current-password');
+    toggleEl.innerHTML   = "New account? <a href=\"#\" onclick=\"toggleAccessMode(event)\">Create one</a>";
+  } else {
+    titleEl.textContent  = 'Create your account.';
+    btnEl.textContent    = 'Create Account';
+    passEl.setAttribute('autocomplete', 'new-password');
+    toggleEl.innerHTML   = "Already have an account? <a href=\"#\" onclick=\"toggleAccessMode(event)\">Sign in</a>";
+  }
+  document.getElementById('accMsg').textContent = '';
+}
+
+async function submitAccess() {
+  var email = document.getElementById('accEmail').value.trim();
+  var pass  = document.getElementById('accPass').value;
+  var btn   = document.getElementById('accBtn');
+  var msg   = document.getElementById('accMsg');
+  msg.className = 'access-msg';
+
+  if (!email || !email.includes('@')) { msg.textContent = 'Please enter a valid email.'; return; }
+  if (!pass || pass.length < 6)       { msg.textContent = 'Password must be at least 6 characters.'; return; }
+
+  var orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
+
+  try {
+    var r;
+    if (_mode === 'signup') {
+      r = await db.auth.signUp({
+        email: email,
+        password: pass,
+        options: { data: { role: 'clinician', invite_token: inviteToken } }
+      });
+    } else {
+      r = await db.auth.signInWithPassword({ email: email, password: pass });
+    }
+    if (r.error) throw r.error;
+    msg.className = 'access-msg ok';
+    msg.textContent = _mode === 'signup' ? 'Account created. Redirecting…' : 'Signed in. Redirecting…';
+    setTimeout(function(){ window.location.href = 'portal.html'; }, 900);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = orig;
+    msg.textContent = e.message || 'Something went wrong. Please try again.';
+  }
+}
+</script>
+</body>
+</html>

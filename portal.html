@@ -388,6 +388,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .msg-compose-input::placeholder{color:rgba(255,255,255,0.18);}
 .msg-send-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:10px 18px;border-radius:999px;cursor:pointer;font-weight:600;flex-shrink:0;transition:opacity .2s;}
 .msg-send-btn:hover{opacity:0.85;}
+
+/* ── CLINICIAN FIRST-TIME SETUP OVERLAY ── */
+#cl-setup-overlay{position:fixed;inset:0;background:var(--bg);z-index:9998;overflow-y:auto;display:none;}
+#cl-setup-overlay.active{display:block;}
+.setup-wrap{max-width:540px;margin:0 auto;padding:72px 32px 60px;}
+.setup-brand{display:flex;align-items:center;gap:10px;margin-bottom:48px;}
+.setup-brand-icon{width:26px;height:26px;border:1.5px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(58,122,92,0.4);}
+.setup-brand-icon svg{width:13px;height:13px;stroke:var(--green);fill:none;stroke-width:2;}
+.setup-brand-name{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;}
+.setup-step{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--green);margin-bottom:10px;}
+.setup-title{font-size:clamp(22px,3vw,30px);font-weight:600;margin-bottom:6px;line-height:1.1;}
+.setup-sub{font-size:14px;color:var(--grey);margin-bottom:36px;line-height:1.6;}
+.setup-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:16px;}
+.setup-section-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
+.setup-avail-row{display:flex;flex-wrap:wrap;gap:8px;}
+.setup-day-toggle{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;user-select:none;transition:all .15s;}
+.setup-day-toggle.on{background:rgba(58,122,92,0.12);border-color:rgba(58,122,92,0.3);}
+.setup-day-toggle input{display:none;}
+.setup-day-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);transition:color .15s;}
+.setup-day-toggle.on .setup-day-label{color:var(--green);}
+.setup-error{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(200,80,80,0.85);margin-left:16px;}
 </style>
 </head>
 <body>
@@ -1004,6 +1025,88 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   </div>
 </div>
 
+<!-- CLINICIAN FIRST-TIME SETUP OVERLAY -->
+<div id="cl-setup-overlay">
+  <div class="setup-wrap">
+    <div class="setup-brand">
+      <div class="setup-brand-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <span class="setup-brand-name">PULSE</span>
+    </div>
+    <div class="setup-step">Clinician Setup</div>
+    <div class="setup-title">Set up your profile.</div>
+    <div class="setup-sub">Takes under a minute. Everything here can be adjusted later in Settings.</div>
+
+    <div class="setup-card">
+      <div class="setup-section-lbl">Profile</div>
+      <div class="settings-grid">
+        <div class="settings-field">
+          <label class="settings-field-lbl">First Name</label>
+          <input class="settings-input" id="setupFirstName" type="text" placeholder="Sarah" autocomplete="given-name"/>
+        </div>
+        <div class="settings-field">
+          <label class="settings-field-lbl">Last Name</label>
+          <input class="settings-input" id="setupLastName" type="text" placeholder="Chen" autocomplete="family-name"/>
+        </div>
+      </div>
+      <div class="settings-grid">
+        <div class="settings-field">
+          <label class="settings-field-lbl">Credentials</label>
+          <input class="settings-input" id="setupCredentials" type="text" placeholder="MD, FACSM"/>
+        </div>
+        <div class="settings-field">
+          <label class="settings-field-lbl">Specialty / Focus Area</label>
+          <input class="settings-input" id="setupSpecialty" type="text" placeholder="Sports Medicine"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <div class="setup-section-lbl">Preferences</div>
+      <div class="settings-grid">
+        <div class="settings-field">
+          <label class="settings-field-lbl">Timezone</label>
+          <select class="book-select" id="setupTimezone">
+            <option value="America/New_York">Eastern Time (ET)</option>
+            <option value="America/Chicago">Central Time (CT)</option>
+            <option value="America/Denver">Mountain Time (MT)</option>
+            <option value="America/Los_Angeles">Pacific Time (PT)</option>
+            <option value="America/Anchorage">Alaska Time (AKT)</option>
+            <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+          </select>
+        </div>
+        <div class="settings-field">
+          <label class="settings-field-lbl">Default Appointment Duration</label>
+          <select class="book-select" id="setupDuration">
+            <option value="20">20 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <div class="setup-section-lbl">Availability</div>
+      <div style="font-size:12px;color:var(--grey2);margin-bottom:14px;">Days you see patients. Adjust hours in Schedule settings.</div>
+      <div class="setup-avail-row">
+        <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-monday"    checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Mon</span></label>
+        <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-tuesday"   checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Tue</span></label>
+        <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-wednesday" checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Wed</span></label>
+        <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-thursday"  checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Thu</span></label>
+        <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-friday"    checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Fri</span></label>
+        <label class="setup-day-toggle"><input type="checkbox" id="setup-day-saturday" onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Sat</span></label>
+        <label class="setup-day-toggle"><input type="checkbox" id="setup-day-sunday"   onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Sun</span></label>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <button class="btn-green" id="setupSubmitBtn" onclick="submitClSetup()">Enter Portal</button>
+      <span id="setupMsg" style="display:none;" class="setup-error"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
@@ -1279,7 +1382,7 @@ function initPortal(user) {
   var greeting = hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,';
 
   if (role === 'clinician' || role === 'admin') {
-    initClinicianPortal(user, role, greeting);
+    checkClSetup(user, role, greeting);
   } else {
     // Consumer flow
     var since = new Date(user.created_at);
@@ -1301,6 +1404,120 @@ function initPortal(user) {
   }
 }
 
+// ── Clinician first-time setup ──
+// Runs between auth and initClinicianPortal.
+// Shows setup overlay when cl_setup flag is absent from user_metadata.
+// PREVIEW_MODE bypasses setup entirely.
+
+function checkClSetup(user, role, greeting) {
+  if (PREVIEW_MODE) {
+    initClinicianPortal(user, role, greeting);
+    return;
+  }
+  var meta = user.user_metadata || {};
+  if (!meta.cl_setup) {
+    showClSetup(user, role, greeting);
+  } else {
+    applyClProfile(meta);
+    initClinicianPortal(user, role, greeting);
+  }
+}
+
+function showClSetup(user, role, greeting) {
+  // Portal chrome is visible but portal-app content is hidden behind the overlay
+  document.getElementById('portal-loading').style.display = 'none';
+  document.getElementById('portal-nav').style.display = 'flex';
+  document.getElementById('portal-app').style.display = 'block';
+  document.getElementById('navEmail').textContent = user.email;
+  var badge = document.getElementById('navRoleBadge');
+  if (badge) { badge.textContent = role === 'admin' ? 'Admin' : 'Clinician'; badge.style.display = 'inline-block'; }
+  document.getElementById('cl-setup-overlay').classList.add('active');
+  // Stash context for after submit
+  window._setupUser     = user;
+  window._setupRole     = role;
+  window._setupGreeting = greeting;
+}
+
+function applyClProfile(meta) {
+  // Push saved metadata into the portal settings fields and JS state
+  if (meta.cl_name) {
+    var parts = meta.cl_name.split(' ');
+    var fe = document.getElementById('clFirstName'); if (fe) fe.value = parts[0] || '';
+    var le = document.getElementById('clLastName');  if (le) le.value = parts.slice(1).join(' ') || '';
+  }
+  var ce = document.getElementById('clCredentials'); if (ce && meta.cl_credentials) ce.value = meta.cl_credentials;
+  var se = document.getElementById('clSpecialty');   if (se && meta.cl_specialty)   se.value = meta.cl_specialty;
+  if (meta.cl_duration) {
+    APPT_DURATION = parseInt(meta.cl_duration) || 30;
+    var de = document.getElementById('clDuration'); if (de) de.value = String(APPT_DURATION);
+  }
+  if (meta.cl_avail && Array.isArray(meta.cl_avail)) {
+    meta.cl_avail.forEach(function(saved) {
+      AVAIL_STATE.forEach(function(s) {
+        if (s.day === saved.day) { s.on = saved.on; }
+      });
+    });
+  }
+}
+
+async function submitClSetup() {
+  var btn = document.getElementById('setupSubmitBtn');
+  var msg = document.getElementById('setupMsg');
+  if (msg) { msg.textContent = ''; msg.style.display = 'none'; }
+
+  var firstName   = (document.getElementById('setupFirstName').value   || '').trim();
+  var lastName    = (document.getElementById('setupLastName').value    || '').trim();
+  var credentials = (document.getElementById('setupCredentials').value || '').trim();
+  var specialty   = (document.getElementById('setupSpecialty').value   || '').trim();
+  var timezone    = document.getElementById('setupTimezone').value;
+  var duration    = parseInt(document.getElementById('setupDuration').value) || 30;
+
+  if (!firstName || !specialty) {
+    if (msg) { msg.textContent = 'Name and specialty are required.'; msg.style.display = 'inline'; }
+    return;
+  }
+
+  // Read availability day toggles
+  var dayMap = { monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday', thursday:'Thursday', friday:'Friday', saturday:'Saturday', sunday:'Sunday' };
+  var availData = AVAIL_STATE.map(function(s) {
+    var key = s.day.toLowerCase();
+    var cb  = document.getElementById('setup-day-' + key);
+    return { day: s.day, on: cb ? cb.checked : s.on, start: s.start, end: s.end };
+  });
+
+  var orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
+
+  try {
+    var r = await db.auth.updateUser({
+      data: {
+        cl_setup:       true,
+        cl_name:        (firstName + (lastName ? ' ' + lastName : '')).trim(),
+        cl_credentials: credentials,
+        cl_specialty:   specialty,
+        cl_timezone:    timezone,
+        cl_duration:    duration,
+        cl_avail:       availData
+      }
+    });
+    if (r.error) throw r.error;
+
+    // Apply state locally
+    APPT_DURATION = duration;
+    availData.forEach(function(saved) {
+      AVAIL_STATE.forEach(function(s) { if (s.day === saved.day) s.on = saved.on; });
+    });
+
+    document.getElementById('cl-setup-overlay').classList.remove('active');
+    var updatedUser = (r.data && r.data.user) ? r.data.user : window._setupUser;
+    applyClProfile(updatedUser.user_metadata || {});
+    initClinicianPortal(updatedUser, window._setupRole, window._setupGreeting);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = orig;
+    if (msg) { msg.textContent = e.message || 'Could not save. Please try again.'; msg.style.display = 'inline'; }
+  }
+}
+
 // ── Clinician portal init ──
 function initClinicianPortal(user, role, greeting) {
   // Show clinician sidebar, hide consumer sidebar
@@ -1317,7 +1534,8 @@ function initClinicianPortal(user, role, greeting) {
 
   // Populate from mock (replace fetch calls here when backend is ready)
   var m = MOCK_CLINICIAN;
-  var name = PREVIEW_MODE ? m.name : (user.user_metadata && user.user_metadata.name ? user.user_metadata.name : user.email.split('@')[0]);
+  var meta = user.user_metadata || {};
+  var name = PREVIEW_MODE ? m.name : (meta.cl_name || meta.name || user.email.split('@')[0]);
   var displayName = 'Dr. ' + name.split(' ')[0];
 
   document.getElementById('clGreetLine').textContent = greeting + ' ' + displayName + '.';
@@ -1356,21 +1574,34 @@ function initClinicianPortal(user, role, greeting) {
   // Messages tab
   initClMessages();
 
-  // Settings defaults
-  var parts = m.name.split(' ');
+  // Settings defaults — prefer real user metadata over mock fallback
+  var savedName  = meta.cl_name ? meta.cl_name.split(' ') : m.name.split(' ');
   var fEl = document.getElementById('clFirstName');
   var lEl = document.getElementById('clLastName');
   var cEl = document.getElementById('clCredentials');
   var sEl = document.getElementById('clSpecialty');
-  if (fEl) fEl.value = parts[0] || '';
-  if (lEl) lEl.value = parts[1] || '';
-  if (cEl) cEl.value = m.title;
-  if (sEl) sEl.value = m.specialty;
+  if (fEl) fEl.value = savedName[0] || '';
+  if (lEl) lEl.value = savedName.slice(1).join(' ') || '';
+  if (cEl) cEl.value = meta.cl_credentials || m.title;
+  if (sEl) sEl.value = meta.cl_specialty   || m.specialty;
 }
 
-function saveClinicianSettings() {
-  // TODO: persist to Supabase user_metadata or profiles table
+async function saveClinicianSettings() {
+  var fEl = document.getElementById('clFirstName');
+  var lEl = document.getElementById('clLastName');
+  var cEl = document.getElementById('clCredentials');
+  var sEl = document.getElementById('clSpecialty');
+  var fullName = ((fEl ? fEl.value.trim() : '') + ' ' + (lEl ? lEl.value.trim() : '')).trim();
   var saved = document.getElementById('clSettingsSaved');
+  try {
+    var r = await db.auth.updateUser({ data: {
+      cl_setup:       true,
+      cl_name:        fullName || undefined,
+      cl_credentials: cEl ? cEl.value.trim() : undefined,
+      cl_specialty:   sEl ? sEl.value.trim() : undefined
+    }});
+    if (r.error) throw r.error;
+  } catch(e) { /* silent — show saved feedback regardless in preview */ }
   if (saved) { saved.style.display = 'inline'; setTimeout(function(){ saved.style.display = 'none'; }, 2400); }
 }
 

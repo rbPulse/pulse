@@ -557,6 +557,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           <span class="sidebar-item-label">Resources</span>
         </div>
+        <div class="sidebar-section-label">Account</div>
+        <div class="sidebar-item" id="nav-settings" onclick="switchTab('settings')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="sidebar-item-label">Settings</span>
+        </div>
       </div>
 
       <!-- Clinician nav (role=clinician|admin) — hidden until role resolved -->
@@ -871,6 +876,38 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="support-sent-msg" id="supportSentMsg">Message sent. We'll follow up within 24 hours.</div>
             <div style="flex:1;"></div>
             <button class="btn-green" onclick="submitSupportRequest()">Send Message</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONSUMER SETTINGS TAB ── -->
+      <div class="portal-tab" id="tab-settings">
+        <div class="tab-eyebrow">Account</div>
+        <div class="tab-title">Your settings.</div>
+        <div class="p-card">
+          <div class="settings-section">
+            <div class="settings-section-lbl">Profile</div>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-field-lbl">Display Name</label>
+                <input class="settings-input" id="settingsDisplayName" type="text" placeholder="Your name" onblur="saveConsumerSettings()"/>
+              </div>
+              <div class="settings-field">
+                <label class="settings-field-lbl">Email</label>
+                <input class="settings-input" id="settingsEmail" type="email" readonly style="opacity:0.5;cursor:not-allowed;"/>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-green" onclick="saveConsumerSettings()">Save Changes</button>
+            <span id="consumerSettingsSaved" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
+          </div>
+        </div>
+        <div class="p-card" style="margin-top:4px;">
+          <div class="settings-section" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
+            <div class="settings-section-lbl">Session</div>
+            <div style="font-size:13px;color:var(--grey);margin-bottom:16px;line-height:1.65;">Sign out of your Pulse member account.</div>
+            <button class="btn-ghost" onclick="doSignOut()">Sign Out</button>
           </div>
         </div>
       </div>
@@ -1215,6 +1252,34 @@ var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+/*
+ * ── PROFILES TABLE SQL ───────────────────────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * create table if not exists profiles (
+ *   user_id uuid primary key references auth.users(id) on delete cascade,
+ *   email text,
+ *   display_name text,
+ *   current_streak integer default 0,
+ *   last_seen timestamptz,
+ *   subscription_status text default 'free',
+ *   created_at timestamptz default now(),
+ *   updated_at timestamptz default now()
+ * );
+ * alter table profiles enable row level security;
+ * create policy "users manage own profile"
+ *   on profiles for all
+ *   using (user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ * create policy "clinicians read all profiles"
+ *   on profiles for select
+ *   using ((auth.jwt() -> 'user_metadata' ->> 'role') in ('clinician','admin'));
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
+// Module-level display name cache (set on every consumer sign-in)
+var _memberDisplayName = '';
+
 var PROTOCOL_MAP = {
   recovery:{name:'Recovery + Repair',category:'Recovery',compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg'],note:'Designed for tissue repair and anti-inflammatory support. BPC-157 administered subcutaneously daily, TB-500 bi-weekly. First cycle is 8 weeks.',cycle:'8 weeks'},
   performance:{name:'Performance Stack',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'],note:'GH-axis optimization for lean mass and recovery. Administered before bed on an empty stomach. Cycle: 12 weeks on, 4 weeks off.',cycle:'12 weeks'},
@@ -1543,8 +1608,9 @@ function initPortal(user) {
     // Consumer flow
     var since = new Date(user.created_at);
     document.getElementById('memberSince').textContent = 'Member since ' + since.toLocaleDateString('en-US', {month:'long', year:'numeric'});
-    // Set consumer sidebar identity
+    // Derive an initial display name from user_metadata or email prefix
     var consumerName = (user.user_metadata && user.user_metadata.first_name) ? user.user_metadata.first_name : user.email.split('@')[0];
+    _memberDisplayName = consumerName;
     setSidebarIdentity(consumerName, 'Member', false);
 
     if (PREVIEW_MODE) {
@@ -1552,6 +1618,33 @@ function initPortal(user) {
       loadDoseLogs();
       return;
     }
+
+    // Upsert profile row; use the resolved display_name from profiles if available
+    var profilePayload = {
+      user_id:      user.id,
+      email:        user.email,
+      display_name: consumerName,
+      last_seen:    new Date().toISOString()
+    };
+    db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
+      .select('display_name')
+      .then(function(pr) {
+        if (!pr.error && pr.data && pr.data.length > 0 && pr.data[0].display_name) {
+          _memberDisplayName = pr.data[0].display_name;
+          setSidebarIdentity(_memberDisplayName, 'Member', false);
+          // Also refresh settings field with the DB-resolved name
+          var snEl = document.getElementById('settingsDisplayName');
+          if (snEl) snEl.value = _memberDisplayName;
+        }
+      })
+      .catch(function() { /* non-fatal; keep initial name */ });
+
+    // Populate settings tab fields (initial fill; may be overwritten above after upsert resolves)
+    var settingsNameEl = document.getElementById('settingsDisplayName');
+    var settingsEmailEl = document.getElementById('settingsEmail');
+    if (settingsNameEl) settingsNameEl.value = _memberDisplayName;
+    if (settingsEmailEl) settingsEmailEl.value = user.email || '';
+
     db.from('consultations').select('*').eq('user_id', user.id)
       .order('created_at', {ascending: false}).limit(1)
       .then(function(res) {
@@ -2150,56 +2243,86 @@ function generateTimeSlots(dateStr) {
 function populatePortal(user, consultation, greeting) {
   var firstName = '';
   var proto = null;
+  var hasPendingReview = false;
 
   if (consultation && consultation.data) {
     var d = consultation.data;
     firstName = d.first_name || '';
-    var goalKey = d.goals && d.goals.length > 0 ? d.goals[0] : 'recovery';
-    proto = PROTOCOL_MAP[goalKey] || PROTOCOL_MAP.recovery;
-    window._userProto = goalKey;
+    var goalKey = (d.goals && d.goals.length > 0) ? d.goals[0]
+                : (d.assigned_protocol || null);
+    if (goalKey && PROTOCOL_MAP[goalKey]) {
+      proto = PROTOCOL_MAP[goalKey];
+      window._userProto = goalKey;
+    } else {
+      // Consultation exists but no resolvable protocol yet — pending clinician review
+      hasPendingReview = true;
+    }
   }
 
-  var displayName = firstName || user.email.split('@')[0];
+  // Prefer the _memberDisplayName already resolved from profiles; fall back to consultation first_name or email prefix
+  var displayName = _memberDisplayName || firstName || user.email.split('@')[0];
 
-  // Update sidebar identity with real name if available
-  if (firstName) setSidebarIdentity(firstName, 'Member', false);
+  // Update sidebar identity with real name if available (profiles takes priority)
+  if (_memberDisplayName) {
+    setSidebarIdentity(_memberDisplayName, 'Member', false);
+  } else if (firstName) {
+    setSidebarIdentity(firstName, 'Member', false);
+  }
 
   // Greeting
   document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('greetingSub').textContent = 'Welcome to your Pulse member portal.';
 
   if (proto) {
+    // ── Consultation exists, protocol resolved ──
+
     // Status pill
     var pill = document.getElementById('statusPill');
-    pill.textContent = 'Protocol Recommended';
+    pill.textContent = 'Protocol Active';
     pill.className = 'status-pill active';
 
-    // Action card → protocol ready
-    document.getElementById('actionCard').querySelector('.action-card-title').textContent = 'Your protocol is ready.';
-    var sub = document.getElementById('actionSub');
-    sub.className = 'action-card-proto';
-    sub.innerHTML = 'You\'ve been recommended the <strong>' + proto.name + '</strong>. View your full protocol, compounds, and 30/60/90 day timeline.';
-    var btn = document.getElementById('actionBtn');
-    btn.textContent = 'View Protocol →';
-    btn.removeAttribute('href');
-    btn.onclick = function(){ switchTab('protocol'); };
+    // Hide action card — protocol is ready, no CTA needed
+    var actionCard = document.getElementById('actionCard');
+    if (actionCard) actionCard.style.display = 'none';
 
-    // New overview stat cards
+    // Overview stat cards — Protocol card: show protocol name
     var catEl = document.getElementById('statCategory');
-    if (catEl) catEl.textContent = proto.category;
+    if (catEl) catEl.textContent = proto.name;
+    var ovSubEl = document.getElementById('ovStatProtocolSub');
+    if (ovSubEl) ovSubEl.textContent = proto.category;
+
+    // Compounds card: show compound names joined with " · "
     var compEl = document.getElementById('statCompounds');
     if (compEl) compEl.textContent = proto.compounds.length;
     var cycleEl = document.getElementById('statCycle');
-    if (cycleEl) cycleEl.textContent = proto.cycle;
-    var ovSubEl = document.getElementById('ovStatProtocolSub');
-    if (ovSubEl) ovSubEl.textContent = proto.name;
+    if (cycleEl) cycleEl.textContent = proto.compounds.join(' · ');
+
+    // Next Dose card: "Today ✓" if already logged today, else "Tomorrow"
+    var todayStr = localDateStr(new Date());
+    var loggedToday = loggedDates.indexOf(todayStr) !== -1;
     var nextDoseEl = document.getElementById('ovNextDose');
-    if (nextDoseEl) nextDoseEl.textContent = 'Today';
+    if (nextDoseEl) nextDoseEl.textContent = loggedToday ? 'Today ✓' : 'Tomorrow';
     var nextDoseSubEl = document.getElementById('ovNextDoseSub');
-    if (nextDoseSubEl) nextDoseSubEl.textContent = proto.category + ' protocol';
+    if (nextDoseSubEl) nextDoseSubEl.textContent = loggedToday ? 'Dose logged' : 'Next scheduled dose';
+
+    // Day Streak — rendered by renderCalendar() after loadDoseLogs(); no override needed here
 
     // Legacy quick stats (hidden but keep for JS compat)
     document.getElementById('quickStats').style.display = 'none';
+
+    // Protocol detail card below stat grid (inject once)
+    if (!document.getElementById('ovProtoDetailCard')) {
+      var overviewTab = document.getElementById('tab-overview');
+      var detailCard = document.createElement('div');
+      detailCard.id = 'ovProtoDetailCard';
+      detailCard.className = 'action-card';
+      detailCard.style.cssText = 'background:var(--card2);border-color:rgba(58,122,92,0.18);';
+      detailCard.innerHTML =
+        '<div class="action-card-title" style="font-size:16px;">' + escapeHtml(proto.name) + '</div>' +
+        '<div class="action-card-proto" style="margin-bottom:14px;">' + escapeHtml(proto.note) + '</div>' +
+        '<button class="btn-ghost" style="font-size:9px;" onclick="switchTab(\'protocol\')">View Full Protocol →</button>';
+      overviewTab.appendChild(detailCard);
+    }
 
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
@@ -2220,6 +2343,46 @@ function populatePortal(user, consultation, greeting) {
       tagsEl.appendChild(span);
     });
     document.getElementById('compoundsNote').textContent = proto.note;
+
+  } else if (hasPendingReview) {
+    // ── Consultation submitted, awaiting clinician review ──
+
+    var pill2 = document.getElementById('statusPill');
+    pill2.textContent = 'Under Review';
+    pill2.className = 'status-pill waitlist';
+
+    // Stat cards show "Pending"
+    ['statCategory','statCompounds','ovNextDose','statStreak'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = 'Pending';
+    });
+    var ovSubEl2 = document.getElementById('ovStatProtocolSub');
+    if (ovSubEl2) ovSubEl2.textContent = 'Awaiting review';
+    var cycleEl2 = document.getElementById('statCycle');
+    if (cycleEl2) cycleEl2.textContent = '—';
+    var nextDoseSubEl2 = document.getElementById('ovNextDoseSub');
+    if (nextDoseSubEl2) nextDoseSubEl2.textContent = 'Not yet assigned';
+    var ovStreakSubEl2 = document.getElementById('ovStreakSub');
+    if (ovStreakSubEl2) ovStreakSubEl2.textContent = 'days in a row';
+
+    // Repurpose action card as pending-review state card
+    var actionCard2 = document.getElementById('actionCard');
+    if (actionCard2) {
+      actionCard2.style.display = '';
+      actionCard2.querySelector('.action-card-title').textContent = 'Your intake is being reviewed.';
+      var sub2 = document.getElementById('actionSub');
+      if (sub2) {
+        sub2.className = 'action-card-sub';
+        sub2.textContent = 'Your clinical intake has been received. A Pulse clinician will review your goals and assign your protocol shortly.';
+      }
+      var btn2 = document.getElementById('actionBtn');
+      if (btn2) btn2.style.display = 'none';
+    }
+
+  } else {
+    // ── No consultation — redirected to intake in initPortal; this branch is a fallback ──
+    var actionCard3 = document.getElementById('actionCard');
+    if (actionCard3) actionCard3.style.display = '';
   }
 }
 
@@ -2818,7 +2981,7 @@ function sendConsumerMessage() {
 
 // ── Tab switching ──
 var CL_TABS = ['cl-overview','cl-schedule','cl-appointments','cl-patients','cl-messages','cl-settings'];
-var CONSUMER_TABS = ['overview','protocol','tracker','appointments','messages','resources'];
+var CONSUMER_TABS = ['overview','protocol','tracker','appointments','messages','resources','settings'];
 
 function switchTab(name) {
   var isClinician = CL_TABS.indexOf(name) !== -1;
@@ -2951,6 +3114,15 @@ function renderCalendar() {
   if (ovStreakSubEl) ovStreakSubEl.textContent = streak === 1 ? 'day in a row' : 'days in a row';
   // Legacy tile (hidden)
   if (el('streakTile') && streak > 0) el('streakTile').style.display = '';
+
+  // Keep Next Dose card in sync (may run after populatePortal if dose_logs load late)
+  if (window._userProto) {
+    var nextDoseEl2 = el('ovNextDose');
+    var nextDoseSubEl2 = el('ovNextDoseSub');
+    var loggedTodayNow = loggedSet.has(todayStr);
+    if (nextDoseEl2) nextDoseEl2.textContent = loggedTodayNow ? 'Today \u2713' : 'Tomorrow';
+    if (nextDoseSubEl2) nextDoseSubEl2.textContent = loggedTodayNow ? 'Dose logged' : 'Next scheduled dose';
+  }
 }
 
 function checkTodayLogged() {
@@ -2986,6 +3158,28 @@ function logDose() {
   }).then(onSuccess).catch(function() {
     if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; }
   });
+}
+
+// ── CONSUMER SETTINGS SAVE ──
+async function saveConsumerSettings() {
+  var nameEl  = document.getElementById('settingsDisplayName');
+  var savedEl = document.getElementById('consumerSettingsSaved');
+  var newName = nameEl ? nameEl.value.trim() : '';
+  if (!newName || !currentUserId) return;
+  _memberDisplayName = newName;
+  setSidebarIdentity(_memberDisplayName, 'Member', false);
+  try {
+    var r = await db.from('profiles').upsert({
+      user_id:      currentUserId,
+      display_name: newName,
+      updated_at:   new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (r.error) throw r.error;
+  } catch(e) { /* non-fatal */ }
+  if (savedEl) {
+    savedEl.style.display = 'inline';
+    setTimeout(function(){ savedEl.style.display = 'none'; }, 2400);
+  }
 }
 
 // ── SUPPORT REQUEST ──

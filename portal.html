@@ -1556,6 +1556,11 @@ function initPortal(user) {
       .order('created_at', {ascending: false}).limit(1)
       .then(function(res) {
         var c = res.data && res.data.length > 0 ? res.data[0] : null;
+        if (!c) {
+          // No consultation on file — send them to the intake form
+          window.location.href = 'consultation.html?new=1';
+          return;
+        }
         populatePortal(user, c, greeting);
       })
       .catch(function() { populatePortal(user, null, greeting); });

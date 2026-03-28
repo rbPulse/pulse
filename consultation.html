@@ -382,6 +382,17 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     <a href="index.html" class="btn-secondary" style="display:inline-block;text-decoration:none;text-align:center;">Return to Pulse</a>
   </div>
 
+  <!-- WELCOME BANNER (shown only when arriving from sign-up via ?new=1) -->
+  <div id="intake-welcome-banner" style="display:none;max-width:640px;margin:0 auto 24px;padding:0 24px;">
+    <div style="background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.25);border-radius:12px;padding:16px 20px;display:flex;align-items:flex-start;gap:14px;">
+      <div style="font-size:18px;line-height:1;">✦</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:3px;">Welcome to Pulse.</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.5;">Let's get your protocol started. Complete the intake below and a Pulse clinician will review your profile within 24–48 hours.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- STEP 1: MEDICAL INTAKE -->
   <div class="step active" id="step-1">
     <div class="step-eyebrow">Step 1 of 6</div>
@@ -1649,6 +1660,26 @@ window._sbClient = createClient(
   'https://zvfqukbbglxongvuymzt.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw'
 );
+
+(async function() {
+  try {
+    var session = (await window._sbClient.auth.getSession()).data.session;
+    if (!session) return; // not logged in — let them fill out the form normally
+
+    // If they already have a consultation, send them to the portal
+    var res = await window._sbClient.from('consultations').select('id').eq('user_id', session.user.id).limit(1);
+    if (res.data && res.data.length > 0) {
+      window.location.href = 'portal.html';
+      return;
+    }
+
+    // Show welcome banner if arriving from sign-up (?new=1)
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      var banner = document.getElementById('intake-welcome-banner');
+      if (banner) banner.style.display = 'block';
+    }
+  } catch(e) { /* silent — don't block the form */ }
+})();
 </script>
 </body>
 </html>

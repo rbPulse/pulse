@@ -1404,6 +1404,45 @@ var MOCK_PATIENTS = [
   }
 ];
 
+/*
+ * ── REQUIRED SUPABASE TABLE SCHEMA ──────────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor) before using real messaging:
+ *
+ * create table if not exists messages (
+ *   id          uuid primary key default gen_random_uuid(),
+ *   thread_id   text not null,          -- member's user UUID; groups all msgs for that member
+ *   sender_id   uuid not null,
+ *   sender_role text not null,          -- 'consumer' or 'clinician'
+ *   body        text not null,
+ *   created_at  timestamptz default now(),
+ *   read        boolean default false
+ * );
+ *
+ * -- Enable Row Level Security (recommended):
+ * alter table messages enable row level security;
+ *
+ * -- Allow authenticated users to insert/select messages in their own thread:
+ * create policy "consumers can read own thread"
+ *   on messages for select using (thread_id = auth.uid()::text);
+ * create policy "consumers can insert own thread"
+ *   on messages for insert with check (thread_id = auth.uid()::text);
+ *
+ * -- Allow clinicians to read/insert/update all threads (set role in user_metadata):
+ * create policy "clinicians can read all"
+ *   on messages for select using (
+ *     (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) in ('clinician','admin')
+ *   );
+ * create policy "clinicians can insert all"
+ *   on messages for insert with check (
+ *     (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) in ('clinician','admin')
+ *   );
+ * create policy "clinicians can update read flag"
+ *   on messages for update using (
+ *     (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) in ('clinician','admin')
+ *   );
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
 // ── Message threads ──
 // Replace with Supabase messages table when ready
 var MOCK_THREADS = [
@@ -2313,13 +2352,102 @@ function buildPatientDetail(p) {
 
 // ── CLINICIAN MESSAGING ──
 var _activeClThreadId = null;
+var _clMsgPollTimer = null;
+// In-memory cache: threadId -> { threadId, patientLabel, initials, unread, latestTime, messages[] }
+var _clThreadCache = {};
 
 function initClMessages() {
   _activeClThreadId = null;
-  renderClThreadList();
+  if (PREVIEW_MODE) {
+    // Fall back to mock data in preview mode
+    _renderClThreadListMock();
+    return;
+  }
+  _loadClThreadList();
 }
 
-function renderClThreadList() {
+// ── Load thread list from Supabase ──
+function _loadClThreadList() {
+  db.from('messages')
+    .select('thread_id, sender_role, body, created_at, read')
+    .order('created_at', { ascending: false })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      _buildClThreadCache(res.data || []);
+      _renderClThreadListFromCache();
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] messages table unavailable for clinician, using mock data:', err && err.message);
+      _renderClThreadListMock();
+    });
+}
+
+// ── Build per-thread summary from flat message list ──
+function _buildClThreadCache(rows) {
+  var seen = {};
+  // rows are ordered newest-first; process to build per-thread summaries
+  rows.forEach(function(row) {
+    var tid = row.thread_id;
+    if (!seen[tid]) {
+      seen[tid] = {
+        threadId: tid,
+        patientLabel: tid.slice(0, 8).toUpperCase(),
+        initials: tid.slice(0, 2).toUpperCase(),
+        unread: 0,
+        latestTime: row.created_at,
+        preview: row.body,
+        messages: []
+      };
+    }
+    // Count unread consumer messages (messages the clinician hasn't read)
+    if (row.sender_role === 'consumer' && row.read === false) {
+      seen[tid].unread++;
+    }
+  });
+  // Re-build in chronological order for each thread's messages array
+  // (rows are newest-first, so we reverse to get asc order per thread)
+  var rowsAsc = rows.slice().reverse();
+  rowsAsc.forEach(function(row) {
+    var tid = row.thread_id;
+    if (seen[tid]) seen[tid].messages.push(row);
+  });
+  _clThreadCache = seen;
+}
+
+function _renderClThreadListFromCache() {
+  var listWrap = document.getElementById('clThreadListWrap');
+  var threadView = document.getElementById('clThreadView');
+  var titleEl = document.getElementById('clMsgTitle');
+  if (listWrap) listWrap.style.display = 'block';
+  if (threadView) threadView.classList.remove('active');
+  if (titleEl) titleEl.textContent = 'Patient messages.';
+
+  var el = document.getElementById('clMsgList');
+  if (!el) return;
+
+  var threads = Object.values(_clThreadCache);
+  // Sort by latest message time descending
+  threads.sort(function(a, b) { return b.latestTime > a.latestTime ? 1 : -1; });
+
+  if (threads.length === 0) {
+    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No messages yet.</div><div class="cl-empty-sub">Messages from members will appear here.</div></div>';
+    return;
+  }
+  el.innerHTML = threads.map(function(t) {
+    var unreadClass = t.unread > 0 ? ' has-unread' : '';
+    var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
+    var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+    return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
+      '<div class="msg-avatar-circle">' + t.initials + '</div>' +
+      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
+      '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
+      '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// ── Fallback: render mock thread list ──
+function _renderClThreadListMock() {
   var listWrap = document.getElementById('clThreadListWrap');
   var threadView = document.getElementById('clThreadView');
   var titleEl = document.getElementById('clMsgTitle');
@@ -2336,7 +2464,7 @@ function renderClThreadList() {
   el.innerHTML = MOCK_THREADS.map(function(t) {
     var unreadClass = t.unread > 0 ? ' has-unread' : '';
     var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
-    return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + t.id + '\')">' +
+    return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.id) + '\')">' +
       '<div class="msg-avatar-circle">' + t.initials + '</div>' +
       '<div class="msg-content"><div class="msg-sender-name">' + t.patient + '</div>' +
       '<div class="msg-preview-line">' + t.preview + '</div></div>' +
@@ -2345,7 +2473,24 @@ function renderClThreadList() {
   }).join('');
 }
 
+// Shared: open a thread (real or mock)
+function renderClThreadList() {
+  if (PREVIEW_MODE) {
+    _renderClThreadListMock();
+  } else {
+    _renderClThreadListFromCache();
+  }
+}
+
 function openClThread(threadId) {
+  if (PREVIEW_MODE) {
+    _openClThreadMock(threadId);
+    return;
+  }
+  _openClThreadReal(threadId);
+}
+
+function _openClThreadMock(threadId) {
   var thread = null;
   for (var i = 0; i < MOCK_THREADS.length; i++) {
     if (MOCK_THREADS[i].id === threadId) { thread = MOCK_THREADS[i]; break; }
@@ -2366,12 +2511,102 @@ function openClThread(threadId) {
   renderClBubbles(thread);
 }
 
+function _openClThreadReal(threadId) {
+  _activeClThreadId = threadId;
+
+  // Show thread view immediately
+  var listWrap = document.getElementById('clThreadListWrap');
+  var threadView = document.getElementById('clThreadView');
+  var titleEl = document.getElementById('clMsgTitle');
+  var whoEl = document.getElementById('clThreadWho');
+  if (listWrap) listWrap.style.display = 'none';
+  if (threadView) threadView.classList.add('active');
+
+  // Use cached label while loading
+  var cached = _clThreadCache[threadId];
+  var label = cached ? cached.patientLabel : threadId.slice(0, 8).toUpperCase();
+  if (titleEl) titleEl.textContent = label;
+  if (whoEl) whoEl.textContent = label;
+
+  // Load messages for this thread
+  db.from('messages')
+    .select('*')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: true })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      var rows = res.data || [];
+      _renderClBubblesFromDB(rows);
+
+      // Mark unread consumer messages as read
+      var unreadIds = rows
+        .filter(function(r) { return r.sender_role === 'consumer' && r.read === false; })
+        .map(function(r) { return r.id; });
+      if (unreadIds.length > 0) {
+        db.from('messages')
+          .update({ read: true })
+          .in('id', unreadIds)
+          .then(function() {
+            // Update cache
+            if (_clThreadCache[threadId]) _clThreadCache[threadId].unread = 0;
+          })
+          .catch(function() {});
+      }
+
+      // Start polling for new messages in this thread
+      if (_clMsgPollTimer) clearInterval(_clMsgPollTimer);
+      _clMsgPollTimer = setInterval(function() {
+        if (_activeClThreadId !== threadId) { clearInterval(_clMsgPollTimer); _clMsgPollTimer = null; return; }
+        db.from('messages')
+          .select('*')
+          .eq('thread_id', threadId)
+          .order('created_at', { ascending: true })
+          .then(function(r) {
+            if (!r.error) _renderClBubblesFromDB(r.data || []);
+          })
+          .catch(function() {});
+      }, 15000);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] Failed to load thread messages:', err && err.message);
+      // Fall back: show cached messages if any
+      if (cached && cached.messages) _renderClBubblesFromDB(cached.messages);
+    });
+}
+
+function _renderClBubblesFromDB(rows) {
+  var el = document.getElementById('clMsgBubbles');
+  if (!el) return;
+  var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  if (rows.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet.</div>';
+    return;
+  }
+  el.innerHTML = rows.map(function(m) {
+    var side = m.sender_role === 'clinician' ? 'from-me' : 'from-them';
+    var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+    return '<div class="msg-bubble-row ' + side + '">' +
+      '<div class="msg-bubble">' + escapeHtml(m.body) + '</div>' +
+      '<div class="msg-bubble-time">' + ts + '</div>' +
+      '</div>';
+  }).join('');
+  if (atBottom) el.scrollTop = el.scrollHeight;
+}
+
 function openClThreadForPatient(patientId) {
   document.querySelectorAll('.patient-detail-panel').forEach(function(p){ p.remove(); });
   switchTab('cl-messages');
-  for (var i = 0; i < MOCK_THREADS.length; i++) {
-    if (MOCK_THREADS[i].patientId === patientId) { openClThread(MOCK_THREADS[i].id); return; }
+  if (PREVIEW_MODE) {
+    for (var i = 0; i < MOCK_THREADS.length; i++) {
+      if (MOCK_THREADS[i].patientId === patientId) { openClThread(MOCK_THREADS[i].id); return; }
+    }
+    return;
   }
+  // In real mode, try to find a thread matching patientId in cache
+  if (_clThreadCache[patientId]) {
+    openClThread(patientId);
+  }
+  // Otherwise just open the messages tab; the clinician can pick a thread
 }
 
 function renderClBubbles(thread) {
@@ -2380,16 +2615,21 @@ function renderClBubbles(thread) {
   el.innerHTML = thread.messages.map(function(m) {
     var side = m.from === 'clinician' ? 'from-me' : 'from-them';
     return '<div class="msg-bubble-row ' + side + '">' +
-      '<div class="msg-bubble">' + m.text + '</div>' +
-      '<div class="msg-bubble-time">' + m.time + '</div>' +
+      '<div class="msg-bubble">' + escapeHtml(m.text || m.body || '') + '</div>' +
+      '<div class="msg-bubble-time">' + (m.time || '') + '</div>' +
       '</div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
 
 function closeClThread() {
+  if (_clMsgPollTimer) { clearInterval(_clMsgPollTimer); _clMsgPollTimer = null; }
   _activeClThreadId = null;
-  renderClThreadList();
+  if (PREVIEW_MODE) {
+    _renderClThreadListMock();
+  } else {
+    _loadClThreadList();
+  }
 }
 
 function sendClMessage() {
@@ -2397,19 +2637,112 @@ function sendClMessage() {
   if (!input || !input.value.trim() || !_activeClThreadId) return;
   var text = input.value.trim();
   input.value = '';
-  for (var i = 0; i < MOCK_THREADS.length; i++) {
-    if (MOCK_THREADS[i].id === _activeClThreadId) {
-      MOCK_THREADS[i].messages.push({ from:'clinician', text:text, time:'Just now' });
-      MOCK_THREADS[i].preview = text;
-      renderClBubbles(MOCK_THREADS[i]);
-      return;
+
+  if (PREVIEW_MODE) {
+    for (var i = 0; i < MOCK_THREADS.length; i++) {
+      if (MOCK_THREADS[i].id === _activeClThreadId) {
+        MOCK_THREADS[i].messages.push({ from:'clinician', text:text, time:'Just now' });
+        MOCK_THREADS[i].preview = text;
+        renderClBubbles(MOCK_THREADS[i]);
+        return;
+      }
     }
+    return;
   }
+
+  // Real mode: optimistic UI then insert
+  var el = document.getElementById('clMsgBubbles');
+  if (el) {
+    var ts = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    var div = document.createElement('div');
+    div.className = 'msg-bubble-row from-me';
+    div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div>' +
+                    '<div class="msg-bubble-time">' + ts + '</div>';
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  var row = {
+    thread_id:   _activeClThreadId,
+    sender_id:   currentUserId,
+    sender_role: 'clinician',
+    body:        text,
+    read:        false
+  };
+  db.from('messages').insert(row)
+    .then(function(res) {
+      if (res.error) {
+        console.warn('[Pulse] Failed to send clinician message:', res.error.message);
+        // Reload to show accurate state
+        _openClThreadReal(_activeClThreadId);
+      }
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] Failed to send clinician message:', err && err.message);
+    });
 }
 
 // ── CONSUMER MESSAGING ──
+var _consumerMsgPollTimer = null;
+
 function initConsumerMessages() {
-  renderConsumerThread();
+  if (PREVIEW_MODE || !currentUserId) {
+    renderConsumerThread();
+    return;
+  }
+  loadConsumerMessages();
+}
+
+function loadConsumerMessages() {
+  db.from('messages')
+    .select('*')
+    .eq('thread_id', currentUserId)
+    .order('created_at', { ascending: true })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      renderConsumerThreadFromDB(res.data || []);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] messages table unavailable, using mock data:', err && err.message);
+      renderConsumerThread();
+    });
+
+  // Start polling if not already running
+  if (!_consumerMsgPollTimer) {
+    _consumerMsgPollTimer = setInterval(function() {
+      if (document.getElementById('tab-messages') &&
+          document.getElementById('tab-messages').classList.contains('active')) {
+        db.from('messages')
+          .select('*')
+          .eq('thread_id', currentUserId)
+          .order('created_at', { ascending: true })
+          .then(function(res) {
+            if (!res.error) renderConsumerThreadFromDB(res.data || []);
+          })
+          .catch(function() {});
+      }
+    }, 15000);
+  }
+}
+
+function renderConsumerThreadFromDB(rows) {
+  var el = document.getElementById('consumerMsgBubbles');
+  if (!el) return;
+  if (rows.length === 0) {
+    // Show a friendly placeholder if no messages yet
+    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet. Send one below.</div>';
+    return;
+  }
+  var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.innerHTML = rows.map(function(m) {
+    var side = m.sender_role === 'consumer' ? 'from-me' : 'from-them';
+    var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+    return '<div class="msg-bubble-row ' + side + '">' +
+      '<div class="msg-bubble">' + escapeHtml(m.body) + '</div>' +
+      '<div class="msg-bubble-time">' + ts + '</div>' +
+      '</div>';
+  }).join('');
+  if (atBottom) el.scrollTop = el.scrollHeight;
 }
 
 function renderConsumerThread() {
@@ -2430,8 +2763,44 @@ function sendConsumerMessage() {
   if (!input || !input.value.trim()) return;
   var text = input.value.trim();
   input.value = '';
-  CONSUMER_THREAD.messages.push({ from:'me', text:text, time:'Just now' });
-  renderConsumerThread();
+
+  if (PREVIEW_MODE || !currentUserId) {
+    CONSUMER_THREAD.messages.push({ from:'me', text:text, time:'Just now' });
+    renderConsumerThread();
+    return;
+  }
+
+  var row = {
+    thread_id:   currentUserId,
+    sender_id:   currentUserId,
+    sender_role: 'consumer',
+    body:        text,
+    read:        false
+  };
+
+  // Optimistic UI: append immediately
+  var el = document.getElementById('consumerMsgBubbles');
+  if (el) {
+    var ts = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    var div = document.createElement('div');
+    div.className = 'msg-bubble-row from-me';
+    div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div>' +
+                    '<div class="msg-bubble-time">' + ts + '</div>';
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  db.from('messages').insert(row)
+    .then(function(res) {
+      if (res.error) {
+        console.warn('[Pulse] Failed to send message:', res.error.message);
+        // Revert optimistic on failure
+        loadConsumerMessages();
+      }
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] Failed to send message:', err && err.message);
+    });
 }
 
 // ── Tab switching ──
@@ -2624,6 +2993,21 @@ function submitSupportRequest() {
     message: msgEl.value.trim(),
     type: 'adjustment'
   }).then(onSent).catch(onSent);
+}
+
+// ── HTML escape utilities ──
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function escapeAttr(str) {
+  if (str == null) return '';
+  return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 // ── Sign out ──

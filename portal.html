@@ -490,6 +490,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .setup-day-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);transition:color .15s;}
 .setup-day-toggle.on .setup-day-label{color:var(--green);}
 .setup-error{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(200,80,80,0.85);margin-left:14px;}
+
+/* ── SKELETON LOADING ── */
+.skeleton-pulse {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── ERROR / RETRY ── */
+.list-error { font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,0.35); padding:20px 14px; }
+.retry-btn { background:none; border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.5); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; padding:4px 10px; border-radius:4px; cursor:pointer; margin-left:8px; }
+.retry-btn:hover { border-color:rgba(255,255,255,0.3); color:#fff; }
+
+/* ── INLINE EMPTY STATE (compact, for list containers) ── */
+.inline-empty-title { font-size:14px; font-weight:600; color:rgba(255,255,255,0.55); }
+.inline-empty-sub   { font-size:12px; color:var(--grey2); margin-top:4px; }
 </style>
 </head>
 <body>
@@ -4727,6 +4748,31 @@ async function doSignOut() {
   await db.auth.signOut();
   window.location.href = 'index.html';
 }
+
+// ── Phase 9B helper: render a compact inline empty state ──
+function showInlineEmpty(containerId, title, subtitle) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + title + '</div>' +
+    (subtitle ? '<div class="inline-empty-sub">' + subtitle + '</div>' : '') + '</div>';
+}
+
+// ── Phase 9C helper: show an inline error with a retry button ──
+function showListError(containerId, retryFnName) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<div class="list-error">Something went wrong. <button onclick="' + retryFnName + '()" class="retry-btn">Try again</button></div>';
+}
+
+// ── Phase 9D: session expiry via onAuthStateChange ──
+db.auth.onAuthStateChange(function(event, session) {
+  if (event === 'SIGNED_OUT') {
+    var app = document.getElementById('portal-app');
+    if (app && app.style.display !== 'none') {
+      window.location.href = 'index.html?session_expired=1';
+    }
+  }
+});
 </script>
 </body>
 </html>

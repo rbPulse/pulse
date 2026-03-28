@@ -511,6 +511,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* ── INLINE EMPTY STATE (compact, for list containers) ── */
 .inline-empty-title { font-size:14px; font-weight:600; color:rgba(255,255,255,0.55); }
 .inline-empty-sub   { font-size:12px; color:var(--grey2); margin-top:4px; }
+
+/* ── RESOURCES TAB (Phase 10) ── */
+.res-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px 28px; margin-bottom:18px; }
+.res-card-title { font-size:16px; font-weight:600; color:#fff; margin-bottom:16px; }
+.res-faq-item { border-bottom:1px solid rgba(255,255,255,0.05); }
+.res-faq-item:last-child { border-bottom:none; }
+.res-faq-item summary { list-style:none; display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:13px 0; font-size:13px; font-weight:500; color:rgba(255,255,255,0.8); user-select:none; gap:12px; }
+.res-faq-item summary::-webkit-details-marker { display:none; }
+.res-faq-item summary::after { content:'+'; font-family:'DM Mono',monospace; font-size:14px; color:var(--grey2); flex-shrink:0; transition:transform .2s,color .2s; }
+.res-faq-item[open] summary::after { content:'−'; color:var(--green); }
+.res-faq-item[open] { border-left:2px solid var(--green); padding-left:12px; margin-left:-12px; }
+.res-faq-item[open] summary { color:#fff; }
+.res-faq-body { font-size:13px; color:var(--grey); line-height:1.75; padding-bottom:13px; }
+.res-steps-list { list-style:none; counter-reset:step-counter; padding:0; }
+.res-steps-list li { counter-increment:step-counter; display:flex; align-items:flex-start; gap:14px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:13px; color:var(--grey); line-height:1.6; }
+.res-steps-list li:last-child { border-bottom:none; }
+.res-steps-list li::before { content:counter(step-counter); font-family:'DM Mono',monospace; font-size:10px; font-weight:600; color:var(--green); background:rgba(58,122,92,0.1); border:1px solid rgba(58,122,92,0.22); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 </style>
 </head>
 <body>
@@ -1512,7 +1529,15 @@ var PROTOCOL_MAP = {
   performance:{name:'Performance Stack',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'],note:'GH-axis optimization for lean mass and recovery. Administered before bed on an empty stomach. Cycle: 12 weeks on, 4 weeks off.',cycle:'12 weeks'},
   bodycomp:{name:'Body Composition Protocol',category:'Body Comp',compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','CJC-1295 1mg'],note:'Progressive dose titration over 4 weeks. Administered subcutaneously once weekly. Includes appetite and metabolic support.',cycle:'4 weeks'},
   longevity:{name:'Longevity Protocol',category:'Longevity',compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg'],note:'Telomere and immune support cycle. 10-day on, 20-day off cadence for Epithalon. Full cycle duration: 60 days.',cycle:'60 days'},
-  sleep:{name:'Sleep + Recovery Protocol',category:'Sleep',compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg'],note:'Peptides administered 30 minutes before bed. Semax optional for stress support. Minimum cycle length: 4 weeks.',cycle:'4 weeks'}
+  sleep:{name:'Sleep + Recovery Protocol',category:'Sleep',compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg'],note:'Peptides administered 30 minutes before bed. Semax optional for stress support. Minimum cycle length: 4 weeks.',cycle:'4 weeks'},
+  repair:{name:'Repair Protocol',category:'Recovery',compounds:['BPC-157 250mcg','TB-500 2.5mg'],note:'BPC-157 and TB-500 for accelerated tissue repair and anti-inflammatory support. Subcutaneous daily. First cycle 8 weeks.',cycle:'8 weeks'},
+  growth:{name:'Growth Protocol',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg'],note:'GHRH/GHRP peptide stack for pulsatile GH release, lean mass, and recovery. Administer fasted before bed. Cycle: 12–16 weeks.',cycle:'12 weeks'},
+  endurance:{name:'Endurance Protocol',category:'Performance',compounds:['AOD-9604 300mcg','BPC-157 250mcg'],note:'AOD-9604 and BPC-157 for fat oxidation, mitochondrial efficiency, and tissue resilience. Fasted morning dosing recommended.',cycle:'10 weeks'},
+  shred:{name:'Shred Protocol',category:'Body Comp',compounds:['AOD-9604 300mcg','Semaglutide 0.5mg'],note:'AOD-9604 plus Semaglutide for complementary fat loss via direct fat metabolism and appetite regulation. Cycle: 12 weeks.',cycle:'12 weeks'},
+  vitality:{name:'Vitality Protocol',category:'Longevity',compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg'],note:'Epithalon and Thymosin Alpha-1 for cellular longevity and immune modulation. Epithalon runs in 10-day intensive cycles.',cycle:'60 days'},
+  recovery_stack:{name:'Recovery Stack',category:'Recovery',compounds:['BPC-157 250mcg','TB-500 2.5mg'],note:'Combined repair stack for accelerated recovery. See Repair Protocol for full dosing details.',cycle:'8 weeks'},
+  performance_stack:{name:'Performance Stack',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'],note:'Growth and endurance combined for comprehensive athletic output. Administer fasted. Cycle: 12–16 weeks.',cycle:'12 weeks'},
+  optimize_stack:{name:'Optimize Stack',category:'Performance',compounds:['CJC-1295 2mg','Ipamorelin 300mcg','Epithalon 10mg'],note:'Growth protocol combined with longevity support for optimised performance and healthy ageing.',cycle:'12 weeks'}
 };
 
 // ── Role resolution ──
@@ -1844,7 +1869,7 @@ function initPortal(user) {
     setSidebarIdentity(consumerName, 'Member', false);
 
     if (PREVIEW_MODE) {
-      populatePortal(user, { data: { first_name: 'Alex', goals: ['performance'], age: 32, gender: 'male' } }, greeting);
+      populatePortal(user, { data: { first_name: 'Alex', goals: ['growth'], age: 32, gender: 'male' } }, greeting);
       loadDoseLogs();
       return;
     }

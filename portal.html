@@ -771,10 +771,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Appointments</div>
         <div class="tab-title">Schedule a visit.</div>
 
-        <!-- Upcoming appointments (populated by JS, hidden when empty) -->
+        <!-- Your appointments (populated by JS, hidden when empty) -->
         <div id="consumerApptSection" style="display:none;">
           <div class="p-card">
-            <div class="compounds-label">Upcoming</div>
+            <div class="compounds-label">Your Appointments</div>
             <div id="consumerApptList"></div>
           </div>
         </div>
@@ -797,8 +797,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
 
           <div class="settings-field" style="margin-bottom:18px;">
-            <div class="settings-field-lbl" style="margin-bottom:10px;">Select a Date</div>
-            <div class="slot-grid" id="bookDateChips"></div>
+            <div class="settings-field-lbl" style="margin-bottom:10px;">Available Times</div>
+            <div class="slot-grid" id="bookDateChips" style="flex-wrap:wrap;align-items:flex-start;"></div>
           </div>
 
           <div id="bookTimeSection" style="display:none;margin-bottom:18px;">
@@ -1855,6 +1855,7 @@ async function submitClSetup() {
 
 // ── Clinician portal init ──
 function initClinicianPortal(user, role, greeting) {
+  _clApptRows = null; // reset on each portal init
   // Show clinician sidebar, hide consumer sidebar
   document.getElementById('sidebar-consumer').style.display = 'none';
   document.getElementById('sidebar-clinician').style.display = 'block';
@@ -1894,8 +1895,43 @@ function initClinicianPortal(user, role, greeting) {
   document.getElementById('clStatPatients').textContent = m.stats.patients;
   document.getElementById('clStatUnread').textContent   = m.stats.unread;
 
-  // Today's appointments
-  renderApptList('clTodayAppts', ALL_APPTS.filter(function(a){ return a.date==='Today'; }), 'clinician');
+  // Today's appointments — use mock in PREVIEW_MODE, otherwise load from DB
+  if (PREVIEW_MODE || !currentUserId) {
+    renderApptList('clTodayAppts', ALL_APPTS.filter(function(a){ return a.date==='Today'; }), 'clinician');
+  } else {
+    _clApptRows = null;
+    _loadClAppts('today');
+    // Also render overview list from DB
+    var overviewListEl = document.getElementById('clTodayAppts');
+    if (overviewListEl) overviewListEl.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+    db.from('appointments')
+      .select('*, profiles!appointments_consumer_id_fkey(display_name)')
+      .or('clinician_id.eq.' + currentUserId + ',clinician_id.is.null')
+      .gte('scheduled_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
+      .lte('scheduled_at', new Date(new Date().setHours(23,59,59,999)).toISOString())
+      .order('scheduled_at', { ascending: true })
+      .then(function(res) {
+        if (res.error) throw res.error;
+        var todayRows = (res.data || []).map(function(a) {
+          var dt = new Date(a.scheduled_at);
+          var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
+          var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+          var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
+          return {
+            _id: a.id, date: 'Today',
+            time: dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}),
+            scheduledAt: dt, patient: displayName, initials: initials,
+            type: 'Appointment', dur: (a.duration_minutes || 30) + ' min',
+            status: displayStatus, _rawStatus: a.status, notes: a.notes || '',
+            consumerId: a.consumer_id
+          };
+        });
+        renderApptList('clTodayAppts', todayRows, 'clinician');
+      })
+      .catch(function() {
+        renderApptList('clTodayAppts', [], 'clinician');
+      });
+  }
 
   // Recent activity
   var actEl = document.getElementById('clRecentActivity');
@@ -2106,13 +2142,16 @@ function removeBlockedTime(i) {
 }
 
 function saveAvailability() {
-  // TODO: persist AVAIL_STATE + BLOCKED_TIMES + APPT_DURATION + APPT_BUFFER to Supabase
+  // Availability is now auto-saved on every toggle/duration change.
+  // This function is kept for the Save button (shows confirmation feedback only).
   var saved = document.getElementById('availSaved');
   if (saved) { saved.style.display = 'inline'; setTimeout(function(){ saved.style.display = 'none'; }, 2400); }
 }
 
 // ── CLINICIAN APPOINTMENTS FILTER ──
 var _clApptFilter = 'today';
+// Loaded real appointment rows from DB (or mock); shared across filters
+var _clApptRows = null;
 
 function filterClAppts(filter, pillEl) {
   _clApptFilter = filter;
@@ -2120,12 +2159,92 @@ function filterClAppts(filter, pillEl) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
+  if (PREVIEW_MODE || !currentUserId) {
+    _applyClApptFilter(ALL_APPTS, filter);
+    return;
+  }
+  // If we already have rows loaded, just re-filter
+  if (_clApptRows !== null) {
+    _applyClApptFilter(_clApptRows, filter);
+    return;
+  }
+  // Load from DB
+  _loadClAppts(filter);
+}
+
+function _loadClAppts(filter) {
+  db.from('appointments')
+    .select('*, profiles!appointments_consumer_id_fkey(display_name)')
+    .or('clinician_id.eq.' + currentUserId + ',clinician_id.is.null')
+    .order('scheduled_at', { ascending: true })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      var rows = (res.data || []).map(function(a) {
+        var dt = new Date(a.scheduled_at);
+        var now = new Date();
+        var todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+        var todayEnd   = new Date(now); todayEnd.setHours(23,59,59,999);
+        var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
+        var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+        var dateLabel;
+        if (dt >= todayStart && dt <= todayEnd) dateLabel = 'Today';
+        else if (dt > todayEnd) {
+          var diff = Math.round((dt - todayStart) / 86400000);
+          dateLabel = diff === 1 ? 'Tomorrow' : dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        } else {
+          dateLabel = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        }
+        var timeLabel = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+        // Map DB status to display status; map 'cancelled_by_*' to 'cancelled'
+        var displayStatus = a.status;
+        if (a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician') displayStatus = 'cancelled';
+        return {
+          _id: a.id,
+          date: dateLabel,
+          time: timeLabel,
+          scheduledAt: dt,
+          patient: displayName,
+          initials: initials,
+          type: 'Appointment',
+          dur: (a.duration_minutes || 30) + ' min',
+          status: displayStatus,
+          _rawStatus: a.status,
+          notes: a.notes || '',
+          consumerId: a.consumer_id
+        };
+      });
+      _clApptRows = rows;
+      _applyClApptFilter(rows, filter || _clApptFilter);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] appointments load failed:', err && err.message);
+      // Graceful fallback to mock
+      _clApptRows = ALL_APPTS;
+      _applyClApptFilter(ALL_APPTS, filter || _clApptFilter);
+    });
+}
+
+function _applyClApptFilter(rows, filter) {
+  var now = new Date();
   var filtered;
-  if (filter === 'today')     filtered = ALL_APPTS.filter(function(a){ return a.date === 'Today'; });
-  else if (filter === 'upcoming')  filtered = ALL_APPTS.filter(function(a){ return a.date !== 'Today' && (a.status === 'confirmed' || a.status === 'pending'); });
-  else if (filter === 'completed') filtered = ALL_APPTS.filter(function(a){ return a.status === 'completed'; });
-  else if (filter === 'cancelled') filtered = ALL_APPTS.filter(function(a){ return a.status === 'cancelled'; });
-  else filtered = ALL_APPTS;
+  if (filter === 'today') {
+    filtered = rows.filter(function(a) { return a.date === 'Today'; });
+  } else if (filter === 'upcoming') {
+    filtered = rows.filter(function(a) {
+      var isPast = a.scheduledAt ? a.scheduledAt < now : (a.date !== 'Today' && a.date !== 'Tomorrow');
+      var st = a._rawStatus || a.status;
+      return !isPast && a.date !== 'Today' && (st === 'confirmed' || st === 'pending');
+    });
+  } else if (filter === 'completed') {
+    filtered = rows.filter(function(a) { return a.status === 'completed' || (a._rawStatus || a.status) === 'completed'; });
+  } else if (filter === 'cancelled') {
+    filtered = rows.filter(function(a) {
+      var st = a._rawStatus || a.status;
+      return st === 'cancelled' || st === 'cancelled_by_member' || st === 'cancelled_by_clinician';
+    });
+  } else {
+    filtered = rows;
+  }
   renderApptList('clApptList', filtered, 'clinician');
 }
 
@@ -2152,12 +2271,19 @@ function buildApptDetail(a, role) {
   var name    = role === 'clinician' ? (a.patient || '—') : (a.clinician || 'Dr. Sarah Chen');
   var timeStr = (a.date ? a.date + ', ' : '') + a.time + (a.dur ? ' · ' + a.dur : '');
   var bodyHtml, actionsHtml;
+  var safeId  = escapeAttr(a._id || '');
 
   if (role === 'clinician') {
-    bodyHtml = '<textarea class="adp-notes" placeholder="Session notes..."></textarea>';
+    var notesVal = escapeHtml(a.notes || '');
+    bodyHtml = '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes..."' +
+      (safeId ? ' onblur="_saveApptNotes(\'' + safeId + '\')"' : '') + '>' + notesVal + '</textarea>';
+    var canConfirm = (a._rawStatus || a.status) === 'pending';
+    var canCancel  = (a._rawStatus || a.status) !== 'cancelled' &&
+                    (a._rawStatus || a.status) !== 'cancelled_by_member' &&
+                    (a._rawStatus || a.status) !== 'cancelled_by_clinician';
     actionsHtml =
-      '<button class="adp-btn">Message Patient</button>' +
-      '<button class="adp-btn">View Profile</button>';
+      (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
+      (canCancel  ? '<button class="adp-btn" style="border-color:rgba(185,55,55,0.3);color:rgba(200,90,90,0.7);" onclick="_updateApptStatus(\'' + safeId + '\',\'cancelled_by_clinician\')">Cancel</button>' : '');
   } else {
     bodyHtml = '<div class="adp-prep">Arrive a few minutes early. Bring any prior lab work or medical history relevant to your protocol.</div>';
     actionsHtml =
@@ -2173,6 +2299,39 @@ function buildApptDetail(a, role) {
     '</div></div>' +
     bodyHtml +
     '<div class="adp-actions">' + actionsHtml + '</div>';
+}
+
+function _saveApptNotes(apptId) {
+  if (!apptId || PREVIEW_MODE) return;
+  var el = document.getElementById('adp-notes-' + apptId);
+  if (!el) return;
+  var notes = el.value.trim();
+  db.from('appointments').update({ notes: notes, updated_at: new Date().toISOString() }).eq('id', apptId)
+    .then(function(res) { if (res && res.error) console.warn('[Pulse] notes save error:', res.error.message); })
+    .catch(function(err) { console.warn('[Pulse] notes save failed:', err && err.message); });
+}
+
+function _updateApptStatus(apptId, newStatus) {
+  if (!apptId) return;
+  if (PREVIEW_MODE) {
+    // Update in mock array
+    var idx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return a._id === apptId; }) : -1;
+    if (idx !== -1) { ALL_APPTS[idx]._rawStatus = newStatus; ALL_APPTS[idx].status = newStatus.replace('_by_member','').replace('_by_clinician',''); }
+    _clApptRows = null;
+    document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
+    filterClAppts(_clApptFilter);
+    return;
+  }
+  db.from('appointments')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', apptId)
+    .then(function(res) {
+      if (res && res.error) { console.warn('[Pulse] status update error:', res.error.message); return; }
+      _clApptRows = null; // invalidate cache
+      document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
+      filterClAppts(_clApptFilter);
+    })
+    .catch(function(err) { console.warn('[Pulse] status update failed:', err && err.message); });
 }
 
 // ── renderApptList — updated to support click-to-detail ──
@@ -2205,8 +2364,19 @@ function renderApptList(elId, appts, role) {
 }
 
 // ── CONSUMER BOOKING ──
+// State for the live slot-generation approach
+var _bookAvailRows  = null; // clinician availability rows from DB
+var _bookTakenSlots = [];   // { scheduled_at: ISOString, duration_minutes: N }
+var _bookSlotDur    = 30;   // slot_duration_minutes from clinician availability
+
 function initConsumerBooking() {
-  // Populate selects
+  // Reset slot state on each tab visit so fresh data is fetched
+  _bookAvailRows  = null;
+  _bookTakenSlots = [];
+  _selectedBookingSlot = null;
+  resetBookConfirm();
+
+  // Populate appointment-type select once
   var typeEl = document.getElementById('bookType');
   if (typeEl && typeEl.options.length <= 1) {
     APPT_TYPES.forEach(function(t) {
@@ -2214,6 +2384,7 @@ function initConsumerBooking() {
       typeEl.appendChild(o);
     });
   }
+  // Populate clinician select once
   var clinEl = document.getElementById('bookClinician');
   if (clinEl && clinEl.options.length === 0) {
     MOCK_CLINICIANS_LIST.forEach(function(c) {
@@ -2225,33 +2396,194 @@ function initConsumerBooking() {
     clinEl.onchange = function(){ bookingState.clinician = this.value; };
   }
 
-  // Populate date chips (next 10 days, skip unavailable day-of-week)
-  var chipsEl = document.getElementById('bookDateChips');
-  if (chipsEl && chipsEl.children.length === 0) {
-    var today = new Date(); today.setHours(0,0,0,0);
-    var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    var shown = 0;
-    for (var i = 0; i < 14 && shown < 7; i++) {
-      var d = new Date(today); d.setDate(d.getDate() + i);
-      var cfg = null;
-      for (var j = 0; j < AVAIL_STATE.length; j++) {
-        if (AVAIL_STATE[j].day === dayNames[d.getDay()]) { cfg = AVAIL_STATE[j]; break; }
-      }
-      if (!cfg || !cfg.on) continue;
-      var dateStr = localDateStr(d);
-      var label = dayShort[d.getDay()] + ' · ' + d.getDate();
-      (function(ds, lbl) {
-        var chip = document.createElement('div');
-        chip.className = 'slot-pill'; chip.textContent = lbl; chip.dataset.date = ds;
-        chip.onclick = function(){ onBookDateSelect(this); };
-        chipsEl.appendChild(chip);
-      })(dateStr, label);
-      shown++;
-    }
+  // Load consumer's existing appointments, then render slot grid
+  if (PREVIEW_MODE || !currentUserId) {
+    _bookAvailRows = AVAIL_STATE.map(function(s) {
+      return { day_of_week: _DOW_INDEX[s.day], active: s.on, slot_duration_minutes: APPT_DURATION };
+    });
+    _bookSlotDur = APPT_DURATION;
+    _bookTakenSlots = bookedSlots.map(function(b) {
+      return { scheduled_at: b.date + 'T' + b.slot, duration_minutes: APPT_DURATION };
+    });
+    _renderBookingGrid();
+    _loadAndRenderConsumerAppts();
+    return;
   }
 
-  renderConsumerAppts();
+  // Fetch clinician availability
+  var availQuery = CLINICIAN_ID
+    ? db.from('availability').select('day_of_week,active,slot_duration_minutes').eq('clinician_id', CLINICIAN_ID)
+    : db.from('availability').select('day_of_week,active,slot_duration_minutes');
+
+  availQuery.then(function(ar) {
+    if (ar.error) throw ar.error;
+    _bookAvailRows = ar.data || [];
+    if (_bookAvailRows.length > 0) {
+      _bookSlotDur = _bookAvailRows[0].slot_duration_minutes || 30;
+    }
+    // Fetch taken slots (next 14 days, non-cancelled)
+    var now  = new Date();
+    var end14 = new Date(now); end14.setDate(end14.getDate() + 14);
+    var q = db.from('appointments')
+      .select('scheduled_at,duration_minutes')
+      .gte('scheduled_at', now.toISOString())
+      .lte('scheduled_at', end14.toISOString())
+      .neq('status', 'cancelled_by_member')
+      .neq('status', 'cancelled_by_clinician');
+    if (CLINICIAN_ID) q = q.eq('clinician_id', CLINICIAN_ID);
+    return q;
+  })
+  .then(function(tr) {
+    if (tr && tr.error) throw tr.error;
+    _bookTakenSlots = (tr && tr.data) ? tr.data : [];
+    _renderBookingGrid();
+    _loadAndRenderConsumerAppts();
+  })
+  .catch(function(err) {
+    console.warn('[Pulse] booking init failed:', err && err.message);
+    // Fallback to AVAIL_STATE
+    _bookAvailRows = AVAIL_STATE.map(function(s) {
+      return { day_of_week: _DOW_INDEX[s.day], active: s.on, slot_duration_minutes: APPT_DURATION };
+    });
+    _bookSlotDur = APPT_DURATION;
+    _bookTakenSlots = [];
+    _renderBookingGrid();
+    _loadAndRenderConsumerAppts();
+  });
+}
+
+function _renderBookingGrid() {
+  var chipsEl = document.getElementById('bookDateChips');
+  if (!chipsEl) return;
+  chipsEl.innerHTML = '';
+
+  var now   = new Date();
+  var cutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h from now
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Build active-DOW set from availability rows
+  var activeDOW = {};
+  _bookAvailRows.forEach(function(r) { activeDOW[r.day_of_week] = r.active; });
+
+  // Build a per-date section: { dateStr, label, slots[] }
+  var today = new Date(now); today.setHours(0,0,0,0);
+  var sections = [];
+
+  for (var i = 0; i < 14; i++) {
+    var d = new Date(today); d.setDate(d.getDate() + i);
+    var dow = d.getDay();
+    if (!activeDOW[dow]) continue; // clinician not available this DOW
+
+    var dateStr = localDateStr(d);
+    var slots = _generateSlotsForDate(d, cutoff);
+    if (slots.length === 0) continue; // all slots taken or too soon
+
+    var fullLabel = DAY_FULL[dow] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+    sections.push({ dateStr: dateStr, label: fullLabel, slots: slots });
+  }
+
+  if (sections.length === 0) {
+    chipsEl.innerHTML = '<div style="font-size:13px;color:var(--grey2);line-height:1.7;padding:12px 0;">No availability in the next 14 days. Check back soon.</div>';
+    document.getElementById('bookTimeSection').style.display = 'none';
+    return;
+  }
+
+  // Render date-section headings + time buttons inline in chipsEl
+  // We repurpose the existing layout: each section heading + slot row
+  sections.forEach(function(sec) {
+    var heading = document.createElement('div');
+    heading.style.cssText = 'width:100%;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-top:14px;margin-bottom:6px;flex-basis:100%;';
+    heading.textContent = sec.label;
+    chipsEl.appendChild(heading);
+    sec.slots.forEach(function(slotTime) {
+      (function(ds, ts) {
+        var pill = document.createElement('div');
+        pill.className = 'slot-pill';
+        pill.textContent = ts;
+        pill.dataset.date = ds;
+        pill.dataset.time = ts;
+        pill.onclick = function(){ _onBookSlotPick(this, ds, ts, sec.label); };
+        chipsEl.appendChild(pill);
+      })(sec.dateStr, slotTime);
+    });
+  });
+}
+
+function _generateSlotsForDate(dateObj, cutoffDate) {
+  var dow = dateObj.getDay();
+  // Find availability row for this DOW
+  var availRow = null;
+  for (var i = 0; i < _bookAvailRows.length; i++) {
+    if (_bookAvailRows[i].day_of_week === dow && _bookAvailRows[i].active) {
+      availRow = _bookAvailRows[i]; break;
+    }
+  }
+  if (!availRow) return [];
+
+  var dur = _bookSlotDur || 30;
+  var startMin = 9 * 60;  // 9:00 AM
+  var endMin   = 17 * 60; // 5:00 PM
+
+  var taken = _bookTakenSlots; // { scheduled_at, duration_minutes }
+  var slots = [];
+
+  for (var t = startMin; t + dur <= endMin; t += dur) {
+    var slotDate = new Date(dateObj);
+    slotDate.setHours(Math.floor(t / 60), t % 60, 0, 0);
+
+    // Skip slots within 24 hours of now
+    if (slotDate < cutoffDate) continue;
+
+    // Check if slot overlaps an existing appointment
+    var slotEnd = new Date(slotDate.getTime() + dur * 60000);
+    var blocked = false;
+    for (var j = 0; j < taken.length; j++) {
+      var ta = new Date(taken[j].scheduled_at);
+      var taEnd = new Date(ta.getTime() + (taken[j].duration_minutes || 30) * 60000);
+      // Overlap check: slot starts before taken ends AND slot ends after taken starts
+      if (slotDate < taEnd && slotEnd > ta) { blocked = true; break; }
+    }
+    if (blocked) continue;
+
+    slots.push(fmtMinutes(t));
+  }
+  return slots;
+}
+
+var _selectedBookingSlot = null; // { dateStr, time, dateLabel }
+
+function _onBookSlotPick(pill, dateStr, timeStr, dateLabel) {
+  // Deselect all
+  var parent = pill.parentNode;
+  parent.querySelectorAll('.slot-pill').forEach(function(p){ p.classList.remove('selected'); });
+  pill.classList.add('selected');
+
+  _selectedBookingSlot = { dateStr: dateStr, time: timeStr, dateLabel: dateLabel };
+  bookingState.date = dateStr;
+  bookingState.slot = timeStr;
+
+  // Show inline confirm card
+  var card = document.getElementById('bookConfirmCard');
+  var titleEl = document.getElementById('bookConfirmTitle');
+  var metaEl  = document.getElementById('bookConfirmMeta');
+  var btn     = document.getElementById('bookConfirmBtn');
+  if (titleEl) titleEl.textContent = 'Book ' + dateLabel + ' at ' + timeStr + '?';
+  if (metaEl)  metaEl.textContent  = _bookSlotDur + ' min · Pending confirmation from your clinician';
+  if (card)    card.classList.add('show');
+  if (btn)     btn.style.display = 'inline-block';
+}
+
+function onBookDateSelect(chip) {
+  // Legacy wrapper kept for backward compat — not used in new grid
+  _onBookSlotPick(chip, chip.dataset.date, chip.dataset.time || '', chip.dataset.date);
+}
+
+function onBookSlotSelect(pill, time) {
+  onBookSlotSelect._pill = pill;
+  bookingState.slot = time;
+  showBookConfirm();
 }
 
 function onBookDateSelect(chip) {
@@ -2289,21 +2621,14 @@ function onBookSlotSelect(pill, time) {
 }
 
 function showBookConfirm() {
+  // Legacy: called from onBookSlotSelect — delegate to _onBookSlotPick if needed
   if (!bookingState.slot || !bookingState.date) return;
-  var typeVal = document.getElementById('bookType').value || 'Appointment';
-  var clinObj = null;
-  for (var i = 0; i < MOCK_CLINICIANS_LIST.length; i++) {
-    if (MOCK_CLINICIANS_LIST[i].id === bookingState.clinician) { clinObj = MOCK_CLINICIANS_LIST[i]; break; }
-  }
   var d = new Date(bookingState.date + 'T12:00:00');
   var DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var dateLabel = DAY_NAMES[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
-
-  document.getElementById('bookConfirmTitle').textContent = typeVal + ' with ' + (clinObj ? clinObj.name : 'Dr. Chen');
-  document.getElementById('bookConfirmMeta').textContent  = dateLabel + ' · ' + bookingState.slot + ' · ' + APPT_DURATION + ' min';
-  document.getElementById('bookConfirmCard').classList.add('show');
-  document.getElementById('bookConfirmBtn').style.display = 'inline-block';
+  _onBookSlotPick({ parentNode: { querySelectorAll: function(){ return []; } } },
+    bookingState.date, bookingState.slot, dateLabel);
 }
 
 function resetBookConfirm() {
@@ -2311,62 +2636,195 @@ function resetBookConfirm() {
   var btn  = document.getElementById('bookConfirmBtn');
   if (card) card.classList.remove('show');
   if (btn)  btn.style.display = 'none';
+  _selectedBookingSlot = null;
 }
 
 function confirmBooking() {
-  if (!bookingState.slot || !bookingState.date) return;
-  var typeVal = document.getElementById('bookType').value || 'Appointment';
-  var clinObj = null;
-  for (var i = 0; i < MOCK_CLINICIANS_LIST.length; i++) {
-    if (MOCK_CLINICIANS_LIST[i].id === bookingState.clinician) { clinObj = MOCK_CLINICIANS_LIST[i]; break; }
+  if (!_selectedBookingSlot && (!bookingState.slot || !bookingState.date)) return;
+  var slot      = _selectedBookingSlot || { dateStr: bookingState.date, time: bookingState.slot, dateLabel: bookingState.date };
+  var timeStr   = slot.time;
+  var dateStr   = slot.dateStr;
+  var dateLabel = slot.dateLabel;
+
+  // Disable confirm button during insert
+  var btn = document.getElementById('bookConfirmBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Booking…'; }
+
+  // Parse scheduled_at ISO timestamp from dateStr + timeStr
+  var timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  var hours = 9, mins = 0;
+  if (timeParts) {
+    hours = parseInt(timeParts[1]);
+    mins  = parseInt(timeParts[2]);
+    if (timeParts[3].toUpperCase() === 'PM' && hours !== 12) hours += 12;
+    if (timeParts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
   }
-  var d = new Date(bookingState.date + 'T12:00:00');
-  var DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var dateLabel = DAY_NAMES[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+  var scheduledAt = new Date(dateStr);
+  scheduledAt.setHours(hours, mins, 0, 0);
 
-  consumerAppts.unshift({
-    id: 'ca' + Date.now(),
-    clinician: clinObj ? clinObj.name : 'Dr. Sarah Chen',
-    type: typeVal,
-    date: dateLabel,
-    time: bookingState.slot,
-    dur:  APPT_DURATION + ' min',
-    status: 'confirmed'
-  });
-  bookedSlots.push({ date: bookingState.date, slot: bookingState.slot });
+  function onSuccess(apptId) {
+    // Remove booking UI, show confirmation card
+    var bookingCard = document.getElementById('bookDateChips');
+    if (bookingCard) bookingCard.innerHTML = '';
+    resetBookConfirm();
+    document.getElementById('bookTimeSection').style.display = 'none';
+    var t = document.getElementById('bookType'); if (t) t.value = '';
 
-  // Reset
-  bookingState.slot = ''; bookingState.date = '';
-  resetBookConfirm();
-  document.getElementById('bookTimeSection').style.display = 'none';
-  document.getElementById('bookDateChips').querySelectorAll('.slot-pill').forEach(function(p){ p.classList.remove('selected'); });
-  var t = document.getElementById('bookType'); if (t) t.value = '';
-  renderConsumerAppts();
-  // TODO: persist to Supabase appointments table
+    // Show success confirmation inline in the card
+    var confirmCardArea = document.getElementById('bookConfirmCard');
+    if (confirmCardArea) {
+      confirmCardArea.classList.add('show');
+      confirmCardArea.innerHTML =
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>' +
+          '<div>' +
+            '<div class="book-confirm-label">Appointment Requested</div>' +
+            '<div class="book-confirm-title">' + escapeHtml(dateLabel) + ' at ' + escapeHtml(timeStr) + '</div>' +
+            '<div class="book-confirm-meta">Pending confirmation from your clinician.</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    bookingState.slot = ''; bookingState.date = '';
+    // Add to local taken list so re-render won't show it
+    if (apptId) {
+      _bookTakenSlots.push({ scheduled_at: scheduledAt.toISOString(), duration_minutes: _bookSlotDur });
+    }
+    _loadAndRenderConsumerAppts();
+  }
+
+  if (PREVIEW_MODE || !currentUserId) {
+    consumerAppts.unshift({
+      id: 'ca' + Date.now(),
+      clinician: 'Dr. Sarah Chen',
+      type: document.getElementById('bookType').value || 'Appointment',
+      date: dateLabel,
+      time: timeStr,
+      dur:  _bookSlotDur + ' min',
+      status: 'pending',
+      _rawStatus: 'pending',
+      scheduled_at: scheduledAt.toISOString()
+    });
+    onSuccess(null);
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Appointment'; }
+    return;
+  }
+
+  db.from('appointments').insert({
+    consumer_id: currentUserId,
+    clinician_id: CLINICIAN_ID,
+    scheduled_at: scheduledAt.toISOString(),
+    duration_minutes: _bookSlotDur,
+    status: 'pending'
+  }).select('id').single()
+    .then(function(res) {
+      if (res && res.error) throw res.error;
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirm Appointment'; }
+      onSuccess(res.data ? res.data.id : null);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] booking insert failed:', err && err.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirm Appointment'; }
+      // Graceful: show error in meta
+      var metaEl = document.getElementById('bookConfirmMeta');
+      if (metaEl) metaEl.textContent = 'Could not book. Please try again.';
+    });
 }
 
-function renderConsumerAppts() {
+// ── Load and render consumer's own appointments ──
+function _loadAndRenderConsumerAppts() {
+  if (PREVIEW_MODE || !currentUserId) {
+    _renderConsumerApptList(consumerAppts);
+    return;
+  }
+  db.from('appointments')
+    .select('*')
+    .eq('consumer_id', currentUserId)
+    .order('scheduled_at', { ascending: true })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      var rows = (res.data || []).map(function(a) {
+        var dt = new Date(a.scheduled_at);
+        var MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var DAY_NAMES2 = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        return {
+          id: a.id,
+          _id: a.id,
+          clinician: 'Your Clinician',
+          type: 'Appointment',
+          date: DAY_NAMES2[dt.getDay()] + ', ' + MONTHS2[dt.getMonth()] + ' ' + dt.getDate(),
+          time: dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }),
+          dur: (a.duration_minutes || 30) + ' min',
+          status: a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status,
+          _rawStatus: a.status,
+          scheduled_at: a.scheduled_at
+        };
+      });
+      _renderConsumerApptList(rows);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] consumer appointments load failed:', err && err.message);
+      _renderConsumerApptList(consumerAppts);
+    });
+}
+
+function _renderConsumerApptList(appts) {
   var section = document.getElementById('consumerApptSection');
   var list    = document.getElementById('consumerApptList');
   if (!section || !list) return;
-  if (consumerAppts.length === 0) { section.style.display = 'none'; return; }
+
+  // Filter out cancelled
+  var visible = appts.filter(function(a) {
+    var st = a._rawStatus || a.status;
+    return st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician' && st !== 'cancelled';
+  });
+
+  if (visible.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   list.innerHTML = '';
-  consumerAppts.forEach(function(a) {
+  visible.forEach(function(a) {
+    var statusClass = a.status === 'confirmed' ? 'confirmed' : (a.status === 'pending' ? 'pending' : 'cancelled');
+    var statusLabel = a.status === 'confirmed' ? 'Confirmed' : (a.status === 'pending' ? 'Pending' : a.status);
+    var canCancel   = (a._rawStatus || a.status) === 'pending';
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
-      '<div class="consumer-appt-row">' +
+      '<div class="consumer-appt-row" style="cursor:default;">' +
         '<div class="patient-initials" style="flex-shrink:0;background:rgba(100,150,255,0.1);border-color:rgba(100,150,255,0.2);color:rgba(150,185,255,0.75);">SC</div>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div class="consumer-appt-name">' + a.clinician + '</div>' +
-          '<div class="consumer-appt-meta">' + a.type + ' · ' + a.date + ', ' + a.time + '</div>' +
+          '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
+          '<div class="consumer-appt-meta">' + escapeHtml(a.date) + ' · ' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
         '</div>' +
-        '<span class="appt-badge confirmed">Confirmed</span>' +
+        '<span class="appt-badge ' + statusClass + '" style="margin-right:' + (canCancel ? '8px' : '0') + ';">' + statusLabel + '</span>' +
+        (canCancel && a.id ? '<button class="adp-btn" style="padding:4px 10px;font-size:8px;border-color:rgba(185,55,55,0.3);color:rgba(200,90,90,0.7);" onclick="_cancelConsumerAppt(\'' + escapeAttr(a.id) + '\',this)">Cancel</button>' : '') +
       '</div>';
-    wrapper.onclick = function(){ toggleApptDetail(a, 'consumer', wrapper); };
     list.appendChild(wrapper);
   });
+}
+
+function _cancelConsumerAppt(apptId, btnEl) {
+  if (!apptId) return;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
+  if (PREVIEW_MODE || !currentUserId) {
+    consumerAppts = consumerAppts.filter(function(a){ return a.id !== apptId; });
+    _renderConsumerApptList(consumerAppts);
+    return;
+  }
+  db.from('appointments')
+    .update({ status: 'cancelled_by_member', updated_at: new Date().toISOString() })
+    .eq('id', apptId)
+    .eq('consumer_id', currentUserId)
+    .then(function(res) {
+      if (res && res.error) { console.warn('[Pulse] cancel error:', res.error.message); if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancel'; } return; }
+      _loadAndRenderConsumerAppts();
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] cancel failed:', err && err.message);
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancel'; }
+    });
+}
+
+function renderConsumerAppts() {
+  _loadAndRenderConsumerAppts();
 }
 
 // Slot generation — respects AVAIL_STATE, BLOCKED_TIMES, bookedSlots
@@ -3170,7 +3628,7 @@ function switchTab(name) {
   if (name === 'appointments')     { initConsumerBooking(); }
   if (name === 'messages')         { initConsumerMessages(); }
   if (name === 'cl-schedule')      { initClSchedule(); }
-  if (name === 'cl-appointments')  { filterClAppts(_clApptFilter || 'today'); }
+  if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
   if (name === 'cl-patients')      { initClPatients(); }
   if (name === 'cl-messages')      { initClMessages(); }
   window.scrollTo(0, 0);

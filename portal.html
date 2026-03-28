@@ -650,7 +650,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     bottom: 0;
     background: var(--card);
     padding: 12px;
-    margin: 0 -28px -24px;
     border-top: 1px solid var(--border);
   }
 }
@@ -691,7 +690,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* Already handled by existing @media(max-width:768px): cl-stat-grid → 1fr 1fr */
 
 /* ── 14C: PATIENT DETAIL PANEL — FULL-SCREEN SLIDE-IN OVERLAY ON MOBILE ─── */
+.pdp-mobile-back {
+  display: none; /* hidden on desktop */
+}
 @media(max-width:480px) {
+  .pdp-mobile-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--grey2);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 16px;
+    transition: color .15s;
+  }
+  .pdp-mobile-back:hover { color: #fff; }
   .patient-detail-panel {
     position: fixed;
     inset: 0;
@@ -2549,6 +2568,12 @@ function initClinicianPortal(user, role, greeting) {
   document.getElementById('sidebar-consumer').style.display = 'none';
   document.getElementById('sidebar-clinician').style.display = 'block';
 
+  // Phase 14A: Switch bottom tab bar to clinician tabs
+  var pbbConsumerEl = document.getElementById('pbbConsumer');
+  var pbbClinicianEl = document.getElementById('pbbClinician');
+  if (pbbConsumerEl) pbbConsumerEl.style.display = 'none';
+  if (pbbClinicianEl) pbbClinicianEl.style.display = 'flex';
+
   // Nav badge
   var badge = document.getElementById('navRoleBadge');
   badge.textContent = role === 'admin' ? 'Admin' : 'Clinician';
@@ -4145,6 +4170,12 @@ function togglePatientDetail(patient, rowWrapper) {
   panel.className = 'patient-detail-panel';
   panel.innerHTML = buildPatientDetail(patient);
   rowWrapper.appendChild(panel);
+  // Trigger slide-in animation on mobile (14C)
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      panel.classList.add('open');
+    });
+  });
   // Load async activity data for real patients
   if (!patient._mock && patient.id && typeof _loadPatientActivity === 'function') {
     _loadPatientActivity(patient.id);
@@ -4173,6 +4204,7 @@ function buildPatientDetail(p) {
       : '—';
     var mockSubChip = _subStatusChip(p.subStatus);
     return (
+      '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
       '<div class="pdp-close-row">' +
         '<div>' +
           '<div class="pdp-title">' + escapeHtml(p.name) + ' ' + mockSubChip + '</div>' +
@@ -4282,6 +4314,7 @@ function buildPatientDetail(p) {
   }).join('');
 
   var html =
+    '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
     '<div class="pdp-close-row">' +
       '<div>' +
         '<div class="pdp-title">' + escapeHtml(p.name) + ' ' + subChip + '</div>' +
@@ -5603,6 +5636,18 @@ function _insertNotification(userId, type, body, link) {
   db.from('notifications').insert({ user_id: userId, type: type, body: body, link: link || null })
     .catch(function() {});
 }
+
+// ── Phase 13C: visualViewport keyboard listener — scroll msg bubbles to bottom ──
+(function() {
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function() {
+      var bubblesEl = document.getElementById('consumerMsgBubbles');
+      if (bubblesEl) bubblesEl.scrollTop = bubblesEl.scrollHeight;
+      var clBubblesEl = document.getElementById('clMsgBubbles');
+      if (clBubblesEl) clBubblesEl.scrollTop = clBubblesEl.scrollHeight;
+    });
+  }
+})();
 </script>
 </body>
 </html>

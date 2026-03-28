@@ -2441,6 +2441,14 @@ var CONSUMER_TABS = ['overview','protocol','tracker','appointments','messages','
 function switchTab(name) {
   var isClinician = CL_TABS.indexOf(name) !== -1;
   var set = isClinician ? CL_TABS : CONSUMER_TABS;
+  var otherSet = isClinician ? CONSUMER_TABS : CL_TABS;
+  // Clear the opposite set so tabs from the other role never stay visible
+  otherSet.forEach(function(t) {
+    var el = document.getElementById('tab-' + t);
+    if (el) el.classList.remove('active');
+    var nav = document.getElementById('nav-' + t);
+    if (nav) nav.classList.remove('active');
+  });
   set.forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     var nav = document.getElementById('nav-' + t);

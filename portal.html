@@ -2358,8 +2358,8 @@ var _clThreadCache = {};
 
 function initClMessages() {
   _activeClThreadId = null;
-  if (PREVIEW_MODE) {
-    // Fall back to mock data in preview mode
+  // Always try real DB for messages; PREVIEW_MODE only skips auth, not messaging
+  if (!currentUserId && PREVIEW_MODE) {
     _renderClThreadListMock();
     return;
   }
@@ -2638,19 +2638,7 @@ function sendClMessage() {
   var text = input.value.trim();
   input.value = '';
 
-  if (PREVIEW_MODE) {
-    for (var i = 0; i < MOCK_THREADS.length; i++) {
-      if (MOCK_THREADS[i].id === _activeClThreadId) {
-        MOCK_THREADS[i].messages.push({ from:'clinician', text:text, time:'Just now' });
-        MOCK_THREADS[i].preview = text;
-        renderClBubbles(MOCK_THREADS[i]);
-        return;
-      }
-    }
-    return;
-  }
-
-  // Real mode: optimistic UI then insert
+  // Optimistic UI then insert
   var el = document.getElementById('clMsgBubbles');
   if (el) {
     var ts = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
@@ -2686,7 +2674,7 @@ function sendClMessage() {
 var _consumerMsgPollTimer = null;
 
 function initConsumerMessages() {
-  if (PREVIEW_MODE || !currentUserId) {
+  if (!currentUserId) {
     renderConsumerThread();
     return;
   }
@@ -2764,7 +2752,7 @@ function sendConsumerMessage() {
   var text = input.value.trim();
   input.value = '';
 
-  if (PREVIEW_MODE || !currentUserId) {
+  if (!currentUserId) {
     CONSUMER_THREAD.messages.push({ from:'me', text:text, time:'Just now' });
     renderConsumerThread();
     return;

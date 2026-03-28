@@ -553,6 +553,198 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .sub-chip-free { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.35); }
 .sub-chip-paused { background:rgba(255,180,50,0.12); color:rgba(255,180,50,0.8); }
 .sub-chip-cancelled { background:rgba(255,80,80,0.1); color:rgba(255,80,80,0.7); }
+
+/* ── PHASES 13 & 14: MOBILE RESPONSIVENESS ─────────────────────────────────── */
+
+/* Nav gear icon (visible only on mobile, used to access Settings) */
+.nav-settings-gear {
+  display: none;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 17px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  transition: color .15s;
+}
+.nav-settings-gear:hover { color: #fff; }
+@media(max-width:768px) {
+  .nav-settings-gear { display: block; }
+}
+
+/* ── BOTTOM TAB BAR ──────────────────────────────────────────────────────────
+   Hidden on desktop; shown on mobile via media query below.
+   The sidebar remains in DOM on ≤768px but its items are still the
+   scrollable bar — the new .portal-bottom-bar is the cleaner 5-tab bar.
+*/
+.portal-bottom-bar {
+  display: none; /* hidden on desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+.pbb-consumer, .pbb-clinician {
+  display: flex;
+  width: 100%;
+}
+.pbb-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--grey2);
+  cursor: pointer;
+  gap: 3px;
+  border-top: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  user-select: none;
+}
+.pbb-item.active {
+  color: var(--green);
+  border-top-color: var(--green);
+}
+.pbb-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+.pbb-label {
+  font-size: 8px;
+}
+
+@media(max-width:768px) {
+  .portal-bottom-bar { display: block; }
+  /* Extra bottom padding so content isn't hidden behind tab bar */
+  .portal-main { padding-bottom: 64px !important; }
+  /* Hide the old sidebar-based tab items that exceed the 5-tab design */
+  .portal-sidebar { display: none; }
+}
+
+/* ── 13B: OVERVIEW STAT CARDS 2×2 on ≤480px (already 1fr 1fr at 768px) ───── */
+/* Already handled by existing @media(max-width:768px): overview-stats → 1fr 1fr */
+
+/* ── 13C: MESSAGES THREAD VIEW — FULL HEIGHT + STICKY COMPOSE ───────────── */
+@media(max-width:480px) {
+  .thread-view.active {
+    height: calc(100vh - 130px);
+    display: flex;
+    flex-direction: column;
+  }
+  .msg-bubbles {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
+  }
+  .msg-compose-row {
+    position: sticky;
+    bottom: 0;
+    background: var(--card);
+    padding: 12px;
+    margin: 0 -28px -24px;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ── 13D: TRACKER CALENDAR SCROLL WRAP ──────────────────────────────────── */
+.cal-scroll-wrap {
+  /* on desktop: normal flow */
+}
+@media(max-width:480px) {
+  .cal-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cal-dow-row,
+  .cal-grid {
+    min-width: calc(7 * 36px + 6 * 4px); /* 7 cells × 36px + 6 gaps × 4px */
+  }
+  .cal-cell {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}
+
+/* ── 13E: MIN TAP TARGET 44px for action buttons ────────────────────────── */
+@media(max-width:480px) {
+  .btn-green, .btn-ghost, .retry-btn, .appt-action-btn, .msg-send-btn {
+    min-height: 44px;
+  }
+}
+
+/* ── 13F: NO HORIZONTAL OVERFLOW ─────────────────────────────────────────── */
+@media(max-width:480px) {
+  .portal-main { overflow-x: hidden; }
+  .p-card { overflow-x: hidden; }
+}
+
+/* ── 14B: CLINICIAN STAT GRID 2×2 on ≤480px (already handled at 768px) ─── */
+/* Already handled by existing @media(max-width:768px): cl-stat-grid → 1fr 1fr */
+
+/* ── 14C: PATIENT DETAIL PANEL — FULL-SCREEN SLIDE-IN OVERLAY ON MOBILE ─── */
+@media(max-width:480px) {
+  .patient-detail-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    overflow-y: auto;
+    background: var(--bg);
+    border-radius: 0;
+    border: none;
+    padding: 20px 18px 80px;
+    margin: 0;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  .patient-detail-panel.open {
+    transform: translateX(0);
+  }
+}
+
+/* ── 14D: CLINICIAN MESSAGE THREAD — same as 13C ────────────────────────── */
+/* Covered by the .thread-view.active rules in 13C above */
+
+/* ── 14E: SETTINGS FORM INPUTS — prevent iOS zoom (font-size:16px) ───────── */
+@media(max-width:480px) {
+  .settings-field input,
+  .settings-field select,
+  .settings-field textarea,
+  .settings-input,
+  .book-select,
+  .msg-compose-input,
+  .support-textarea,
+  .adp-notes,
+  .avail-time-input {
+    font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+  }
+}
+
+/* ── 14F: NOTIFICATION PANEL — FULL WIDTH MINUS PADDING ON MOBILE ────────── */
+@media(max-width:480px) {
+  .notif-panel {
+    width: calc(100vw - 32px);
+    right: -8px;
+  }
+}
+
+/* ── 14G: APPOINTMENT SLOT GRID — WRAP + MIN-WIDTH ──────────────────────── */
+.slot-grid {
+  flex-wrap: wrap;
+}
+@media(max-width:480px) {
+  .slot-pill {
+    min-width: 72px;
+  }
+}
 </style>
 </head>
 <body>
@@ -589,6 +781,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
     </div>
+    <button class="nav-settings-gear" id="navSettingsGear" onclick="switchTab(window._userRole==='clinician'||window._userRole==='admin'?'cl-settings':'settings')" aria-label="Settings" title="Settings">⚙</button>
     <button class="nav-signout" onclick="doSignOut()">Sign Out</button>
   </div>
 </nav>
@@ -677,6 +870,26 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       </div>
 
     </aside>
+
+    <!-- BOTTOM TAB BAR (mobile only — shown via CSS @media) -->
+    <div class="portal-bottom-bar" id="portalBottomBar">
+      <!-- Consumer tabs (shown when role=consumer) -->
+      <div class="pbb-consumer" id="pbbConsumer">
+        <div class="pbb-item active" id="pbb-overview"      onclick="switchTab('overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
+        <div class="pbb-item"        id="pbb-protocol"      onclick="switchTab('protocol')"><span class="pbb-icon">☰</span><span class="pbb-label">Protocol</span></div>
+        <div class="pbb-item"        id="pbb-tracker"       onclick="switchTab('tracker')"><span class="pbb-icon">✦</span><span class="pbb-label">Tracker</span></div>
+        <div class="pbb-item"        id="pbb-appointments"  onclick="switchTab('appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Appts</span></div>
+        <div class="pbb-item"        id="pbb-messages"      onclick="switchTab('messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
+      </div>
+      <!-- Clinician tabs (shown when role=clinician|admin) -->
+      <div class="pbb-clinician" id="pbbClinician" style="display:none;">
+        <div class="pbb-item active" id="pbb-cl-overview"      onclick="switchTab('cl-overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
+        <div class="pbb-item"        id="pbb-cl-patients"      onclick="switchTab('cl-patients')"><span class="pbb-icon">♟</span><span class="pbb-label">Patients</span></div>
+        <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Appts</span></div>
+        <div class="pbb-item"        id="pbb-cl-messages"      onclick="switchTab('cl-messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
+        <div class="pbb-item"        id="pbb-cl-settings"      onclick="switchTab('cl-settings')"><span class="pbb-icon">⚙</span><span class="pbb-label">Settings</span></div>
+      </div>
+    </div>
 
     <!-- MAIN -->
     <main class="portal-main">
@@ -829,12 +1042,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <!-- Calendar -->
         <div class="cal-card">
           <div class="cal-label">Last 28 Days</div>
+          <div class="cal-scroll-wrap">
           <div class="cal-dow-row">
             <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div>
             <div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div>
             <div class="cal-dow">S</div>
           </div>
           <div class="cal-grid" id="calGrid"></div>
+          </div><!-- end cal-scroll-wrap -->
           <div class="streak-row">
             <div class="streak-block">
               <div class="streak-num" id="streakNum">—</div>
@@ -4918,6 +5133,13 @@ function switchTab(name) {
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
   if (name === 'cl-patients')      { initClPatients(); }
   if (name === 'cl-messages')      { initClMessages(); }
+  // ── Sync bottom tab bar active states (Phases 13 & 14) ──
+  var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');
+  pbbConsumerItems.forEach(function(el) { el.classList.remove('active'); });
+  var pbbClinicianItems = document.querySelectorAll('#pbbClinician .pbb-item');
+  pbbClinicianItems.forEach(function(el) { el.classList.remove('active'); });
+  var pbbTarget = document.getElementById('pbb-' + name);
+  if (pbbTarget) pbbTarget.classList.add('active');
   window.scrollTo(0, 0);
 }
 

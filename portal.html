@@ -3183,7 +3183,13 @@ function renderPatientList(filter) {
     return (Date.now() - d.getTime()) < 30 * 24 * 60 * 60 * 1000;
   });
   if (filter === 'followup') patients = rows.filter(function(p){ return p.status === 'pending' || p.status === 'no_protocol'; });
-  if (filter === 'unread')   patients = rows.filter(function(p){ return p._mock && p._mock.unread > 0; });
+  if (filter === 'unread')   patients = rows.filter(function(p){
+    // PREVIEW_MODE: use mock unread flag
+    if (p._mock) return p._mock.unread > 0;
+    // Real mode: check thread cache for unread consumer messages
+    var thread = _clThreadCache && _clThreadCache[p.id];
+    return thread && thread.unread > 0;
+  });
 
   if (patients.length === 0) {
     el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients match this filter.</div></div>';
@@ -3231,68 +3237,311 @@ function togglePatientDetail(patient, rowWrapper) {
   panel.className = 'patient-detail-panel';
   panel.innerHTML = buildPatientDetail(patient);
   rowWrapper.appendChild(panel);
+  // Load async activity data for real patients
+  if (!patient._mock && patient.id && typeof _loadPatientActivity === 'function') {
+    _loadPatientActivity(patient.id);
+  }
 }
 
 function buildPatientDetail(p) {
-  var pr = p.protocol;
-  var ds = p.dosing;
-  var adherenceColor = ds.adherence >= 85 ? 'var(--green)' : ds.adherence >= 65 ? 'rgba(220,180,75,0.85)' : 'rgba(200,90,90,0.8)';
-  var compHtml = pr.compounds.map(function(c){ return '<span class="pdp-compound">' + c + '</span>'; }).join('');
-  var histHtml = p.recentAppts.length > 0
-    ? p.recentAppts.map(function(a){
-        return '<div class="appt-hist-row"><span class="appt-hist-date">' + a.date + '</span>' +
-          '<span class="appt-hist-type">' + a.type + '</span>' +
-          '<span class="appt-hist-badge ' + a.status + '">' + a.status + '</span></div>';
-      }).join('')
-    : '<div style="font-size:12px;color:rgba(255,255,255,0.22);">No prior appointments.</div>';
-  var nextHtml = p.nextAppt
-    ? '<div style="font-size:13px;color:var(--grey);">' + p.nextAppt.type + ' · ' + p.nextAppt.date + ', ' + p.nextAppt.time + '</div>'
-    : '<div style="font-size:12px;color:rgba(255,255,255,0.22);">None scheduled.</div>';
+  // ── MOCK path (PREVIEW_MODE) ──────────────────────────────────────────────
+  if (p._mock) {
+    var pr = p._mock.protocol || {};
+    var ds = p._mock.dosing || { adherence: 0, missed: 0, lastLogged: '—', trend: '—' };
+    var adherenceColor = ds.adherence >= 85 ? 'var(--green)' : ds.adherence >= 65 ? 'rgba(220,180,75,0.85)' : 'rgba(200,90,90,0.8)';
+    var compHtml = (pr.compounds || []).map(function(c){ return '<span class="pdp-compound">' + escapeHtml(c) + '</span>'; }).join('');
+    var histHtml = (p._mock.recentAppts || []).length > 0
+      ? (p._mock.recentAppts || []).map(function(a){
+          return '<div class="appt-hist-row"><span class="appt-hist-date">' + escapeHtml(a.date) + '</span>' +
+            '<span class="appt-hist-type">' + escapeHtml(a.type) + '</span>' +
+            '<span class="appt-hist-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span></div>';
+        }).join('')
+      : '<div style="font-size:12px;color:rgba(255,255,255,0.22);">No prior appointments.</div>';
+    var nextHtml = p._mock.nextAppt
+      ? '<div style="font-size:13px;color:var(--grey);">' + escapeHtml(p._mock.nextAppt.type) + ' · ' + escapeHtml(p._mock.nextAppt.date) + ', ' + escapeHtml(p._mock.nextAppt.time) + '</div>'
+      : '<div style="font-size:12px;color:rgba(255,255,255,0.22);">None scheduled.</div>';
+    var memberSinceMock = p.memberSince
+      ? (String(p.memberSince).length > 10 ? new Date(p.memberSince).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : p.memberSince)
+      : '—';
+    return (
+      '<div class="pdp-close-row">' +
+        '<div>' +
+          '<div class="pdp-title">' + escapeHtml(p.name) + '</div>' +
+          '<div class="pdp-subtitle">Member since ' + escapeHtml(memberSinceMock) + ' · ' + escapeHtml(p.status) + '</div>' +
+        '</div>' +
+        '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
+      '</div>' +
 
-  return (
+      '<div class="pdp-section">' +
+        '<div class="pdp-section-label">Protocol</div>' +
+        '<div class="pdp-proto-name">' + escapeHtml(pr.name || 'Not yet assigned') + '</div>' +
+        '<div class="pdp-compounds">' + compHtml + '</div>' +
+        (pr.note ? '<div class="pdp-proto-note">' + escapeHtml(pr.note) + '</div>' : '') +
+        (pr.startDate ? '<div class="pdp-proto-meta">Started ' + escapeHtml(pr.startDate) + ' · ' + escapeHtml(pr.status || '') + '</div>' : '') +
+      '</div>' +
+
+      '<div class="pdp-section">' +
+        '<div class="pdp-section-label">Dose Tracking</div>' +
+        '<div class="dose-stat-row">' +
+          '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(ds.lastLogged) + '</div><div class="dose-stat-lbl">Last Logged</div></div>' +
+          '<div class="dose-stat-item"><div class="dose-stat-val" style="color:' + adherenceColor + ';">' + escapeHtml(String(ds.adherence)) + '%</div><div class="dose-stat-lbl">Adherence</div></div>' +
+          '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(String(ds.missed)) + '</div><div class="dose-stat-lbl">Missed</div></div>' +
+          '<div class="dose-stat-item"><div class="dose-stat-val" style="font-size:11px;color:' + adherenceColor + ';">' + escapeHtml(ds.trend) + '</div><div class="dose-stat-lbl">Trend</div></div>' +
+        '</div>' +
+        '<div class="adherence-bar"><div class="adherence-fill" style="width:' + escapeAttr(String(ds.adherence)) + '%;background:' + adherenceColor + ';"></div></div>' +
+      '</div>' +
+
+      '<div class="pdp-section">' +
+        '<div class="pdp-section-label">Appointments</div>' +
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Next</div>' +
+        nextHtml +
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin:12px 0 6px;">Recent</div>' +
+        histHtml +
+      '</div>' +
+
+      '<div class="adp-actions">' +
+        '<button class="adp-btn" onclick="openClThreadForPatient(\'' + escapeAttr(p.id) + '\')">Message Patient</button>' +
+        '<button class="adp-btn">View History</button>' +
+      '</div>'
+    );
+  }
+
+  // ── REAL data path ────────────────────────────────────────────────────────
+  var c   = p._consultation || {};
+  var pr2 = p._profile      || {};
+  var d   = c.data          || {};
+
+  // Header
+  var memberSinceStr = p.memberSince
+    ? new Date(p.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
+  var subStatus   = pr2.subscription_status || d.subscription_status || null;
+  var subChip     = subStatus
+    ? '<span class="pat-status-badge" style="background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.18);color:rgba(120,200,160,0.8);">' + escapeHtml(subStatus) + '</span>'
+    : '';
+  var emailStr = p.email ? escapeHtml(p.email) : '<span style="color:rgba(255,255,255,0.22);">—</span>';
+
+  // Protocol section
+  var protocolName = d.assigned_protocol || d.protocol || null;
+  var primaryGoal  = (d.goals && d.goals.length > 0) ? d.goals[0] : null;
+  var secondaryGoals = (d.goals && d.goals.length > 1) ? d.goals.slice(1) : [];
+  var goalTagsHtml = secondaryGoals.map(function(g){
+    return '<span class="pdp-compound">' + escapeHtml(g) + '</span>';
+  }).join('');
+  var protoHtml =
+    '<div class="pdp-proto-name">' + escapeHtml(protocolName || 'Not yet assigned') + '</div>' +
+    (primaryGoal ? '<div class="pdp-proto-note" style="margin-top:4px;">Primary goal: ' + escapeHtml(primaryGoal) + '</div>' : '') +
+    (secondaryGoals.length > 0 ? '<div class="pdp-compounds" style="margin-top:8px;">' + goalTagsHtml + '</div>' : '');
+
+  // Health info
+  var dob     = d.dob      || d.date_of_birth || null;
+  var sex     = d.sex      || d.gender        || null;
+  var height  = d.height   || null;
+  var weight  = d.weight   || null;
+  var healthHtml =
+    '<div class="dose-stat-row">' +
+      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(dob    || '—') + '</div><div class="dose-stat-lbl">DOB</div></div>' +
+      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(sex    || '—') + '</div><div class="dose-stat-lbl">Sex</div></div>' +
+      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(height ? String(height) : '—') + '</div><div class="dose-stat-lbl">Height</div></div>' +
+      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(weight ? String(weight) : '—') + '</div><div class="dose-stat-lbl">Weight</div></div>' +
+    '</div>';
+
+  // Intake notes
+  var medications = d.medications || d.current_medications || null;
+  var allergies   = d.allergies   || null;
+  var intakeHtml =
+    '<div style="margin-bottom:8px;">' +
+      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Medications</div>' +
+      '<div style="font-size:12px;color:var(--grey);">' + escapeHtml(medications || 'None reported') + '</div>' +
+    '</div>' +
+    '<div>' +
+      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Allergies</div>' +
+      '<div style="font-size:12px;color:var(--grey);">' + escapeHtml(allergies || 'None reported') + '</div>' +
+    '</div>';
+
+  // Activity section (streak; messages/appointments are loaded async via _loadPatientActivity)
+  var streakVal = (pr2.current_streak != null) ? pr2.current_streak : (p.streak || 0);
+  var activityHtml =
+    '<div class="dose-stat-row">' +
+      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpStreak-' + escapeAttr(p.id) + '">' + escapeHtml(String(streakVal)) + 'd</div><div class="dose-stat-lbl">Dose Streak</div></div>' +
+      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpLastMsg-' + escapeAttr(p.id) + '">…</div><div class="dose-stat-lbl">Last Message</div></div>' +
+      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpUpcomingAppts-' + escapeAttr(p.id) + '">…</div><div class="dose-stat-lbl">Upcoming Appts</div></div>' +
+    '</div>';
+
+  // Assign Protocol mini-form (hidden by default)
+  var protocolOptions = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery Stack','Performance Stack','Optimize Stack'];
+  var protocolSelectHtml = protocolOptions.map(function(opt){
+    return '<option value="' + escapeAttr(opt) + '"' + (protocolName === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>';
+  }).join('');
+
+  var html =
     '<div class="pdp-close-row">' +
       '<div>' +
-        '<div class="pdp-title">' + p.name + '</div>' +
-        '<div class="pdp-subtitle">Member since ' + p.memberSince + ' · ' + p.status + '</div>' +
+        '<div class="pdp-title">' + escapeHtml(p.name) + ' ' + subChip + '</div>' +
+        '<div class="pdp-subtitle">' + emailStr + ' · Member since ' + escapeHtml(memberSinceStr) + '</div>' +
       '</div>' +
       '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
     '</div>' +
 
     '<div class="pdp-section">' +
       '<div class="pdp-section-label">Protocol</div>' +
-      '<div class="pdp-proto-name">' + pr.name + '</div>' +
-      '<div class="pdp-compounds">' + compHtml + '</div>' +
-      '<div class="pdp-proto-note">' + pr.note + '</div>' +
-      '<div class="pdp-proto-meta">Started ' + pr.startDate + ' · ' + pr.status + '</div>' +
-      '<div style="margin-top:12px;">' +
-        '<button class="adp-btn">Update Protocol</button>' +
-      '</div>' +
+      protoHtml +
     '</div>' +
 
     '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Dose Tracking</div>' +
-      '<div class="dose-stat-row">' +
-        '<div class="dose-stat-item"><div class="dose-stat-val">' + ds.lastLogged + '</div><div class="dose-stat-lbl">Last Logged</div></div>' +
-        '<div class="dose-stat-item"><div class="dose-stat-val" style="color:' + adherenceColor + ';">' + ds.adherence + '%</div><div class="dose-stat-lbl">Adherence</div></div>' +
-        '<div class="dose-stat-item"><div class="dose-stat-val">' + ds.missed + '</div><div class="dose-stat-lbl">Missed</div></div>' +
-        '<div class="dose-stat-item"><div class="dose-stat-val" style="font-size:11px;color:' + adherenceColor + ';">' + ds.trend + '</div><div class="dose-stat-lbl">Trend</div></div>' +
-      '</div>' +
-      '<div class="adherence-bar"><div class="adherence-fill" style="width:' + ds.adherence + '%;background:' + adherenceColor + ';"></div></div>' +
+      '<div class="pdp-section-label">Health Info</div>' +
+      healthHtml +
     '</div>' +
 
     '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Appointments</div>' +
-      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Next</div>' +
-      nextHtml +
-      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin:12px 0 6px;">Recent</div>' +
-      histHtml +
+      '<div class="pdp-section-label">Intake Notes</div>' +
+      intakeHtml +
+    '</div>' +
+
+    '<div class="pdp-section">' +
+      '<div class="pdp-section-label">Activity</div>' +
+      activityHtml +
+    '</div>' +
+
+    '<div class="pdp-section" id="pdpAssignSection-' + escapeAttr(p.id) + '" style="display:none;">' +
+      '<div class="pdp-section-label">Assign Protocol</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<select id="pdpProtoSelect-' + escapeAttr(p.id) + '" style="font-family:\'DM Mono\',monospace;font-size:10px;background:var(--card2);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer;">' +
+          protocolSelectHtml +
+        '</select>' +
+        '<button class="adp-btn" onclick="_saveAssignedProtocol(\'' + escapeAttr(p.id) + '\')">Save</button>' +
+        '<button class="adp-btn" onclick="document.getElementById(\'pdpAssignSection-' + escapeAttr(p.id) + '\').style.display=\'none\'">Cancel</button>' +
+      '</div>' +
+      '<div id="pdpAssignStatus-' + escapeAttr(p.id) + '" style="font-size:11px;color:var(--grey2);margin-top:6px;"></div>' +
     '</div>' +
 
     '<div class="adp-actions">' +
-      '<button class="adp-btn" onclick="openClThreadForPatient(\'' + p.id + '\')">Message Patient</button>' +
-      '<button class="adp-btn">View History</button>' +
-    '</div>'
-  );
+      '<button class="adp-btn" onclick="openClThreadForPatient(\'' + escapeAttr(p.id) + '\');switchTab(\'cl-messages\')">Send Message</button>' +
+      '<button class="adp-btn" onclick="_showAssignProtocolForm(\'' + escapeAttr(p.id) + '\')">Assign Protocol</button>' +
+    '</div>';
+
+  return html;
+}
+
+// Show the Assign Protocol inline form inside the detail panel
+function _showAssignProtocolForm(patientId) {
+  var sec = document.getElementById('pdpAssignSection-' + patientId);
+  if (sec) sec.style.display = sec.style.display === 'none' ? '' : 'none';
+}
+
+// Save the assigned protocol via Supabase update, then send a welcome message
+function _saveAssignedProtocol(patientId) {
+  var sel    = document.getElementById('pdpProtoSelect-' + patientId);
+  var statusEl = document.getElementById('pdpAssignStatus-' + patientId);
+  if (!sel) return;
+  var proto = sel.value;
+  if (!proto) return;
+  if (statusEl) statusEl.textContent = 'Saving…';
+
+  // Find the existing consultation data so we can merge (not overwrite) the JSONB field
+  var existingData = {};
+  if (_clPatientRows) {
+    for (var i = 0; i < _clPatientRows.length; i++) {
+      if (_clPatientRows[i].id === patientId && _clPatientRows[i]._consultation) {
+        existingData = _clPatientRows[i]._consultation.data || {};
+        break;
+      }
+    }
+  }
+  // Build merged data object preserving all existing fields
+  var mergedData = {};
+  Object.keys(existingData).forEach(function(k){ mergedData[k] = existingData[k]; });
+  mergedData.assigned_protocol = proto;
+  mergedData.status = 'active';
+
+  // Capture status variable with a different name to avoid shadowing
+  var saveStatusEl = statusEl;
+
+  db.from('consultations')
+    .update({ data: mergedData })
+    .eq('user_id', patientId)
+    .then(function(res) {
+      if (res.error) throw res.error;
+
+      // Send welcome message
+      var clDisplayName = document.getElementById('sidebarName')
+        ? (document.getElementById('sidebarName').textContent || 'Your clinician')
+        : 'Your clinician';
+      var msgRow = {
+        thread_id:   patientId,
+        sender_id:   currentUserId,
+        sender_role: 'clinician',
+        sender_name: clDisplayName,
+        body:        'Your protocol has been assigned: ' + proto + '. Welcome to Pulse.',
+        read:        false
+      };
+      return db.from('messages').insert(msgRow);
+    })
+    .then(function(msgRes) {
+      if (msgRes && msgRes.error) console.warn('[Pulse] protocol welcome message failed:', msgRes.error.message);
+      if (saveStatusEl) saveStatusEl.textContent = 'Protocol assigned!';
+      // Refresh the patient row in the cache so re-opening shows updated data
+      var rows = _clPatientRows;
+      if (rows) {
+        for (var j = 0; j < rows.length; j++) {
+          if (rows[j].id === patientId) {
+            rows[j].protocol = proto;
+            rows[j].status   = 'active';
+            if (rows[j]._consultation) {
+              rows[j]._consultation.data = mergedData;
+            }
+            break;
+          }
+        }
+        renderPatientList(_patFilter);
+      }
+      // Hide form after short delay
+      setTimeout(function() {
+        var sec = document.getElementById('pdpAssignSection-' + patientId);
+        if (sec) sec.style.display = 'none';
+      }, 1500);
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] assign protocol failed:', err && err.message);
+      if (saveStatusEl) saveStatusEl.textContent = 'Error: ' + (err && err.message ? err.message : 'could not save');
+    });
+}
+
+// Load async activity data (last message date + upcoming appointments) for the open detail panel
+function _loadPatientActivity(patientId) {
+  if (!patientId || !db) return;
+
+  // Last message
+  db.from('messages')
+    .select('created_at')
+    .eq('thread_id', patientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .then(function(res) {
+      var el = document.getElementById('pdpLastMsg-' + patientId);
+      if (!el) return;
+      var rows = res.data || [];
+      if (rows.length === 0) { el.textContent = 'None'; return; }
+      var d2 = new Date(rows[0].created_at);
+      var diff = Date.now() - d2.getTime();
+      var hrs = Math.floor(diff / 3600000);
+      el.textContent = hrs < 24 ? hrs + 'h ago' : Math.floor(hrs / 24) + 'd ago';
+    })
+    .catch(function(){ });
+
+  // Upcoming appointments
+  var nowIso = new Date().toISOString();
+  db.from('appointments')
+    .select('id', { count: 'exact', head: true })
+    .eq('consumer_id', patientId)
+    .gt('scheduled_at', nowIso)
+    .neq('status', 'cancelled')
+    .then(function(res) {
+      var el = document.getElementById('pdpUpcomingAppts-' + patientId);
+      if (!el) return;
+      el.textContent = (res.count != null) ? String(res.count) : '0';
+    })
+    .catch(function(){ });
 }
 
 // ── CLINICIAN MESSAGING ──

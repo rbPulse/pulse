@@ -2374,7 +2374,27 @@ function _loadClThreadList() {
     .then(function(res) {
       if (res.error) throw res.error;
       _buildClThreadCache(res.data || []);
-      _renderClThreadListFromCache();
+      // Enrich thread labels with real names from consultations
+      var threadIds = Object.keys(_clThreadCache);
+      if (threadIds.length === 0) { _renderClThreadListFromCache(); return; }
+      db.from('consultations')
+        .select('user_id, first_name, last_name')
+        .in('user_id', threadIds)
+        .then(function(cr) {
+          if (!cr.error && cr.data) {
+            cr.data.forEach(function(row) {
+              if (_clThreadCache[row.user_id]) {
+                var name = ((row.first_name || '') + ' ' + (row.last_name || '')).trim() || null;
+                if (name) {
+                  _clThreadCache[row.user_id].patientLabel = name;
+                  _clThreadCache[row.user_id].initials = name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+                }
+              }
+            });
+          }
+          _renderClThreadListFromCache();
+        })
+        .catch(function() { _renderClThreadListFromCache(); });
     })
     .catch(function(err) {
       console.warn('[Pulse] messages table unavailable for clinician, using mock data:', err && err.message);
@@ -2483,7 +2503,7 @@ function renderClThreadList() {
 }
 
 function openClThread(threadId) {
-  if (PREVIEW_MODE) {
+  if (!currentUserId && PREVIEW_MODE) {
     _openClThreadMock(threadId);
     return;
   }

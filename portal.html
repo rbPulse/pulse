@@ -1253,6 +1253,30 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /*
+ * ── DOSE LOGS TABLE SQL ──────────────────────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * -- dose_logs table
+ * create table if not exists dose_logs (
+ *   id uuid primary key default gen_random_uuid(),
+ *   user_id uuid not null references auth.users(id) on delete cascade,
+ *   protocol text,
+ *   dose_date date not null,
+ *   logged_at timestamptz default now(),
+ *   unique(user_id, dose_date)
+ * );
+ * alter table dose_logs enable row level security;
+ * create policy "users manage own dose logs"
+ *   on dose_logs for all
+ *   using (user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ * create policy "clinicians read dose logs"
+ *   on dose_logs for select
+ *   using ((auth.jwt() -> 'user_metadata' ->> 'role') in ('clinician','admin'));
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
  * ── PROFILES TABLE SQL ───────────────────────────────────────────────────────
  * Run this SQL in your Supabase dashboard (SQL Editor):
  *
@@ -3030,24 +3054,33 @@ function loadDoseLogs() {
     loggedDates = fakeDates;
     renderCalendar();
     checkTodayLogged();
+    _syncStreakToOverview(calcStreak(loggedDates));
     return;
   }
   var today = new Date(); today.setHours(0,0,0,0);
-  var start = new Date(today); start.setDate(start.getDate() - 27);
+  // Query last 90 days of dose logs
+  var start = new Date(today); start.setDate(start.getDate() - 90);
   db.from('dose_logs')
-    .select('logged_at')
+    .select('dose_date')
     .eq('user_id', currentUserId)
-    .gte('logged_at', localDateStr(start))
+    .gte('dose_date', localDateStr(start))
+    .order('dose_date', { ascending: false })
     .then(function(res) {
       loggedDates = (res.data || []).map(function(r) {
-        return r.logged_at.split('T')[0];
+        // dose_date may come back as 'YYYY-MM-DD' or a full ISO string
+        return String(r.dose_date).slice(0, 10);
       });
       renderCalendar();
       checkTodayLogged();
+      var streak = calcStreak(loggedDates);
+      _syncStreakToOverview(streak);
+      _saveStreakToProfile(streak);
     })
-    .catch(function() {
-      loggedDates = [];
+    .catch(function(err) {
+      console.warn('[Pulse] dose_logs unavailable, using local state:', err && err.message);
+      // Graceful fallback: keep whatever loggedDates already holds (or empty)
       renderCalendar();
+      checkTodayLogged();
     });
 }
 
@@ -3088,13 +3121,8 @@ function renderCalendar() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Streak (consecutive days ending today)
-  var streak = 0;
-  var check = new Date(today);
-  while (loggedSet.has(localDateStr(check))) {
-    streak++;
-    check.setDate(check.getDate() - 1);
-  }
+  // Streak — use shared calcStreak utility
+  var streak = calcStreak(loggedDates);
 
   // 28-day consistency
   var logged28 = 0;
@@ -3109,9 +3137,7 @@ function renderCalendar() {
   if (el('totalLogged')) el('totalLogged').textContent = loggedDates.length;
 
   // Overview streak stat card
-  if (el('statStreak')) el('statStreak').textContent = streak;
-  var ovStreakSubEl = el('ovStreakSub');
-  if (ovStreakSubEl) ovStreakSubEl.textContent = streak === 1 ? 'day in a row' : 'days in a row';
+  _syncStreakToOverview(streak);
   // Legacy tile (hidden)
   if (el('streakTile') && streak > 0) el('streakTile').style.display = '';
 
@@ -3135,29 +3161,108 @@ function checkTodayLogged() {
   }
 }
 
+// ── calcStreak: count consecutive logged days ending at today (or yesterday) ──
+function calcStreak(dates) {
+  if (!dates || dates.length === 0) return 0;
+  var set = new Set(dates);
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = localDateStr(today);
+
+  // Start from today if logged, otherwise start from yesterday
+  var cursor = new Date(today);
+  if (!set.has(todayStr)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  var streak = 0;
+  while (set.has(localDateStr(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+// ── _syncStreakToOverview: update the Overview tab Day Streak stat card ──
+function _syncStreakToOverview(streak) {
+  var valEl = document.getElementById('statStreak');
+  var subEl = document.getElementById('ovStreakSub');
+  if (valEl) valEl.textContent = streak;
+  if (subEl) subEl.textContent = streak === 1 ? 'day in a row' : 'days in a row';
+  // Legacy tile
+  var legEl = document.getElementById('_statStreak2');
+  if (legEl) legEl.textContent = streak;
+}
+
+// ── _saveStreakToProfile: upsert current_streak into profiles table ──
+function _saveStreakToProfile(streak) {
+  if (!currentUserId || PREVIEW_MODE) return;
+  db.from('profiles').upsert({
+    user_id: currentUserId,
+    current_streak: streak,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' }).then(function(res) {
+    if (res && res.error) {
+      console.warn('[Pulse] profiles streak upsert error:', res.error.message);
+    }
+  }).catch(function(err) {
+    console.warn('[Pulse] profiles streak upsert failed:', err && err.message);
+  });
+}
+
 function logDose() {
   var todayStr = localDateStr(new Date());
-  if (loggedDates.indexOf(todayStr) !== -1) return;
+
+  // Already logged today — show inline message, do not insert
+  if (loggedDates.indexOf(todayStr) !== -1) {
+    var alreadyMsg = document.getElementById('loggedMsg');
+    if (alreadyMsg) alreadyMsg.style.display = 'block';
+    var alreadyBtn = document.getElementById('logDoseBtn');
+    if (alreadyBtn) alreadyBtn.style.display = 'none';
+    return;
+  }
+
   var btn = document.getElementById('logDoseBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Logging...'; }
 
   function onSuccess() {
     loggedDates.push(todayStr);
-    renderCalendar();
+    renderCalendar(); // optimistic re-render
     if (btn) btn.style.display = 'none';
     var msg = document.getElementById('loggedMsg');
     if (msg) msg.style.display = 'block';
+    // Sync streak to Overview
+    var streak = calcStreak(loggedDates);
+    _syncStreakToOverview(streak);
+    _saveStreakToProfile(streak);
+    // Reload from DB to confirm (non-blocking)
+    if (!PREVIEW_MODE) {
+      setTimeout(function() { loadDoseLogs(); }, 600);
+    }
   }
 
   if (PREVIEW_MODE) { onSuccess(); return; }
 
-  db.from('dose_logs').insert({
-    user_id: currentUserId,
-    logged_at: todayStr,
-    protocol: window._userProto || 'unknown'
-  }).then(onSuccess).catch(function() {
-    if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; }
-  });
+  // Use upsert with onConflict to avoid duplicate-key errors
+  // (requires unique(user_id, dose_date) constraint — see SQL comment above)
+  db.from('dose_logs').upsert({
+    user_id:    currentUserId,
+    dose_date:  todayStr,
+    logged_at:  new Date().toISOString(),
+    protocol:   window._userProto || 'unknown'
+  }, { onConflict: 'user_id,dose_date' })
+    .then(function(res) {
+      if (res && res.error) {
+        console.warn('[Pulse] dose log upsert error:', res.error.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; }
+        return;
+      }
+      onSuccess();
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] dose log upsert failed, keeping local state:', err && err.message);
+      // Graceful fallback: optimistically record locally
+      onSuccess();
+    });
 }
 
 // ── CONSUMER SETTINGS SAVE ──

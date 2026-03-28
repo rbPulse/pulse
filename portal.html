@@ -1122,17 +1122,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine"/>
               </div>
             </div>
+            <div class="settings-field" style="margin-top:4px;">
+              <label class="settings-field-lbl">Bio / About</label>
+              <textarea class="settings-input" id="clBio" rows="3" placeholder="A brief professional bio shown to patients…" style="resize:vertical;line-height:1.6;min-height:72px;"></textarea>
+            </div>
+            <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>
           </div>
           <div class="settings-section">
             <div class="settings-section-lbl">Appointment Preferences</div>
             <div class="settings-grid">
               <div class="settings-field">
-                <label class="settings-field-lbl">Default Duration (min)</label>
-                <input class="settings-input" id="clApptDuration" type="text" placeholder="30"/>
+                <label class="settings-field-lbl">Default Duration</label>
+                <select class="book-select" id="clSettingsDuration">
+                  <option value="15">15 minutes</option>
+                  <option value="20">20 minutes</option>
+                  <option value="30" selected>30 minutes</option>
+                  <option value="45">45 minutes</option>
+                  <option value="60">60 minutes</option>
+                </select>
               </div>
               <div class="settings-field">
-                <label class="settings-field-lbl">Buffer Between Appointments</label>
-                <input class="settings-input" id="clBuffer" type="text" placeholder="15 min"/>
+                <label class="settings-field-lbl">Timezone</label>
+                <select class="book-select" id="clSettingsTimezone">
+                  <option value="America/New_York">Eastern Time (ET)</option>
+                  <option value="America/Chicago">Central Time (CT)</option>
+                  <option value="America/Denver">Mountain Time (MT)</option>
+                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                  <option value="America/Anchorage">Alaska Time (AKT)</option>
+                  <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1155,9 +1173,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <label class="toggle-switch"><input type="checkbox"/><span class="toggle-track"></span></label>
             </div>
           </div>
-          <div style="margin-top:8px;">
-            <button class="btn-green" onclick="saveClinicianSettings()">Save Changes</button>
-            <span id="clSettingsSaved" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);margin-left:16px;">Saved.</span>
+          <div class="settings-section">
+            <div class="settings-section-lbl">Security</div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+              <button class="btn-ghost" id="clPwResetBtn" onclick="sendClPasswordReset()">Send Password Reset Email</button>
+              <span id="clPwResetMsg" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--green);"></span>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <button class="btn-green" id="clSaveBtn" onclick="saveClinicianSettings()">Save Changes</button>
+            <span id="clSettingsSaved" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
+            <span id="clSettingsError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);">Failed to save. Please try again.</span>
           </div>
         </div>
       </div>
@@ -1642,7 +1668,8 @@ var CONSUMER_THREAD = {
 
 // ── Auth check ──
 var PREVIEW_MODE = new URLSearchParams(window.location.search).get('preview') === 'pulse2025';
-var currentUserId = null;
+var currentUserId    = null;
+var currentUserEmail = null;
 db.auth.getSession().then(function(r) {
   if (!r.data || !r.data.session) {
     if (PREVIEW_MODE) {
@@ -1670,7 +1697,8 @@ function setSidebarIdentity(displayName, roleLabel, isClinicianRole) {
 }
 
 function initPortal(user) {
-  currentUserId = user.id;
+  currentUserId    = user.id;
+  currentUserEmail = user.email || null;
   document.getElementById('portal-loading').style.display = 'none';
   document.getElementById('portal-nav').style.display = 'flex';
   document.getElementById('portal-app').style.display = 'block';
@@ -1785,9 +1813,17 @@ function applyClProfile(meta) {
   }
   var ce = document.getElementById('clCredentials'); if (ce && meta.cl_credentials) ce.value = meta.cl_credentials;
   var se = document.getElementById('clSpecialty');   if (se && meta.cl_specialty)   se.value = meta.cl_specialty;
+  var be = document.getElementById('clBio');         if (be && meta.cl_bio)         be.value = meta.cl_bio;
+  if (meta.cl_timezone) {
+    var tze = document.getElementById('clSettingsTimezone');
+    if (tze) tze.value = meta.cl_timezone;
+  }
   if (meta.cl_duration) {
     APPT_DURATION = parseInt(meta.cl_duration) || 30;
+    // Sync the Schedule tab duration select
     var de = document.getElementById('clDuration'); if (de) de.value = String(APPT_DURATION);
+    // Sync the Settings tab duration select
+    var dse = document.getElementById('clSettingsDuration'); if (dse) dse.value = String(APPT_DURATION);
   }
   if (meta.cl_avail && Array.isArray(meta.cl_avail)) {
     meta.cl_avail.forEach(function(saved) {

@@ -3017,9 +3017,124 @@ function populatePortal(user, consultation, greeting) {
 
 // ── CLINICIAN PATIENT LIST ──
 var _patFilter = 'all';
+// Module-level cache of normalised patient rows fetched from Supabase
+var _clPatientRows = null;
 
 function initClPatients() {
-  renderPatientList(_patFilter);
+  _clPatientRows = null; // reset on each tab visit
+  if (PREVIEW_MODE || !currentUserId) {
+    _clPatientRows = _normaliseMockPatients();
+    renderPatientList(_patFilter);
+    return;
+  }
+  // Show loading state
+  var el = document.getElementById('clPatientList');
+  if (el) el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+
+  // Step 1: fetch all consultations ordered newest first
+  db.from('consultations')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .then(function(res) {
+      if (res.error) throw res.error;
+      var consultations = res.data || [];
+      if (consultations.length === 0) {
+        _clPatientRows = [];
+        renderPatientList(_patFilter);
+        return;
+      }
+      // Deduplicate by user_id — keep the newest consultation per user
+      var seen = {};
+      var unique = [];
+      consultations.forEach(function(c) {
+        if (!seen[c.user_id]) { seen[c.user_id] = true; unique.push(c); }
+      });
+
+      // Step 2: fetch profiles for all those user_ids
+      var ids = unique.map(function(c){ return c.user_id; });
+      db.from('profiles')
+        .select('user_id, display_name, current_streak, subscription_status')
+        .in('user_id', ids)
+        .then(function(pr) {
+          if (pr.error) throw pr.error;
+          var profileMap = {};
+          (pr.data || []).forEach(function(p){ profileMap[p.user_id] = p; });
+
+          _clPatientRows = unique.map(function(c) {
+            return _normalisePatientRow(c, profileMap[c.user_id] || null);
+          });
+          renderPatientList(_patFilter);
+        })
+        .catch(function(err) {
+          console.warn('[Pulse] profiles fetch failed:', err && err.message);
+          // Build rows without profile data
+          _clPatientRows = unique.map(function(c){ return _normalisePatientRow(c, null); });
+          renderPatientList(_patFilter);
+        });
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] consultations fetch failed:', err && err.message);
+      _clPatientRows = [];
+      if (el) el.innerHTML =
+        '<div class="cl-empty"><div class="cl-empty-title">Could not load patients.</div>' +
+        '<div class="cl-empty-sub"><button class="adp-btn" style="margin-top:10px;" onclick="initClPatients()">Retry</button></div></div>';
+    });
+}
+
+// Convert a MOCK_PATIENTS entry into the normalised shape so PREVIEW_MODE re-uses the same render path
+function _normaliseMockPatients() {
+  return MOCK_PATIENTS.map(function(p) {
+    return {
+      id:          p.id,
+      name:        p.name,
+      protocol:    p.protocol ? p.protocol.name : null,
+      goal:        null,
+      status:      p.status,
+      streak:      p.dosing ? p.dosing.adherence : 0,
+      memberSince: p.memberSince,
+      email:       '',
+      _mock:       p,
+      _consultation: null,
+      _profile:    null
+    };
+  });
+}
+
+// Normalise a consultation + optional profile row into the shape renderPatientList expects
+function _normalisePatientRow(consultation, profile) {
+  var d = consultation.data || {};
+  var name = (profile && profile.display_name)
+    ? profile.display_name
+    : (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
+    || consultation.user_id.slice(0, 8).toUpperCase();
+
+  var protocolName = d.assigned_protocol || d.protocol || null;
+  var goal = (d.goals && d.goals.length > 0) ? d.goals[0] : null;
+
+  // Derive status
+  var status;
+  if (d.status) {
+    status = d.status;
+  } else if (protocolName) {
+    status = 'active';
+  } else if (goal) {
+    status = 'pending';
+  } else {
+    status = 'no_protocol';
+  }
+
+  return {
+    id:          consultation.user_id,
+    name:        name,
+    protocol:    protocolName,
+    goal:        goal,
+    status:      status,
+    streak:      (profile && profile.current_streak) ? profile.current_streak : 0,
+    memberSince: consultation.created_at,
+    email:       d.email || (profile && profile.email) || '',
+    _consultation: consultation,
+    _profile:    profile
+  };
 }
 
 function filterPatients(filter, pillEl) {
@@ -3028,39 +3143,72 @@ function filterPatients(filter, pillEl) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
+  // If rows not yet loaded, initClPatients will call renderPatientList when done
+  if (_clPatientRows === null) {
+    initClPatients();
+    return;
+  }
   renderPatientList(filter);
+}
+
+// Status chip helper
+function _patStatusChip(status) {
+  if (status === 'active') {
+    return '<span class="pat-status-badge active">Active</span>';
+  } else if (status === 'pending' || status === 'submitted') {
+    return '<span class="pat-status-badge" style="background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending Review</span>';
+  } else {
+    return '<span class="pat-status-badge inactive">No Protocol</span>';
+  }
 }
 
 function renderPatientList(filter) {
   var el = document.getElementById('clPatientList');
   if (!el) return;
-  var patients = MOCK_PATIENTS;
-  if (filter === 'active')   patients = patients.filter(function(p){ return p.status === 'active'; });
-  if (filter === 'seen')     patients = patients.filter(function(p){ return /h ago|Today/.test(p.lastActivity); });
-  if (filter === 'followup') patients = patients.filter(function(p){ return p.dosing.adherence < 75; });
-  if (filter === 'unread')   patients = patients.filter(function(p){ return p.unread > 0; });
+
+  // Use loaded rows (or mock in PREVIEW_MODE)
+  var rows = _clPatientRows;
+  if (!rows) {
+    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+    return;
+  }
+
+  // Apply filter
+  var patients = rows;
+  if (filter === 'active')   patients = rows.filter(function(p){ return p.status === 'active'; });
+  if (filter === 'seen')     patients = rows.filter(function(p){
+    // "recently seen" — joined within last 30 days
+    if (!p.memberSince) return false;
+    var d = new Date(p.memberSince);
+    return (Date.now() - d.getTime()) < 30 * 24 * 60 * 60 * 1000;
+  });
+  if (filter === 'followup') patients = rows.filter(function(p){ return p.status === 'pending' || p.status === 'no_protocol'; });
+  if (filter === 'unread')   patients = rows.filter(function(p){ return p._mock && p._mock.unread > 0; });
+
   if (patients.length === 0) {
     el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients match this filter.</div></div>';
     return;
   }
   el.innerHTML = '';
   patients.forEach(function(p) {
+    var initials = p.name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+    var protoText = p.protocol || (p.goal ? ('Goal: ' + p.goal) : 'No protocol assigned');
+    var memberSinceStr = p.memberSince ? new Date(p.memberSince).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—';
     var wrapper = document.createElement('div');
-    var nextStr = p.nextAppt ? p.nextAppt.date + ' · ' + p.nextAppt.time : 'None scheduled';
-    var unreadHtml = p.unread > 0 ? '<div class="pat-unread-dot"></div>' : '';
     wrapper.innerHTML =
       '<div class="patient-row">' +
-        '<div class="patient-initials">' + p.initials + '</div>' +
+        '<div class="patient-initials">' + escapeHtml(initials) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
-            '<div class="patient-name-text">' + p.name + '</div>' +
-            '<span class="pat-status-badge ' + p.status + '">' + p.status + '</span>' +
+            '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
+            _patStatusChip(p.status) +
           '</div>' +
-          '<div class="patient-proto-text">' + p.protocol.name + '</div>' +
+          '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
         '<div class="pat-row-right">' +
-          unreadHtml +
-          '<div class="pat-next-appt">' + nextStr + '<br><span style="color:rgba(255,255,255,0.18);">' + p.lastActivity + '</span></div>' +
+          '<div class="pat-next-appt">' + escapeHtml(memberSinceStr) + '<br>' +
+            '<span style="color:rgba(255,255,255,0.18);">streak: ' + escapeHtml(String(p.streak)) + 'd</span>' +
+          '</div>' +
         '</div>' +
       '</div>';
     wrapper.onclick = function(){ togglePatientDetail(p, wrapper); };

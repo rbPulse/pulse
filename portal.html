@@ -547,6 +547,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .notif-body { font-size:12px; color:rgba(255,255,255,0.7); line-height:1.4; flex:1; }
 .notif-time { font-family:'DM Mono',monospace; font-size:9px; color:rgba(255,255,255,0.25); margin-top:3px; }
 .notif-empty { padding:28px 16px; text-align:center; font-size:12px; color:rgba(255,255,255,0.22); }
+
+/* ── SUBSCRIPTION CHIPS (Phase 12) ── */
+.sub-chip { font-family:'DM Mono',monospace; font-size:8px; letter-spacing:0.1em; text-transform:uppercase; padding:2px 7px; border-radius:999px; display:inline-block; margin-left:6px; vertical-align:middle; }
+.sub-chip-free { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.35); }
+.sub-chip-paused { background:rgba(255,180,50,0.12); color:rgba(255,180,50,0.8); }
+.sub-chip-cancelled { background:rgba(255,80,80,0.1); color:rgba(255,80,80,0.7); }
 </style>
 </head>
 <body>
@@ -677,6 +683,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
       <!-- ── OVERVIEW TAB ── -->
       <div class="portal-tab active" id="tab-overview">
+
+        <!-- Subscription status banner (Phase 12) — shown by JS when subscription is not active -->
+        <div id="subStatusBanner" style="display:none;background:rgba(255,180,50,0.07);border:1px solid rgba(255,180,50,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,180,50,0.85);letter-spacing:0.05em;">Your subscription is not yet active.</span>
+          <a href="consultation.html" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);text-decoration:none;white-space:nowrap;">Get Started →</a>
+        </div>
+
         <div class="greeting-line" id="greetingLine">Good evening.</div>
         <div class="greeting-sub" id="greetingSub">Welcome to your Pulse member portal.</div>
 
@@ -1580,6 +1593,15 @@ var CLINICIAN_ID = null;
 // Module-level display name cache (set on every consumer sign-in)
 var _memberDisplayName = '';
 
+// Module-level subscription status for the consumer (Phase 12)
+var _memberSubStatus = null;
+
+function _applySubStatus() {
+  var banner = document.getElementById('subStatusBanner');
+  if (!banner) return;
+  banner.style.display = (_memberSubStatus && _memberSubStatus !== 'active') ? 'flex' : 'none';
+}
+
 var CLINICIAN_EMAIL = 'clinician@pulse.health'; // replace with real clinician email
 
 var PROTOCOL_MAP = {
@@ -2106,6 +2128,8 @@ function initPortal(user) {
     setSidebarIdentity(consumerName, 'Member', false);
 
     if (PREVIEW_MODE) {
+      _memberSubStatus = 'free'; // Phase 12: show banner in preview
+      _applySubStatus();
       populatePortal(user, { data: { first_name: 'Alex', goals: ['growth'], age: 32, gender: 'male' } }, greeting);
       loadDoseLogs();
       loadNotifications();
@@ -2121,14 +2145,20 @@ function initPortal(user) {
       last_seen:    new Date().toISOString()
     };
     db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
-      .select('display_name')
+      .select('display_name, subscription_status')
       .then(function(pr) {
-        if (!pr.error && pr.data && pr.data.length > 0 && pr.data[0].display_name) {
-          _memberDisplayName = pr.data[0].display_name;
-          setSidebarIdentity(_memberDisplayName, 'Member', false);
-          // Also refresh settings field with the DB-resolved name
-          var snEl = document.getElementById('settingsDisplayName');
-          if (snEl) snEl.value = _memberDisplayName;
+        if (!pr.error && pr.data && pr.data.length > 0) {
+          var row = pr.data[0];
+          if (row.display_name) {
+            _memberDisplayName = row.display_name;
+            setSidebarIdentity(_memberDisplayName, 'Member', false);
+            // Also refresh settings field with the DB-resolved name
+            var snEl = document.getElementById('settingsDisplayName');
+            if (snEl) snEl.value = _memberDisplayName;
+          }
+          // Phase 12: store subscription status and apply banner
+          _memberSubStatus = row.subscription_status || null;
+          _applySubStatus();
         }
       })
       .catch(function() { /* non-fatal; keep initial name */ });

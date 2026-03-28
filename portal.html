@@ -1997,7 +1997,11 @@ function initClinicianPortal(user, role, greeting) {
   // Messages tab
   initClMessages();
 
-  // Settings defaults — prefer real user metadata over mock fallback
+  // Settings defaults — prefer real user metadata over mock fallback.
+  // applyClProfile() already handles cl_bio / cl_timezone / cl_duration;
+  // here we only fill fields that applyClProfile doesn't cover (credentials
+  // mock fallback) and re-apply the full profile so Settings is always
+  // consistent even if the user reaches it before navigating away.
   var savedName  = meta.cl_name ? meta.cl_name.split(' ') : m.name.split(' ');
   var fEl = document.getElementById('clFirstName');
   var lEl = document.getElementById('clLastName');
@@ -2007,25 +2011,146 @@ function initClinicianPortal(user, role, greeting) {
   if (lEl) lEl.value = savedName.slice(1).join(' ') || '';
   if (cEl) cEl.value = meta.cl_credentials || m.title;
   if (sEl) sEl.value = meta.cl_specialty   || m.specialty;
+  // Ensure bio, timezone, duration are populated (applyClProfile may not have
+  // been called if we came through PREVIEW_MODE or a reinit path).
+  if (!PREVIEW_MODE) {
+    var beI = document.getElementById('clBio');
+    if (beI && meta.cl_bio) beI.value = meta.cl_bio;
+    var tzeI = document.getElementById('clSettingsTimezone');
+    if (tzeI && meta.cl_timezone) tzeI.value = meta.cl_timezone;
+    var dseI = document.getElementById('clSettingsDuration');
+    if (dseI && meta.cl_duration) dseI.value = String(parseInt(meta.cl_duration) || 30);
+  }
 }
 
 async function saveClinicianSettings() {
-  var fEl = document.getElementById('clFirstName');
-  var lEl = document.getElementById('clLastName');
-  var cEl = document.getElementById('clCredentials');
-  var sEl = document.getElementById('clSpecialty');
-  var fullName = ((fEl ? fEl.value.trim() : '') + ' ' + (lEl ? lEl.value.trim() : '')).trim();
-  var saved = document.getElementById('clSettingsSaved');
+  var fEl      = document.getElementById('clFirstName');
+  var lEl      = document.getElementById('clLastName');
+  var cEl      = document.getElementById('clCredentials');
+  var sEl      = document.getElementById('clSpecialty');
+  var beEl     = document.getElementById('clBio');
+  var tzeEl    = document.getElementById('clSettingsTimezone');
+  var dseEl    = document.getElementById('clSettingsDuration');
+  var saveBtn  = document.getElementById('clSaveBtn');
+  var savedMsg = document.getElementById('clSettingsSaved');
+  var errMsg   = document.getElementById('clSettingsError');
+  var nameErr  = document.getElementById('clNameError');
+
+  // Hide previous feedback
+  if (savedMsg) savedMsg.style.display = 'none';
+  if (errMsg)   errMsg.style.display   = 'none';
+  if (nameErr)  nameErr.style.display  = 'none';
+
+  var firstName = fEl ? fEl.value.trim() : '';
+  var lastName  = lEl ? lEl.value.trim() : '';
+  var fullName  = (firstName + (lastName ? ' ' + lastName : '')).trim();
+
+  // 7E — Validate name
+  if (!fullName) {
+    if (nameErr) nameErr.style.display = 'block';
+    return;
+  }
+
+  var credentials = cEl  ? cEl.value.trim()  : '';
+  var specialty   = sEl  ? sEl.value.trim()  : '';
+  var bio         = beEl ? beEl.value.trim()  : '';
+  var timezone    = tzeEl ? tzeEl.value : '';
+  var duration    = dseEl ? (parseInt(dseEl.value) || 30) : 30;
+
+  // 7A — Loading state
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+  // PREVIEW_MODE fast path
+  if (PREVIEW_MODE) {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    APPT_DURATION = duration;
+    var displayName = 'Dr. ' + firstName;
+    var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
+    setSidebarIdentity(displayName, roleLabel, true);
+    if (savedMsg) {
+      savedMsg.style.display = 'inline';
+      setTimeout(function(){ savedMsg.style.display = 'none'; }, 2000);
+    }
+    return;
+  }
+
   try {
-    var r = await db.auth.updateUser({ data: {
-      cl_setup:       true,
-      cl_name:        fullName || undefined,
-      cl_credentials: cEl ? cEl.value.trim() : undefined,
-      cl_specialty:   sEl ? sEl.value.trim() : undefined
-    }});
+    var r = await db.auth.updateUser({
+      data: {
+        cl_setup:       true,
+        cl_name:        fullName,
+        cl_credentials: credentials,
+        cl_specialty:   specialty,
+        cl_bio:         bio,
+        cl_timezone:    timezone,
+        cl_duration:    duration
+      }
+    });
     if (r.error) throw r.error;
-  } catch(e) { /* silent — show saved feedback regardless in preview */ }
-  if (saved) { saved.style.display = 'inline'; setTimeout(function(){ saved.style.display = 'none'; }, 2400); }
+
+    // 7B — Update local state
+    APPT_DURATION = duration;
+    var dSchedule = document.getElementById('clDuration');
+    if (dSchedule) dSchedule.value = String(duration);
+
+    // 7D — Sidebar sync (no reload)
+    var displayName = 'Dr. ' + firstName;
+    var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
+    setSidebarIdentity(displayName, roleLabel, true);
+
+    // 7A — Success feedback
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    if (savedMsg) {
+      savedMsg.style.display = 'inline';
+      setTimeout(function(){ savedMsg.style.display = 'none'; }, 2000);
+    }
+  } catch(e) {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    if (errMsg) errMsg.style.display = 'inline';
+  }
+}
+
+// 7C — Change password
+async function sendClPasswordReset() {
+  var btn = document.getElementById('clPwResetBtn');
+  var msg = document.getElementById('clPwResetMsg');
+  if (!msg) return;
+  msg.textContent = '';
+  msg.style.display = 'none';
+
+  var email = currentUserEmail;
+
+  if (PREVIEW_MODE) {
+    if (msg) {
+      msg.textContent = 'Password reset email sent to ' + (email || 'your email') + '.';
+      msg.style.display = 'inline';
+    }
+    return;
+  }
+
+  if (!email) {
+    if (msg) { msg.textContent = 'No email address found.'; msg.style.color = 'rgba(210,80,80,0.9)'; msg.style.display = 'inline'; }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; }
+  try {
+    var r = await db.auth.resetPasswordForEmail(email);
+    if (r.error) throw r.error;
+    if (msg) {
+      msg.style.color = '';
+      msg.textContent = 'Password reset email sent to ' + email + '.';
+      msg.style.display = 'inline';
+    }
+  } catch(e) {
+    if (msg) {
+      msg.style.color = 'rgba(210,80,80,0.9)';
+      msg.textContent = (e && e.message) ? e.message : 'Failed to send reset email.';
+      msg.style.display = 'inline';
+    }
+  } finally {
+    if (btn) { btn.disabled = false; }
+  }
 }
 
 // ── CLINICIAN SCHEDULE EDITOR ──

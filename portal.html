@@ -1906,6 +1906,7 @@ var MOCK_CLINICIAN = {
 var MOCK_PATIENTS = [
   {
     id:'mt', name:'Marcus T.', initials:'MT', status:'active', memberSince:'Feb 2026',
+    subscription_status:'active',
     protocol:{ name:'Performance Stack', startDate:'Feb 3, 2026', status:'active',
       note:'GH-axis optimization for lean mass and recovery. Administered before bed on empty stomach.',
       compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'] },
@@ -1919,6 +1920,7 @@ var MOCK_PATIENTS = [
   },
   {
     id:'dr', name:'Dana R.', initials:'DR', status:'active', memberSince:'Oct 2025',
+    subscription_status:'active',
     protocol:{ name:'Sleep + Recovery', startDate:'Oct 14, 2025', status:'active',
       note:'Peptides administered 30 minutes before bed. Minimum cycle: 4 weeks.',
       compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg'] },
@@ -1932,6 +1934,7 @@ var MOCK_PATIENTS = [
   },
   {
     id:'jm', name:'Jake M.', initials:'JM', status:'active', memberSince:'Dec 2025',
+    subscription_status:'paused',
     protocol:{ name:'Body Composition', startDate:'Dec 20, 2025', status:'active',
       note:'Progressive dose titration over 4 weeks. Subcutaneous, once weekly.',
       compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','CJC-1295 1mg'] },
@@ -1945,6 +1948,7 @@ var MOCK_PATIENTS = [
   },
   {
     id:'af', name:'Alison F.', initials:'AF', status:'active', memberSince:'Mar 2026',
+    subscription_status:'free',
     protocol:{ name:'Longevity Protocol', startDate:'Mar 13, 2026', status:'active',
       note:'10-day on, 20-day off cadence for Epithalon. Full cycle duration: 60 days.',
       compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg'] },
@@ -1955,6 +1959,7 @@ var MOCK_PATIENTS = [
   },
   {
     id:'rk', name:'Ryan K.', initials:'RK', status:'active', memberSince:'Jan 2026',
+    subscription_status:'cancelled',
     protocol:{ name:'Recovery + Repair', startDate:'Jan 20, 2026', status:'active',
       note:'BPC-157 subcutaneous daily, TB-500 bi-weekly. 8 week cycle.',
       compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg'] },
@@ -1968,6 +1973,7 @@ var MOCK_PATIENTS = [
   },
   {
     id:'cb', name:'Chris B.', initials:'CB', status:'active', memberSince:'Mar 2026',
+    subscription_status:'active',
     protocol:{ name:'Performance Stack', startDate:'Mar 6, 2026', status:'active',
       note:'GH-axis optimization for lean mass and recovery. Administered before bed.',
       compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'] },
@@ -3759,17 +3765,18 @@ function initClPatients() {
 function _normaliseMockPatients() {
   return MOCK_PATIENTS.map(function(p) {
     return {
-      id:          p.id,
-      name:        p.name,
-      protocol:    p.protocol ? p.protocol.name : null,
-      goal:        null,
-      status:      p.status,
-      streak:      p.dosing ? p.dosing.adherence : 0,
-      memberSince: p.memberSince,
-      email:       '',
-      _mock:       p,
+      id:            p.id,
+      name:          p.name,
+      protocol:      p.protocol ? p.protocol.name : null,
+      goal:          null,
+      status:        p.status,
+      streak:        p.dosing ? p.dosing.adherence : 0,
+      memberSince:   p.memberSince,
+      email:         '',
+      subStatus:     p.subscription_status || null,
+      _mock:         p,
       _consultation: null,
-      _profile:    null
+      _profile:      null
     };
   });
 }
@@ -3798,16 +3805,17 @@ function _normalisePatientRow(consultation, profile) {
   }
 
   return {
-    id:          consultation.user_id,
-    name:        name,
-    protocol:    protocolName,
-    goal:        goal,
-    status:      status,
-    streak:      (profile && profile.current_streak) ? profile.current_streak : 0,
-    memberSince: consultation.created_at,
-    email:       d.email || (profile && profile.email) || '',
+    id:            consultation.user_id,
+    name:          name,
+    protocol:      protocolName,
+    goal:          goal,
+    status:        status,
+    streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
+    memberSince:   consultation.created_at,
+    email:         d.email || (profile && profile.email) || '',
+    subStatus:     (profile && profile.subscription_status) ? profile.subscription_status : null,
     _consultation: consultation,
-    _profile:    profile
+    _profile:      profile
   };
 }
 
@@ -3834,6 +3842,16 @@ function _patStatusChip(status) {
   } else {
     return '<span class="pat-status-badge inactive">No Protocol</span>';
   }
+}
+
+// Subscription chip helper (Phase 12)
+// Returns empty string for 'active' (clean), chip for free/paused/cancelled/null
+function _subStatusChip(subStatus) {
+  if (!subStatus || subStatus === 'active') return '';
+  if (subStatus === 'paused')    return '<span class="sub-chip sub-chip-paused">Paused</span>';
+  if (subStatus === 'cancelled') return '<span class="sub-chip sub-chip-cancelled">Cancelled</span>';
+  // 'free' or any unrecognised value
+  return '<span class="sub-chip sub-chip-free">Free</span>';
 }
 
 function renderPatientList(filter) {
@@ -3882,6 +3900,7 @@ function renderPatientList(filter) {
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
             _patStatusChip(p.status) +
+            _subStatusChip(p.subStatus) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
@@ -3937,10 +3956,11 @@ function buildPatientDetail(p) {
     var memberSinceMock = p.memberSince
       ? (String(p.memberSince).length > 10 ? new Date(p.memberSince).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : p.memberSince)
       : '—';
+    var mockSubChip = _subStatusChip(p.subStatus);
     return (
       '<div class="pdp-close-row">' +
         '<div>' +
-          '<div class="pdp-title">' + escapeHtml(p.name) + '</div>' +
+          '<div class="pdp-title">' + escapeHtml(p.name) + ' ' + mockSubChip + '</div>' +
           '<div class="pdp-subtitle">Member since ' + escapeHtml(memberSinceMock) + ' · ' + escapeHtml(p.status) + '</div>' +
         '</div>' +
         '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
@@ -3989,10 +4009,8 @@ function buildPatientDetail(p) {
   var memberSinceStr = p.memberSince
     ? new Date(p.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '—';
-  var subStatus   = pr2.subscription_status || d.subscription_status || null;
-  var subChip     = subStatus
-    ? '<span class="pat-status-badge" style="background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.18);color:rgba(120,200,160,0.8);">' + escapeHtml(subStatus) + '</span>'
-    : '';
+  var subStatus   = pr2.subscription_status || d.subscription_status || p.subStatus || null;
+  var subChip     = _subStatusChip(subStatus);
   var emailStr = p.email ? escapeHtml(p.email) : '<span style="color:rgba(255,255,255,0.22);">—</span>';
 
   // Protocol section

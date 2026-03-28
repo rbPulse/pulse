@@ -1556,6 +1556,7 @@ var MOCK_PATIENTS = [
  *   thread_id   text not null,          -- member's user UUID; groups all msgs for that member
  *   sender_id   uuid not null,
  *   sender_role text not null,          -- 'consumer' or 'clinician'
+ *   sender_name text,                   -- display name of sender at time of send
  *   body        text not null,
  *   created_at  timestamptz default now(),
  *   read        boolean default false
@@ -3162,32 +3163,12 @@ function initClMessages() {
 // ── Load thread list from Supabase ──
 function _loadClThreadList() {
   db.from('messages')
-    .select('thread_id, sender_role, body, created_at, read')
+    .select('thread_id, sender_role, sender_name, body, created_at, read')
     .order('created_at', { ascending: false })
     .then(function(res) {
       if (res.error) throw res.error;
       _buildClThreadCache(res.data || []);
-      // Enrich thread labels with real names from consultations
-      var threadIds = Object.keys(_clThreadCache);
-      if (threadIds.length === 0) { _renderClThreadListFromCache(); return; }
-      db.from('consultations')
-        .select('user_id, first_name, last_name')
-        .in('user_id', threadIds)
-        .then(function(cr) {
-          if (!cr.error && cr.data) {
-            cr.data.forEach(function(row) {
-              if (_clThreadCache[row.user_id]) {
-                var name = ((row.first_name || '') + ' ' + (row.last_name || '')).trim() || null;
-                if (name) {
-                  _clThreadCache[row.user_id].patientLabel = name;
-                  _clThreadCache[row.user_id].initials = name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-                }
-              }
-            });
-          }
-          _renderClThreadListFromCache();
-        })
-        .catch(function() { _renderClThreadListFromCache(); });
+      _renderClThreadListFromCache();
     })
     .catch(function(err) {
       console.warn('[Pulse] messages table unavailable for clinician, using mock data:', err && err.message);
@@ -3202,15 +3183,27 @@ function _buildClThreadCache(rows) {
   rows.forEach(function(row) {
     var tid = row.thread_id;
     if (!seen[tid]) {
+      // Use sender_name from the most recent consumer message as the patient label.
+      // Fall back to first 8 chars of thread_id if sender_name is absent (old messages).
+      var patientLabel = tid.slice(0, 8).toUpperCase();
+      var initials = tid.slice(0, 2).toUpperCase();
+      if (row.sender_role === 'consumer' && row.sender_name) {
+        patientLabel = row.sender_name;
+        initials = row.sender_name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || initials;
+      }
       seen[tid] = {
         threadId: tid,
-        patientLabel: tid.slice(0, 8).toUpperCase(),
-        initials: tid.slice(0, 2).toUpperCase(),
+        patientLabel: patientLabel,
+        initials: initials,
         unread: 0,
         latestTime: row.created_at,
         preview: row.body,
         messages: []
       };
+    } else if (row.sender_role === 'consumer' && row.sender_name && seen[tid].patientLabel === tid.slice(0, 8).toUpperCase()) {
+      // If we previously had a fallback label, upgrade to sender_name from a consumer row
+      seen[tid].patientLabel = row.sender_name;
+      seen[tid].initials = row.sender_name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || seen[tid].initials;
     }
     // Count unread consumer messages (messages the clinician hasn't read)
     if (row.sender_role === 'consumer' && row.read === false) {
@@ -3463,10 +3456,12 @@ function sendClMessage() {
     el.scrollTop = el.scrollHeight;
   }
 
+  var clDisplayName = document.getElementById('sidebarName') ? (document.getElementById('sidebarName').textContent || null) : null;
   var row = {
     thread_id:   _activeClThreadId,
     sender_id:   currentUserId,
     sender_role: 'clinician',
+    sender_name: clDisplayName,
     body:        text,
     read:        false
   };
@@ -3575,6 +3570,7 @@ function sendConsumerMessage() {
     thread_id:   currentUserId,
     sender_id:   currentUserId,
     sender_role: 'consumer',
+    sender_name: _memberDisplayName || null,
     body:        text,
     read:        false
   };

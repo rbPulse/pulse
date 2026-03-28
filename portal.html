@@ -2108,6 +2108,8 @@ function initPortal(user) {
     if (PREVIEW_MODE) {
       populatePortal(user, { data: { first_name: 'Alex', goals: ['growth'], age: 32, gender: 'male' } }, greeting);
       loadDoseLogs();
+      loadNotifications();
+      _notifPollTimer = setInterval(loadNotifications, 60000);
       return;
     }
 
@@ -2162,6 +2164,8 @@ function initPortal(user) {
       .catch(function() { populatePortal(user, null, greeting); });
     loadDoseLogs();
     _startConsumerUnreadPoll();
+    loadNotifications();
+    _notifPollTimer = setInterval(loadNotifications, 60000);
   }
 }
 
@@ -2302,6 +2306,8 @@ function initClinicianPortal(user, role, greeting) {
   // Activate first clinician tab
   switchTab('cl-overview');
   _startClinicianUnreadPoll();
+  loadNotifications();
+  _notifPollTimer = setInterval(loadNotifications, 60000);
 
   // Populate from mock (replace fetch calls here when backend is ready)
   var m = MOCK_CLINICIAN;
@@ -2926,6 +2932,13 @@ function _updateApptStatus(apptId, newStatus) {
               scheduledAt: apptRow.scheduledAt ? apptRow.scheduledAt.toISOString() : null,
               durationMinutes: parseInt((apptRow.dur || '30'), 10) || 30
             }}).then(function(){}).catch(function(){});
+          }
+          // Insert in-portal notification for the patient
+          var consumerId = apptRow.consumerId;
+          if (newStatus === 'confirmed') {
+            _insertNotification(consumerId, 'appt_confirmed', 'Your appointment is confirmed.', 'appointments');
+          } else if (newStatus === 'cancelled_by_clinician') {
+            _insertNotification(consumerId, 'appt_cancelled', 'Your appointment has been cancelled by your clinician.', 'appointments');
           }
         }
       }
@@ -4111,6 +4124,8 @@ function _saveAssignedProtocol(patientId) {
     .then(function(msgRes) {
       if (msgRes && msgRes.error) console.warn('[Pulse] protocol welcome message failed:', msgRes.error.message);
       if (saveStatusEl) saveStatusEl.textContent = 'Protocol assigned!';
+      // Insert in-portal notification for the patient
+      _insertNotification(patientId, 'protocol_assigned', 'Your protocol has been assigned: ' + proto + '.', 'overview');
       // Notify patient that their protocol has been assigned (fire-and-forget)
       if (!PREVIEW_MODE && _clPatientRows) {
         for (var ni = 0; ni < _clPatientRows.length; ni++) {
@@ -4542,6 +4557,8 @@ function sendClMessage() {
         _openClThreadReal(_sentThreadId);
         return;
       }
+      // Insert in-portal notification for the patient
+      _insertNotification(_sentThreadId, 'new_message', 'Your clinician replied to your message.', 'messages');
       // Notify patient of clinician reply (fire-and-forget)
       if (!PREVIEW_MODE) {
         var _threadEntry = _clThreadCache[_sentThreadId];
@@ -5193,6 +5210,129 @@ db.auth.onAuthStateChange(function(event, session) {
     }
   }
 });
+
+// ── Phase 11C: Notification feed ──
+var _notifPollTimer = null;
+var _notifData = [];
+
+function loadNotifications() {
+  if (!currentUserId || PREVIEW_MODE) {
+    _renderNotifPreview();
+    return;
+  }
+  db.from('notifications')
+    .select('*')
+    .eq('user_id', currentUserId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+    .then(function(res) {
+      if (res.error) throw res.error;
+      _notifData = res.data || [];
+      _renderNotifPanel();
+      _updateNotifBadge();
+    })
+    .catch(function() { _renderNotifPreview(); });
+}
+
+function _renderNotifPreview() {
+  // Mock notifications for preview mode
+  _notifData = [
+    { id:'1', body:'Your protocol has been assigned: Growth.', read:false, created_at: new Date(Date.now()-3600000).toISOString(), link:'overview' },
+    { id:'2', body:'Your appointment on Monday at 10:00 AM is confirmed.', read:false, created_at: new Date(Date.now()-86400000).toISOString(), link:'appointments' },
+    { id:'3', body:'Your clinician replied to your message.', read:true, created_at: new Date(Date.now()-172800000).toISOString(), link:'messages' }
+  ];
+  _renderNotifPanel();
+  _updateNotifBadge();
+}
+
+function _renderNotifPanel() {
+  var list = document.getElementById('notifList');
+  if (!list) return;
+  if (_notifData.length === 0) {
+    list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+    return;
+  }
+  list.innerHTML = _notifData.map(function(n) {
+    var time = _notifTimeAgo(n.created_at);
+    var unreadClass = n.read ? '' : ' unread';
+    var dotClass = n.read ? ' read' : '';
+    return '<div class="notif-row' + unreadClass + '" onclick="_handleNotifClick(\'' + escapeAttr(n.id) + '\',\'' + escapeAttr(n.link || '') + '\')">' +
+      '<div class="notif-dot' + dotClass + '"></div>' +
+      '<div><div class="notif-body">' + escapeHtml(n.body) + '</div>' +
+      '<div class="notif-time">' + time + '</div></div>' +
+      '</div>';
+  }).join('');
+}
+
+function _updateNotifBadge() {
+  var badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  var unread = _notifData.filter(function(n) { return !n.read; }).length;
+  if (unread > 0) { badge.textContent = unread; badge.style.display = 'flex'; }
+  else { badge.style.display = 'none'; }
+}
+
+function _handleNotifClick(id, link) {
+  // Mark as read locally
+  _notifData = _notifData.map(function(n) { return n.id === id ? Object.assign({}, n, { read:true }) : n; });
+  _renderNotifPanel();
+  _updateNotifBadge();
+  // Mark as read in DB
+  if (currentUserId && !PREVIEW_MODE) {
+    db.from('notifications').update({ read:true }).eq('id', id).catch(function() {});
+  }
+  // Navigate if link provided
+  if (link) { switchTab(link); closeNotifPanel(); }
+}
+
+function markAllNotifsRead() {
+  _notifData = _notifData.map(function(n) { return Object.assign({}, n, { read:true }); });
+  _renderNotifPanel();
+  _updateNotifBadge();
+  if (currentUserId && !PREVIEW_MODE) {
+    db.from('notifications').update({ read:true }).eq('user_id', currentUserId).eq('read', false).catch(function() {});
+  }
+}
+
+function toggleNotifPanel() {
+  var panel = document.getElementById('notifPanel');
+  if (!panel) return;
+  var isOpen = panel.classList.toggle('open');
+  if (isOpen) loadNotifications();
+}
+
+function closeNotifPanel() {
+  var panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('open');
+}
+
+function _notifTimeAgo(iso) {
+  if (!iso) return '';
+  var diff = Date.now() - new Date(iso).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+// ── Phase 11D: Close panel on outside click ──
+document.addEventListener('click', function(e) {
+  var bell = document.getElementById('notifBell');
+  var panel = document.getElementById('notifPanel');
+  if (bell && panel && !bell.contains(e.target) && !panel.contains(e.target)) {
+    closeNotifPanel();
+  }
+});
+
+// ── Phase 11E: Insert notification helper ──
+function _insertNotification(userId, type, body, link) {
+  if (!userId || PREVIEW_MODE) return;
+  db.from('notifications').insert({ user_id: userId, type: type, body: body, link: link || null })
+    .catch(function() {});
+}
 </script>
 </body>
 </html>

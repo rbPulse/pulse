@@ -964,7 +964,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="settings-grid">
             <div class="settings-field">
               <label class="settings-field-lbl">Default Duration</label>
-              <select class="book-select" id="clDuration" onchange="APPT_DURATION=parseInt(this.value)">
+              <select class="book-select" id="clDuration" onchange="APPT_DURATION=parseInt(this.value);onDurationChange(this.value)">
                 <option value="20">20 minutes</option>
                 <option value="30" selected>30 minutes</option>
                 <option value="45">45 minutes</option>
@@ -1252,6 +1252,9 @@ var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Replace with real clinician user_id once a clinician account exists in Supabase
+var CLINICIAN_ID = null;
+
 /*
  * ── DOSE LOGS TABLE SQL ──────────────────────────────────────────────────────
  * Run this SQL in your Supabase dashboard (SQL Editor):
@@ -1273,6 +1276,57 @@ var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
  * create policy "clinicians read dose logs"
  *   on dose_logs for select
  *   using ((auth.jwt() -> 'user_metadata' ->> 'role') in ('clinician','admin'));
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * ── AVAILABILITY TABLE SQL ───────────────────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * create table if not exists availability (
+ *   id uuid primary key default gen_random_uuid(),
+ *   clinician_id uuid not null references auth.users(id) on delete cascade,
+ *   day_of_week integer not null check (day_of_week between 0 and 6),
+ *   active boolean default true,
+ *   slot_duration_minutes integer default 30,
+ *   updated_at timestamptz default now(),
+ *   unique(clinician_id, day_of_week)
+ * );
+ * alter table availability enable row level security;
+ * create policy "clinicians manage own availability"
+ *   on availability for all
+ *   using (clinician_id = auth.uid())
+ *   with check (clinician_id = auth.uid());
+ * create policy "consumers read availability"
+ *   on availability for select
+ *   using (auth.role() = 'authenticated');
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * ── APPOINTMENTS TABLE SQL ───────────────────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * create table if not exists appointments (
+ *   id uuid primary key default gen_random_uuid(),
+ *   consumer_id uuid not null references auth.users(id) on delete cascade,
+ *   clinician_id uuid,
+ *   scheduled_at timestamptz not null,
+ *   duration_minutes integer default 30,
+ *   status text default 'pending' check (status in ('pending','confirmed','cancelled_by_member','cancelled_by_clinician')),
+ *   notes text,
+ *   created_at timestamptz default now(),
+ *   updated_at timestamptz default now()
+ * );
+ * alter table appointments enable row level security;
+ * create policy "consumers manage own appointments"
+ *   on appointments for all
+ *   using (consumer_id = auth.uid())
+ *   with check (consumer_id = auth.uid());
+ * create policy "clinicians manage all appointments"
+ *   on appointments for all
+ *   using ((auth.jwt() -> 'user_metadata' ->> 'role') in ('clinician','admin'))
+ *   with check ((auth.jwt() -> 'user_metadata' ->> 'role') in ('clinician','admin'));
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -1899,9 +1953,97 @@ async function saveClinicianSettings() {
 }
 
 // ── CLINICIAN SCHEDULE EDITOR ──
+// Day-of-week index map (matches JS Date.getDay())
+var _DOW_INDEX = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
+
 function initClSchedule() {
-  renderAvailEditor();
-  renderBlockedList();
+  if (PREVIEW_MODE || !currentUserId) {
+    renderAvailEditor();
+    renderBlockedList();
+    return;
+  }
+  // Load availability from DB, restore state, then render
+  db.from('availability')
+    .select('*')
+    .eq('clinician_id', currentUserId)
+    .then(function(res) {
+      if (res.error) throw res.error;
+      var rows = res.data || [];
+      if (rows.length === 0) {
+        // No rows yet — upsert defaults (Mon–Fri active, 30 min)
+        _upsertDefaultAvailability();
+      } else {
+        // Restore AVAIL_STATE and APPT_DURATION from DB rows
+        rows.forEach(function(row) {
+          AVAIL_STATE.forEach(function(s) {
+            if (_DOW_INDEX[s.day] === row.day_of_week) {
+              s.on = row.active;
+            }
+          });
+          if (row.slot_duration_minutes) {
+            APPT_DURATION = row.slot_duration_minutes;
+          }
+        });
+        // Sync duration selector
+        var de = document.getElementById('clDuration');
+        if (de) de.value = String(APPT_DURATION);
+      }
+      renderAvailEditor();
+      renderBlockedList();
+    })
+    .catch(function(err) {
+      console.warn('[Pulse] availability load failed:', err && err.message);
+      renderAvailEditor();
+      renderBlockedList();
+    });
+}
+
+function _upsertDefaultAvailability() {
+  if (!currentUserId) return;
+  var rows = AVAIL_STATE.map(function(s) {
+    return {
+      clinician_id: currentUserId,
+      day_of_week: _DOW_INDEX[s.day],
+      active: s.on,
+      slot_duration_minutes: APPT_DURATION,
+      updated_at: new Date().toISOString()
+    };
+  });
+  db.from('availability')
+    .upsert(rows, { onConflict: 'clinician_id,day_of_week' })
+    .then(function(res) {
+      if (res && res.error) console.warn('[Pulse] availability default upsert error:', res.error.message);
+    })
+    .catch(function(err) { console.warn('[Pulse] availability default upsert failed:', err && err.message); });
+}
+
+function _upsertAvailDay(dayIndex, active) {
+  if (!currentUserId || PREVIEW_MODE) return;
+  db.from('availability')
+    .upsert({
+      clinician_id: currentUserId,
+      day_of_week: dayIndex,
+      active: active,
+      slot_duration_minutes: APPT_DURATION,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'clinician_id,day_of_week' })
+    .then(function(res) {
+      if (res && res.error) console.warn('[Pulse] availability day upsert error:', res.error.message);
+    })
+    .catch(function(err) { console.warn('[Pulse] availability day upsert failed:', err && err.message); });
+}
+
+function onDurationChange(newDuration) {
+  APPT_DURATION = parseInt(newDuration) || 30;
+  if (!currentUserId || PREVIEW_MODE) return;
+  // Update all existing rows for this clinician to the new duration
+  db.from('availability')
+    .update({ slot_duration_minutes: APPT_DURATION, updated_at: new Date().toISOString() })
+    .eq('clinician_id', currentUserId)
+    .then(function(res) {
+      if (res && res.error) console.warn('[Pulse] availability duration update error:', res.error.message);
+    })
+    .catch(function(err) { console.warn('[Pulse] availability duration update failed:', err && err.message); });
 }
 
 function renderAvailEditor() {
@@ -1915,9 +2057,10 @@ function renderAvailEditor() {
         '<input class="avail-time-input" type="time" value="' + s.end + '" onchange="AVAIL_STATE[' + i + '].end=this.value"/>' +
         '</div>'
       : '<span class="avail-off-text">Unavailable</span>';
+    var dowIdx = _DOW_INDEX[s.day];
     return '<div class="avail-editor-row">' +
       '<label class="toggle-switch" style="flex-shrink:0;">' +
-        '<input type="checkbox"' + (s.on ? ' checked' : '') + ' onchange="AVAIL_STATE[' + i + '].on=this.checked;renderAvailEditor()"/>' +
+        '<input type="checkbox"' + (s.on ? ' checked' : '') + ' onchange="AVAIL_STATE[' + i + '].on=this.checked;_upsertAvailDay(' + dowIdx + ',this.checked);renderAvailEditor()"/>' +
         '<span class="toggle-track"></span>' +
       '</label>' +
       '<span class="avail-day-label">' + s.day + '</span>' +

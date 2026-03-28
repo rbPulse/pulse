@@ -2582,6 +2582,39 @@ function _updateApptStatus(apptId, newStatus) {
     .eq('id', apptId)
     .then(function(res) {
       if (res && res.error) { console.warn('[Pulse] status update error:', res.error.message); return; }
+
+      // Fire-and-forget email notification for confirmed / cancelled appointments
+      if (newStatus === 'confirmed' || newStatus === 'cancelled_by_clinician') {
+        var apptRow = null;
+        if (_clApptRows) {
+          for (var ai = 0; ai < _clApptRows.length; ai++) {
+            if (_clApptRows[ai]._id === apptId) { apptRow = _clApptRows[ai]; break; }
+          }
+        }
+        if (apptRow) {
+          var patientEmail = null;
+          var patientName  = apptRow.patient || null;
+          if (_clPatientRows) {
+            for (var pi = 0; pi < _clPatientRows.length; pi++) {
+              if (_clPatientRows[pi].id === apptRow.consumerId) {
+                patientEmail = _clPatientRows[pi].email || null;
+                if (!patientName) patientName = _clPatientRows[pi].name || null;
+                break;
+              }
+            }
+          }
+          if (patientEmail) {
+            db.functions.invoke('send-notification', { body: {
+              type: newStatus === 'confirmed' ? 'appointment_confirmed' : 'appointment_cancelled_clinician',
+              to: patientEmail,
+              patientName: patientName,
+              scheduledAt: apptRow.scheduledAt ? apptRow.scheduledAt.toISOString() : null,
+              durationMinutes: parseInt((apptRow.dur || '30'), 10) || 30
+            }}).then(function(){}).catch(function(){});
+          }
+        }
+      }
+
       _clApptRows = null; // invalidate cache
       document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
       filterClAppts(_clApptFilter);

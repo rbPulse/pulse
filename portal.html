@@ -462,6 +462,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .msg-bubble-row.from-me .msg-bubble{background:rgba(58,122,92,0.18);border:1px solid rgba(58,122,92,0.28);color:#fff;border-bottom-right-radius:4px;}
 .msg-bubble-row.from-them .msg-bubble{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:var(--grey);border-bottom-left-radius:4px;}
 .msg-bubble-time{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.03em;color:rgba(255,255,255,0.18);margin-top:3px;}
+.msg-bubble-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;color:rgba(255,255,255,0.28);margin-bottom:3px;}
 .msg-compose-row{display:flex;gap:9px;align-items:flex-end;padding-top:12px;border-top:1px solid var(--border);}
 .msg-compose-input{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;padding:9px 13px;resize:none;min-height:42px;max-height:108px;outline:none;line-height:1.6;transition:border-color .2s;}
 .msg-compose-input:focus{border-color:rgba(58,122,92,0.38);}
@@ -1737,6 +1738,7 @@ function initPortal(user) {
       })
       .catch(function() { populatePortal(user, null, greeting); });
     loadDoseLogs();
+    _startConsumerUnreadPoll();
   }
 }
 
@@ -1868,6 +1870,7 @@ function initClinicianPortal(user, role, greeting) {
 
   // Activate first clinician tab
   switchTab('cl-overview');
+  _startClinicianUnreadPoll();
 
   // Populate from mock (replace fetch calls here when backend is ready)
   var m = MOCK_CLINICIAN;
@@ -3480,6 +3483,58 @@ function sendClMessage() {
 
 // ── CONSUMER MESSAGING ──
 var _consumerMsgPollTimer = null;
+var _consumerUnreadPollTimer = null;
+
+function _setConsumerUnreadDot(hasUnread) {
+  var nav = document.getElementById('nav-messages');
+  if (!nav) return;
+  var dot = nav.querySelector('.consumer-unread-dot');
+  if (hasUnread) {
+    if (!dot) {
+      dot = document.createElement('span');
+      dot.className = 'consumer-unread-dot';
+      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(58,122,92,0.6);';
+      nav.appendChild(dot);
+    }
+  } else {
+    if (dot) dot.remove();
+  }
+}
+
+function _startConsumerUnreadPoll() {
+  if (_consumerUnreadPollTimer || !currentUserId) return;
+  function check() {
+    db.from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('thread_id', currentUserId)
+      .eq('sender_role', 'clinician')
+      .eq('read', false)
+      .then(function(res) { _setConsumerUnreadDot(!res.error && res.count > 0); })
+      .catch(function() {});
+  }
+  check();
+  _consumerUnreadPollTimer = setInterval(check, 60000);
+}
+
+function _startClinicianUnreadPoll() {
+  if (!currentUserId) return;
+  function check() {
+    db.from('messages')
+      .select('thread_id', { count: 'exact' })
+      .eq('sender_role', 'consumer')
+      .eq('read', false)
+      .then(function(res) {
+        var el = document.getElementById('sidebarMsgBadge');
+        if (!el) return;
+        var count = (res.data && res.data.length) || 0;
+        if (count > 0) { el.textContent = count; el.style.display = 'inline-block'; }
+        else { el.style.display = 'none'; }
+      })
+      .catch(function() {});
+  }
+  check();
+  setInterval(check, 60000);
+}
 
 function initConsumerMessages() {
   if (!currentUserId) {
@@ -3525,7 +3580,6 @@ function renderConsumerThreadFromDB(rows) {
   var el = document.getElementById('consumerMsgBubbles');
   if (!el) return;
   if (rows.length === 0) {
-    // Show a friendly placeholder if no messages yet
     el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet. Send one below.</div>';
     return;
   }
@@ -3533,12 +3587,25 @@ function renderConsumerThreadFromDB(rows) {
   el.innerHTML = rows.map(function(m) {
     var side = m.sender_role === 'consumer' ? 'from-me' : 'from-them';
     var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+    var label = (side === 'from-them' && m.sender_name) ? '<div class="msg-bubble-label">' + escapeHtml(m.sender_name) + '</div>' : '';
     return '<div class="msg-bubble-row ' + side + '">' +
+      label +
       '<div class="msg-bubble">' + escapeHtml(m.body) + '</div>' +
       '<div class="msg-bubble-time">' + ts + '</div>' +
       '</div>';
   }).join('');
   if (atBottom) el.scrollTop = el.scrollHeight;
+
+  // Mark any unread clinician messages as read
+  if (currentUserId) {
+    db.from('messages')
+      .update({ read: true })
+      .eq('thread_id', currentUserId)
+      .eq('sender_role', 'clinician')
+      .eq('read', false)
+      .then(function() { _setConsumerUnreadDot(false); })
+      .catch(function() {});
+  }
 }
 
 function renderConsumerThread() {
@@ -3620,6 +3687,9 @@ function switchTab(name) {
     var nav = document.getElementById('nav-' + t);
     if (nav) nav.classList.toggle('active', t === name);
   });
+  if (name !== 'messages' && _consumerMsgPollTimer) {
+    clearInterval(_consumerMsgPollTimer); _consumerMsgPollTimer = null;
+  }
   if (name === 'tracker')          { loadDoseLogs(); }
   if (name === 'appointments')     { initConsumerBooking(); }
   if (name === 'messages')         { initConsumerMessages(); }

@@ -866,6 +866,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Resources</div>
         <div class="tab-title">Your protocol library.</div>
 
+        <!-- Empty state: shown when no protocol assigned yet -->
+        <div id="resourcesNoProto" style="display:none;">
+          <div class="p-card" style="padding:44px 32px;">
+            <div class="inline-empty-title">No protocol assigned yet.</div>
+            <div class="inline-empty-sub">Your resources will appear here once your protocol is assigned.</div>
+          </div>
+        </div>
+
+        <!-- Resource cards: shown when protocol is assigned -->
+        <div id="resourcesContent">
         <div class="resource-grid">
           <div class="resource-card-item">
             <div class="rc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
@@ -900,6 +910,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <button class="btn-green" onclick="submitSupportRequest()">Send Message</button>
           </div>
         </div>
+        </div><!-- end resourcesContent -->
       </div>
 
       <!-- ── CONSUMER SETTINGS TAB ── -->
@@ -1864,6 +1875,17 @@ function initPortal(user) {
     if (settingsNameEl) settingsNameEl.value = _memberDisplayName;
     if (settingsEmailEl) settingsEmailEl.value = user.email || '';
 
+    // Show skeleton loading state on overview stat cards while consultation query runs
+    (function() {
+      var skelIds = ['statCategory','statCompounds','ovNextDose','statStreak'];
+      skelIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = '<div class="skeleton-pulse" style="height:22px;width:60%;margin:2px 0;"></div>';
+        }
+      });
+    })();
+
     db.from('consultations').select('*').eq('user_id', user.id)
       .order('created_at', {ascending: false}).limit(1)
       .then(function(res) {
@@ -2449,6 +2471,18 @@ function filterClAppts(filter, pillEl) {
 }
 
 function _loadClAppts(filter) {
+  // Show skeleton rows while loading
+  var apptListEl = document.getElementById('clApptList');
+  if (apptListEl) apptListEl.innerHTML = [0,1,2].map(function() {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
+      '<div class="skeleton-pulse" style="height:13px;width:72px;flex-shrink:0;"></div>' +
+      '<div style="flex:1;">' +
+        '<div class="skeleton-pulse" style="height:13px;width:50%;margin-bottom:6px;"></div>' +
+        '<div class="skeleton-pulse" style="height:11px;width:70%;"></div>' +
+      '</div>' +
+      '<div class="skeleton-pulse" style="height:20px;width:64px;border-radius:999px;"></div>' +
+    '</div>';
+  }).join('');
   db.from('appointments')
     .select('*, profiles!appointments_consumer_id_fkey(display_name)')
     .or('clinician_id.eq.' + currentUserId + ',clinician_id.is.null')
@@ -2494,9 +2528,7 @@ function _loadClAppts(filter) {
     })
     .catch(function(err) {
       console.warn('[Pulse] appointments load failed:', err && err.message);
-      // Graceful fallback to mock
-      _clApptRows = ALL_APPTS;
-      _applyClApptFilter(ALL_APPTS, filter || _clApptFilter);
+      showListError('clApptList', '_loadClAppts');
     });
 }
 
@@ -2648,7 +2680,20 @@ function renderApptList(elId, appts, role) {
   var el = document.getElementById(elId);
   if (!el) return;
   if (!appts || appts.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No appointments.</div></div>';
+    // Use filter-specific empty state text for clinician appointment list
+    var emptyTitle = 'No appointments.';
+    var emptySub = '';
+    if (elId === 'clApptList') {
+      if (_clApptFilter === 'today') {
+        emptyTitle = 'No appointments today.';
+        emptySub = 'Your schedule is clear for today.';
+      } else if (_clApptFilter === 'upcoming') {
+        emptyTitle = 'No upcoming appointments.';
+        emptySub = 'No confirmed or pending appointments ahead.';
+      }
+    }
+    el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + emptyTitle + '</div>' +
+      (emptySub ? '<div class="inline-empty-sub">' + emptySub + '</div>' : '') + '</div>';
     return;
   }
   el.innerHTML = '';
@@ -2750,13 +2795,7 @@ function initConsumerBooking() {
   })
   .catch(function(err) {
     console.warn('[Pulse] booking init failed:', err && err.message);
-    // Fallback to AVAIL_STATE
-    _bookAvailRows = AVAIL_STATE.map(function(s) {
-      return { day_of_week: _DOW_INDEX[s.day], active: s.on, slot_duration_minutes: APPT_DURATION };
-    });
-    _bookSlotDur = APPT_DURATION;
-    _bookTakenSlots = [];
-    _renderBookingGrid();
+    showListError('bookDateChips', 'initConsumerBooking');
     _loadAndRenderConsumerAppts();
   });
 }
@@ -3088,7 +3127,12 @@ function _renderConsumerApptList(appts) {
     return st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician' && st !== 'cancelled';
   });
 
-  if (visible.length === 0) { section.style.display = 'none'; return; }
+  if (visible.length === 0) {
+    section.style.display = 'block';
+    list.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">No appointments yet.</div>' +
+      '<div class="inline-empty-sub">Book your first session below.</div></div>';
+    return;
+  }
   section.style.display = 'block';
   list.innerHTML = '';
   visible.forEach(function(a) {
@@ -3206,6 +3250,17 @@ function populatePortal(user, consultation, greeting) {
   // Greeting
   document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('greetingSub').textContent = 'Welcome to your Pulse member portal.';
+
+  // Resources tab: show empty state if no protocol, content otherwise
+  var resNoProto = document.getElementById('resourcesNoProto');
+  var resContent = document.getElementById('resourcesContent');
+  if (proto) {
+    if (resNoProto) resNoProto.style.display = 'none';
+    if (resContent) resContent.style.display = '';
+  } else {
+    if (resNoProto) resNoProto.style.display = '';
+    if (resContent) resContent.style.display = 'none';
+  }
 
   if (proto) {
     // ── Consultation exists, protocol resolved ──
@@ -3332,9 +3387,18 @@ function initClPatients() {
     renderPatientList(_patFilter);
     return;
   }
-  // Show loading state
+  // Show skeleton loading state for patient list
   var el = document.getElementById('clPatientList');
-  if (el) el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+  if (el) el.innerHTML = [0,1,2,3].map(function() {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
+      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
+      '<div style="flex:1;">' +
+        '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
+        '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
+      '</div>' +
+      '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
+    '</div>';
+  }).join('');
 
   // Step 1: fetch all consultations ordered newest first
   db.from('consultations')
@@ -3380,9 +3444,7 @@ function initClPatients() {
     .catch(function(err) {
       console.warn('[Pulse] consultations fetch failed:', err && err.message);
       _clPatientRows = [];
-      if (el) el.innerHTML =
-        '<div class="cl-empty"><div class="cl-empty-title">Could not load patients.</div>' +
-        '<div class="cl-empty-sub"><button class="adp-btn" style="margin-top:10px;" onclick="initClPatients()">Retry</button></div></div>';
+      showListError('clPatientList', 'initClPatients');
     });
 }
 
@@ -3885,6 +3947,17 @@ function initClMessages() {
 
 // ── Load thread list from Supabase ──
 function _loadClThreadList() {
+  // Show skeleton rows while loading
+  var msgListEl = document.getElementById('clMsgList');
+  if (msgListEl) msgListEl.innerHTML = [0,1,2].map(function() {
+    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);">' +
+      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
+      '<div style="flex:1;">' +
+        '<div class="skeleton-pulse" style="height:13px;width:45%;margin-bottom:7px;"></div>' +
+        '<div class="skeleton-pulse" style="height:11px;width:80%;"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
   db.from('messages')
     .select('thread_id, sender_role, sender_name, body, created_at, read')
     .order('created_at', { ascending: false })
@@ -3895,7 +3968,7 @@ function _loadClThreadList() {
     })
     .catch(function(err) {
       console.warn('[Pulse] messages table unavailable for clinician, using mock data:', err && err.message);
-      _renderClThreadListMock();
+      showListError('clMsgList', '_loadClThreadList');
     });
 }
 
@@ -4299,7 +4372,7 @@ function loadConsumerMessages() {
     })
     .catch(function(err) {
       console.warn('[Pulse] messages table unavailable, using mock data:', err && err.message);
-      renderConsumerThread();
+      showListError('consumerMsgBubbles', 'loadConsumerMessages');
     });
 
   // Start polling if not already running
@@ -4509,6 +4582,24 @@ function renderCalendar() {
   var grid = document.getElementById('calGrid');
   if (!grid) return;
   grid.innerHTML = '';
+
+  // Show tracker empty state when no doses logged yet
+  var trackerEmpty = document.getElementById('trackerEmpty');
+  if (loggedDates.length === 0) {
+    if (!trackerEmpty) {
+      var calCard = grid.closest('.cal-card');
+      if (calCard) {
+        var emp = document.createElement('div');
+        emp.id = 'trackerEmpty';
+        emp.className = 'cl-empty';
+        emp.innerHTML = '<div class="inline-empty-title">No doses logged yet.</div>' +
+          '<div class="inline-empty-sub">Start tracking your protocol below.</div>';
+        calCard.appendChild(emp);
+      }
+    }
+  } else {
+    if (trackerEmpty) trackerEmpty.remove();
+  }
 
   var today = new Date(); today.setHours(0,0,0,0);
   var todayStr = localDateStr(today);

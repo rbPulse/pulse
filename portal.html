@@ -4637,62 +4637,104 @@ function buildPatientDetail(p) {
   var pr2 = p._profile      || {};
   var d   = c.data          || {};
 
-  // Header
-  var memberSinceStr = p.memberSince
-    ? new Date(p.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—';
+  // Header fields
   var subStatus   = pr2.subscription_status || d.subscription_status || p.subStatus || null;
   var subChip     = _subStatusChip(subStatus);
-  var emailStr = p.email ? escapeHtml(p.email) : '<span style="color:rgba(255,255,255,0.22);">—</span>';
 
-  // Protocol section
-  var protocolName = d.assigned_protocol || d.protocol || null;
-  var primaryGoal  = (d.goals && d.goals.length > 0) ? d.goals[0] : null;
-  var secondaryGoals = (d.goals && d.goals.length > 1) ? d.goals.slice(1) : [];
-  var goalTagsHtml = secondaryGoals.map(function(g){
-    return '<span class="pdp-compound">' + escapeHtml(g) + '</span>';
-  }).join('');
-  var protoHtml =
-    '<div class="pdp-proto-name">' + escapeHtml(protocolName || 'Not yet assigned') + '</div>' +
-    (primaryGoal ? '<div class="pdp-proto-note" style="margin-top:4px;">Primary goal: ' + escapeHtml(primaryGoal) + '</div>' : '') +
-    (secondaryGoals.length > 0 ? '<div class="pdp-compounds" style="margin-top:8px;">' + goalTagsHtml + '</div>' : '');
+  // ── Field helpers ─────────────────────────────────────────────────────────
+  function _fv(v) {
+    if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) return '<span style="color:rgba(255,255,255,0.22);">—</span>';
+    return escapeHtml(String(v));
+  }
+  function _infoRow(label, valueHtml) {
+    return '<div class="pdp-info-row"><div class="pdp-info-label">' + label + '</div><div class="pdp-info-value">' + valueHtml + '</div></div>';
+  }
 
-  // Health info
-  var dob     = d.dob      || d.date_of_birth || null;
-  var sex     = d.sex      || d.gender        || null;
-  var height  = d.height   || null;
-  var weight  = d.weight   || null;
-  var healthHtml =
-    '<div class="dose-stat-row">' +
-      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(dob    || '—') + '</div><div class="dose-stat-lbl">DOB</div></div>' +
-      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(sex    || '—') + '</div><div class="dose-stat-lbl">Sex</div></div>' +
-      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(height ? String(height) : '—') + '</div><div class="dose-stat-lbl">Height</div></div>' +
-      '<div class="dose-stat-item"><div class="dose-stat-val">' + escapeHtml(weight ? String(weight) : '—') + '</div><div class="dose-stat-lbl">Weight</div></div>' +
-    '</div>';
+  // ── Static field values ───────────────────────────────────────────────────
+  var fullName      = escapeHtml(p.name || '—');
+  var email         = p.email ? escapeHtml(p.email) : '<span style="color:rgba(255,255,255,0.22);">—</span>';
+  var dob           = d.dob || d.date_of_birth || c.dob || null;
+  var sex           = d.sex || d.gender || c.sex || null;
 
-  // Intake notes
-  var medications = d.medications || d.current_medications || null;
-  var allergies   = d.allergies   || null;
-  var intakeHtml =
-    '<div style="margin-bottom:8px;">' +
-      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Medications</div>' +
-      '<div style="font-size:12px;color:var(--grey);">' + escapeHtml(medications || 'None reported') + '</div>' +
-    '</div>' +
-    '<div>' +
-      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Allergies</div>' +
-      '<div style="font-size:12px;color:var(--grey);">' + escapeHtml(allergies || 'None reported') + '</div>' +
-    '</div>';
+  // Primary goal: top-level column first, then JSONB
+  var primaryGoal   = c.primary_goal || d.primary_goal || (d.goals && d.goals.length > 0 ? d.goals[0] : null) || null;
+  // Secondary goals: top-level column first, then remainder of JSONB goals array
+  var secondaryGoalsRaw = c.secondary_goals || d.secondary_goals || (d.goals && d.goals.length > 1 ? d.goals.slice(1) : []) || [];
+  var secondaryGoals = Array.isArray(secondaryGoalsRaw)
+    ? secondaryGoalsRaw
+    : (secondaryGoalsRaw ? [secondaryGoalsRaw] : []);
+  var secondaryGoalsStr = secondaryGoals.length > 0 ? secondaryGoals.join(', ') : null;
 
-  // Activity section (streak; messages/appointments are loaded async via _loadPatientActivity)
+  var medications   = d.medications || d.current_medications || c.medications || null;
+  var allergies     = d.allergies || c.allergies || null;
+
+  // Protocol: top-level column takes precedence
+  var protocolName  = c.protocol || d.assigned_protocol || d.protocol || null;
+
+  // Submission date
+  var submittedAt   = c.submitted_at || c.created_at || null;
+  var submittedStr  = submittedAt
+    ? new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+
+  // Last login (last_seen from profile)
+  var lastSeenStr   = null;
+  if (pr2.last_seen || p.lastSeen) {
+    var lsDate = new Date(pr2.last_seen || p.lastSeen);
+    var lsDiff = Date.now() - lsDate.getTime();
+    var lsHrs  = Math.floor(lsDiff / 3600000);
+    if (lsHrs < 1)          lastSeenStr = 'Just now';
+    else if (lsHrs < 24)    lastSeenStr = lsHrs + ' hour' + (lsHrs === 1 ? '' : 's') + ' ago';
+    else {
+      var lsDays = Math.floor(lsHrs / 24);
+      if (lsDays < 7)       lastSeenStr = lsDays + ' day' + (lsDays === 1 ? '' : 's') + ' ago';
+      else if (lsDays < 30) lastSeenStr = Math.floor(lsDays / 7) + ' week' + (Math.floor(lsDays / 7) === 1 ? '' : 's') + ' ago';
+      else                  lastSeenStr = lsDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  // Dose streak
   var streakVal = (pr2.current_streak != null) ? pr2.current_streak : (p.streak || 0);
-  var activityHtml =
-    '<div class="dose-stat-row">' +
-      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpStreak-' + escapeAttr(p.id) + '">' + escapeHtml(String(streakVal)) + 'd</div><div class="dose-stat-lbl">Dose Streak</div></div>' +
-      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpLastMsg-' + escapeAttr(p.id) + '">…</div><div class="dose-stat-lbl">Last Message</div></div>' +
-      '<div class="dose-stat-item"><div class="dose-stat-val" id="pdpUpcomingAppts-' + escapeAttr(p.id) + '">…</div><div class="dose-stat-lbl">Upcoming Appts</div></div>' +
+  var streakStr = streakVal ? streakVal + ' day' + (streakVal === 1 ? '' : 's') : '0 days';
+
+  // ── Two-column info grid ──────────────────────────────────────────────────
+  var col1 =
+    _infoRow('Full Name',       '<span class="--em">' + fullName + '</span>') +
+    _infoRow('Email',           email) +
+    _infoRow('Date of Birth',   _fv(dob)) +
+    _infoRow('Sex',             _fv(sex)) +
+    _infoRow('Primary Goal',    _fv(primaryGoal)) +
+    _infoRow('Secondary Goals', _fv(secondaryGoalsStr));
+
+  var col2 =
+    _infoRow('Medications',     _fv(medications)) +
+    _infoRow('Allergies',       _fv(allergies)) +
+    _infoRow('Protocol',        protocolName ? '<span style="color:var(--green);">' + escapeHtml(protocolName) + '</span>' : '<span style="color:rgba(255,255,255,0.22);">None assigned</span>') +
+    _infoRow('Submitted',       _fv(submittedStr)) +
+    _infoRow('Last Login',      _fv(lastSeenStr)) +
+    _infoRow('Dose Streak',     '<span id="pdpStreak2-' + escapeAttr(p.id) + '">' + escapeHtml(streakStr) + '</span>');
+
+  var infoGridHtml =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;">' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' + col1 + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' + col2 + '</div>' +
     '</div>';
 
-  // Assign Protocol mini-form (hidden by default)
+  // ── Async sections (last message + upcoming appointments) ─────────────────
+  var asyncHtml =
+    '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;">' +
+      '<div class="pdp-info-row">' +
+        '<div class="pdp-info-label">Last Message</div>' +
+        '<div class="pdp-info-value" id="pdpLastMsg-' + escapeAttr(p.id) + '"><span class="skeleton-pulse" style="display:inline-block;width:60px;height:11px;border-radius:4px;"></span></div>' +
+      '</div>' +
+      '<div class="pdp-info-row">' +
+        '<div class="pdp-info-label">Upcoming Appts</div>' +
+        '<div class="pdp-info-value" id="pdpUpcomingAppts-' + escapeAttr(p.id) + '"><span class="skeleton-pulse" style="display:inline-block;width:40px;height:11px;border-radius:4px;"></span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="pdpApptList-' + escapeAttr(p.id) + '" style="margin-top:10px;"></div>';
+
+  // ── Assign Protocol mini-form (hidden by default) ─────────────────────────
   var protocolOptions = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery Stack','Performance Stack','Optimize Stack'];
   var protocolSelectHtml = protocolOptions.map(function(opt){
     return '<option value="' + escapeAttr(opt) + '"' + (protocolName === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>';
@@ -4703,33 +4745,19 @@ function buildPatientDetail(p) {
     '<div class="pdp-close-row">' +
       '<div>' +
         '<div class="pdp-title">' + escapeHtml(p.name) + ' ' + subChip + '</div>' +
-        '<div class="pdp-subtitle">' + emailStr + ' · Member since ' + escapeHtml(memberSinceStr) + '</div>' +
+        '<div class="pdp-subtitle">Patient · ' + (submittedStr ? 'Submitted ' + escapeHtml(submittedStr) : 'Member') + '</div>' +
       '</div>' +
       '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
     '</div>' +
 
     '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Protocol</div>' +
-      protoHtml +
-    '</div>' +
-
-    '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Health Info</div>' +
-      healthHtml +
-    '</div>' +
-
-    '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Intake Notes</div>' +
-      intakeHtml +
-    '</div>' +
-
-    '<div class="pdp-section">' +
-      '<div class="pdp-section-label">Activity</div>' +
-      activityHtml +
+      '<div class="pdp-section-label">Patient Info</div>' +
+      infoGridHtml +
+      asyncHtml +
     '</div>' +
 
     '<div class="pdp-section" id="pdpAssignSection-' + escapeAttr(p.id) + '" style="display:none;">' +
-      '<div class="pdp-section-label">Assign Protocol</div>' +
+      '<div class="pdp-section-label">Change Protocol</div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
         '<select id="pdpProtoSelect-' + escapeAttr(p.id) + '" style="font-family:\'DM Mono\',monospace;font-size:10px;background:var(--card2);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer;">' +
           protocolSelectHtml +
@@ -4742,7 +4770,7 @@ function buildPatientDetail(p) {
 
     '<div class="adp-actions">' +
       '<button class="adp-btn" onclick="openClThreadForPatient(\'' + escapeAttr(p.id) + '\');switchTab(\'cl-messages\')">Send Message</button>' +
-      '<button class="adp-btn" onclick="_showAssignProtocolForm(\'' + escapeAttr(p.id) + '\')">Assign Protocol</button>' +
+      '<button class="adp-btn" onclick="_showAssignProtocolForm(\'' + escapeAttr(p.id) + '\')">Change Protocol</button>' +
     '</div>';
 
   return html;
@@ -4852,41 +4880,99 @@ function _saveAssignedProtocol(patientId) {
     });
 }
 
+// Compute a human-readable relative time string from an ISO date string
+function _pdpRelativeTime(isoStr) {
+  if (!isoStr) return '—';
+  var d2   = new Date(isoStr);
+  var diff = Date.now() - d2.getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return mins + ' min' + (mins === 1 ? '' : 's') + ' ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return hrs + ' hour' + (hrs === 1 ? '' : 's') + ' ago';
+  var days = Math.floor(hrs / 24);
+  if (days < 7)   return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+  if (days < 30)  { var wks = Math.floor(days / 7); return wks + ' week' + (wks === 1 ? '' : 's') + ' ago'; }
+  return d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 // Load async activity data (last message date + upcoming appointments) for the open detail panel
 function _loadPatientActivity(patientId) {
   if (!patientId || !db) return;
 
-  // Last message
-  db.from('messages')
-    .select('created_at')
-    .eq('thread_id', patientId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .then(function(res) {
-      var el = document.getElementById('pdpLastMsg-' + patientId);
-      if (!el) return;
-      var rows = res.data || [];
-      if (rows.length === 0) { el.textContent = 'None'; return; }
-      var d2 = new Date(rows[0].created_at);
-      var diff = Date.now() - d2.getTime();
-      var hrs = Math.floor(diff / 3600000);
-      el.textContent = hrs < 24 ? hrs + 'h ago' : Math.floor(hrs / 24) + 'd ago';
-    })
-    .catch(function(){ });
+  // Last message — query messages where thread_id = patientId, order by created_at desc, limit 1
+  try {
+    db.from('messages')
+      .select('created_at')
+      .eq('thread_id', patientId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(function(res) {
+        var el = document.getElementById('pdpLastMsg-' + patientId);
+        if (!el) return;
+        if (res.error) { el.textContent = '—'; return; }
+        var rows = res.data || [];
+        if (rows.length === 0) { el.textContent = 'None'; return; }
+        el.textContent = _pdpRelativeTime(rows[0].created_at);
+      })
+      .catch(function() {
+        var el = document.getElementById('pdpLastMsg-' + patientId);
+        if (el) el.textContent = '—';
+      });
+  } catch(e) {
+    var el = document.getElementById('pdpLastMsg-' + patientId);
+    if (el) el.textContent = '—';
+  }
 
-  // Upcoming appointments
+  // Upcoming appointments — fetch up to 2 future appointments with details
   var nowIso = new Date().toISOString();
-  db.from('appointments')
-    .select('id', { count: 'exact', head: true })
-    .eq('consumer_id', patientId)
-    .gt('scheduled_at', nowIso)
-    .neq('status', 'cancelled')
-    .then(function(res) {
-      var el = document.getElementById('pdpUpcomingAppts-' + patientId);
-      if (!el) return;
-      el.textContent = (res.count != null) ? String(res.count) : '0';
-    })
-    .catch(function(){ });
+  try {
+    db.from('appointments')
+      .select('id, scheduled_at, type, status')
+      .eq('consumer_id', patientId)
+      .gt('scheduled_at', nowIso)
+      .neq('status', 'cancelled')
+      .order('scheduled_at', { ascending: true })
+      .limit(2)
+      .then(function(res) {
+        var countEl = document.getElementById('pdpUpcomingAppts-' + patientId);
+        var listEl  = document.getElementById('pdpApptList-' + patientId);
+        if (res.error) {
+          if (countEl) countEl.textContent = '—';
+          return;
+        }
+        var appts = res.data || [];
+        if (countEl) countEl.textContent = appts.length === 0 ? 'None' : String(appts.length);
+        if (!listEl) return;
+        if (appts.length === 0) {
+          listEl.innerHTML = '';
+          return;
+        }
+        var apptHtml = '<div class="pdp-appt-list">';
+        for (var ai = 0; ai < appts.length; ai++) {
+          var appt = appts[ai];
+          var apptDate = appt.scheduled_at
+            ? new Date(appt.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+            : '—';
+          var apptType = appt.type || 'Appointment';
+          apptHtml +=
+            '<div class="pdp-appt-item">' +
+              '<svg style="width:9px;height:9px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
+              '<span>' + escapeHtml(apptType) + '</span>' +
+              '<span class="pdp-appt-date">' + escapeHtml(apptDate) + '</span>' +
+            '</div>';
+        }
+        apptHtml += '</div>';
+        listEl.innerHTML = apptHtml;
+      })
+      .catch(function() {
+        var countEl = document.getElementById('pdpUpcomingAppts-' + patientId);
+        if (countEl) countEl.textContent = '—';
+      });
+  } catch(e) {
+    var countEl2 = document.getElementById('pdpUpcomingAppts-' + patientId);
+    if (countEl2) countEl2.textContent = '—';
+  }
 }
 
 // ── CLINICIAN MESSAGING ──

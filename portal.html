@@ -2898,7 +2898,7 @@ function initClinicianPortal(user, role, greeting) {
     if (overviewListEl) overviewListEl.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
     db.from('appointments')
       .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-      .or('clinician_id.eq.' + currentUserId + ',clinician_id.is.null')
+      .eq('clinician_id', currentUserId)
       .gte('scheduled_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
       .lte('scheduled_at', new Date(new Date().setHours(23,59,59,999)).toISOString())
       .order('scheduled_at', { ascending: true })
@@ -3335,7 +3335,7 @@ function _loadClAppts(filter) {
   }).join('');
   db.from('appointments')
     .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-    .or('clinician_id.eq.' + currentUserId + ',clinician_id.is.null')
+    .eq('clinician_id', currentUserId)
     .order('scheduled_at', { ascending: true })
     .then(function(res) {
       if (res.error) throw res.error;
@@ -3346,15 +3346,18 @@ function _loadClAppts(filter) {
         var todayEnd   = new Date(now); todayEnd.setHours(23,59,59,999);
         var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
         var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-        var dateLabel;
-        if (dt >= todayStart && dt <= todayEnd) dateLabel = 'Today';
-        else if (dt > todayEnd) {
-          var diff = Math.round((dt - todayStart) / 86400000);
-          dateLabel = diff === 1 ? 'Tomorrow' : dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-        } else {
-          dateLabel = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-        }
-        var timeLabel = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+        var isToday  = (dt >= todayStart && dt <= todayEnd);
+        var isFuture = (dt > todayEnd);
+        var isPast   = (dt < todayStart);
+        // Rich label: "Weekday, Mon D" for upcoming/today, or the same for past
+        var weekday   = dt.toLocaleDateString('en-US', {weekday:'long'});
+        var monthDay  = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        var dateLabel = isToday ? 'Today' : (isFuture && Math.round((dt - todayStart)/86400000) === 1 ? 'Tomorrow' : weekday + ', ' + monthDay);
+        // Time: "9:00am" style (no space, lowercase am/pm)
+        var rawTime = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+        var timeLabel = rawTime.replace(/\s?(AM|PM)/i, function(m){ return m.trim().toLowerCase(); });
+        // Full formatted string: "Weekday, Mon D · H:MMam/pm"
+        var fullTimeStr = (isToday ? 'Today' : weekday + ', ' + monthDay) + ' · ' + timeLabel;
         // Map DB status to display status; map 'cancelled_by_*' to 'cancelled'
         var displayStatus = a.status;
         if (a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician') displayStatus = 'cancelled';
@@ -3362,7 +3365,10 @@ function _loadClAppts(filter) {
           _id: a.id,
           date: dateLabel,
           time: timeLabel,
+          fullTimeStr: fullTimeStr,
           scheduledAt: dt,
+          isPast: isPast,
+          isToday: isToday,
           patient: displayName,
           initials: initials,
           type: 'Appointment',
@@ -3374,6 +3380,7 @@ function _loadClAppts(filter) {
         };
       });
       _clApptRows = rows;
+      _clAppointments = rows.slice(); // keep module-level cache in sync
       _applyClApptFilter(rows, filter || _clApptFilter);
     })
     .catch(function(err) {
@@ -3384,15 +3391,29 @@ function _loadClAppts(filter) {
 
 function _applyClApptFilter(rows, filter) {
   var now = new Date();
+  var todayStart = new Date(now); todayStart.setHours(0,0,0,0);
   var filtered;
   if (filter === 'today') {
-    filtered = rows.filter(function(a) { return a.date === 'Today'; });
+    filtered = rows.filter(function(a) {
+      return a.isToday || a.date === 'Today' ||
+        (a.scheduledAt && a.scheduledAt >= todayStart && a.scheduledAt <= new Date(todayStart.getTime() + 86399999));
+    });
   } else if (filter === 'upcoming') {
     filtered = rows.filter(function(a) {
-      var isPast = a.scheduledAt ? a.scheduledAt < now : (a.date !== 'Today' && a.date !== 'Tomorrow');
+      var apptTime = a.scheduledAt || null;
+      var isAfterToday = apptTime ? apptTime > new Date(todayStart.getTime() + 86399999) : false;
       var st = a._rawStatus || a.status;
-      return !isPast && a.date !== 'Today' && (st === 'confirmed' || st === 'pending');
+      return isAfterToday && (st === 'confirmed' || st === 'pending');
     });
+  } else if (filter === 'past') {
+    filtered = rows.filter(function(a) {
+      var apptTime = a.scheduledAt || null;
+      var isBeforeNow = apptTime ? apptTime < now : false;
+      var st = a._rawStatus || a.status;
+      return isBeforeNow && st !== 'cancelled' && st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician';
+    });
+    // Past shows most-recent first
+    filtered = filtered.slice().sort(function(a,b){ return b.scheduledAt - a.scheduledAt; });
   } else if (filter === 'completed') {
     filtered = rows.filter(function(a) { return a.status === 'completed' || (a._rawStatus || a.status) === 'completed'; });
   } else if (filter === 'cancelled') {
@@ -3427,23 +3448,38 @@ function toggleApptDetail(appt, role, rowWrapper) {
 
 function buildApptDetail(a, role) {
   var name    = role === 'clinician' ? (a.patient || '—') : (a.clinician || 'Dr. Sarah Chen');
-  var timeStr = (a.date ? a.date + ', ' : '') + a.time + (a.dur ? ' · ' + a.dur : '');
+  // Use the pre-formatted fullTimeStr when available, otherwise fall back
+  var timeStr = a.fullTimeStr || ((a.date ? a.date + ' · ' : '') + a.time + (a.dur ? ' · ' + a.dur : ''));
   var bodyHtml, actionsHtml;
   var safeId  = escapeAttr(a._id || a.id || '');
 
   if (role === 'clinician') {
-    var notesVal = escapeHtml(a.notes || '');
-    bodyHtml = '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes..."' +
-      (safeId ? ' onblur="_saveApptNotes(\'' + safeId + '\')"' : '') + '>' + notesVal + '</textarea>';
-    var rawSt      = a._rawStatus || a.status;
-    var canConfirm = rawSt === 'pending';
-    var canCancel  = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' &&
-                     rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
-    var canNoShow  = rawSt === 'confirmed' || rawSt === 'pending';
-    actionsHtml =
-      (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
-      (canCancel  ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '') +
-      (canNoShow  ? '<button class="cl-appt-action-btn noshow-cl" onclick="_markNoShow(\'' + safeId + '\')">No-Show</button>' : '');
+    var notesVal  = escapeHtml(a.notes || '');
+    var isPastAppt = a.isPast || (_clApptFilter === 'past');
+    if (isPastAppt) {
+      // Read-only notes for past appointments
+      bodyHtml = '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="No notes." readonly' +
+        ' style="opacity:0.55;cursor:default;">' + notesVal + '</textarea>';
+      actionsHtml = ''; // No action buttons for past
+    } else {
+      bodyHtml =
+        '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes...">' + notesVal + '</textarea>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+          '<button class="adp-btn" style="border-color:rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);" onclick="_saveApptNotes(\'' + safeId + '\')">Save Notes</button>' +
+          '<span class="adp-notes-saved" id="adp-saved-' + safeId + '" style="display:none;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:var(--green);">Saved \u2713</span>' +
+        '</div>';
+      var rawSt      = a._rawStatus || a.status;
+      var canConfirm = rawSt === 'pending';
+      var canCancel  = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' &&
+                       rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
+      var canNoShow  = rawSt === 'confirmed' || rawSt === 'pending';
+      var safeType   = escapeAttr(a.type || 'Appointment');
+      actionsHtml =
+        (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
+        '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
+        (canCancel  ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '') +
+        (canNoShow  ? '<button class="cl-appt-action-btn noshow-cl" onclick="_markNoShow(\'' + safeId + '\')">No-Show</button>' : '');
+    }
   } else {
     bodyHtml = '<div class="adp-prep">Arrive a few minutes early. Bring any prior lab work or medical history relevant to your protocol.</div>';
     var rawSt2   = a._rawStatus || a.status;
@@ -3457,9 +3493,9 @@ function buildApptDetail(a, role) {
   }
 
   return '<div class="adp-header">' +
-    '<div><div class="adp-name">' + name + '</div><div class="adp-meta">' + a.type + ' · ' + timeStr + '</div></div>' +
+    '<div><div class="adp-name">' + name + '</div><div class="adp-meta">' + escapeHtml(a.type || 'Appointment') + ' · ' + escapeHtml(timeStr) + ' · ' + escapeHtml(a.dur || '') + '</div></div>' +
     '<div style="display:flex;align-items:center;gap:8px;">' +
-      '<span class="appt-badge ' + a.status + '">' + a.status + '</span>' +
+      '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
       '<button class="adp-close" onclick="this.closest(\'.appt-detail-panel\').remove()">×</button>' +
     '</div></div>' +
     bodyHtml +
@@ -3467,24 +3503,55 @@ function buildApptDetail(a, role) {
 }
 
 function _saveApptNotes(apptId) {
-  if (!apptId || PREVIEW_MODE) return;
+  if (!apptId) return;
   var el = document.getElementById('adp-notes-' + apptId);
   if (!el) return;
   var notes = el.value.trim();
-  db.from('appointments').update({ notes: notes, updated_at: new Date().toISOString() }).eq('id', apptId)
-    .then(function(res) { if (res && res.error) console.warn('[Pulse] notes save error:', res.error.message); })
-    .catch(function(err) { console.warn('[Pulse] notes save failed:', err && err.message); });
+  // Update local arrays immediately so switching views preserves notes
+  var _updateLocal = function(arr) {
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i]._id === apptId || arr[i].id === apptId) { arr[i].notes = notes; break; }
+    }
+  };
+  if (_clApptRows)     _updateLocal(_clApptRows);
+  if (_clAppointments) _updateLocal(_clAppointments);
+
+  if (PREVIEW_MODE || !currentUserId) {
+    var savedEl = document.getElementById('adp-saved-' + apptId);
+    if (savedEl) { savedEl.style.display = 'inline'; setTimeout(function(){ savedEl.style.display = 'none'; }, 2400); }
+    return;
+  }
+  try {
+    db.from('appointments').update({ notes: notes, updated_at: new Date().toISOString() }).eq('id', apptId)
+      .then(function(res) {
+        if (res && res.error) { console.warn('[Pulse] notes save error:', res.error.message); return; }
+        var savedEl = document.getElementById('adp-saved-' + apptId);
+        if (savedEl) { savedEl.style.display = 'inline'; setTimeout(function(){ savedEl.style.display = 'none'; }, 2400); }
+      })
+      .catch(function(err) { console.warn('[Pulse] notes save failed:', err && err.message); });
+  } catch(e) { console.warn('[Pulse] notes save exception:', e && e.message); }
 }
 
 function _updateApptStatus(apptId, newStatus) {
   if (!apptId) return;
   if (PREVIEW_MODE) {
-    // Update in mock array
+    // Update in mock arrays in-place
+    var mockDisplaySt = newStatus.replace(/_by_member/,'').replace(/_by_clinician/,'');
     var idx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return (a._id || a.id) === apptId; }) : -1;
-    if (idx !== -1) { ALL_APPTS[idx]._rawStatus = newStatus; ALL_APPTS[idx].status = newStatus.replace('_by_member','').replace('_by_clinician',''); }
-    _clApptRows = null;
+    if (idx !== -1) { ALL_APPTS[idx]._rawStatus = newStatus; ALL_APPTS[idx].status = mockDisplaySt; }
+    // Also patch _clApptRows so re-filter uses updated data
+    if (_clApptRows) {
+      for (var mi = 0; mi < _clApptRows.length; mi++) {
+        if (_clApptRows[mi]._id === apptId) { _clApptRows[mi]._rawStatus = newStatus; _clApptRows[mi].status = mockDisplaySt; break; }
+      }
+    }
+    if (_clAppointments) {
+      for (var mj = 0; mj < _clAppointments.length; mj++) {
+        if (_clAppointments[mj]._id === apptId) { _clAppointments[mj]._rawStatus = newStatus; _clAppointments[mj].status = mockDisplaySt; break; }
+      }
+    }
     document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
-    filterClAppts(_clApptFilter);
+    _applyClApptFilter(_clApptRows || ALL_APPTS, _clApptFilter);
     return;
   }
   db.from('appointments')
@@ -3532,9 +3599,21 @@ function _updateApptStatus(apptId, newStatus) {
         }
       }
 
-      _clApptRows = null; // invalidate cache
+      // Update local arrays in-place so view switches reflect change without re-fetch
+      var displaySt = newStatus.replace(/_by_member/,'').replace(/_by_clinician/,'');
+      var _patchLocal = function(arr) {
+        for (var xi = 0; xi < arr.length; xi++) {
+          if (arr[xi]._id === apptId || arr[xi].id === apptId) {
+            arr[xi]._rawStatus = newStatus;
+            arr[xi].status = displaySt;
+            break;
+          }
+        }
+      };
+      if (_clApptRows)     _patchLocal(_clApptRows);
+      if (_clAppointments) _patchLocal(_clAppointments);
       document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
-      filterClAppts(_clApptFilter);
+      _applyClApptFilter(_clApptRows || [], _clApptFilter);
     })
     .catch(function(err) { console.warn('[Pulse] status update failed:', err && err.message); });
 }
@@ -3549,32 +3628,36 @@ function renderApptList(elId, appts, role) {
     var emptySub = '';
     if (elId === 'clApptList') {
       if (_clApptFilter === 'today') {
-        emptyTitle = 'No appointments today.';
+        emptyTitle = 'No appointments for today.';
         emptySub = 'Your schedule is clear for today.';
       } else if (_clApptFilter === 'upcoming') {
         emptyTitle = 'No upcoming appointments.';
         emptySub = 'No confirmed or pending appointments ahead.';
+      } else if (_clApptFilter === 'past') {
+        emptyTitle = 'No past appointments.';
+        emptySub = '';
       }
     }
-    el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + emptyTitle + '</div>' +
-      (emptySub ? '<div class="inline-empty-sub">' + emptySub + '</div>' : '') + '</div>';
+    el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(emptyTitle) + '</div>' +
+      (emptySub ? '<div class="inline-empty-sub">' + escapeHtml(emptySub) + '</div>' : '') + '</div>';
     return;
   }
   el.innerHTML = '';
   appts.forEach(function(a) {
     var wrapper = document.createElement('div');
-    var timeLabel = a.date ? a.date + ', ' + a.time : a.time;
+    // Use pre-formatted fullTimeStr when available, otherwise compose it
+    var timeLabel = a.fullTimeStr || (a.date ? a.date + ' · ' + a.time : a.time);
     var displayName = role === 'consumer' ? (a.clinician || 'Dr. Sarah Chen') : (a.patient || '—');
     var initials = role === 'consumer' ? 'SC' : (a.initials || '?');
     wrapper.innerHTML =
       '<div class="appt-row" style="cursor:pointer;">' +
-        '<div class="patient-initials" style="flex-shrink:0;">' + initials + '</div>' +
+        '<div class="patient-initials" style="flex-shrink:0;">' + escapeHtml(initials) + '</div>' +
         '<div class="appt-info">' +
-          '<div class="appt-patient">' + displayName + '</div>' +
-          '<div class="appt-type-text">' + a.type + '</div>' +
+          '<div class="appt-patient">' + escapeHtml(displayName) + '</div>' +
+          '<div class="appt-type-text">' + escapeHtml(timeLabel) + '</div>' +
         '</div>' +
-        '<span class="appt-time" style="min-width:auto;">' + timeLabel + '</span>' +
-        '<span class="appt-badge ' + a.status + '">' + a.status + '</span>' +
+        '<span class="appt-dur-text" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(255,255,255,0.35);white-space:nowrap;flex-shrink:0;">' + escapeHtml(a.dur || '') + '</span>' +
+        '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
       '</div>';
     wrapper.onclick = function(){ toggleApptDetail(a, role || 'clinician', wrapper); };
     el.appendChild(wrapper);
@@ -6054,7 +6137,8 @@ function showInlineEmpty(containerId, title, subtitle) {
 function showListError(containerId, retryFnName) {
   var el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = '<div class="list-error">Something went wrong. <button onclick="' + retryFnName + '()" class="retry-btn">Try again</button></div>';
+  var msg = (containerId === 'clApptList') ? 'Unable to load appointments.' : 'Something went wrong.';
+  el.innerHTML = '<div class="list-error">' + msg + ' <button onclick="' + retryFnName + '()" class="retry-btn">Try again</button></div>';
 }
 
 // ── Phase 9D: session expiry via onAuthStateChange ──
@@ -6426,15 +6510,20 @@ function _confirmClCancel() {
     '| Reason:', reason, '| Notes:', notes || '(none)');
 
   if (PREVIEW_MODE || !currentUserId) {
-    ALL_APPTS = ALL_APPTS.map(function(a) {
-      if ((a._id || a.id) === _p15ClCancelApptId) {
-        return Object.assign({}, a, { status:'cancelled', _rawStatus:'cancelled_by_clinician' });
+    var _cancelId = _p15ClCancelApptId;
+    var _patchCancel = function(arr) {
+      for (var ci = 0; ci < arr.length; ci++) {
+        if (arr[ci]._id === _cancelId || arr[ci].id === _cancelId) {
+          arr[ci].status = 'cancelled'; arr[ci]._rawStatus = 'cancelled_by_clinician'; break;
+        }
       }
-      return a;
-    });
-    _clApptRows = null;
+    };
+    var cIdx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return (a._id||a.id)===_cancelId; }) : -1;
+    if (cIdx !== -1) { ALL_APPTS[cIdx].status = 'cancelled'; ALL_APPTS[cIdx]._rawStatus = 'cancelled_by_clinician'; }
+    if (_clApptRows)     _patchCancel(_clApptRows);
+    if (_clAppointments) _patchCancel(_clAppointments);
     document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
-    filterClAppts(_clApptFilter);
+    _applyClApptFilter(_clApptRows || ALL_APPTS, _clApptFilter);
     showToast('Appointment cancelled. Patient has been notified.');
     return;
   }
@@ -6461,16 +6550,20 @@ function _markNoShow(apptId) {
   var patientName = apptRow ? (apptRow.patient || '—') : '—';
   console.log('[Pulse] No-show marked — Patient:', patientName);
 
-  if (PREVIEW_MODE || !currentUserId) {
-    ALL_APPTS = ALL_APPTS.map(function(a) {
-      if ((a._id || a.id) === apptId) {
-        return Object.assign({}, a, { status:'noshow', _rawStatus:'noshow' });
+  var _patchNoShow = function(arr) {
+    for (var k = 0; k < arr.length; k++) {
+      if (arr[k]._id === apptId || arr[k].id === apptId) {
+        arr[k].status = 'noshow'; arr[k]._rawStatus = 'noshow'; break;
       }
-      return a;
-    });
-    _clApptRows = null;
+    }
+  };
+  if (PREVIEW_MODE || !currentUserId) {
+    var idx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return (a._id||a.id)===apptId; }) : -1;
+    if (idx !== -1) { ALL_APPTS[idx].status = 'noshow'; ALL_APPTS[idx]._rawStatus = 'noshow'; }
+    if (_clApptRows)     _patchNoShow(_clApptRows);
+    if (_clAppointments) _patchNoShow(_clAppointments);
     document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
-    filterClAppts(_clApptFilter);
+    _applyClApptFilter(_clApptRows || ALL_APPTS, _clApptFilter);
     showToast('No-show marked for ' + patientName + '.');
     return;
   }
@@ -6478,9 +6571,10 @@ function _markNoShow(apptId) {
     .update({ status:'noshow', updated_at: new Date().toISOString() })
     .eq('id', apptId)
     .then(function() {
-      _clApptRows = null;
+      if (_clApptRows)     _patchNoShow(_clApptRows);
+      if (_clAppointments) _patchNoShow(_clAppointments);
       document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
-      filterClAppts(_clApptFilter);
+      _applyClApptFilter(_clApptRows || [], _clApptFilter);
       showToast('No-show marked for ' + patientName + '.');
     })
     .catch(function(err) { console.warn('[Pulse] noshow update failed:', err && err.message); });

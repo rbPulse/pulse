@@ -1552,9 +1552,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="filter-bar">
           <div class="filter-pill active" id="pflt-all"      onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-active"   onclick="filterPatients('active',this)">Active</div>
+          <div class="filter-pill"        id="pflt-pending"  onclick="filterPatients('pending',this)">Pending</div>
           <div class="filter-pill"        id="pflt-seen"     onclick="filterPatients('seen',this)">Recently Seen</div>
           <div class="filter-pill"        id="pflt-followup" onclick="filterPatients('followup',this)">Needs Follow-up</div>
           <div class="filter-pill"        id="pflt-unread"   onclick="filterPatients('unread',this)">Unread</div>
+        </div>
+        <div style="padding:8px 0 4px;">
+          <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
+            style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;"
+            oninput="searchPatients(this.value)">
         </div>
         <div class="p-card">
           <div class="patient-list" id="clPatientList"></div>
@@ -4273,10 +4279,11 @@ function initClPatients() {
     '</div>';
   }).join('');
 
-  // Step 1: fetch all consultations ordered newest first
+  // Step 1: fetch all consultations with a non-null status, ordered newest first
   db.from('consultations')
     .select('*')
-    .order('created_at', { ascending: false })
+    .not('status', 'is', null)
+    .order('submitted_at', { ascending: false })
     .then(function(res) {
       if (res.error) throw res.error;
       var consultations = res.data || [];
@@ -4349,20 +4356,27 @@ function _normalisePatientRow(consultation, profile) {
     : (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
     || consultation.user_id.slice(0, 8).toUpperCase();
 
-  var protocolName = d.assigned_protocol || d.protocol || null;
-  var goal = (d.goals && d.goals.length > 0) ? d.goals[0] : null;
+  // Protocol: check top-level field first, then data JSONB
+  var protocolName = consultation.protocol || d.assigned_protocol || d.protocol || null;
 
-  // Derive status
+  // Primary goal: check top-level field first, then data JSONB array
+  var goal = consultation.primary_goal
+    || (d.primary_goal)
+    || (d.goals && d.goals.length > 0 ? d.goals[0] : null)
+    || null;
+
+  // Derive status: use top-level consultation.status, then infer from protocol/goal
   var status;
-  if (d.status) {
-    status = d.status;
+  if (consultation.status) {
+    status = consultation.status;
   } else if (protocolName) {
     status = 'active';
-  } else if (goal) {
-    status = 'pending';
   } else {
-    status = 'no_protocol';
+    status = 'pending';
   }
+
+  // Member since: prefer submitted_at, fallback to created_at
+  var memberSince = consultation.submitted_at || consultation.created_at || null;
 
   return {
     id:            consultation.user_id,
@@ -4371,7 +4385,7 @@ function _normalisePatientRow(consultation, profile) {
     goal:          goal,
     status:        status,
     streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
-    memberSince:   consultation.created_at,
+    memberSince:   memberSince,
     email:         d.email || (profile && profile.email) || '',
     subStatus:       (profile && profile.subscription_status) ? profile.subscription_status : null,
     notify_messages: profile ? (profile.notify_messages !== false) : true,
@@ -4382,7 +4396,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','active','seen','followup','unread'].forEach(function(f) {
+  ['all','active','pending','seen','followup','unread'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -4394,12 +4408,20 @@ function filterPatients(filter, pillEl) {
   renderPatientList(filter);
 }
 
+// Search patients by display name or protocol name (client-side, case-insensitive)
+var _patSearch = '';
+function searchPatients(q) {
+  _patSearch = (q || '').trim().toLowerCase();
+  renderPatientList(_patFilter);
+}
+
 // Status chip helper
-function _patStatusChip(status) {
-  if (status === 'active') {
+// Active (green) = has protocol; Pending (yellow) = no protocol / awaiting review; No Protocol (grey) fallback
+function _patStatusChip(status, hasProtocol) {
+  if (hasProtocol || status === 'active') {
     return '<span class="pat-status-badge active">Active</span>';
-  } else if (status === 'pending' || status === 'submitted') {
-    return '<span class="pat-status-badge" style="background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending Review</span>';
+  } else if (!status || status === 'pending' || status === 'submitted') {
+    return '<span class="pat-status-badge" style="background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending</span>';
   } else {
     return '<span class="pat-status-badge inactive">No Protocol</span>';
   }
@@ -4422,20 +4444,26 @@ function renderPatientList(filter) {
   // Use loaded rows (or mock in PREVIEW_MODE)
   var rows = _clPatientRows;
   if (!rows) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading patients…</div></div>';
+    return;
+  }
+
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
     return;
   }
 
   // Apply filter
   var patients = rows;
-  if (filter === 'active')   patients = rows.filter(function(p){ return p.status === 'active'; });
+  if (filter === 'active')   patients = rows.filter(function(p){ return !!p.protocol; });
+  if (filter === 'pending')  patients = rows.filter(function(p){ return !p.protocol || p.status === 'pending'; });
   if (filter === 'seen')     patients = rows.filter(function(p){
     // "recently seen" — joined within last 30 days
     if (!p.memberSince) return false;
     var d = new Date(p.memberSince);
     return (Date.now() - d.getTime()) < 30 * 24 * 60 * 60 * 1000;
   });
-  if (filter === 'followup') patients = rows.filter(function(p){ return p.status === 'pending' || p.status === 'no_protocol'; });
+  if (filter === 'followup') patients = rows.filter(function(p){ return p.status === 'pending' || p.status === 'no_protocol' || !p.protocol; });
   if (filter === 'unread')   patients = rows.filter(function(p){
     // PREVIEW_MODE: use mock unread flag
     if (p._mock) return p._mock.unread > 0;
@@ -4444,8 +4472,16 @@ function renderPatientList(filter) {
     return thread && thread.unread > 0;
   });
 
+  // Apply search filter (case-insensitive, by name or protocol)
+  if (_patSearch) {
+    patients = patients.filter(function(p) {
+      return (p.name && p.name.toLowerCase().indexOf(_patSearch) !== -1)
+          || (p.protocol && p.protocol.toLowerCase().indexOf(_patSearch) !== -1);
+    });
+  }
+
   if (patients.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients match this filter.</div></div>';
+    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
     return;
   }
   el.innerHTML = '';
@@ -4460,7 +4496,7 @@ function renderPatientList(filter) {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
-            _patStatusChip(p.status) +
+            _patStatusChip(p.status, !!p.protocol) +
             _subStatusChip(p.subStatus) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +

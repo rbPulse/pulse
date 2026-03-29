@@ -4261,9 +4261,24 @@ var _clPatientRows = null;
 
 function initClPatients() {
   _clPatientRows = null; // reset on each tab visit
-  if (PREVIEW_MODE || !currentUserId) {
+  if (PREVIEW_MODE) {
     _clPatientRows = _normaliseMockPatients();
     renderPatientList(_patFilter);
+    return;
+  }
+  if (!currentUserId) {
+    // Auth not yet resolved — show loading skeleton and wait; caller will retry once auth is known
+    var elWait = document.getElementById('clPatientList');
+    if (elWait) elWait.innerHTML = [0,1,2,3].map(function() {
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
+        '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
+        '<div style="flex:1;">' +
+          '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
+          '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
+        '</div>' +
+        '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
+      '</div>';
+    }).join('');
     return;
   }
   // Show skeleton loading state for patient list
@@ -4324,7 +4339,8 @@ function initClPatients() {
     .catch(function(err) {
       console.warn('[Pulse] consultations fetch failed:', err && err.message);
       _clPatientRows = [];
-      showListError('clPatientList', 'initClPatients');
+      var errEl = document.getElementById('clPatientList');
+      if (errEl) errEl.innerHTML = '<div class="list-error">Unable to load patients. <button onclick="initClPatients()" class="retry-btn">Try again</button></div>';
     });
 }
 
@@ -4416,9 +4432,11 @@ function searchPatients(q) {
 }
 
 // Status chip helper
-// Active (green) = has protocol; Pending (yellow) = no protocol / awaiting review; No Protocol (grey) fallback
+// Active (green)  = protocol is assigned
+// Pending (yellow) = no protocol assigned yet, or status is 'pending' / 'submitted'
+// No Protocol (grey) = no protocol and some other non-pending status
 function _patStatusChip(status, hasProtocol) {
-  if (hasProtocol || status === 'active') {
+  if (hasProtocol) {
     return '<span class="pat-status-badge active">Active</span>';
   } else if (!status || status === 'pending' || status === 'submitted') {
     return '<span class="pat-status-badge" style="background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending</span>';

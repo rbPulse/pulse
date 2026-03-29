@@ -1544,10 +1544,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Appointments</div>
         <div class="tab-title">All appointments.</div>
         <div class="filter-bar">
-          <div class="filter-pill active" id="flt-today"     onclick="filterClAppts('today',this)">Today</div>
-          <div class="filter-pill"        id="flt-upcoming"  onclick="filterClAppts('upcoming',this)">Upcoming</div>
-          <div class="filter-pill"        id="flt-completed" onclick="filterClAppts('completed',this)">Completed</div>
-          <div class="filter-pill"        id="flt-cancelled" onclick="filterClAppts('cancelled',this)">Cancelled</div>
+          <div class="filter-pill active" id="flt-today"    onclick="filterClAppts('today',this)">Today</div>
+          <div class="filter-pill"        id="flt-upcoming" onclick="filterClAppts('upcoming',this)">Upcoming</div>
+          <div class="filter-pill"        id="flt-past"     onclick="filterClAppts('past',this)">Past</div>
         </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>
@@ -3297,12 +3296,14 @@ function saveAvailability() {
 
 // ── CLINICIAN APPOINTMENTS FILTER ──
 var _clApptFilter = 'today';
+// Module-level cache of fetched appointments (Phase 23)
+var _clAppointments = [];
 // Loaded real appointment rows from DB (or mock); shared across filters
 var _clApptRows = null;
 
 function filterClAppts(filter, pillEl) {
   _clApptFilter = filter;
-  ['today','upcoming','completed','cancelled'].forEach(function(f) {
+  ['today','upcoming','past'].forEach(function(f) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });

@@ -1382,6 +1382,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
         <div class="p-card" style="margin-top:4px;">
+          <div class="settings-section">
+            <div class="settings-section-lbl">Notifications</div>
+            <div class="settings-toggle-row">
+              <span class="settings-toggle-text">Email me when my clinician replies</span>
+              <label class="toggle-switch"><input type="checkbox" id="consumerNotifyMessages" checked onchange="saveConsumerSettings()"/><span class="toggle-track"></span></label>
+            </div>
+          </div>
+        </div>
+        <div class="p-card" style="margin-top:4px;">
           <div class="settings-section" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
             <div class="settings-section-lbl">Session</div>
             <div style="font-size:13px;color:var(--grey);margin-bottom:16px;line-height:1.65;">Sign out of your Pulse member account.</div>
@@ -2001,6 +2010,20 @@ var CLINICIAN_ID = null;
                    <p>Log in to the Pulse portal to view the full conversation.</p>`;
            break;
 
+         case "new_message_from_consumer":
+           subject = `New message from ${data.sender_name || "a patient"}`;
+           html = `<p>You have a new message from <strong>${data.sender_name || "a patient"}</strong>.</p>
+                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
+                   <p><a href="${data.portal_link || "#"}">Go to portal</a> to reply.</p>`;
+           break;
+
+         case "clinician_replied":
+           subject = "Your Pulse clinician replied";
+           html = `<p>Your clinician has sent you a new message.</p>
+                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
+                   <p><a href="${data.portal_link || "#"}">Go to portal</a> to view the full conversation.</p>`;
+           break;
+
          case "appointment_confirmed":
            subject = "Appointment confirmed";
            html = `<p>Hi ${data.patientName || "there"},</p>
@@ -2040,8 +2063,17 @@ var CLINICIAN_ID = null;
    });
    ────────────────────────────────────────────────────────────────────────── */
 
+// Phase 17 — required Supabase migration:
+// alter table profiles add column if not exists notify_messages boolean default true;
+
 // Module-level display name cache (set on every consumer sign-in)
 var _memberDisplayName = '';
+
+// Module-level notification preferences (Phase 17)
+// _memberNotifyMessages: consumer's opt-in for email when clinician replies (default true)
+var _memberNotifyMessages = true;
+// _clinicianNotifyMessages: clinician's opt-in for email when a patient messages (default true)
+var _clinicianNotifyMessages = true;
 
 // Module-level subscription status for the consumer (Phase 12)
 var _memberSubStatus = null;
@@ -2053,6 +2085,8 @@ function _applySubStatus() {
 }
 
 var CLINICIAN_EMAIL = 'clinician@pulse.health'; // replace with real clinician email
+// Phase 17: module-level clinician email var (same default; can be updated on clinician login)
+var _clinicianEmail = 'clinician@pulse.health';
 
 var PROTOCOL_MAP = {
   recovery:{name:'Recovery + Repair',category:'Recovery',compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg'],note:'Designed for tissue repair and anti-inflammatory support. BPC-157 administered subcutaneously daily, TB-500 bi-weekly. First cycle is 8 weeks.',cycle:'8 weeks'},
@@ -2603,7 +2637,7 @@ function initPortal(user) {
       last_seen:    new Date().toISOString()
     };
     db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
-      .select('display_name, subscription_status')
+      .select('display_name, subscription_status, notify_messages')
       .then(function(pr) {
         if (!pr.error && pr.data && pr.data.length > 0) {
           var row = pr.data[0];
@@ -2617,6 +2651,10 @@ function initPortal(user) {
           // Phase 12: store subscription status and apply banner
           _memberSubStatus = row.subscription_status || null;
           _applySubStatus();
+          // Phase 17: load messaging notification preference
+          _memberNotifyMessages = (row.notify_messages !== false);
+          var nmEl = document.getElementById('consumerNotifyMessages');
+          if (nmEl) nmEl.checked = _memberNotifyMessages;
         }
       })
       .catch(function() { /* non-fatal; keep initial name */ });

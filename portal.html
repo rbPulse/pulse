@@ -1647,8 +1647,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-track"></span></label>
             </div>
             <div class="settings-toggle-row">
-              <span class="settings-toggle-text">Patient messages</span>
-              <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-track"></span></label>
+              <span class="settings-toggle-text">Email me when a patient messages</span>
+              <label class="toggle-switch"><input type="checkbox" id="clNotifyMessages" checked onchange="saveClinicianSettings()"/><span class="toggle-track"></span></label>
             </div>
             <div class="settings-toggle-row">
               <span class="settings-toggle-text">Protocol adjustment requests</span>
@@ -2953,6 +2953,23 @@ function initClinicianPortal(user, role, greeting) {
     if (tzeI && meta.cl_timezone) tzeI.value = meta.cl_timezone;
     var dseI = document.getElementById('clSettingsDuration');
     if (dseI && meta.cl_duration) dseI.value = String(parseInt(meta.cl_duration) || 30);
+
+    // Phase 17: load clinician's notify_messages preference from profiles
+    if (currentUserId) {
+      db.from('profiles')
+        .select('notify_messages, email')
+        .eq('user_id', currentUserId)
+        .maybeSingle()
+        .then(function(pr) {
+          if (!pr.error && pr.data) {
+            _clinicianNotifyMessages = (pr.data.notify_messages !== false);
+            if (pr.data.email) _clinicianEmail = pr.data.email;
+            var nmClEl = document.getElementById('clNotifyMessages');
+            if (nmClEl) nmClEl.checked = _clinicianNotifyMessages;
+          }
+        })
+        .catch(function() { /* non-fatal; keep defaults */ });
+    }
   }
 }
 
@@ -2964,10 +2981,13 @@ async function saveClinicianSettings() {
   var beEl     = document.getElementById('clBio');
   var tzeEl    = document.getElementById('clSettingsTimezone');
   var dseEl    = document.getElementById('clSettingsDuration');
+  var nmClEl   = document.getElementById('clNotifyMessages');
   var saveBtn  = document.getElementById('clSaveBtn');
   var savedMsg = document.getElementById('clSettingsSaved');
   var errMsg   = document.getElementById('clSettingsError');
   var nameErr  = document.getElementById('clNameError');
+  // Phase 17: sync clinician notify_messages preference in memory
+  if (nmClEl) _clinicianNotifyMessages = nmClEl.checked;
 
   // Hide previous feedback
   if (savedMsg) savedMsg.style.display = 'none';
@@ -3020,6 +3040,15 @@ async function saveClinicianSettings() {
       }
     });
     if (r.error) throw r.error;
+
+    // Phase 17: persist notify_messages to clinician's profile row (non-fatal)
+    if (currentUserId) {
+      db.from('profiles').upsert({
+        user_id:         currentUserId,
+        notify_messages: _clinicianNotifyMessages,
+        updated_at:      new Date().toISOString()
+      }, { onConflict: 'user_id' }).then(function(){}).catch(function(){});
+    }
 
     // 7B — Update local state
     APPT_DURATION = duration;
@@ -4261,7 +4290,7 @@ function initClPatients() {
       // Step 2: fetch profiles for all those user_ids
       var ids = unique.map(function(c){ return c.user_id; });
       db.from('profiles')
-        .select('user_id, display_name, current_streak, subscription_status')
+        .select('user_id, display_name, current_streak, subscription_status, notify_messages')
         .in('user_id', ids)
         .then(function(pr) {
           if (pr.error) throw pr.error;
@@ -4339,7 +4368,8 @@ function _normalisePatientRow(consultation, profile) {
     streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
     memberSince:   consultation.created_at,
     email:         d.email || (profile && profile.email) || '',
-    subStatus:     (profile && profile.subscription_status) ? profile.subscription_status : null,
+    subStatus:       (profile && profile.subscription_status) ? profile.subscription_status : null,
+    notify_messages: profile ? (profile.notify_messages !== false) : true,
     _consultation: consultation,
     _profile:      profile
   };
@@ -5141,18 +5171,30 @@ function sendClMessage() {
       }
       // Insert in-portal notification for the patient
       _insertNotification(_sentThreadId, 'new_message', 'Your clinician replied to your message.', 'messages');
-      // Notify patient of clinician reply (fire-and-forget)
+      // Notify patient of clinician reply (fire-and-forget, Phase 17)
       if (!PREVIEW_MODE) {
         var _threadEntry = _clThreadCache[_sentThreadId];
         var patientEmail = _threadEntry && _threadEntry.email ? _threadEntry.email : null;
-        if (patientEmail) {
-          db.functions.invoke('send-notification', { body: {
-            type: 'new_message_consumer',
-            to: patientEmail,
-            clinicianName: clDisplayName,
-            preview: text.slice(0, 120),
-            threadId: _sentThreadId
-          }}).then(function(){}).catch(function(){});
+        // Check consumer's notify_messages preference from loaded patient list; default true
+        var _consumerNotifyPref = true;
+        if (_clPatientRows) {
+          for (var _ni = 0; _ni < _clPatientRows.length; _ni++) {
+            if (_clPatientRows[_ni].id === _sentThreadId) {
+              _consumerNotifyPref = _clPatientRows[_ni].notify_messages !== false;
+              break;
+            }
+          }
+        }
+        if (patientEmail && _consumerNotifyPref) {
+          try {
+            db.functions.invoke('send-notification', { body: {
+              type: 'clinician_replied',
+              to: patientEmail,
+              sender_name: clDisplayName,
+              preview: text.slice(0, 120),
+              portal_link: window.location.origin + '/portal.html'
+            }}).then(function(){}).catch(function(){});
+          } catch(e) { /* non-fatal — failed notification must not break message send */ }
         }
       }
     })
@@ -5342,14 +5384,19 @@ function sendConsumerMessage() {
         loadConsumerMessages();
         return;
       }
-      // Notify clinician of new message (fire-and-forget)
-      if (!PREVIEW_MODE && CLINICIAN_EMAIL) {
-        db.functions.invoke('send-notification', { body: {
-          type: 'new_message_clinician',
-          to: CLINICIAN_EMAIL,
-          senderName: _memberDisplayName,
-          preview: text.slice(0, 120)
-        }}).then(function(){}).catch(function(){});
+      // Notify clinician of new consumer message (fire-and-forget, Phase 17)
+      // TODO: ideally check clinician's notify_messages preference server-side;
+      // for now we always fire and let the Edge Function or clinician setting handle opt-out.
+      if (!PREVIEW_MODE) {
+        try {
+          db.functions.invoke('send-notification', { body: {
+            type: 'new_message_from_consumer',
+            to: _clinicianEmail,
+            sender_name: _memberDisplayName,
+            preview: text.slice(0, 120),
+            portal_link: window.location.origin + '/portal.html'
+          }}).then(function(){}).catch(function(){});
+        } catch(e) { /* non-fatal — failed notification must not break message send */ }
       }
     })
     .catch(function(err) {
@@ -5716,15 +5763,19 @@ function logDose() {
 async function saveConsumerSettings() {
   var nameEl  = document.getElementById('settingsDisplayName');
   var savedEl = document.getElementById('consumerSettingsSaved');
+  var nmEl    = document.getElementById('consumerNotifyMessages');
   var newName = nameEl ? nameEl.value.trim() : '';
   if (!newName || !currentUserId) return;
   _memberDisplayName = newName;
+  // Phase 17: sync notify_messages preference in memory
+  if (nmEl) _memberNotifyMessages = nmEl.checked;
   setSidebarIdentity(_memberDisplayName, 'Member', false);
   try {
     var r = await db.from('profiles').upsert({
-      user_id:      currentUserId,
-      display_name: newName,
-      updated_at:   new Date().toISOString()
+      user_id:         currentUserId,
+      display_name:    newName,
+      notify_messages: _memberNotifyMessages,
+      updated_at:      new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (r.error) throw r.error;
   } catch(e) { /* non-fatal */ }

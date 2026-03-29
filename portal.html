@@ -2755,16 +2755,29 @@ function showClSetup(user, role, greeting) {
   window._setupGreeting = greeting;
 }
 
-function applyClProfile(meta) {
+// Phase 24 — applyClProfile can be called with an existing meta object, or
+// with no argument to perform a fresh supabase.auth.getUser() read on portal load.
+async function applyClProfile(meta) {
+  // If no meta supplied, fetch fresh from Supabase auth
+  if (!meta) {
+    try {
+      var guRes = await db.auth.getUser();
+      if (guRes.error) throw guRes.error;
+      meta = (guRes.data && guRes.data.user && guRes.data.user.user_metadata) || {};
+    } catch(e) {
+      meta = {};
+    }
+  }
   // Push saved metadata into the portal settings fields and JS state
   if (meta.cl_name) {
     var parts = meta.cl_name.split(' ');
     var fe = document.getElementById('clFirstName'); if (fe) fe.value = parts[0] || '';
     var le = document.getElementById('clLastName');  if (le) le.value = parts.slice(1).join(' ') || '';
-    // Update the sidebar identity block immediately with the loaded name
+    // Phase 24 — Update the sidebar identity block immediately with full loaded name
     var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
     if (typeof setSidebarIdentity === 'function') {
-      setSidebarIdentity('Dr. ' + (parts[0] || ''), roleLabel, true);
+      var sidebarDisplayName = ('Dr. ' + meta.cl_name).trim();
+      setSidebarIdentity(sidebarDisplayName, roleLabel, true);
     }
   }
   var ce = document.getElementById('clCredentials'); if (ce && meta.cl_credentials) ce.value = meta.cl_credentials;
@@ -2774,8 +2787,10 @@ function applyClProfile(meta) {
     var tze = document.getElementById('clSettingsTimezone');
     if (tze) tze.value = meta.cl_timezone;
   }
-  if (meta.cl_duration) {
-    APPT_DURATION = parseInt(meta.cl_duration) || 30;
+  // Phase 24 — support both cl_appt_duration (new canonical key) and cl_duration (legacy)
+  var durVal = meta.cl_appt_duration || meta.cl_duration;
+  if (durVal) {
+    APPT_DURATION = parseInt(durVal) || 30;
     // Sync the Schedule tab duration select
     var de = document.getElementById('clDuration'); if (de) de.value = String(APPT_DURATION);
     // Sync the Settings tab duration select
@@ -3055,16 +3070,23 @@ async function saveClinicianSettings() {
   }
 
   try {
+    // Phase 24 — Fetch current user to merge existing metadata and avoid
+    // overwriting unrelated fields (cl_avail, role, cl_setup, etc.)
+    var currentUserRes = await db.auth.getUser();
+    if (currentUserRes.error) throw currentUserRes.error;
+    var existingMeta = (currentUserRes.data && currentUserRes.data.user && currentUserRes.data.user.user_metadata) || {};
+
     var r = await db.auth.updateUser({
-      data: {
+      data: Object.assign({}, existingMeta, {
         cl_setup:       true,
         cl_name:        fullName,
         cl_credentials: credentials,
         cl_specialty:   specialty,
         cl_bio:         bio,
         cl_timezone:    timezone,
+        cl_appt_duration: duration,
         cl_duration:    duration
-      }
+      })
     });
     if (r.error) throw r.error;
 
@@ -3082,10 +3104,10 @@ async function saveClinicianSettings() {
     var dSchedule = document.getElementById('clDuration');
     if (dSchedule) dSchedule.value = String(duration);
 
-    // 7D — Sidebar sync (no reload)
-    var displayName = 'Dr. ' + firstName;
+    // 7D — Phase 24: Sidebar sync (no reload) — show full first + last name
+    var displayName = 'Dr. ' + firstName + (lastName ? ' ' + lastName : '');
     var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
-    setSidebarIdentity(displayName, roleLabel, true);
+    setSidebarIdentity(displayName.trim(), roleLabel, true);
 
     // 7A — Success feedback
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
@@ -3095,7 +3117,10 @@ async function saveClinicianSettings() {
     }
   } catch(e) {
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
-    if (errMsg) errMsg.style.display = 'inline';
+    if (errMsg) {
+      errMsg.textContent = (e && e.message) ? e.message : 'Failed to save. Please try again.';
+      errMsg.style.display = 'inline';
+    }
   }
 }
 

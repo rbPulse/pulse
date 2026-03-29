@@ -57,11 +57,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .hero-bg img.hero-img--woman{object-position:right 5%;}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,5,1) 0%,rgba(5,5,5,0.7) 30%,rgba(5,5,5,0.15) 60%,rgba(5,5,5,0) 100%),linear-gradient(to bottom,rgba(5,5,5,0.35) 0%,rgba(5,5,5,0) 25%,rgba(5,5,5,0) 55%,rgba(5,5,5,0.65) 80%,rgba(5,5,5,0.92) 100%);}
 @media(max-width:900px){
-  .hero-bg img{width:100%;height:100%;max-width:100%;object-fit:contain;object-position:center top;}
-  /* Per-image mobile — contain shows full image, top-anchored so face is visible */
-  .hero-bg img.hero-img--man{object-position:center 5%;}
-  .hero-bg img.hero-img--woman{object-position:center 0%;}
-  .hero-bg::after{background:linear-gradient(to bottom,rgba(5,5,5,0.35) 0%,rgba(5,5,5,0) 25%,rgba(5,5,5,0) 55%,rgba(5,5,5,0.65) 80%,rgba(5,5,5,0.92) 100%);}
+  /* Image sits in the zone between nav (~64px) and just above the text block (~55% down) */
+  .hero-bg img{
+    width:100%;
+    max-width:100%;
+    height:48%;
+    top:64px;
+    bottom:auto;
+    left:0;
+    right:0;
+    object-fit:cover;
+    object-position:center 18%;
+  }
+  .hero-bg img.hero-img--man{object-position:center 15%;}
+  .hero-bg img.hero-img--woman{object-position:center 12%;}
+  .hero-bg::after{background:linear-gradient(to bottom,rgba(5,5,5,0.2) 0%,rgba(5,5,5,0) 20%,rgba(5,5,5,0) 50%,rgba(5,5,5,0.7) 75%,rgba(5,5,5,0.97) 100%);}
 }
 .hero-content{position:relative;z-index:2;text-align:center;padding:0 24px;}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:var(--green);margin-bottom:24px;opacity:0;animation:fadeUp .7s ease .1s forwards;}

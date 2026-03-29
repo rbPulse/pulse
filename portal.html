@@ -63,6 +63,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .sidebar-item-label{flex:1;}
 /* Unread count badge in sidebar */
 .sidebar-badge{font-family:'DM Mono',monospace;font-size:8px;background:var(--green);color:#000;border-radius:999px;padding:1px 6px;font-weight:600;flex-shrink:0;}
+/* Phase 18 — clinician unread badge & member unread dot */
+#cl-msg-badge{display:none;background:var(--green);color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center;line-height:1.5;margin-left:6px;flex-shrink:0;}
+#mem-msg-dot{display:none;width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:6px;flex-shrink:0;box-shadow:0 0 4px rgba(58,122,92,0.6);}
 
 /* ── MAIN ── */
 .portal-main{margin-left:232px;flex:1;padding:44px 48px;max-width:1020px;}
@@ -990,6 +993,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-messages" onclick="switchTab('messages')">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="sidebar-item-label">Messages</span>
+          <span id="mem-msg-dot"></span>
         </div>
         <div class="sidebar-item" id="nav-resources" onclick="switchTab('resources')">
           <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -1026,7 +1030,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-cl-messages" onclick="switchTab('cl-messages')">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="sidebar-item-label">Messages</span>
-          <span class="sidebar-badge" id="sidebarMsgBadge" style="display:none;">3</span>
+          <span id="cl-msg-badge"></span>
         </div>
         <div class="sidebar-section-label">Account</div>
         <div class="sidebar-item" id="nav-cl-settings" onclick="switchTab('cl-settings')">
@@ -2852,12 +2856,8 @@ function initClinicianPortal(user, role, greeting) {
   var specialty = PREVIEW_MODE ? m.specialty : (meta.cl_specialty || m.specialty || '');
   setSidebarIdentity('Dr. ' + name.split(' ')[0], roleLabel, true);
 
-  // Show unread message badge
-  var msgBadgeEl = document.getElementById('sidebarMsgBadge');
-  if (msgBadgeEl && m.stats.unread > 0) {
-    msgBadgeEl.textContent = m.stats.unread;
-    msgBadgeEl.style.display = 'inline-block';
-  }
+  // Show unread message badge (Phase 18 — real count loaded by _startClinicianUnreadPoll)
+  if (PREVIEW_MODE && m.stats.unread > 0) { _updateClMsgBadge(m.stats.unread); }
 
   document.getElementById('clGreetLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('clGreetSub').textContent = "Here's your day at a glance.";
@@ -5208,19 +5208,9 @@ var _consumerMsgPollTimer = null;
 var _consumerUnreadPollTimer = null;
 
 function _setConsumerUnreadDot(hasUnread) {
-  var nav = document.getElementById('nav-messages');
-  if (!nav) return;
-  var dot = nav.querySelector('.consumer-unread-dot');
-  if (hasUnread) {
-    if (!dot) {
-      dot = document.createElement('span');
-      dot.className = 'consumer-unread-dot';
-      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(58,122,92,0.6);';
-      nav.appendChild(dot);
-    }
-  } else {
-    if (dot) dot.remove();
-  }
+  var dot = document.getElementById('mem-msg-dot');
+  if (!dot) return;
+  dot.style.display = hasUnread ? 'inline-block' : 'none';
 }
 
 function _startConsumerUnreadPoll() {
@@ -5238,24 +5228,56 @@ function _startConsumerUnreadPoll() {
   _consumerUnreadPollTimer = setInterval(check, 60000);
 }
 
+var _clinicianUnreadPollTimer = null;
+
+function _updateClMsgBadge(count) {
+  var el = document.getElementById('cl-msg-badge');
+  if (!el) return;
+  if (count > 0) { el.textContent = count; el.style.display = 'inline-block'; }
+  else { el.style.display = 'none'; }
+}
+
 function _startClinicianUnreadPoll() {
-  if (!currentUserId) return;
+  if (_clinicianUnreadPollTimer || !currentUserId) return;
   function check() {
     db.from('messages')
-      .select('thread_id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('sender_role', 'consumer')
       .eq('read', false)
-      .then(function(res) {
-        var el = document.getElementById('sidebarMsgBadge');
-        if (!el) return;
-        var count = (res.data && res.data.length) || 0;
-        if (count > 0) { el.textContent = count; el.style.display = 'inline-block'; }
-        else { el.style.display = 'none'; }
-      })
+      .then(function(res) { _updateClMsgBadge(!res.error ? (res.count || 0) : 0); })
       .catch(function() {});
   }
   check();
-  setInterval(check, 60000);
+  _clinicianUnreadPollTimer = setInterval(check, 60000);
+}
+
+// Phase 18 — mark-as-read helpers called when the Messages tab is opened
+
+function _markConsumerMsgsRead() {
+  // Mark unread clinician→consumer messages as read and clear the dot
+  if (!currentUserId) return;
+  try {
+    db.from('messages')
+      .update({ read: true })
+      .eq('thread_id', currentUserId)
+      .eq('sender_role', 'clinician')
+      .eq('read', false)
+      .then(function() { _setConsumerUnreadDot(false); })
+      .catch(function() {});
+  } catch(e) {}
+}
+
+function _markClinicianMsgsRead() {
+  // Mark all unread consumer messages as read and clear the clinician badge
+  if (!currentUserId) return;
+  try {
+    db.from('messages')
+      .update({ read: true })
+      .eq('sender_role', 'consumer')
+      .eq('read', false)
+      .then(function() { _updateClMsgBadge(0); })
+      .catch(function() {});
+  } catch(e) {}
 }
 
 function initConsumerMessages() {
@@ -5493,12 +5515,12 @@ function switchTab(name) {
   }
   if (name === 'tracker')          { loadDoseLogs(); }
   if (name === 'appointments')     { initConsumerBooking(); }
-  if (name === 'messages')         { initConsumerMessages(); }
+  if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
   if (name === 'resources')        { initResourcesTab(); }
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
   if (name === 'cl-patients')      { initClPatients(); }
-  if (name === 'cl-messages')      { initClMessages(); }
+  if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
   var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');
   pbbConsumerItems.forEach(function(el) { el.classList.remove('active'); });

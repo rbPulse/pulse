@@ -62,7 +62,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .hero-badge-dot{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:blink 2s ease infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
 @keyframes hero-cursor-blink{0%,100%{opacity:1;}50%{opacity:0;}}
-.hero-cursor{display:inline-block;font-style:italic;color:var(--green);margin-left:1px;line-height:1;}
+.hero-cursor{display:inline-block;font-style:italic;color:var(--green);animation:hero-cursor-blink .7s step-end infinite;margin-left:1px;line-height:1;}
+.hero-cursor.typing{animation:none;opacity:1;}
 .hero-logo{font-family:'Anybody',sans-serif;font-size:clamp(80px,15vw,200px);font-variation-settings:'wght' 200,'wdth' 100;letter-spacing:0.12em;line-height:1;color:#fff;margin-bottom:4px;opacity:0;animation:fadeUp .8s ease .25s forwards;text-shadow:0 0 60px rgba(5,5,5,0.6);}
 .hero-tagline{font-size:clamp(28px,4.5vw,64px);font-weight:500;color:#fff;letter-spacing:-0.01em;line-height:1.15;margin-bottom:40px;opacity:0;animation:fadeUp .7s ease .25s forwards;}
 .hero-tagline strong{color:var(--green);font-weight:400;}
@@ -1958,22 +1959,28 @@ function initHeroTyper(){
   var typer=document.getElementById("hero-typer");
   var cursor=document.querySelector(".hero-cursor");
   if(!typer||!cursor)return;
-  var idx=0,pos=0;
+  var idx=0,pos=0,typing=false;
+  function addBlink(){cursor.classList.remove("typing");}
+  function removeBlink(){cursor.classList.add("typing");}
   function typeChar(){
+    removeBlink();
     if(pos<phrases[idx].length){
       typer.textContent=phrases[idx].slice(0,pos+1);
       pos++;
       setTimeout(typeChar,60);
     } else {
+      addBlink();
       setTimeout(eraseChar,1500);
     }
   }
   function eraseChar(){
+    removeBlink();
     if(pos>0){
       pos--;
       typer.textContent=phrases[idx].slice(0,pos);
       setTimeout(eraseChar,35);
     } else {
+      addBlink();
       idx=(idx+1)%phrases.length;
       setTimeout(typeChar,300);
     }

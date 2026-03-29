@@ -1629,11 +1629,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine"/>
               </div>
             </div>
-            <div class="settings-field" style="margin-top:4px;">
+            <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-lbl">Public Profile</div>
+            <div class="settings-field">
               <label class="settings-field-lbl">Bio / About</label>
               <textarea class="settings-input" id="clBio" rows="3" placeholder="A brief professional bio shown to patients…" style="resize:vertical;line-height:1.6;min-height:72px;"></textarea>
             </div>
-            <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>
           </div>
           <div class="settings-section">
             <div class="settings-section-lbl">Appointment Preferences</div>
@@ -1683,13 +1686,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="settings-section">
             <div class="settings-section-lbl">Security</div>
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-              <button class="btn-ghost" id="clPwResetBtn" onclick="sendClPasswordReset()">Send Password Reset Email</button>
+              <button class="btn-ghost" id="clPwResetBtn" onclick="sendClPasswordReset()">Change Password</button>
               <span id="clPwResetMsg" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--green);"></span>
             </div>
           </div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <button class="btn-green" id="clSaveBtn" onclick="saveClinicianSettings()">Save Changes</button>
-            <span id="clSettingsSaved" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
+            <span id="clSettingsSaved" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved ✓</span>
             <span id="clSettingsError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);">Failed to save. Please try again.</span>
           </div>
         </div>
@@ -2758,6 +2761,11 @@ function applyClProfile(meta) {
     var parts = meta.cl_name.split(' ');
     var fe = document.getElementById('clFirstName'); if (fe) fe.value = parts[0] || '';
     var le = document.getElementById('clLastName');  if (le) le.value = parts.slice(1).join(' ') || '';
+    // Update the sidebar identity block immediately with the loaded name
+    var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
+    if (typeof setSidebarIdentity === 'function') {
+      setSidebarIdentity('Dr. ' + (parts[0] || ''), roleLabel, true);
+    }
   }
   var ce = document.getElementById('clCredentials'); if (ce && meta.cl_credentials) ce.value = meta.cl_credentials;
   var se = document.getElementById('clSpecialty');   if (se && meta.cl_specialty)   se.value = meta.cl_specialty;

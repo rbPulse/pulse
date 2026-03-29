@@ -764,6 +764,153 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     min-width: 72px;
   }
 }
+
+/* ── PHASE 15: APPOINTMENT CANCELLATION & RESCHEDULE ────────────────────── */
+
+/* Modal overlay */
+.p15-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.p15-overlay.open { opacity: 1; pointer-events: all; }
+
+.p15-modal {
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+  transform: translateY(12px); transition: transform .2s;
+}
+.p15-overlay.open .p15-modal { transform: translateY(0); }
+
+.p15-modal-title {
+  font-size: 17px; font-weight: 600; color: #fff;
+  margin-bottom: 5px;
+}
+.p15-modal-sub {
+  font-size: 13px; color: var(--grey); margin-bottom: 20px; line-height: 1.6;
+}
+.p15-label {
+  font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--green); display: block; margin-bottom: 7px;
+}
+.p15-select, .p15-textarea, .p15-date-input {
+  width: 100%; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+  color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 300;
+  padding: 9px 13px; outline: none; transition: border-color .2s; margin-bottom: 14px;
+  -webkit-appearance: none; appearance: none;
+}
+.p15-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.28)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  cursor: pointer;
+}
+.p15-select option { background: #1a1a1a; color: #fff; }
+.p15-select:focus, .p15-textarea:focus, .p15-date-input:focus { border-color: rgba(58,122,92,0.38); }
+.p15-textarea { resize: none; min-height: 72px; line-height: 1.6; }
+.p15-textarea::placeholder { color: rgba(255,255,255,0.18); }
+
+.p15-footer { display: flex; gap: 9px; justify-content: flex-end; margin-top: 4px; }
+.p15-btn-cancel-action {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; background: none;
+  border: 1px solid rgba(185,55,55,0.35); color: rgba(200,90,90,0.85);
+  padding: 9px 20px; border-radius: 999px; cursor: pointer; transition: border-color .2s, color .2s;
+}
+.p15-btn-cancel-action:hover { border-color: rgba(200,90,90,0.65); color: #e07070; }
+.p15-btn-dismiss {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; background: none;
+  border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);
+  padding: 9px 20px; border-radius: 999px; cursor: pointer; transition: border-color .2s, color .2s;
+}
+.p15-btn-dismiss:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.p15-btn-confirm {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; background: var(--green); color: #000;
+  border: none; padding: 9px 20px; border-radius: 999px; cursor: pointer;
+  font-weight: 600; transition: opacity .2s;
+}
+.p15-btn-confirm:hover { opacity: 0.82; }
+
+/* Slot section (reschedule modal) */
+.p15-slot-group { margin-bottom: 14px; }
+.p15-slot-label {
+  font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 8px; display: block;
+}
+.p15-slot-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.p15-slot-chip {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.06em;
+  padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.09);
+  color: var(--grey2); cursor: pointer; transition: all .15s; user-select: none;
+  background: none;
+}
+.p15-slot-chip:hover { border-color: rgba(58,122,92,0.38); color: rgba(100,195,145,0.8); }
+.p15-slot-chip.selected { background: rgba(58,122,92,0.15); border-color: rgba(58,122,92,0.45); color: var(--green); }
+
+/* Appointment action buttons (consumer card) */
+.appt-action-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.appt-action-btn {
+  font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; background: none; padding: 5px 13px; border-radius: 999px;
+  cursor: pointer; transition: border-color .2s, color .2s;
+}
+.appt-action-btn.cancel-btn {
+  border: 1px solid rgba(185,55,55,0.28); color: rgba(200,90,90,0.7);
+}
+.appt-action-btn.cancel-btn:hover { border-color: rgba(200,90,90,0.55); color: #e07070; }
+.appt-action-btn.reschedule-btn {
+  border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.55);
+}
+.appt-action-btn.reschedule-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.appt-action-btn.book-again-btn {
+  border: 1px solid rgba(58,122,92,0.3); color: var(--green);
+}
+.appt-action-btn.book-again-btn:hover { border-color: rgba(58,122,92,0.55); }
+
+/* No-show badge */
+.appt-badge.noshow {
+  background: rgba(200,155,45,0.1); border: 1px solid rgba(200,155,45,0.22);
+  color: rgba(220,180,75,0.85);
+}
+
+/* Clinician row action buttons */
+.cl-appt-action-btn {
+  font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.1em;
+  text-transform: uppercase; background: none; padding: 4px 10px; border-radius: 999px;
+  cursor: pointer; transition: border-color .2s, color .2s; flex-shrink: 0;
+}
+.cl-appt-action-btn.cancel-cl {
+  border: 1px solid rgba(185,55,55,0.25); color: rgba(200,90,90,0.65);
+}
+.cl-appt-action-btn.cancel-cl:hover { border-color: rgba(200,90,90,0.5); color: #e07070; }
+.cl-appt-action-btn.noshow-cl {
+  border: 1px solid rgba(200,155,45,0.22); color: rgba(220,180,75,0.75);
+}
+.cl-appt-action-btn.noshow-cl:hover { border-color: rgba(220,180,75,0.45); color: rgba(240,200,90,0.9); }
+
+/* Toast */
+#p15-toast {
+  position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(12px);
+  background: var(--card2); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px; padding: 10px 20px;
+  font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.85); white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+  z-index: 700;
+}
+#p15-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media(min-width:769px) {
+  #p15-toast { bottom: 32px; }
+}
 </style>
 </head>
 <body>
@@ -1519,6 +1666,75 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       </div>
 
     </main>
+  </div>
+</div>
+
+<!-- PHASE 15: TOAST -->
+<div id="p15-toast"></div>
+
+<!-- PHASE 15: CONSUMER CANCEL MODAL -->
+<div class="p15-overlay" id="p15-cancel-overlay" onclick="if(event.target===this)_closeP15Modal('p15-cancel-overlay')">
+  <div class="p15-modal">
+    <div class="p15-modal-title">Cancel appointment</div>
+    <div class="p15-modal-sub">Please let us know the reason for cancelling. We'll notify your care team.</div>
+    <label class="p15-label">Reason</label>
+    <select class="p15-select" id="p15-cancel-reason">
+      <option value="">Select a reason</option>
+      <option value="Schedule conflict">Schedule conflict</option>
+      <option value="Feeling better">Feeling better</option>
+      <option value="Cost concerns">Cost concerns</option>
+      <option value="Other">Other</option>
+    </select>
+    <label class="p15-label">Notes (optional)</label>
+    <textarea class="p15-textarea" id="p15-cancel-notes" placeholder="Any additional details…"></textarea>
+    <div class="p15-footer">
+      <button class="p15-btn-dismiss" onclick="_closeP15Modal('p15-cancel-overlay')">Back</button>
+      <button class="p15-btn-cancel-action" onclick="_confirmConsumerCancel()">Cancel Appointment</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 15: CONSUMER RESCHEDULE MODAL -->
+<div class="p15-overlay" id="p15-reschedule-overlay" onclick="if(event.target===this)_closeP15Modal('p15-reschedule-overlay')">
+  <div class="p15-modal">
+    <div class="p15-modal-title" id="p15-reschedule-title">Reschedule appointment</div>
+    <div class="p15-modal-sub">Pick a new date and preferred time slot.</div>
+    <label class="p15-label">Date</label>
+    <input type="date" class="p15-date-input" id="p15-reschedule-date" style="color-scheme:dark;"/>
+    <div class="p15-slot-group">
+      <span class="p15-slot-label">Time slot</span>
+      <div class="p15-slot-row">
+        <button class="p15-slot-chip" data-slot="Morning (9am–12pm)"  onclick="_selectRescheduleSlot(this)">Morning (9am–12pm)</button>
+        <button class="p15-slot-chip" data-slot="Afternoon (12pm–5pm)" onclick="_selectRescheduleSlot(this)">Afternoon (12pm–5pm)</button>
+        <button class="p15-slot-chip" data-slot="Evening (5pm–7pm)"   onclick="_selectRescheduleSlot(this)">Evening (5pm–7pm)</button>
+      </div>
+    </div>
+    <div class="p15-footer">
+      <button class="p15-btn-dismiss" onclick="_closeP15Modal('p15-reschedule-overlay')">Back</button>
+      <button class="p15-btn-confirm" onclick="_confirmReschedule()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 15: CLINICIAN CANCEL MODAL -->
+<div class="p15-overlay" id="p15-cl-cancel-overlay" onclick="if(event.target===this)_closeP15Modal('p15-cl-cancel-overlay')">
+  <div class="p15-modal">
+    <div class="p15-modal-title">Cancel appointment</div>
+    <div class="p15-modal-sub">The patient will be notified of the cancellation.</div>
+    <label class="p15-label">Reason</label>
+    <select class="p15-select" id="p15-cl-cancel-reason">
+      <option value="">Select a reason</option>
+      <option value="Schedule conflict">Schedule conflict</option>
+      <option value="Feeling better">Feeling better</option>
+      <option value="Cost concerns">Cost concerns</option>
+      <option value="Other">Other</option>
+    </select>
+    <label class="p15-label">Notes (optional)</label>
+    <textarea class="p15-textarea" id="p15-cl-cancel-notes" placeholder="Any additional details…"></textarea>
+    <div class="p15-footer">
+      <button class="p15-btn-dismiss" onclick="_closeP15Modal('p15-cl-cancel-overlay')">Back</button>
+      <button class="p15-btn-cancel-action" onclick="_confirmClCancel()">Cancel Appointment</button>
+    </div>
   </div>
 </div>
 
@@ -3123,24 +3339,31 @@ function buildApptDetail(a, role) {
   var name    = role === 'clinician' ? (a.patient || '—') : (a.clinician || 'Dr. Sarah Chen');
   var timeStr = (a.date ? a.date + ', ' : '') + a.time + (a.dur ? ' · ' + a.dur : '');
   var bodyHtml, actionsHtml;
-  var safeId  = escapeAttr(a._id || '');
+  var safeId  = escapeAttr(a._id || a.id || '');
 
   if (role === 'clinician') {
     var notesVal = escapeHtml(a.notes || '');
     bodyHtml = '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes..."' +
       (safeId ? ' onblur="_saveApptNotes(\'' + safeId + '\')"' : '') + '>' + notesVal + '</textarea>';
-    var canConfirm = (a._rawStatus || a.status) === 'pending';
-    var canCancel  = (a._rawStatus || a.status) !== 'cancelled' &&
-                    (a._rawStatus || a.status) !== 'cancelled_by_member' &&
-                    (a._rawStatus || a.status) !== 'cancelled_by_clinician';
+    var rawSt      = a._rawStatus || a.status;
+    var canConfirm = rawSt === 'pending';
+    var canCancel  = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' &&
+                     rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
+    var canNoShow  = rawSt === 'confirmed' || rawSt === 'pending';
     actionsHtml =
       (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
-      (canCancel  ? '<button class="adp-btn" style="border-color:rgba(185,55,55,0.3);color:rgba(200,90,90,0.7);" onclick="_updateApptStatus(\'' + safeId + '\',\'cancelled_by_clinician\')">Cancel</button>' : '');
+      (canCancel  ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '') +
+      (canNoShow  ? '<button class="cl-appt-action-btn noshow-cl" onclick="_markNoShow(\'' + safeId + '\')">No-Show</button>' : '');
   } else {
     bodyHtml = '<div class="adp-prep">Arrive a few minutes early. Bring any prior lab work or medical history relevant to your protocol.</div>';
+    var rawSt2   = a._rawStatus || a.status;
+    var isActiveAppt = rawSt2 !== 'cancelled' && rawSt2 !== 'cancelled_by_member' &&
+                       rawSt2 !== 'cancelled_by_clinician' && rawSt2 !== 'completed';
+    var safeType2 = escapeAttr(a.type || 'Appointment');
     actionsHtml =
-      '<button class="adp-btn">Reschedule</button>' +
-      '<button class="adp-btn">Cancel</button>';
+      (isActiveAppt ? '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType2 + '\',false)">Reschedule</button>' : '') +
+      (isActiveAppt ? '<button class="adp-btn" style="border-color:rgba(185,55,55,0.28);color:rgba(200,90,90,0.7);" onclick="_openCancelModal(\'' + safeId + '\')">Cancel</button>' : '') +
+      (!isActiveAppt ? '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType2 + '\',true)">Book Again</button>' : '');
   }
 
   return '<div class="adp-header">' +
@@ -3167,7 +3390,7 @@ function _updateApptStatus(apptId, newStatus) {
   if (!apptId) return;
   if (PREVIEW_MODE) {
     // Update in mock array
-    var idx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return a._id === apptId; }) : -1;
+    var idx = ALL_APPTS.findIndex ? ALL_APPTS.findIndex(function(a){ return (a._id || a.id) === apptId; }) : -1;
     if (idx !== -1) { ALL_APPTS[idx]._rawStatus = newStatus; ALL_APPTS[idx].status = newStatus.replace('_by_member','').replace('_by_clinician',''); }
     _clApptRows = null;
     document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
@@ -3672,13 +3895,8 @@ function _renderConsumerApptList(appts) {
   var list    = document.getElementById('consumerApptList');
   if (!section || !list) return;
 
-  // Filter out cancelled
-  var visible = appts.filter(function(a) {
-    var st = a._rawStatus || a.status;
-    return st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician' && st !== 'cancelled';
-  });
-
-  if (visible.length === 0) {
+  // Show all appointments (upcoming + past/cancelled)
+  if (appts.length === 0) {
     section.style.display = 'block';
     list.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">No appointments yet.</div>' +
       '<div class="inline-empty-sub">Book your first session below.</div></div>';
@@ -3686,20 +3904,48 @@ function _renderConsumerApptList(appts) {
   }
   section.style.display = 'block';
   list.innerHTML = '';
-  visible.forEach(function(a) {
-    var statusClass = a.status === 'confirmed' ? 'confirmed' : (a.status === 'pending' ? 'pending' : 'cancelled');
-    var statusLabel = a.status === 'confirmed' ? 'Confirmed' : (a.status === 'pending' ? 'Pending' : a.status);
-    var canCancel   = (a._rawStatus || a.status) === 'pending';
+  appts.forEach(function(a) {
+    var rawSt = a._rawStatus || a.status;
+    var isCancelled = rawSt === 'cancelled_by_member' || rawSt === 'cancelled_by_clinician' || rawSt === 'cancelled';
+    var isPast      = !isCancelled && rawSt === 'completed';
+    var isUpcoming  = !isCancelled && !isPast;
+
+    var statusClass, statusLabel;
+    if (isCancelled) { statusClass = 'cancelled'; statusLabel = 'Cancelled'; }
+    else if (isPast) { statusClass = 'completed'; statusLabel = 'Completed'; }
+    else if (rawSt === 'confirmed') { statusClass = 'confirmed'; statusLabel = 'Confirmed'; }
+    else { statusClass = 'pending'; statusLabel = 'Pending'; }
+
+    var safeId   = escapeAttr(a.id || '');
+    var safeType = escapeAttr(a.type || 'Appointment');
+
+    // Build action buttons
+    var actionsHtml = '';
+    if (isUpcoming && a.id) {
+      actionsHtml =
+        '<div class="appt-action-row">' +
+          '<button class="appt-action-btn reschedule-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
+          '<button class="appt-action-btn cancel-btn"     onclick="_openCancelModal(\'' + safeId + '\')">Cancel</button>' +
+        '</div>';
+    } else if ((isCancelled || isPast) && a.id) {
+      actionsHtml =
+        '<div class="appt-action-row">' +
+          '<button class="appt-action-btn book-again-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',true)">Book Again</button>' +
+        '</div>';
+    }
+
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
-      '<div class="consumer-appt-row" style="cursor:default;">' +
-        '<div class="patient-initials" style="flex-shrink:0;background:rgba(100,150,255,0.1);border-color:rgba(100,150,255,0.2);color:rgba(150,185,255,0.75);">SC</div>' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
-          '<div class="consumer-appt-meta">' + escapeHtml(a.date) + ' · ' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
+      '<div class="consumer-appt-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:0;">' +
+        '<div style="display:flex;align-items:center;width:100%;gap:12px;">' +
+          '<div class="patient-initials" style="flex-shrink:0;background:rgba(100,150,255,0.1);border-color:rgba(100,150,255,0.2);color:rgba(150,185,255,0.75);">SC</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
+            '<div class="consumer-appt-meta">' + escapeHtml(a.date) + ' · ' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
+          '</div>' +
+          '<span class="appt-badge ' + statusClass + '">' + statusLabel + '</span>' +
         '</div>' +
-        '<span class="appt-badge ' + statusClass + '" style="margin-right:' + (canCancel ? '8px' : '0') + ';">' + statusLabel + '</span>' +
-        (canCancel && a.id ? '<button class="adp-btn" style="padding:4px 10px;font-size:8px;border-color:rgba(185,55,55,0.3);color:rgba(200,90,90,0.7);" onclick="_cancelConsumerAppt(\'' + escapeAttr(a.id) + '\',this)">Cancel</button>' : '') +
+        actionsHtml +
       '</div>';
     list.appendChild(wrapper);
   });
@@ -5635,6 +5881,302 @@ function _insertNotification(userId, type, body, link) {
   if (!userId || PREVIEW_MODE) return;
   db.from('notifications').insert({ user_id: userId, type: type, body: body, link: link || null })
     .catch(function() {});
+}
+
+// ── Phase 15: Appointment Cancellation & Reschedule ─────────────────────────
+
+// Internal state for the modals
+var _p15CancelApptId   = null; // appt id being cancelled (consumer)
+var _p15ReschedApptId  = null; // appt id being rescheduled
+var _p15ReschedType    = '';   // appointment type (for "Book Again" pre-fill)
+var _p15ReschedSlot    = '';   // selected time slot label
+var _p15ClCancelApptId = null; // appt id being cancelled (clinician)
+
+// ── Toast ──
+var _p15ToastTimer = null;
+function showToast(msg) {
+  var el = document.getElementById('p15-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_p15ToastTimer);
+  _p15ToastTimer = setTimeout(function() { el.classList.remove('show'); }, 4000);
+}
+
+// ── Modal helpers ──
+function _openP15Modal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add('open');
+}
+function _closeP15Modal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+}
+
+// ── Date helpers for reschedule ──
+function _p15FormatDateLabel(dateStr) {
+  var d = new Date(dateStr + 'T12:00:00');
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+}
+
+function _p15SetupDatePicker(inputId) {
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  // Min = tomorrow, Max = today + 30 days (no weekends enforced via JS change handler)
+  var today = new Date();
+  var minDate = new Date(today); minDate.setDate(today.getDate() + 1);
+  var maxDate = new Date(today); maxDate.setDate(today.getDate() + 30);
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function toISO(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+  inp.min   = toISO(minDate);
+  inp.max   = toISO(maxDate);
+  inp.value = '';
+  inp.onchange = function() {
+    // Block weekends
+    if (!inp.value) return;
+    var d = new Date(inp.value + 'T12:00:00');
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      inp.value = '';
+      showToast('Please select a weekday (Mon–Fri).');
+    }
+  };
+}
+
+// ── Slot chip selection ──
+function _selectRescheduleSlot(chipEl) {
+  chipEl.closest('.p15-slot-row').querySelectorAll('.p15-slot-chip').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  chipEl.classList.add('selected');
+  _p15ReschedSlot = chipEl.getAttribute('data-slot');
+}
+
+// ─────────────────────────────────────────────────────
+// CONSUMER CANCEL FLOW
+// ─────────────────────────────────────────────────────
+function _openCancelModal(apptId) {
+  _p15CancelApptId = apptId;
+  var reasonEl = document.getElementById('p15-cancel-reason');
+  var notesEl  = document.getElementById('p15-cancel-notes');
+  if (reasonEl) reasonEl.value = '';
+  if (notesEl)  notesEl.value  = '';
+  _openP15Modal('p15-cancel-overlay');
+}
+
+function _confirmConsumerCancel() {
+  var reasonEl = document.getElementById('p15-cancel-reason');
+  var reason = reasonEl ? reasonEl.value : '';
+  if (!reason) { showToast('Please select a cancellation reason.'); return; }
+
+  _closeP15Modal('p15-cancel-overlay');
+
+  // Update in-memory state
+  if (PREVIEW_MODE || !currentUserId) {
+    consumerAppts = consumerAppts.map(function(a) {
+      if (a.id === _p15CancelApptId) {
+        return Object.assign({}, a, { status:'cancelled', _rawStatus:'cancelled_by_member' });
+      }
+      return a;
+    });
+    _renderConsumerApptList(consumerAppts);
+    showToast("Appointment cancelled. We've notified your care team.");
+    return;
+  }
+  db.from('appointments')
+    .update({ status:'cancelled_by_member', updated_at: new Date().toISOString() })
+    .eq('id', _p15CancelApptId)
+    .eq('consumer_id', currentUserId)
+    .then(function(res) {
+      if (res && res.error) { console.warn('[Pulse] p15 cancel error:', res.error.message); return; }
+      _loadAndRenderConsumerAppts();
+      showToast("Appointment cancelled. We've notified your care team.");
+    })
+    .catch(function(err) { console.warn('[Pulse] p15 cancel failed:', err && err.message); });
+}
+
+// ─────────────────────────────────────────────────────
+// CONSUMER RESCHEDULE FLOW
+// ─────────────────────────────────────────────────────
+function _openRescheduleModal(apptId, apptType, isBookAgain) {
+  _p15ReschedApptId = apptId;
+  _p15ReschedType   = apptType || 'Appointment';
+  _p15ReschedSlot   = '';
+
+  // Reset UI
+  document.getElementById('p15-reschedule-title').textContent =
+    isBookAgain ? 'Book again — ' + _p15ReschedType : 'Reschedule appointment';
+  document.querySelectorAll('#p15-reschedule-overlay .p15-slot-chip').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  _p15SetupDatePicker('p15-reschedule-date');
+  _openP15Modal('p15-reschedule-overlay');
+}
+
+function _confirmReschedule() {
+  var dateVal = document.getElementById('p15-reschedule-date').value;
+  if (!dateVal) { showToast('Please select a date.'); return; }
+  if (!_p15ReschedSlot) { showToast('Please select a time slot.'); return; }
+
+  var dateLabel = _p15FormatDateLabel(dateVal);
+  var newInfo   = dateLabel + ' · ' + _p15ReschedSlot;
+  _closeP15Modal('p15-reschedule-overlay');
+
+  if (PREVIEW_MODE || !currentUserId) {
+    consumerAppts = consumerAppts.map(function(a) {
+      if (a.id === _p15ReschedApptId) {
+        return Object.assign({}, a, {
+          date: dateLabel, time: _p15ReschedSlot,
+          status: 'pending', _rawStatus: 'pending'
+        });
+      }
+      return a;
+    });
+    // If it was a "Book Again" it might not exist yet — add it
+    var found = consumerAppts.some(function(a){ return a.id === _p15ReschedApptId; });
+    if (!found) {
+      consumerAppts.unshift({
+        id: 'ca' + Date.now(), clinician:'Dr. Sarah Chen',
+        type: _p15ReschedType, date: dateLabel, time: _p15ReschedSlot,
+        dur: '30 min', status:'pending', _rawStatus:'pending'
+      });
+    }
+    _renderConsumerApptList(consumerAppts);
+    showToast('Appointment rescheduled. Confirmation sent to your email.');
+    return;
+  }
+
+  // For a real rescheduled appointment: cancel old and create new pending one
+  var updates = [];
+  if (_p15ReschedApptId) {
+    updates.push(
+      db.from('appointments')
+        .update({ status:'cancelled_by_member', updated_at: new Date().toISOString() })
+        .eq('id', _p15ReschedApptId)
+        .eq('consumer_id', currentUserId)
+    );
+  }
+  Promise.all(updates).then(function() {
+    // Parse scheduled_at from date + slot approximation
+    var d = new Date(dateVal + 'T12:00:00');
+    var slotHour = 9; // default to morning
+    if (_p15ReschedSlot.indexOf('Afternoon') !== -1) slotHour = 12;
+    else if (_p15ReschedSlot.indexOf('Evening') !== -1) slotHour = 17;
+    d.setHours(slotHour, 0, 0, 0);
+    return db.from('appointments').insert({
+      consumer_id: currentUserId,
+      clinician_id: CLINICIAN_ID,
+      scheduled_at: d.toISOString(),
+      duration_minutes: 30,
+      status: 'pending'
+    });
+  }).then(function() {
+    _loadAndRenderConsumerAppts();
+    showToast('Appointment rescheduled. Confirmation sent to your email.');
+  }).catch(function(err) {
+    console.warn('[Pulse] p15 reschedule failed:', err && err.message);
+    showToast('Something went wrong. Please try again.');
+  });
+}
+
+// ─────────────────────────────────────────────────────
+// CLINICIAN CANCEL FLOW
+// ─────────────────────────────────────────────────────
+function _openClCancelModal(apptId) {
+  _p15ClCancelApptId = apptId;
+  var reasonEl = document.getElementById('p15-cl-cancel-reason');
+  var notesEl  = document.getElementById('p15-cl-cancel-notes');
+  if (reasonEl) reasonEl.value = '';
+  if (notesEl)  notesEl.value  = '';
+  _openP15Modal('p15-cl-cancel-overlay');
+}
+
+function _confirmClCancel() {
+  var reasonEl = document.getElementById('p15-cl-cancel-reason');
+  var notesEl  = document.getElementById('p15-cl-cancel-notes');
+  var reason = reasonEl ? reasonEl.value : '';
+  var notes  = notesEl  ? notesEl.value.trim() : '';
+  if (!reason) { showToast('Please select a cancellation reason.'); return; }
+
+  _closeP15Modal('p15-cl-cancel-overlay');
+
+  // Notify patient (console.log as per spec)
+  var apptRow = null;
+  if (_clApptRows) {
+    for (var i = 0; i < _clApptRows.length; i++) {
+      if (_clApptRows[i]._id === _p15ClCancelApptId) { apptRow = _clApptRows[i]; break; }
+    }
+  }
+  if (!apptRow) {
+    // Fall back to ALL_APPTS in preview mode
+    for (var j = 0; j < ALL_APPTS.length; j++) {
+      if ((ALL_APPTS[j]._id || ALL_APPTS[j].id) === _p15ClCancelApptId) { apptRow = ALL_APPTS[j]; break; }
+    }
+  }
+  var patientName = apptRow ? (apptRow.patient || '—') : '—';
+  console.log('[Pulse] Appointment cancelled by clinician — Patient:', patientName,
+    '| Reason:', reason, '| Notes:', notes || '(none)');
+
+  if (PREVIEW_MODE || !currentUserId) {
+    ALL_APPTS = ALL_APPTS.map(function(a) {
+      if ((a._id || a.id) === _p15ClCancelApptId) {
+        return Object.assign({}, a, { status:'cancelled', _rawStatus:'cancelled_by_clinician' });
+      }
+      return a;
+    });
+    _clApptRows = null;
+    document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
+    filterClAppts(_clApptFilter);
+    showToast('Appointment cancelled. Patient has been notified.');
+    return;
+  }
+
+  _updateApptStatus(_p15ClCancelApptId, 'cancelled_by_clinician');
+  showToast('Appointment cancelled. Patient has been notified.');
+}
+
+// ─────────────────────────────────────────────────────
+// CLINICIAN NO-SHOW
+// ─────────────────────────────────────────────────────
+function _markNoShow(apptId) {
+  var apptRow = null;
+  if (_clApptRows) {
+    for (var i = 0; i < _clApptRows.length; i++) {
+      if (_clApptRows[i]._id === apptId) { apptRow = _clApptRows[i]; break; }
+    }
+  }
+  if (!apptRow) {
+    for (var j = 0; j < ALL_APPTS.length; j++) {
+      if ((ALL_APPTS[j]._id || ALL_APPTS[j].id) === apptId) { apptRow = ALL_APPTS[j]; break; }
+    }
+  }
+  var patientName = apptRow ? (apptRow.patient || '—') : '—';
+  console.log('[Pulse] No-show marked — Patient:', patientName);
+
+  if (PREVIEW_MODE || !currentUserId) {
+    ALL_APPTS = ALL_APPTS.map(function(a) {
+      if ((a._id || a.id) === apptId) {
+        return Object.assign({}, a, { status:'noshow', _rawStatus:'noshow' });
+      }
+      return a;
+    });
+    _clApptRows = null;
+    document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
+    filterClAppts(_clApptFilter);
+    showToast('No-show marked for ' + patientName + '.');
+    return;
+  }
+  db.from('appointments')
+    .update({ status:'noshow', updated_at: new Date().toISOString() })
+    .eq('id', apptId)
+    .then(function() {
+      _clApptRows = null;
+      document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
+      filterClAppts(_clApptFilter);
+      showToast('No-show marked for ' + patientName + '.');
+    })
+    .catch(function(err) { console.warn('[Pulse] noshow update failed:', err && err.message); });
 }
 
 // ── Phase 13C: visualViewport keyboard listener — scroll msg bubbles to bottom ──

@@ -541,6 +541,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .res-steps-list li:last-child { border-bottom:none; }
 .res-steps-list li::before { content:counter(step-counter); font-family:'DM Mono',monospace; font-size:10px; font-weight:600; color:var(--green); background:rgba(58,122,92,0.1); border:1px solid rgba(58,122,92,0.22); border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 
+/* ── RESOURCES TAB (Phase 25) ── */
+.res-section-lbl { font-family:'DM Mono',monospace; font-size:8px; letter-spacing:0.28em; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
+.res-proto-name { font-size:18px; font-weight:600; color:#fff; margin-bottom:8px; }
+.res-proto-desc { font-size:13px; color:var(--grey); line-height:1.75; margin-bottom:20px; }
+.res-btn-disabled { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.16em; text-transform:uppercase; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.28); border:1px solid rgba(255,255,255,0.08); padding:11px 24px; border-radius:999px; cursor:not-allowed; display:inline-block; position:relative; }
+.res-btn-disabled[title]:hover::after { content:attr(title); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1e1e1e; border:1px solid rgba(255,255,255,0.1); color:var(--grey2); font-size:10px; letter-spacing:0.05em; padding:5px 10px; border-radius:6px; white-space:nowrap; pointer-events:none; }
+.res-diagram-placeholder { margin-top:14px; border:1px dashed rgba(255,255,255,0.08); border-radius:10px; padding:28px; text-align:center; font-size:12px; color:var(--grey2); font-family:'DM Mono',monospace; letter-spacing:0.1em; }
+.res-links-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.res-link-card { background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; text-decoration:none; display:flex; align-items:flex-start; gap:12px; transition:border-color .2s,background .2s; }
+.res-link-card:hover { border-color:rgba(255,255,255,0.12); background:rgba(255,255,255,0.035); }
+.res-link-icon { width:32px; height:32px; border-radius:8px; background:rgba(58,122,92,0.08); border:1px solid rgba(58,122,92,0.18); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.res-link-icon svg { width:14px; height:14px; stroke:var(--green); fill:none; stroke-width:1.5; }
+.res-link-text { min-width:0; }
+.res-link-title { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
+.res-link-desc { font-size:11px; color:var(--grey2); line-height:1.55; }
+@media(max-width:600px) { .res-links-grid { grid-template-columns:1fr; } }
+
 /* ── NOTIFICATION BELL (Phase 11) ── */
 .notif-bell { position:relative; background:none; border:none; cursor:pointer; padding:6px 8px; color:rgba(255,255,255,0.5); font-size:16px; transition:color .15s; }
 .notif-bell:hover { color:#fff; }
@@ -1335,43 +1352,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Resource cards: shown when protocol is assigned -->
-        <div id="resourcesContent">
-        <div class="resource-grid">
-          <div class="resource-card-item">
-            <div class="rc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-            <div class="rc-title">Injection Guide</div>
-            <div class="rc-body">Step-by-step instructions for subcutaneous injections. Covers site rotation, needle selection, and sterile preparation techniques.</div>
-          </div>
-          <div class="resource-card-item">
-            <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
-            <div class="rc-title">Storage Instructions</div>
-            <div class="rc-body">Refrigeration requirements, shelf life by compound, and how to store your kit safely during travel or extended periods.</div>
-          </div>
-          <div class="resource-card-item">
-            <div class="rc-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-            <div class="rc-title">What to Expect</div>
-            <div class="rc-body">Week-by-week expectations for your first 12 weeks. Early indicators, adaptation windows, and when to expect the clearest changes.</div>
-          </div>
-          <div class="resource-card-item">
-            <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-            <div class="rc-title">Protocol FAQ</div>
-            <div class="rc-body">Common questions about your compounds, timing, cycling, and what to do if you miss a dose. Reviewed by your clinical team.</div>
-          </div>
-        </div>
-
-        <!-- Support / adjustment request -->
-        <div class="support-request-card">
-          <div class="support-request-title">Request a protocol adjustment.</div>
-          <div class="support-request-sub">If you're experiencing side effects, want to discuss dosing, or have questions about your protocol, send a message to your clinical team. We typically respond within 24 hours.</div>
-          <textarea class="support-textarea" id="supportMsg" placeholder="Describe what you'd like to discuss or adjust..."></textarea>
-          <div class="support-footer">
-            <div class="support-sent-msg" id="supportSentMsg">Message sent. We'll follow up within 24 hours.</div>
-            <div style="flex:1;"></div>
-            <button class="btn-green" onclick="submitSupportRequest()">Send Message</button>
-          </div>
-        </div>
-        </div><!-- end resourcesContent -->
+        <!-- Resource cards: shown when protocol is assigned (populated by initResourcesTab) -->
+        <div id="resourcesContent"></div><!-- end resourcesContent -->
       </div>
 
       <!-- ── CONSUMER SETTINGS TAB ── -->

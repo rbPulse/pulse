@@ -968,6 +968,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-id-info">
           <div class="sidebar-id-name" id="sidebarName">Loading…</div>
           <div class="sidebar-id-role" id="sidebarRolePill">Member</div>
+          <div class="sidebar-streak-row" id="sidebarStreakRow" style="display:none;margin-top:4px;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:0.08em;">
+            <span id="sidebarStreakNum">0</span><span> day streak</span>
+          </div>
         </div>
       </div>
 
@@ -2641,7 +2644,7 @@ function initPortal(user) {
       last_seen:    new Date().toISOString()
     };
     db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
-      .select('display_name, subscription_status, notify_messages')
+      .select('display_name, subscription_status, notify_messages, current_streak')
       .then(function(pr) {
         if (!pr.error && pr.data && pr.data.length > 0) {
           var row = pr.data[0];
@@ -2659,6 +2662,8 @@ function initPortal(user) {
           _memberNotifyMessages = (row.notify_messages !== false);
           var nmEl = document.getElementById('consumerNotifyMessages');
           if (nmEl) nmEl.checked = _memberNotifyMessages;
+          // Phase 20: show stored streak instantly before dose_logs finish loading
+          if (row.current_streak != null) { _syncStreakToOverview(row.current_streak); }
         }
       })
       .catch(function() { /* non-fatal; keep initial name */ });
@@ -5514,6 +5519,7 @@ function switchTab(name) {
     clearInterval(_consumerMsgPollTimer); _consumerMsgPollTimer = null;
   }
   if (name === 'tracker')          { loadDoseLogs(); }
+  if (name === 'overview')         { _showStoredStreak(); }
   if (name === 'appointments')     { initConsumerBooking(); }
   if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
   if (name === 'resources')        { initResourcesTab(); }
@@ -5533,6 +5539,9 @@ function switchTab(name) {
 
 // ── TRACKER ──
 var loggedDates = [];
+// _doseDates: module-level alias for loggedDates (Phase 20)
+// Kept in sync — both references point to the same array contents via loggedDates
+var _doseDates = loggedDates;
 
 function localDateStr(d) {
   return d.getFullYear() + '-' +
@@ -5707,7 +5716,32 @@ function calcStreak(dates) {
   return streak;
 }
 
-// ── _syncStreakToOverview: update the Overview tab Day Streak stat card ──
+// ── _calcStreak: Phase 20 named entry-point — delegates to calcStreak ──
+function _calcStreak(doseDates) { return calcStreak(doseDates); }
+
+// ── _showStoredStreak: Phase 20 — read profiles.current_streak for instant Overview display ──
+function _showStoredStreak() {
+  if (!currentUserId || PREVIEW_MODE) return;
+  try {
+    db.from('profiles')
+      .select('current_streak')
+      .eq('user_id', currentUserId)
+      .limit(1)
+      .then(function(res) {
+        if (res && !res.error && res.data && res.data.length > 0) {
+          var stored = res.data[0].current_streak;
+          if (stored != null) { _syncStreakToOverview(stored); }
+        }
+      })
+      .catch(function(err) {
+        console.warn('[Pulse] _showStoredStreak fetch failed:', err && err.message);
+      });
+  } catch(err) {
+    console.warn('[Pulse] _showStoredStreak error:', err && err.message);
+  }
+}
+
+// ── _syncStreakToOverview: update the Overview tab Day Streak stat card + sidebar ──
 function _syncStreakToOverview(streak) {
   var valEl = document.getElementById('statStreak');
   var subEl = document.getElementById('ovStreakSub');
@@ -5716,6 +5750,11 @@ function _syncStreakToOverview(streak) {
   // Legacy tile
   var legEl = document.getElementById('_statStreak2');
   if (legEl) legEl.textContent = streak;
+  // Phase 20: sidebar streak display in the member identity block
+  var sbNumEl = document.getElementById('sidebarStreakNum');
+  var sbRowEl = document.getElementById('sidebarStreakRow');
+  if (sbNumEl) sbNumEl.textContent = streak;
+  if (sbRowEl) sbRowEl.style.display = (streak > 0) ? '' : 'none';
 }
 
 // ── _saveStreakToProfile: upsert current_streak into profiles table ──

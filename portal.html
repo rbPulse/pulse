@@ -5540,7 +5540,7 @@ function localDateStr(d) {
     String(d.getDate()).padStart(2,'0');
 }
 
-function loadDoseLogs() {
+async function loadDoseLogs() {
   if (!currentUserId) return;
   if (PREVIEW_MODE) {
     var fakeDates = [];
@@ -5555,31 +5555,32 @@ function loadDoseLogs() {
     _syncStreakToOverview(calcStreak(loggedDates));
     return;
   }
-  var today = new Date(); today.setHours(0,0,0,0);
-  // Query last 90 days of dose logs
-  var start = new Date(today); start.setDate(start.getDate() - 90);
-  db.from('dose_logs')
-    .select('dose_date')
-    .eq('user_id', currentUserId)
-    .gte('dose_date', localDateStr(start))
-    .order('dose_date', { ascending: false })
-    .then(function(res) {
-      loggedDates = (res.data || []).map(function(r) {
-        // dose_date may come back as 'YYYY-MM-DD' or a full ISO string
-        return String(r.dose_date).slice(0, 10);
-      });
-      renderCalendar();
-      checkTodayLogged();
-      var streak = calcStreak(loggedDates);
-      _syncStreakToOverview(streak);
-      _saveStreakToProfile(streak);
-    })
-    .catch(function(err) {
-      console.warn('[Pulse] dose_logs unavailable, using local state:', err && err.message);
-      // Graceful fallback: keep whatever loggedDates already holds (or empty)
-      renderCalendar();
-      checkTodayLogged();
+  // Query last 90 days of dose logs (dose_date >= 90 days ago as YYYY-MM-DD string)
+  var ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  var startStr = ninetyDaysAgo.toISOString().slice(0, 10);
+  try {
+    var res = await db.from('dose_logs')
+      .select('dose_date')
+      .eq('user_id', currentUserId)
+      .gte('dose_date', startStr)
+      .order('dose_date', { ascending: false });
+    if (res && res.error) throw res.error;
+    loggedDates = (res.data || []).map(function(r) {
+      // dose_date may come back as 'YYYY-MM-DD' or a full ISO string
+      return String(r.dose_date).slice(0, 10);
     });
+    renderCalendar();
+    checkTodayLogged();
+    var streak = calcStreak(loggedDates);
+    _syncStreakToOverview(streak);
+    _saveStreakToProfile(streak);
+  } catch (err) {
+    console.error('[Pulse] dose_logs unavailable, using local state:', err && err.message);
+    // Graceful fallback: keep whatever loggedDates already holds (or empty)
+    renderCalendar();
+    checkTodayLogged();
+  }
 }
 
 function renderCalendar() {
@@ -5668,12 +5669,20 @@ function renderCalendar() {
 }
 
 function checkTodayLogged() {
-  var todayStr = localDateStr(new Date());
+  var todayStr = new Date().toISOString().slice(0, 10);
   if (loggedDates.indexOf(todayStr) !== -1) {
-    var btn = document.getElementById('logDoseBtn');
-    var msg = document.getElementById('loggedMsg');
-    if (btn) btn.style.display = 'none';
-    if (msg) msg.style.display = 'block';
+    _setAlreadyLoggedState();
+  }
+}
+
+// ── _setAlreadyLoggedState: disable the log button and show already-logged label ──
+function _setAlreadyLoggedState() {
+  var btn = document.getElementById('logDoseBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Already logged today \u2713';
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'default';
   }
 }
 
@@ -5725,15 +5734,13 @@ function _saveStreakToProfile(streak) {
   });
 }
 
-function logDose() {
-  var todayStr = localDateStr(new Date());
+async function logDose() {
+  /* Supabase: table dose_logs already defined in schema comments; unique(user_id, dose_date) handles duplicates */
+  var today = new Date().toISOString().slice(0, 10);
 
-  // Already logged today — show inline message, do not insert
-  if (loggedDates.indexOf(todayStr) !== -1) {
-    var alreadyMsg = document.getElementById('loggedMsg');
-    if (alreadyMsg) alreadyMsg.style.display = 'block';
-    var alreadyBtn = document.getElementById('logDoseBtn');
-    if (alreadyBtn) alreadyBtn.style.display = 'none';
+  // Already logged today — apply already-logged state, do not insert
+  if (loggedDates.indexOf(today) !== -1) {
+    _setAlreadyLoggedState();
     return;
   }
 
@@ -5741,11 +5748,9 @@ function logDose() {
   if (btn) { btn.disabled = true; btn.textContent = 'Logging...'; }
 
   function onSuccess() {
-    loggedDates.push(todayStr);
+    loggedDates.push(today);
     renderCalendar(); // optimistic re-render
-    if (btn) btn.style.display = 'none';
-    var msg = document.getElementById('loggedMsg');
-    if (msg) msg.style.display = 'block';
+    _setAlreadyLoggedState();
     // Sync streak to Overview
     var streak = calcStreak(loggedDates);
     _syncStreakToOverview(streak);
@@ -5760,25 +5765,24 @@ function logDose() {
 
   // Use upsert with onConflict to avoid duplicate-key errors
   // (requires unique(user_id, dose_date) constraint — see SQL comment above)
-  db.from('dose_logs').upsert({
-    user_id:    currentUserId,
-    dose_date:  todayStr,
-    logged_at:  new Date().toISOString(),
-    protocol:   window._userProto || 'unknown'
-  }, { onConflict: 'user_id,dose_date' })
-    .then(function(res) {
-      if (res && res.error) {
-        console.warn('[Pulse] dose log upsert error:', res.error.message);
-        if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; }
-        return;
-      }
-      onSuccess();
-    })
-    .catch(function(err) {
-      console.warn('[Pulse] dose log upsert failed, keeping local state:', err && err.message);
-      // Graceful fallback: optimistically record locally
-      onSuccess();
-    });
+  try {
+    var res = await db.from('dose_logs').upsert({
+      user_id:   currentUserId,
+      protocol:  window._userProto || null,
+      dose_date: today,
+      logged_at: new Date().toISOString()
+    }, { onConflict: 'user_id,dose_date' });
+    if (res && res.error) {
+      console.error('[Pulse] dose log upsert error:', res.error.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; btn.style.opacity = ''; btn.style.cursor = ''; }
+      return;
+    }
+    onSuccess();
+  } catch (err) {
+    console.error('[Pulse] dose log upsert failed, keeping local state:', err && err.message);
+    // Graceful fallback: optimistically record locally
+    onSuccess();
+  }
 }
 
 // ── CONSUMER SETTINGS SAVE ──

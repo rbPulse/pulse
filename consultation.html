@@ -1227,16 +1227,16 @@ async function _loadBookingAvailability() {
     });
     if (clIds.length === 0) return;
 
-    // Fetch clinician profiles to get their state
+    // Fetch clinician profiles for state matching
+    // Note: RLS may block member from reading clinician profiles directly.
+    // We use the availability table as the source of truth for eligible clinicians.
     var prRes = await client.from('profiles').select('user_id, display_name, cl_state').in('user_id', clIds);
-    // Fetch clinician metadata (state) — we need user_metadata which is in auth, but we stored cl_state in user_metadata.
-    // Since we can't query auth from client, we check if profiles have state info,
-    // or we load availability and trust that any clinician with availability is eligible.
-    // For state matching: we'll fetch the auth user metadata for each clinician
-    // Actually — we can't access other users' metadata from the anon client.
-    // Solution: check the availability table — and also query the profiles table.
-    // We stored cl_state in user_metadata, but we need to also store it in profiles for queryability.
-    // For now: if _memberState is set, we attempt matching; otherwise show all.
+    var prData = (prRes.data && prRes.data.length > 0) ? prRes.data : [];
+
+    // If RLS blocked the profiles query, build clinicians from availability IDs only
+    if (prData.length === 0) {
+      prData = clIds.map(function(id) { return { user_id: id, display_name: null, cl_state: null }; });
+    }
 
     // Build availability map
     avRes.data.forEach(function(r) {
@@ -1250,8 +1250,8 @@ async function _loadBookingAvailability() {
 
     // Build eligible clinicians — filter by member's state if known
     var _allClinicians = clIds.map(function(id) {
-      var p = (prRes.data || []).find(function(pr) { return pr.user_id === id; });
-      return { id: id, display_name: p ? p.display_name : id.slice(0,8), cl_state: p ? (p.cl_state || '').toUpperCase() : '' };
+      var p = prData.find(function(pr) { return pr.user_id === id; });
+      return { id: id, display_name: p ? p.display_name : null, cl_state: p ? (p.cl_state || '').toUpperCase() : '' };
     });
     if (_memberState) {
       var ms = _memberState.toUpperCase().trim();
@@ -1350,6 +1350,11 @@ function _generateRealSlots(day) {
 
 // Auto-assign clinician: round-robin among eligible clinicians available at the chosen slot
 function _autoAssignClinician(slotDateTime) {
+  // Re-read member state from form in case it was filled after page load
+  if (!_memberState) {
+    var stEl = document.getElementById('state');
+    if (stEl && stEl.value) _memberState = stEl.value.trim().toUpperCase();
+  }
   var dow = slotDateTime.getDay();
   var candidates = [];
 
@@ -1371,9 +1376,11 @@ function _autoAssignClinician(slotDateTime) {
     candidates.push({ id: cl.id, count: _clinicianApptCounts[cl.id] || 0 });
   });
 
+  console.log('[Pulse] auto-assign: eligible=' + _eligibleClinicians.length + ', candidates=' + candidates.length + ', memberState=' + _memberState);
   if (candidates.length === 0) return null;
   // Sort by fewest appointments (ties broken by ID for determinism)
   candidates.sort(function(a, b) { return a.count - b.count || a.id.localeCompare(b.id); });
+  console.log('[Pulse] auto-assigned clinician:', candidates[0].id);
   return candidates[0].id;
 }
 

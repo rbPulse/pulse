@@ -4538,7 +4538,9 @@ function toggleApptDetail(appt, role, rowWrapper) {
   _openDetailRow = rowWrapper;
 
   // For clinician: show full patient detail panel (same as Patients tab)
-  if (role === 'clinician' && appt.consumerId) {
+  var _cid = appt.consumerId || appt.consumer_id;
+  if (role === 'clinician' && _cid) {
+    appt.consumerId = _cid;
     var panel = document.createElement('div');
     panel.className = 'patient-detail-panel';
     panel.innerHTML = '<div style="padding:20px;text-align:center;"><div class="skeleton-pulse" style="height:14px;width:50%;margin:0 auto 10px;"></div><div class="skeleton-pulse" style="height:10px;width:70%;margin:0 auto;"></div></div>';

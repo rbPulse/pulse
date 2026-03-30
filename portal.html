@@ -3309,6 +3309,7 @@ function initPortal(user) {
       user_id:      user.id,
       email:        user.email,
       display_name: consumerName,
+      role:         'member',
       last_seen:    new Date().toISOString()
     };
     db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
@@ -3526,6 +3527,7 @@ async function submitClSetup() {
         user_id:      currentUserId,
         email:        currentUserEmail,
         display_name: 'Dr. ' + firstName,
+        role:         'clinician',
         cl_state:     null,
         updated_at:   new Date().toISOString()
       }, { onConflict: 'user_id' }).then(function(pr) {
@@ -3557,6 +3559,7 @@ function initClinicianPortal(user, role, greeting) {
       user_id:      currentUserId,
       email:        currentUserEmail,
       display_name: 'Dr. ' + clName.split(' ')[0],
+      role:         'clinician',
       updated_at:   new Date().toISOString()
     }, { onConflict: 'user_id' }).then(function(pr) {
       if (pr.error) console.warn('[Pulse] clinician profile upsert failed:', pr.error.message);
@@ -3825,6 +3828,7 @@ async function saveClinicianSettings() {
         user_id:         currentUserId,
         email:           currentUserEmail,
         display_name:    'Dr. ' + firstName,
+        role:            'clinician',
         notify_messages: _clinicianNotifyMessages,
         cl_state:        state.trim().toUpperCase() || null,
         updated_at:      new Date().toISOString()

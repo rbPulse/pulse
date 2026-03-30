@@ -954,6 +954,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 </div><!-- end main -->
 
 <script>
+function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
 var currentStep = 1;
 var selectedGoals = [];
 
@@ -1266,7 +1268,7 @@ function buildSlots(day){
   slots.forEach(function(s){
     var btn = document.createElement('div');
     btn.className = 'slot-btn' + (s.b ? ' booked' : '');
-    btn.innerHTML = '<div class="slot-time">'+s.t+'</div><div class="slot-tz">EST</div>'+(s.b?'<div class="slot-avail" style="color:var(--grey2)">Unavailable</div>':'<div class="slot-avail">Available</div>');
+    btn.innerHTML = '<div class="slot-time">'+escapeHtml(s.t)+'</div><div class="slot-tz">EST</div>'+(s.b?'<div class="slot-avail" style="color:var(--grey2)">Unavailable</div>':'<div class="slot-avail">Available</div>');
     if(!s.b){
       btn.addEventListener('click', function(){
         document.querySelectorAll('.slot-btn').forEach(function(b){b.classList.remove('selected');});
@@ -1569,7 +1571,7 @@ function appendChat(side, name, text){
   var box = document.getElementById('chatMessages');
   var msg = document.createElement('div');
   msg.className = 'chat-msg chat-msg--'+(side==='me'?'me':'them');
-  msg.innerHTML = '<div class="chat-sender">'+name+'</div><div class="chat-bubble">'+text+'</div>';
+  msg.innerHTML = '<div class="chat-sender">'+escapeHtml(name)+'</div><div class="chat-bubble">'+escapeHtml(text)+'</div>';
   box.appendChild(msg);
   box.scrollTop = box.scrollHeight;
 }

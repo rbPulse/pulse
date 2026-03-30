@@ -3143,13 +3143,13 @@ function initClinicianPortal(user, role, greeting) {
   // Recent activity
   var actEl = document.getElementById('clRecentActivity');
   actEl.innerHTML = m.recentActivity.map(function(a) {
-    return '<div class="activity-row"><span class="activity-text"><strong>' + a.patient + '</strong> ' + a.action + '</span><span class="activity-time-text">' + a.time + '</span></div>';
+    return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(a.patient) + '</strong> ' + escapeHtml(a.action) + '</span><span class="activity-time-text">' + escapeHtml(a.time) + '</span></div>';
   }).join('');
 
   // Availability (sidebar summary)
   var avEl = document.getElementById('clAvailability');
   avEl.innerHTML = m.schedule.map(function(s) {
-    return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + s.day.slice(0,3) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + s.slots + '</span></div>';
+    return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + escapeHtml(s.day.slice(0,3)) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + escapeHtml(s.slots) + '</span></div>';
   }).join('');
 
   // Schedule tab
@@ -3470,7 +3470,7 @@ function renderAvailEditor() {
         '<input type="checkbox"' + (s.on ? ' checked' : '') + ' onchange="AVAIL_STATE[' + i + '].on=this.checked;_upsertAvailDay(' + dowIdx + ',this.checked);renderAvailEditor()"/>' +
         '<span class="toggle-track"></span>' +
       '</label>' +
-      '<span class="avail-day-label">' + s.day + '</span>' +
+      '<span class="avail-day-label">' + escapeHtml(s.day) + '</span>' +
       timeHtml +
       '</div>';
   }).join('');
@@ -3485,8 +3485,8 @@ function renderBlockedList() {
   }
   el.innerHTML = BLOCKED_TIMES.map(function(b, i) {
     return '<div class="block-row">' +
-      '<span class="block-label-text">' + b.label + '</span>' +
-      '<span class="block-meta">' + b.day + ' · ' + b.start + '–' + b.end + '</span>' +
+      '<span class="block-label-text">' + escapeHtml(b.label) + '</span>' +
+      '<span class="block-meta">' + escapeHtml(b.day) + ' · ' + escapeHtml(b.start) + '–' + escapeHtml(b.end) + '</span>' +
       '<button class="block-remove" onclick="removeBlockedTime(' + i + ')">×</button>' +
       '</div>';
   }).join('');
@@ -5419,7 +5419,7 @@ function _renderClThreadListFromCache() {
     var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
     var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
-      '<div class="msg-avatar-circle">' + t.initials + '</div>' +
+      '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
       '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
       '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
       '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
@@ -5446,10 +5446,10 @@ function _renderClThreadListMock() {
     var unreadClass = t.unread > 0 ? ' has-unread' : '';
     var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.id) + '\')">' +
-      '<div class="msg-avatar-circle">' + t.initials + '</div>' +
-      '<div class="msg-content"><div class="msg-sender-name">' + t.patient + '</div>' +
-      '<div class="msg-preview-line">' + t.preview + '</div></div>' +
-      '<div class="msg-right"><span class="msg-time-label">' + t.time + '</span>' + pip + '</div>' +
+      '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
+      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patient) + '</div>' +
+      '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
+      '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(t.time) + '</span>' + pip + '</div>' +
       '</div>';
   }).join('');
 }
@@ -5597,7 +5597,7 @@ function renderClBubbles(thread) {
     var side = m.from === 'clinician' ? 'from-me' : 'from-them';
     return '<div class="msg-bubble-row ' + side + '">' +
       '<div class="msg-bubble">' + escapeHtml(m.text || m.body || '') + '</div>' +
-      '<div class="msg-bubble-time">' + (m.time || '') + '</div>' +
+      '<div class="msg-bubble-time">' + escapeHtml(m.time || '') + '</div>' +
       '</div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
@@ -5838,8 +5838,8 @@ function renderConsumerThread() {
   el.innerHTML = CONSUMER_THREAD.messages.map(function(m) {
     var side = m.from === 'me' ? 'from-me' : 'from-them';
     return '<div class="msg-bubble-row ' + side + '">' +
-      '<div class="msg-bubble">' + m.text + '</div>' +
-      '<div class="msg-bubble-time">' + m.time + '</div>' +
+      '<div class="msg-bubble">' + escapeHtml(m.text || '') + '</div>' +
+      '<div class="msg-bubble-time">' + escapeHtml(m.time || '') + '</div>' +
       '</div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
@@ -6373,8 +6373,8 @@ async function doSignOut() {
 function showInlineEmpty(containerId, title, subtitle) {
   var el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + title + '</div>' +
-    (subtitle ? '<div class="inline-empty-sub">' + subtitle + '</div>' : '') + '</div>';
+  el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(title) + '</div>' +
+    (subtitle ? '<div class="inline-empty-sub">' + escapeHtml(subtitle) + '</div>' : '') + '</div>';
 }
 
 // ── Phase 9C helper: show an inline error with a retry button ──

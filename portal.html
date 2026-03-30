@@ -2024,6 +2024,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <input class="settings-input" id="clLastName" type="text" placeholder="Last name" inputmode="text" autocomplete="family-name"/>
               </div>
             </div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Email</label>
+              <input class="settings-input" id="clEmail" type="email" readonly style="opacity:0.5;cursor:not-allowed;"/>
+            </div>
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Credentials</label>
@@ -3697,6 +3701,8 @@ function initClinicianPortal(user, role, greeting) {
   var sEl = document.getElementById('clSpecialty');
   if (fEl) fEl.value = savedName[0] || '';
   if (lEl) lEl.value = savedName.slice(1).join(' ') || '';
+  var emEl = document.getElementById('clEmail');
+  if (emEl) emEl.value = currentUserEmail || '';
   if (cEl) cEl.value = meta.cl_credentials || m.title;
   if (sEl) sEl.value = meta.cl_specialty   || m.specialty;
   // Ensure bio, timezone, duration are populated (applyClProfile may not have
@@ -3817,6 +3823,7 @@ async function saveClinicianSettings() {
     if (currentUserId) {
       db.from('profiles').upsert({
         user_id:         currentUserId,
+        email:           currentUserEmail,
         display_name:    'Dr. ' + firstName,
         notify_messages: _clinicianNotifyMessages,
         cl_state:        state.trim().toUpperCase() || null,

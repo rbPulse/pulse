@@ -4607,11 +4607,10 @@ function _renderApptPatientDetail(patient, appt, panel) {
   var canCancel = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
   var safeType = escapeAttr(appt.type || 'Appointment');
 
-  // Join Session: enabled 5 min before appointment
-  var _apptTime = appt.scheduledAt ? appt.scheduledAt.getTime() : 0;
-  var _canJoin = _apptTime && (Date.now() >= _apptTime - 5 * 60 * 1000) && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician';
-  var joinBtnHtml = (rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician')
-    ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" ' + (_canJoin ? '' : 'disabled style="opacity:0.4;cursor:not-allowed;border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" ') + 'onclick="_joinClinicianSession(\'' + safeId + '\')">Join Session</button>'
+  // Join Session: always enabled unless cancelled
+  var _canJoin = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician';
+  var joinBtnHtml = _canJoin
+    ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" onclick="_joinClinicianSession(\'' + safeId + '\')">Join Session</button>'
     : '';
 
   var actionsHtml = joinBtnHtml +

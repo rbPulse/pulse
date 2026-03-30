@@ -699,20 +699,16 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><polyline points="12 6 12 12 16 14"/></svg>
       </div>
       <h1 class="waiting-headline">Your session starts soon</h1>
-      <p class="waiting-sub">Dr. Elguizaoui is preparing for your consultation. Your session room opens automatically when your clinician is ready.</p>
-
-      <div class="countdown-ring">
-        <svg width="140" height="140" viewBox="0 0 140 140">
-          <circle class="countdown-ring-bg" cx="70" cy="70" r="60"/>
-          <circle class="countdown-ring-fill" id="countRingFill" cx="70" cy="70" r="60"
-            stroke-dasharray="377" stroke-dashoffset="0"/>
-        </svg>
-        <div class="countdown-time">
-          <div class="countdown-digits" id="countDigits">--:--</div>
-          <div class="countdown-unit" id="countUnit">until session</div>
-        </div>
+      <div class="waiting-sub" id="waitingApptInfo" style="text-align:center;line-height:2;">
+        <span id="waitApptDate" style="display:block;"></span>
+        <span id="waitApptTime" style="display:block;"></span>
+        <span id="waitApptClinician" style="display:block;"></span>
       </div>
-      <div id="apptDateTime" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;color:var(--grey2);text-align:center;margin-top:4px;margin-bottom:24px;"></div>
+
+      <div id="countdownWrap" style="text-align:center;margin:28px auto;">
+        <div class="countdown-digits" id="countDigits" style="font-family:'DM Mono',monospace;font-size:32px;font-weight:500;color:#fff;">--d --h --m</div>
+        <div class="countdown-unit" id="countUnit" style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-top:6px;">until session</div>
+      </div>
 
       <div class="waiting-checklist">
         <div class="waiting-checklist-title">Pre-session checklist</div>
@@ -1525,39 +1521,35 @@ function formatApptDisplay(ts) {
 }
 
 function runCountdownTick() {
-  var ring   = document.getElementById('countRingFill');
   var digits = document.getElementById('countDigits');
   var unit   = document.getElementById('countUnit');
   var joinBtn = document.getElementById('joinSessionBtn');
   var joinHint = document.getElementById('joinHint');
 
-  var now = Date.now();
-  var secsUntil = Math.max(0, Math.round((apptTimestamp - now) / 1000));
-  var WINDOW = 15 * 60; // 15 minutes in seconds
-
-  if (secsUntil > WINDOW) {
-    // More than 15 min away — show waiting state, no active countdown
-    digits.textContent = '--:--';
-    unit.textContent = 'session not yet open';
-    ring.style.strokeDasharray = CIRCUMFERENCE;
-    ring.style.strokeDashoffset = CIRCUMFERENCE; // empty ring
+  if (!apptTimestamp || isNaN(apptTimestamp)) {
+    digits.textContent = '--d --h --m';
+    unit.textContent = 'appointment time pending';
     return;
   }
 
-  // Within 15-min window — count down
-  var m = Math.floor(secsUntil / 60);
-  var s = secsUntil % 60;
-  digits.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-  unit.textContent = 'until session';
-  var progress = 1 - secsUntil / WINDOW;
-  ring.style.strokeDasharray = CIRCUMFERENCE;
-  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+  var now = Date.now();
+  var secsUntil = Math.max(0, Math.round((apptTimestamp - now) / 1000));
+
+  var days = Math.floor(secsUntil / 86400);
+  var hrs  = Math.floor((secsUntil % 86400) / 3600);
+  var mins = Math.floor((secsUntil % 3600) / 60);
+
+  if (secsUntil > 0) {
+    digits.textContent = days + 'd ' + hrs + 'h ' + mins + 'm';
+    unit.textContent = 'until session';
+  }
 
   if (secsUntil <= 0) {
     clearInterval(countdownInterval);
-    digits.textContent = '00:00';
+    digits.textContent = '0d 0h 0m';
+    unit.textContent = 'session is ready';
     joinBtn.classList.add('ready');
-    joinHint.textContent = 'Dr. Elguizaoui is ready';
+    joinHint.textContent = 'Your clinician is ready';
     gsap.to(joinBtn, {scale:1.03, repeat:-1, yoyo:true, duration:1.2, ease:'sine.inOut'});
   }
 }
@@ -1580,15 +1572,26 @@ showStep = function(n){
     document.getElementById('joinHint').textContent = 'Opens when your clinician is ready';
 
     // Build appointment timestamp from selected date + slot
-    var apptEl = document.getElementById('apptDateTime');
+    var dateEl = document.getElementById('waitApptDate');
+    var timeEl = document.getElementById('waitApptTime');
+    var clinEl = document.getElementById('waitApptClinician');
     if (typeof selectedDate !== 'undefined' && selectedDate && typeof selectedSlot !== 'undefined' && selectedSlot) {
-      // selectedDate: "YYYY-MM-DD", selectedSlot: "H:MM AM/PM" or similar
-      var combined = new Date(selectedDate + 'T' + to24h(selectedSlot));
-      apptTimestamp = combined.getTime();
-      if (apptEl) apptEl.textContent = formatApptDisplay(apptTimestamp);
+      // selectedDate is a Date object; selectedSlot is "H:MM AM/PM"
+      var apptDate = new Date(selectedDate);
+      var tp = to24h(selectedSlot).split(':');
+      apptDate.setHours(parseInt(tp[0]), parseInt(tp[1]), 0, 0);
+      apptTimestamp = apptDate.getTime();
+
+      var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      if (dateEl) dateEl.textContent = DAYS[apptDate.getDay()] + ', ' + MONS[apptDate.getMonth()] + ' ' + apptDate.getDate();
+      if (timeEl) timeEl.textContent = selectedSlot;
+      if (clinEl) clinEl.textContent = 'Your Pulse clinician will be assigned';
     } else {
-      apptTimestamp = Date.now() + 15 * 60 * 1000; // fallback: 15 min from now
-      if (apptEl) apptEl.textContent = '';
+      apptTimestamp = Date.now() + 24 * 60 * 60 * 1000; // fallback
+      if (dateEl) dateEl.textContent = '';
+      if (timeEl) timeEl.textContent = '';
+      if (clinEl) clinEl.textContent = '';
     }
     startCountdown();
   }

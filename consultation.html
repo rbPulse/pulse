@@ -1969,8 +1969,60 @@ window._sbClient = createClient(
     if (!session) return; // not logged in — let them fill out the form normally
 
     // If they already have a consultation, send them to the portal
-    var res = await window._sbClient.from('consultations').select('id').eq('user_id', session.user.id).limit(1);
+    var res = await window._sbClient.from('consultations').select('id, data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     if (res.data && res.data.length > 0) {
+      // Check for a pending/confirmed upcoming appointment
+      var apptRes = await window._sbClient.from('appointments')
+        .select('id, scheduled_at, duration_minutes, status, clinician_id')
+        .eq('consumer_id', session.user.id)
+        .gte('scheduled_at', new Date().toISOString())
+        .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+        .order('scheduled_at', { ascending: true })
+        .limit(1);
+
+      if (apptRes.data && apptRes.data.length > 0) {
+        var appt = apptRes.data[0];
+        var apptDt = new Date(appt.scheduled_at);
+        var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var h = apptDt.getHours(), m = apptDt.getMinutes();
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        var timeStr = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+
+        // Set globals so countdown works
+        selectedDate = apptDt;
+        selectedSlot = timeStr;
+        apptTimestamp = apptDt.getTime();
+
+        // Populate waiting page info
+        var dateEl = document.getElementById('waitApptDate');
+        var timeEl = document.getElementById('waitApptTime');
+        var clinEl = document.getElementById('waitApptClinician');
+        if (dateEl) dateEl.textContent = DAYS[apptDt.getDay()] + ', ' + MONS[apptDt.getMonth()] + ' ' + apptDt.getDate();
+        if (timeEl) timeEl.textContent = timeStr;
+
+        // Try to get clinician name
+        if (appt.clinician_id) {
+          var clRes = await window._sbClient.from('profiles').select('display_name').eq('user_id', appt.clinician_id).limit(1);
+          if (clRes.data && clRes.data.length > 0 && clRes.data[0].display_name) {
+            if (clinEl) clinEl.textContent = clRes.data[0].display_name;
+          } else {
+            if (clinEl) clinEl.textContent = 'Your Pulse clinician';
+          }
+        } else {
+          if (clinEl) clinEl.textContent = 'Clinician will be assigned';
+        }
+
+        // Show step 4 (waiting) directly — hide step 1 immediately, show step 4
+        var step1 = document.getElementById('step-1');
+        if (step1) step1.style.display = 'none';
+        showStep(4);
+        startCountdown();
+        return;
+      }
+
+      // No pending appointment — go to portal
       window.location.href = 'portal.html';
       return;
     }

@@ -8,6 +8,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script>
+// Early preview-mode guard — runs before any other JS.
+// Prevents any redirect to index.html or consultation.html when ?preview=1.
+(function(){
+  var p = new URLSearchParams(window.location.search).get('preview');
+  window.__PULSE_PREVIEW = (p === '1' || p === 'true' || p === 'pulse2025');
+})();
+</script>
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
@@ -2258,7 +2266,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <script>
 var SUPABASE_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
-var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Guard: if supabase CDN failed to load, create a stub so preview mode still works
+var db;
+if (typeof supabase !== 'undefined' && supabase.createClient) {
+  db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} else {
+  // Stub client for preview mode — all methods return empty promises
+  var _stubFn = function(){ return { then: function(cb){ cb({ data:null, error:{ message:'Supabase not loaded' } }); return { catch: function(){} }; }, catch: function(){} }; };
+  var _stubQuery = function(){ return { select:_stubQuery, eq:_stubQuery, neq:_stubQuery, in:_stubQuery, gte:_stubQuery, lte:_stubQuery, not:_stubQuery, order:_stubQuery, limit:_stubQuery, single:_stubQuery, upsert:_stubQuery, insert:_stubQuery, update:_stubQuery, delete:_stubQuery, then:function(cb){ cb({ data:[], error:null }); return { catch:function(){} }; }, catch:function(){} }; };
+  db = { from: function(){ return _stubQuery(); }, auth: { getSession: _stubFn, signOut: _stubFn, onAuthStateChange: function(){}, resetPasswordForEmail: _stubFn } };
+}
 
 // Replace with real clinician user_id once a clinician account exists in Supabase
 var CLINICIAN_ID = null;
@@ -3199,8 +3216,7 @@ var CONSUMER_THREAD = {
 };
 
 // ── Auth check ──
-var _previewParam = new URLSearchParams(window.location.search).get('preview');
-var PREVIEW_MODE = _previewParam === '1' || _previewParam === 'true' || _previewParam === 'pulse2025';
+var PREVIEW_MODE = window.__PULSE_PREVIEW || false;
 var currentUserId    = null;
 var currentUserEmail = null;
 

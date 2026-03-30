@@ -2013,8 +2013,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="filter-pill"        id="pflt-active"   onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-pending"  onclick="filterPatients('pending',this)">Pending</div>
           <div class="filter-pill"        id="pflt-seen"     onclick="filterPatients('seen',this)">Recently Seen</div>
-          <div class="filter-pill"        id="pflt-followup" onclick="filterPatients('followup',this)">Needs Follow-up</div>
-          <div class="filter-pill"        id="pflt-unread"   onclick="filterPatients('unread',this)">Unread</div>
         </div>
         <div style="padding:8px 0 4px;">
           <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
@@ -5791,7 +5789,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','active','pending','seen','followup','unread'].forEach(function(f) {
+  ['all','active','pending','seen'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -5848,21 +5846,15 @@ function renderPatientList(filter) {
 
   // Apply filter
   var patients = rows;
-  if (filter === 'active')   patients = rows.filter(function(p){ return !!p.protocol; });
-  if (filter === 'pending')  patients = rows.filter(function(p){ return !p.protocol || p.status === 'pending'; });
+  // Active = prescribed (evaluation submitted with prescription=yes)
+  if (filter === 'active')   patients = rows.filter(function(p){ return p.prescriptionGiven === true; });
+  // Pending = no evaluation yet (has appointment but hasn't been evaluated)
+  if (filter === 'pending')  patients = rows.filter(function(p){ return p.prescriptionGiven === null || p.prescriptionGiven === undefined; });
   if (filter === 'seen')     patients = rows.filter(function(p){
     // "recently seen" — joined within last 30 days
     if (!p.memberSince) return false;
     var d = new Date(p.memberSince);
     return (Date.now() - d.getTime()) < 30 * 24 * 60 * 60 * 1000;
-  });
-  if (filter === 'followup') patients = rows.filter(function(p){ return p.status === 'pending' || p.status === 'no_protocol' || !p.protocol; });
-  if (filter === 'unread')   patients = rows.filter(function(p){
-    // PREVIEW_MODE: use mock unread flag
-    if (p._mock) return p._mock.unread > 0;
-    // Real mode: check thread cache for unread consumer messages
-    var thread = _clThreadCache && _clThreadCache[p.id];
-    return thread && thread.unread > 0;
   });
 
   // Apply search filter (case-insensitive, by name or protocol)

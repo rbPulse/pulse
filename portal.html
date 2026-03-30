@@ -2905,7 +2905,7 @@ function initPortal(user) {
         }
         populatePortal(user, c, greeting);
       })
-      .catch(function() { populatePortal(user, null, greeting); });
+      .catch(function(err) { handleSupabaseError(err, 'consultations load'); populatePortal(user, null, greeting); });
     loadDoseLogs();
     _startConsumerUnreadPoll();
     loadNotifications();
@@ -4299,6 +4299,7 @@ function _loadAndRenderConsumerAppts() {
       _renderConsumerApptList(rows);
     })
     .catch(function(err) {
+      handleSupabaseError(err, 'consumer appointments load');
       console.warn('[Pulse] consumer appointments load failed:', err && err.message);
       _renderConsumerApptList(consumerAppts);
     });
@@ -5776,6 +5777,7 @@ function loadConsumerMessages() {
       renderConsumerThreadFromDB(res.data || []);
     })
     .catch(function(err) {
+      handleSupabaseError(err, 'loadConsumerMessages');
       console.warn('[Pulse] messages table unavailable, using mock data:', err && err.message);
       showListError('consumerMsgBubbles', 'loadConsumerMessages');
     });
@@ -6060,6 +6062,7 @@ async function loadDoseLogs() {
     _syncStreakToOverview(streak);
     _saveStreakToProfile(streak);
   } catch (err) {
+    handleSupabaseError(err, 'dose_logs load');
     console.error('[Pulse] dose_logs unavailable, using local state:', err && err.message);
     // Graceful fallback: keep whatever loggedDates already holds (or empty)
     renderCalendar();

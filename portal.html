@@ -4425,51 +4425,48 @@ function filterClAppts(filter, pillEl) {
 }
 
 function _loadClAppts(filter) {
-  // Show skeleton rows while loading
   showSkeleton('clApptList', 'list-rows');
-  _loadClApptsQuery(filter, true);
+  _loadClApptsQuery(filter);
 }
 
-function _loadClApptsQuery(filter, tryJoin) {
-  var selectStr = tryJoin ? '*, profiles!appointments_consumer_id_fkey(display_name)' : '*';
-  var q = db.from('appointments').select(selectStr);
+function _loadClApptsQuery(filter) {
+  var q = db.from('appointments').select('*');
   if (currentUserId) q = q.eq('clinician_id', currentUserId);
   q.order('scheduled_at', { ascending: true })
     .then(function(res) {
       if (res.error) throw res.error;
-      var rows = (res.data || []).map(function(a) {
-        var dt = new Date(a.scheduled_at);
-        var now = new Date();
-        var todayStart = new Date(now); todayStart.setHours(0,0,0,0);
-        var todayEnd   = new Date(now); todayEnd.setHours(23,59,59,999);
-        var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
-        var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-        var isToday  = (dt >= todayStart && dt <= todayEnd);
-        var isFuture = (dt > todayEnd);
-        var isPast   = (dt < todayStart);
-        // Rich label: "Weekday, Mon D" for upcoming/today, or the same for past
-        var weekday   = dt.toLocaleDateString('en-US', {weekday:'long'});
-        var monthDay  = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-        var dateLabel = isToday ? 'Today' : (isFuture && Math.round((dt - todayStart)/86400000) === 1 ? 'Tomorrow' : weekday + ', ' + monthDay);
-        // Time: "9:00am" style (no space, lowercase am/pm)
-        var rawTime = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
-        var timeLabel = rawTime.replace(/\s?(AM|PM)/i, function(m){ return m.trim().toLowerCase(); });
-        // Full formatted string: "Weekday, Mon D · H:MMam/pm"
-        var fullTimeStr = (isToday ? 'Today' : weekday + ', ' + monthDay) + ' · ' + timeLabel;
-        // Map DB status to display status; map 'cancelled_by_*' to 'cancelled'
-        var displayStatus = a.status;
-        if (a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician') displayStatus = 'cancelled';
-        return {
-          _id: a.id,
-          date: dateLabel,
-          time: timeLabel,
-          fullTimeStr: fullTimeStr,
-          scheduledAt: dt,
-          isPast: isPast,
-          isToday: isToday,
-          patient: displayName,
-          initials: initials,
-          type: 'Appointment',
+      var appts = res.data || [];
+      if (appts.length === 0) { _clApptRows = []; _clAppointments = []; _applyClApptFilter([], filter || _clApptFilter); return; }
+      // Fetch display names for all consumer_ids
+      var cIds = appts.map(function(a){ return a.consumer_id; }).filter(Boolean);
+      var uniqueIds = []; var seen = {};
+      cIds.forEach(function(id){ if (!seen[id]){ seen[id]=true; uniqueIds.push(id); }});
+      db.from('profiles').select('user_id, display_name').in('user_id', uniqueIds)
+        .then(function(pr) {
+          var nameMap = {};
+          (pr.data || []).forEach(function(p){ if (p.display_name) nameMap[p.user_id] = p.display_name; });
+          var rows = appts.map(function(a) {
+            var dt = new Date(a.scheduled_at);
+            var now = new Date();
+            var todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+            var todayEnd   = new Date(now); todayEnd.setHours(23,59,59,999);
+            var displayName = nameMap[a.consumer_id] || (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
+            var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+            var isToday  = (dt >= todayStart && dt <= todayEnd);
+            var isFuture = (dt > todayEnd);
+            var isPast   = (dt < todayStart);
+            var weekday   = dt.toLocaleDateString('en-US', {weekday:'long'});
+            var monthDay  = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+            var dateLabel = isToday ? 'Today' : (isFuture && Math.round((dt - todayStart)/86400000) === 1 ? 'Tomorrow' : weekday + ', ' + monthDay);
+            var rawTime = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+            var timeLabel = rawTime.replace(/\s?(AM|PM)/i, function(m){ return m.trim().toLowerCase(); });
+            var fullTimeStr = (isToday ? 'Today' : weekday + ', ' + monthDay) + ' · ' + timeLabel;
+            var displayStatus = a.status;
+            if (a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician') displayStatus = 'cancelled';
+            return {
+              _id: a.id, date: dateLabel, time: timeLabel, fullTimeStr: fullTimeStr,
+              scheduledAt: dt, isPast: isPast, isToday: isToday,
+              patient: displayName, initials: initials, type: 'Appointment',
           dur: (a.duration_minutes || 30) + ' min',
           status: displayStatus,
           _rawStatus: a.status,
@@ -4480,14 +4477,11 @@ function _loadClApptsQuery(filter, tryJoin) {
       _clApptRows = rows;
       _clAppointments = rows.slice(); // keep module-level cache in sync
       _applyClApptFilter(rows, filter || _clApptFilter);
+        })
+        .catch(function(){ _applyClApptFilter(appts.map(function(a){ return { _id:a.id, patient:a.consumer_id?a.consumer_id.slice(0,8).toUpperCase():'—', initials:'??', status:a.status }; }), filter || _clApptFilter); });
     })
     .catch(function(err) {
       console.warn('[Pulse] appointments load failed:', err && err.message);
-      // If the join failed, retry without the profile join
-      if (tryJoin) {
-        _loadClApptsQuery(filter, false);
-        return;
-      }
       showListError('clApptList', '_loadClAppts');
     });
 }
@@ -5624,8 +5618,8 @@ function _normalisePatientRow(consultation, profile) {
     : (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
     || consultation.user_id.slice(0, 8).toUpperCase();
 
-  // Protocol: check top-level field first, then data JSONB
-  var protocolName = consultation.protocol || d.assigned_protocol || d.protocol || null;
+  // Protocol: only show if explicitly assigned by a clinician
+  var protocolName = consultation.protocol_assigned || d.assigned_protocol || null;
 
   // Primary goal: check top-level field first, then data JSONB array
   var goal = consultation.primary_goal

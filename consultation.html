@@ -1924,7 +1924,7 @@ async function saveConsultation() {
       goals: typeof selectedGoals !== 'undefined' ? selectedGoals : [],
       booking_date: typeof selectedDate !== 'undefined' ? selectedDate : null,
       booking_slot: typeof selectedSlot !== 'undefined' ? selectedSlot : null,
-      protocol: (document.getElementById('protoName') || {}).textContent || null,
+      protocol: null, // set by clinician after review, not by intake form
       submitted_at: new Date().toISOString()
     };
     var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: data });

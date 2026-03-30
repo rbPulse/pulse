@@ -3198,7 +3198,8 @@ var CONSUMER_THREAD = {
 };
 
 // ── Auth check ──
-var PREVIEW_MODE = new URLSearchParams(window.location.search).get('preview') === 'pulse2025';
+var _previewParam = new URLSearchParams(window.location.search).get('preview');
+var PREVIEW_MODE = _previewParam === '1' || _previewParam === 'true' || _previewParam === 'pulse2025';
 var currentUserId    = null;
 var currentUserEmail = null;
 db.auth.getSession().then(function(r) {

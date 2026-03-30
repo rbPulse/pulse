@@ -7980,7 +7980,7 @@ function _joinClinicianSession(apptId) {
     if (!r.data || !r.data.session) { _showClSessionError('Not authenticated'); return; }
     fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r.data.session.access_token },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r.data.session.access_token, 'apikey': SUPABASE_KEY },
       body: JSON.stringify({ appointmentId: apptId })
     })
     .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })

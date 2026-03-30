@@ -763,102 +763,119 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
     <!-- Post-call: shown after leaving -->
     <div id="sessionEnded" style="display:none;text-align:center;padding:48px 24px;">
-      <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Session complete</div>
-      <div style="font-size:13px;color:var(--grey);margin-bottom:20px;">Your clinician will finalize your protocol recommendation.</div>
+      <div style="width:48px;height:48px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Your consultation is complete</div>
+      <div style="font-size:13px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto 20px;">Your Pulse medical specialist will complete their evaluation within 24 hours. You'll be notified once your protocol recommendation is ready.</div>
       <button class="btn-primary" onclick="goToStep(6)">View Summary →</button>
     </div>
   </div>
 
-  <!-- STEP 6: POST-CALL SUMMARY -->
+  <!-- STEP 6: SUMMARY — State A (awaiting) / State B (protocol assigned) -->
   <div class="step" id="step-6">
     <div class="step-eyebrow">Step 6 of 6</div>
 
-    <div class="summary-header-card">
-      <div class="summary-check">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <!-- STATE A: Awaiting clinician evaluation -->
+    <div id="step6-awaiting">
+      <div class="summary-header-card">
+        <div class="summary-check" style="border-color:rgba(255,180,50,0.5);">
+          <svg viewBox="0 0 24 24" style="stroke:rgba(255,180,50,0.8);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="summary-title">Awaiting your evaluation</div>
+        <div class="summary-sub">Your consultation is complete. <span id="step6ClinicianName">Your clinician</span> is reviewing your session and will submit your recommended protocol within 24 hours.</div>
+        <div class="summary-clinician-sig" id="step6ReviewedBy">Consultation completed &mdash; <span id="summaryDate"></span></div>
       </div>
-      <div class="summary-title">Consultation complete</div>
-      <div class="summary-sub">Your protocol has been reviewed and finalized by Dr. Elguizaoui. Next steps are outlined below.</div>
-      <div class="summary-clinician-sig">Reviewed by your Pulse clinician &mdash; <span id="summaryDate"></span></div>
-    </div>
 
-    <!-- Protocol box -->
-    <div class="summary-protocol-box">
-      <div class="spb-eyebrow">Recommended protocol</div>
-      <div class="spb-name" id="summProtoName">Recovery + Repair</div>
-      <div class="spb-compounds" id="summProtoCompounds"></div>
-      <div class="spb-detail">Your clinician has recommended this protocol based on your intake information and your stated goals. Compounds will be dispensed from a licensed 503B compounding pharmacy. Your first shipment is expected within 5-7 business days of prescription confirmation.</div>
-      <div class="spb-cta">
-        <a href="index.html#pods" class="btn-primary" style="text-decoration:none;">Activate protocol</a>
-        <button class="btn-secondary" onclick="window.print()">Download summary</button>
+      <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Today</div>
+          <div class="tl-title">Consultation complete</div>
+          <div class="tl-body">Your live session with your Pulse clinician is complete.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Within 24 hours</div>
+          <div class="tl-title">Clinician evaluation</div>
+          <div class="tl-body">Your clinician is reviewing your intake information and session notes to determine the best protocol for your goals.</div>
+          <div class="tl-tag" style="background:rgba(255,180,50,0.08);border-color:rgba(255,180,50,0.2);color:rgba(255,180,50,0.85);">In progress</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot"></div>
+          <div class="tl-label pending">After evaluation</div>
+          <div class="tl-title">Protocol assigned</div>
+          <div class="tl-body">Your clinician will prescribe and assign your personalized protocol. You'll be notified when it's ready.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot"></div>
+          <div class="tl-label pending">Days 2-5</div>
+          <div class="tl-title">Pharmacy preparation & shipment</div>
+          <div class="tl-body">Your compounds will be prepared by a licensed 503B compounding pharmacy and shipped with tracking.</div>
+        </div>
       </div>
-    </div>
 
-    <!-- Timeline -->
-    <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
-    <div class="timeline">
-      <div class="timeline-item">
-        <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-        <div class="tl-label">Today</div>
-        <div class="tl-title">Consultation complete</div>
-        <div class="tl-body">Your clinician has reviewed your intake and issued a protocol recommendation. A summary has been sent to your email.</div>
-        <div class="tl-tag">Done</div>
-      </div>
-      <div class="timeline-item">
-        <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-        <div class="tl-label">Within 24 hours</div>
-        <div class="tl-title">Prescription review</div>
-        <div class="tl-body">Your prescription is transmitted to our licensed 503B compounding pharmacy for review and preparation.</div>
-        <div class="tl-tag">In progress</div>
-      </div>
-      <div class="timeline-item">
-        <div class="tl-dot"></div>
-        <div class="tl-label pending">Days 2-3</div>
-        <div class="tl-title">Pharmacy confirmation</div>
-        <div class="tl-body">You will receive a confirmation once your order has been accepted and compounding has begun.</div>
-      </div>
-      <div class="timeline-item">
-        <div class="tl-dot"></div>
-        <div class="tl-label pending">Days 5-7</div>
-        <div class="tl-title">Shipment dispatched</div>
-        <div class="tl-body">Your protocol ships in cold-chain packaging with tracking. Compounds include usage instructions and dilution guides where applicable.</div>
-      </div>
-      <div class="timeline-item">
-        <div class="tl-dot"></div>
-        <div class="tl-label pending">Day 30</div>
-        <div class="tl-title">Check-in appointment</div>
-        <div class="tl-body">Your first month follow-up with Dr. Elguizaoui to review progress, adjust dosing, and renew your subscription.</div>
+      <div class="step-actions" style="justify-content:center;">
+        <a href="portal.html" class="btn-primary" style="text-decoration:none;">Go to My Portal</a>
       </div>
     </div>
 
-    <!-- Resources -->
-    <div class="step-eyebrow" style="margin-bottom:14px;">Resources</div>
-    <div class="summary-resources">
-      <div class="resource-card">
-        <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-        <div class="rc-title">Protocol guide</div>
-        <div class="rc-body">Detailed usage instructions, dosing schedules, and storage requirements for your compounds.</div>
+    <!-- STATE B: Protocol assigned (shown after clinician submits evaluation) -->
+    <div id="step6-assigned" style="display:none;">
+      <div class="summary-header-card">
+        <div class="summary-check">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="summary-title">Your protocol is ready</div>
+        <div class="summary-sub">Your clinician has completed their evaluation and assigned your personalized protocol.</div>
+        <div class="summary-clinician-sig">Prescribed by <span id="step6AssignedClinicianName">your Pulse clinician</span> &mdash; <span id="step6AssignedDate"></span></div>
       </div>
-      <div class="resource-card">
-        <div class="rc-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.41 7.72 15.65 6.43 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 5.18 3h3.12a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L9.91 9.91a16 16 0 0 0 6.16 6.16l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 24 16.92z"/></svg></div>
-        <div class="rc-title">Clinical support</div>
-        <div class="rc-body">Reach your care team at any time via secure message. Response within 24 hours on business days.</div>
-      </div>
-      <div class="resource-card">
-        <div class="rc-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-        <div class="rc-title">Follow-up booking</div>
-        <div class="rc-body">Your 30-day check-in with Dr. Elguizaoui is scheduled automatically. Reschedule anytime in your dashboard.</div>
-      </div>
-      <div class="resource-card">
-        <div class="rc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-        <div class="rc-title">Safety information</div>
-        <div class="rc-body">Important safety notes, contraindications, and what to watch for during your first cycle.</div>
-      </div>
-    </div>
 
-    <div class="step-actions" style="justify-content:center;">
-      <a href="index.html" class="btn-secondary" style="text-decoration:none;">Return to home</a>
-      <a href="index.html#pods" class="btn-primary" style="text-decoration:none;">Activate protocol</a>
+      <div class="summary-protocol-box">
+        <div class="spb-eyebrow">Your prescribed protocol</div>
+        <div class="spb-name" id="step6ProtoName"></div>
+        <div class="spb-compounds" id="step6ProtoCompounds"></div>
+        <div class="spb-detail" id="step6ProtoNotes">Your clinician has recommended this protocol based on your intake information, session discussion, and stated goals.</div>
+        <div class="spb-cta">
+          <a href="portal.html" class="btn-primary" style="text-decoration:none;">Go to My Portal</a>
+        </div>
+      </div>
+
+      <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Complete</div>
+          <div class="tl-title">Consultation complete</div>
+          <div class="tl-body">Your live session is complete.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Complete</div>
+          <div class="tl-title">Clinician evaluation</div>
+          <div class="tl-body">Your clinician has reviewed your intake and finalized your protocol.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Complete</div>
+          <div class="tl-title">Protocol assigned</div>
+          <div class="tl-body">Your personalized protocol has been prescribed.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">In progress</div>
+          <div class="tl-title">Pharmacy preparation & shipment</div>
+          <div class="tl-body">Your compounds are being prepared by a licensed 503B compounding pharmacy and will ship with tracking.</div>
+          <div class="tl-tag" style="background:rgba(255,180,50,0.08);border-color:rgba(255,180,50,0.2);color:rgba(255,180,50,0.85);">In progress</div>
+        </div>
+      </div>
+
+      <div class="step-actions" style="justify-content:center;">
+        <a href="portal.html" class="btn-primary" style="text-decoration:none;">Go to My Portal</a>
+      </div>
     </div>
 
     <div class="disclaimer-footer">
@@ -1709,16 +1726,6 @@ function revealProtocol(){
   document.getElementById('protoNote').textContent = proto.note;
   gsap.fromTo(reveal,{opacity:0,y:10},{opacity:1,y:0,duration:0.4,ease:'power2.out'});
 
-  // Mirror to summary step
-  document.getElementById('summProtoName').textContent = proto.name;
-  var sComp = document.getElementById('summProtoCompounds');
-  sComp.innerHTML = '';
-  proto.compounds.forEach(function(c){
-    var span = document.createElement('span');
-    span.className = 'spb-compound';
-    span.textContent = c;
-    sComp.appendChild(span);
-  });
 }
 
 function populateSessionChart(){
@@ -1808,20 +1815,76 @@ showStep = function(n){
   }
   if(n === 6){
     _cleanupDaily();
-    populateSummaryDate();
-    var proto = getProtocolForPatient();
-    document.getElementById('summProtoName').textContent = proto.name;
-    var sComp = document.getElementById('summProtoCompounds');
-    if(sComp && !sComp.children.length){
-      proto.compounds.forEach(function(c){
-        var span = document.createElement('span');
-        span.className = 'spb-compound';
-        span.textContent = c;
-        sComp.appendChild(span);
-      });
-    }
+    _populateStep6();
   }
 };
+
+// ── STEP 6: Populate summary with real data ──
+async function _populateStep6() {
+  var dateEl = document.getElementById('summaryDate');
+  if (dateEl) {
+    var d = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    dateEl.textContent = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  }
+
+  try {
+    var client = window._sbClient;
+    if (!client) return;
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) return;
+
+    // Get clinician name from the appointment
+    if (_memberApptId) {
+      var apptRes = await client.from('appointments').select('clinician_id').eq('id', _memberApptId).limit(1);
+      if (apptRes.data && apptRes.data.length > 0 && apptRes.data[0].clinician_id) {
+        var clRes = await client.from('profiles').select('display_name').eq('user_id', apptRes.data[0].clinician_id).limit(1);
+        if (clRes.data && clRes.data.length > 0 && clRes.data[0].display_name) {
+          var clName = clRes.data[0].display_name;
+          var nameEl = document.getElementById('step6ClinicianName');
+          if (nameEl) nameEl.textContent = clName;
+          var nameEl2 = document.getElementById('step6AssignedClinicianName');
+          if (nameEl2) nameEl2.textContent = clName;
+        }
+      }
+    }
+
+    // Check if clinician has assigned a protocol
+    var cRes = await client.from('consultations').select('data, protocol_assigned')
+      .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
+    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
+    var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
+
+    if (assignedProto) {
+      // STATE B: Protocol assigned
+      document.getElementById('step6-awaiting').style.display = 'none';
+      document.getElementById('step6-assigned').style.display = 'block';
+      var protoNameEl = document.getElementById('step6ProtoName');
+      if (protoNameEl) protoNameEl.textContent = assignedProto;
+      var dateEl2 = document.getElementById('step6AssignedDate');
+      if (dateEl2) {
+        var d2 = new Date();
+        dateEl2.textContent = months[d2.getMonth()] + ' ' + d2.getDate() + ', ' + d2.getFullYear();
+      }
+      // Show compounds if available
+      var protoData = PROTOCOL_MAP[assignedProto.toLowerCase()] || null;
+      if (protoData) {
+        var compEl = document.getElementById('step6ProtoCompounds');
+        if (compEl) {
+          compEl.innerHTML = protoData.compounds.map(function(c) {
+            return '<span class="spb-compound">' + escapeHtml(c) + '</span>';
+          }).join('');
+        }
+      }
+    } else {
+      // STATE A: Awaiting evaluation
+      document.getElementById('step6-awaiting').style.display = 'block';
+      document.getElementById('step6-assigned').style.display = 'none';
+    }
+  } catch(e) {
+    console.warn('[Pulse] step6 populate failed:', e);
+  }
+}
 
 // Init calendar on load
 buildCalendar();
@@ -2018,12 +2081,27 @@ window._sbClient = createClient(
     var res = await window._sbClient.from('consultations').select('id, data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var hasConsultation = res.data && res.data.length > 0;
 
-    // Also check for pending appointments (even if consultation query returned empty due to RLS)
+    // Check for completed appointments first — go straight to Step 6
+    var completedRes = await window._sbClient.from('appointments')
+      .select('id, clinician_id')
+      .eq('consumer_id', session.user.id)
+      .eq('status', 'completed')
+      .order('scheduled_at', { ascending: false })
+      .limit(1);
+    if (completedRes.data && completedRes.data.length > 0) {
+      _memberApptId = completedRes.data[0].id;
+      var step1 = document.getElementById('step-1');
+      if (step1) step1.style.display = 'none';
+      showStep(6);
+      _populateStep6();
+      return;
+    }
+
+    // Check for pending/confirmed appointments — show waiting page
     var apptRes = await window._sbClient.from('appointments')
       .select('id, scheduled_at, duration_minutes, status, clinician_id')
       .eq('consumer_id', session.user.id)
-      .gte('scheduled_at', new Date().toISOString())
-      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
       .order('scheduled_at', { ascending: true })
       .limit(1);
     var hasAppointment = apptRes.data && apptRes.data.length > 0;

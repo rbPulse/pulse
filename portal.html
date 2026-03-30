@@ -3515,6 +3515,20 @@ async function submitClSetup() {
       AVAIL_STATE.forEach(function(s) { if (s.day === saved.day) s.on = saved.on; });
     });
 
+    // Upsert clinician profile to profiles table (for booking lookups, patient display, state matching)
+    if (currentUserId) {
+      var fullName = (firstName + (lastName ? ' ' + lastName : '')).trim();
+      await db.from('profiles').upsert({
+        user_id:      currentUserId,
+        email:        currentUserEmail,
+        display_name: 'Dr. ' + firstName,
+        cl_state:     null,
+        updated_at:   new Date().toISOString()
+      }, { onConflict: 'user_id' }).then(function(pr) {
+        if (pr.error) console.warn('[Pulse] clinician profile upsert failed:', pr.error.message);
+      });
+    }
+
     document.getElementById('cl-setup-overlay').classList.remove('active');
     var updatedUser = (r.data && r.data.user) ? r.data.user : window._setupUser;
     applyClProfile(updatedUser.user_metadata || {});
@@ -3531,6 +3545,19 @@ function initClinicianPortal(user, role, greeting) {
   _myPatientIds = null; // reset patient cache
   // Set CLINICIAN_ID so consumer booking and all queries use the real clinician
   if (currentUserId) CLINICIAN_ID = currentUserId;
+  // Ensure clinician has a profile row (may not exist if setup was done before this fix)
+  if (currentUserId && !PREVIEW_MODE) {
+    var meta = user.user_metadata || {};
+    var clName = meta.cl_name || user.email.split('@')[0];
+    db.from('profiles').upsert({
+      user_id:      currentUserId,
+      email:        currentUserEmail,
+      display_name: 'Dr. ' + clName.split(' ')[0],
+      updated_at:   new Date().toISOString()
+    }, { onConflict: 'user_id' }).then(function(pr) {
+      if (pr.error) console.warn('[Pulse] clinician profile upsert failed:', pr.error.message);
+    });
+  }
   // Show clinician sidebar, hide consumer sidebar
   document.getElementById('sidebar-consumer').style.display = 'none';
   document.getElementById('sidebar-clinician').style.display = 'block';

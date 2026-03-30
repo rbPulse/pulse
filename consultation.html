@@ -1573,14 +1573,16 @@ async function _joinDailySession() {
 
     if (!_memberApptId) throw new Error('No appointment found');
 
-    // Call the Edge Function to get room URL + token
+    // Call the Edge Function — pass anon key as Authorization for gateway,
+    // user JWT in the body for the function to verify internally
+    var _anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
     var res = await fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + session.access_token
+        'Authorization': 'Bearer ' + _anonKey
       },
-      body: JSON.stringify({ appointmentId: _memberApptId })
+      body: JSON.stringify({ appointmentId: _memberApptId, userToken: session.access_token })
     });
 
     var data = await res.json();

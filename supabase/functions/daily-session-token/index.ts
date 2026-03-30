@@ -18,27 +18,28 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Authenticate the user via their JWT
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // 1. Parse request body (includes userToken for auth)
+    const body = await req.json();
+    const { appointmentId, userToken } = body;
+
+    // 2. Authenticate: try userToken from body first, then Authorization header
+    const authToken = userToken || (req.headers.get("Authorization") || "").replace("Bearer ", "");
+    if (!authToken) {
+      return new Response(JSON.stringify({ error: "Missing authentication" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // 2. Parse request body
-    const { appointmentId } = await req.json();
     if (!appointmentId) {
       return new Response(JSON.stringify({ error: "Missing appointmentId" }), {
         status: 400,

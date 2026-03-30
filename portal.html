@@ -3562,34 +3562,38 @@ function initClinicianPortal(user, role, greeting) {
     if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
     var _todayStart = new Date(); _todayStart.setHours(0,0,0,0);
     var _todayEnd   = new Date(); _todayEnd.setHours(23,59,59,999);
-    var _ovQ = db.from('appointments')
-      .select('*, profiles!appointments_consumer_id_fkey(display_name)');
-    if (currentUserId) _ovQ = _ovQ.eq('clinician_id', currentUserId);
-    _ovQ.gte('scheduled_at', _todayStart.toISOString())
-      .lte('scheduled_at', _todayEnd.toISOString())
-      .order('scheduled_at', { ascending: true })
-      .then(function(res) {
-        if (res.error) throw res.error;
-        var todayRows = (res.data || []).map(function(a) {
-          var dt = new Date(a.scheduled_at);
-          var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
-          var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-          var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
-          return {
-            _id: a.id, date: 'Today',
-            time: dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}),
-            scheduledAt: dt, patient: displayName, initials: initials,
-            type: 'Appointment', dur: (a.duration_minutes || 30) + ' min',
-            status: displayStatus, _rawStatus: a.status, notes: a.notes || '',
-            consumerId: a.consumer_id
-          };
+    function _loadOverviewAppts(tryJoin) {
+      var selStr = tryJoin ? '*, profiles!appointments_consumer_id_fkey(display_name)' : '*';
+      var _ovQ = db.from('appointments').select(selStr);
+      if (currentUserId) _ovQ = _ovQ.eq('clinician_id', currentUserId);
+      _ovQ.gte('scheduled_at', _todayStart.toISOString())
+        .lte('scheduled_at', _todayEnd.toISOString())
+        .order('scheduled_at', { ascending: true })
+        .then(function(res) {
+          if (res.error) throw res.error;
+          var todayRows = (res.data || []).map(function(a) {
+            var dt = new Date(a.scheduled_at);
+            var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
+            var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+            var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
+            return {
+              _id: a.id, date: 'Today',
+              time: dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}),
+              scheduledAt: dt, patient: displayName, initials: initials,
+              type: 'Appointment', dur: (a.duration_minutes || 30) + ' min',
+              status: displayStatus, _rawStatus: a.status, notes: a.notes || '',
+              consumerId: a.consumer_id
+            };
+          });
+          renderApptList('clTodayAppts', todayRows, 'clinician');
+        })
+        .catch(function(err) {
+          if (tryJoin) { _loadOverviewAppts(false); return; }
+          handleSupabaseError(err, 'cl overview today appts');
+          showInlineEmpty('clTodayAppts', 'No appointments today.', 'Your schedule is clear.', { icon: 'calendar' });
         });
-        renderApptList('clTodayAppts', todayRows, 'clinician');
-      })
-      .catch(function(err) {
-        handleSupabaseError(err, 'cl overview today appts');
-        showInlineEmpty('clTodayAppts', 'Could not load appointments.', 'Refresh the page to try again.', { icon: 'calendar' });
-      });
+    }
+    _loadOverviewAppts(true);
   }
 
   // Recent activity — load from DB when not preview
@@ -4131,8 +4135,12 @@ function filterClAppts(filter, pillEl) {
 function _loadClAppts(filter) {
   // Show skeleton rows while loading
   showSkeleton('clApptList', 'list-rows');
-  var q = db.from('appointments')
-    .select('*, profiles!appointments_consumer_id_fkey(display_name)');
+  _loadClApptsQuery(filter, true);
+}
+
+function _loadClApptsQuery(filter, tryJoin) {
+  var selectStr = tryJoin ? '*, profiles!appointments_consumer_id_fkey(display_name)' : '*';
+  var q = db.from('appointments').select(selectStr);
   if (currentUserId) q = q.eq('clinician_id', currentUserId);
   q.order('scheduled_at', { ascending: true })
     .then(function(res) {
@@ -4183,6 +4191,11 @@ function _loadClAppts(filter) {
     })
     .catch(function(err) {
       console.warn('[Pulse] appointments load failed:', err && err.message);
+      // If the join failed, retry without the profile join
+      if (tryJoin) {
+        _loadClApptsQuery(filter, false);
+        return;
+      }
       showListError('clApptList', '_loadClAppts');
     });
 }

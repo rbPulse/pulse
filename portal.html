@@ -4564,13 +4564,18 @@ function _loadPatientDetailForAppt(appt, panel) {
   var consumerId = appt.consumerId;
   if (!consumerId) { panel.innerHTML = buildApptDetail(appt, 'clinician'); return; }
 
-  Promise.all([
-    db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1),
-    db.from('profiles').select('*').eq('user_id', consumerId).limit(1)
-  ]).then(function(results) {
-    var cRes = results[0], pRes = results[1];
-    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : { user_id: consumerId, data: {} };
-    var profile = (pRes.data && pRes.data.length > 0) ? pRes.data[0] : null;
+  var _consultation = { user_id: consumerId, data: {} };
+  var _profile = null;
+
+  db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1)
+  .then(function(cRes) {
+    if (cRes.data && cRes.data.length > 0) _consultation = cRes.data[0];
+    return db.from('profiles').select('*').eq('user_id', consumerId).limit(1);
+  })
+  .then(function(pRes) {
+    if (pRes.data && pRes.data.length > 0) _profile = pRes.data[0];
+    var consultation = _consultation;
+    var profile = _profile;
     var patient = _normalisePatientRow(consultation, profile);
 
     // Merge appointment-specific data
@@ -4583,7 +4588,8 @@ function _loadPatientDetailForAppt(appt, panel) {
 
     // Build the patient detail panel HTML (same as Patients tab but with appointment actions)
     _renderApptPatientDetail(patient, appt, panel);
-  }).catch(function() {
+  }).catch(function(err) {
+    console.warn('[Pulse] patient detail load failed:', err);
     panel.innerHTML = buildApptDetail(appt, 'clinician');
   });
 }

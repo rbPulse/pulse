@@ -4864,10 +4864,14 @@ function renderApptList(elId, appts, role) {
   el.innerHTML = '';
   appts.forEach(function(a) {
     var wrapper = document.createElement('div');
-    // Use pre-formatted fullTimeStr when available, otherwise compose it
     var timeLabel = a.fullTimeStr || (a.date ? a.date + ' · ' + a.time : a.time);
     var displayName = role === 'consumer' ? (a.clinician || 'Dr. Sarah Chen') : (a.patient || '—');
     var initials = role === 'consumer' ? 'SC' : (a.initials || '?');
+    var rawSt = a._rawStatus || a.status;
+    var canJoinRow = role === 'clinician' && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
+    var joinBtnHtml = canJoinRow
+      ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;font-size:8px;padding:5px 12px;margin-left:8px;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
+      : '';
     wrapper.innerHTML =
       '<div class="appt-row" style="cursor:pointer;">' +
         '<div class="patient-initials" style="flex-shrink:0;">' + escapeHtml(initials) + '</div>' +
@@ -4877,6 +4881,7 @@ function renderApptList(elId, appts, role) {
         '</div>' +
         '<span class="appt-dur-text" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(255,255,255,0.35);white-space:nowrap;flex-shrink:0;">' + escapeHtml(a.dur || '') + '</span>' +
         '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
+        joinBtnHtml +
       '</div>';
     wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,.appt-detail-panel,textarea,button,input,select,a')) return; toggleApptDetail(a, role || 'clinician', wrapper); };
     el.appendChild(wrapper);

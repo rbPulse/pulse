@@ -7288,5 +7288,228 @@ function _markNoShow(apptId) {
   }
 })();
 </script>
+
+<!--
+══════════════════════════════════════════════════════════════════════════════════
+  PHASE 35 — END-TO-END SMOKE TEST CHECKLIST
+  Each item is manually verifiable in the browser.
+  Open portal.html with ?preview=1 for mock-data walkthrough,
+  or test against live Supabase for full auth flow.
+══════════════════════════════════════════════════════════════════════════════════
+
+  ── CONSUMER FLOW ────────────────────────────────────────────────────────────
+
+  [ ] 1. SIGN UP
+      - Go to index.html → click Get Started / Sign Up
+      - Create a new account with email + password
+      - Verify Supabase sends confirmation email (check Supabase dashboard)
+
+  [ ] 2. REDIRECT TO INTAKE
+      - After sign-up, portal.html redirects to consultation.html?new=1
+      - Consultation form loads with all fields visible
+      - No console errors
+
+  [ ] 3. COMPLETE INTAKE
+      - Fill out all required consultation fields
+      - Submit the form → verify success toast / confirmation
+      - Verify row appears in Supabase consultations table with status
+
+  [ ] 4. PORTAL SHOWS PENDING STATE
+      - Navigate to portal.html
+      - Loading spinner appears briefly → portal loads
+      - Overview shows: protocol "—", compounds "—", streak "—"
+      - Action card reads "Start your protocol" with booking CTA
+      - Member card shows "Founding Member" badge
+
+  [ ] 5. CLINICIAN SEES NEW INTAKE
+      - Log in as clinician account
+      - First-time setup overlay appears if cl_setup not set
+      - Complete setup → portal loads
+      - Go to Patients tab → new patient appears in list
+      - Click patient row → detail panel slides open
+      - Patient detail shows: consultation data, "No protocol assigned"
+
+  [ ] 6. CLINICIAN ASSIGNS PROTOCOL
+      - In patient detail, click "Assign Protocol"
+      - Select a protocol (e.g., "Growth") → assign compounds
+      - Verify consultation row updates with protocol + compounds
+      - Verify in-portal notification is inserted for the patient (Phase 27)
+
+  [ ] 7. MEMBER SEES ACTIVE PROTOCOL
+      - Switch back to consumer account
+      - Overview stat cards populate: protocol name, compound count, streak
+      - Protocol tab shows: protocol name, category badge, compounds list
+      - 30/60/90 timeline card is visible
+      - Resources tab populates with protocol-specific content
+
+  [ ] 8. MEMBER LOGS A DOSE
+      - Go to Tracker tab
+      - Click "Log Dose" button
+      - Button changes to "✓ Logged today"
+      - Calendar grid shows today highlighted green
+      - Streak counter increments
+      - Overview "Day Streak" stat updates
+      - Sidebar streak row updates (desktop)
+
+  [ ] 9. STREAK UPDATES
+      - Refresh page → streak value persists (read from profiles.current_streak)
+      - Log dose on consecutive days → streak increments
+      - Skip a day → streak resets to 1 on next log
+      - 28-Day Rate percentage calculates correctly
+
+  [ ] 10. MEMBER BOOKS APPOINTMENT
+      - Go to Appointments tab
+      - Select appointment type from dropdown
+      - Select clinician from dropdown
+      - Available date chips appear for next 14 days
+      - Click a date → time slots appear
+      - Click a time slot → confirmation card appears
+      - Click "Confirm Appointment" → appointment appears in list
+      - Status shows "Pending"
+
+  [ ] 11. CLINICIAN CONFIRMS APPOINTMENT
+      - Log in as clinician → go to Appointments tab
+      - New appointment appears with "Pending" badge
+      - Click appointment row → detail panel opens
+      - Click "Confirm" → badge changes to "Confirmed"
+      - Verify consumer notification inserted (Phase 27)
+      - Verify email sent via Edge Function (Phase 26, check Resend dashboard)
+
+  [ ] 12. BOTH SEE CONFIRMED APPOINTMENT
+      - Consumer: Appointments tab shows "Confirmed" badge
+      - Clinician: Overview "Today's Appointments" shows updated status
+      - Clinician: Appointments tab → "Today" filter shows confirmed
+
+  [ ] 13. MEMBER SENDS A MESSAGE
+      - Consumer: go to Messages tab
+      - Type a message in the compose input
+      - Click "Send" → message appears as green bubble (from-me)
+      - Bubble shows timestamp
+      - Verify message row inserted in Supabase messages table
+
+  [ ] 14. CLINICIAN SEES THREAD WITH REAL NAME
+      - Clinician: go to Messages tab
+      - Thread list shows patient's display name (not UUID)
+      - Unread dot appears on the thread row
+      - Sidebar "Messages" badge shows unread count (Phase 18)
+      - Click thread → conversation view opens
+      - Patient message visible as grey bubble (from-them)
+      - Sender label shows patient's display name
+
+  [ ] 15. CLINICIAN REPLIES
+      - Type a reply in the clinician message compose input
+      - Click "Send" → message appears as green bubble (from-me)
+      - Verify message row inserted in Supabase messages table
+      - Verify consumer notification inserted (Phase 27)
+      - Verify email sent to consumer (Phase 26)
+
+  [ ] 16. MEMBER SEES REPLY
+      - Consumer: Messages tab auto-polls (15s interval)
+      - Clinician reply appears as grey bubble (from-them)
+      - Sender label shows clinician's name
+      - Unread dot clears when Messages tab is active (Phase 18)
+
+  [ ] 17. UNREAD BADGES CLEAR ON VIEW
+      - Consumer: navigate away from Messages → navigate back
+      - Verify unread dot in sidebar disappears after viewing
+      - Clinician: open a thread with unread messages
+      - Verify sidebar badge count decrements
+
+  [ ] 18. MEMBER ACCESSES RESOURCES
+      - Consumer: go to Resources tab
+      - Protocol Guide card appears with expandable sections
+      - Click a section → it expands with content
+      - Injection Guide card appears with numbered steps
+      - Common Questions card appears with FAQ items
+      - Support request textarea and send button are visible
+
+  [ ] 19. SUBSCRIPTION STATUS (Phase 28)
+      - If profiles.subscription_status !== 'active':
+        Consumer Overview shows amber "inactive" banner
+      - Clinician patient list shows "Inactive" chip next to patient name
+      - If subscription_status === 'active': no banner, "Active" chip
+
+  ── CLINICIAN-SPECIFIC CHECKS ───────────────────────────────────────────────
+
+  [ ] 20. CLINICIAN OVERVIEW
+      - Stat cards: Appts Today, This Week, Active Patients, Unread Messages
+      - Today's Appointments list renders (or empty state with icon)
+      - Recent Activity list populates
+      - Availability sidebar summary shows days on/off
+
+  [ ] 21. CLINICIAN SCHEDULE
+      - Appointment Settings: duration dropdown, buffer dropdown
+      - Weekly Availability: 7 day rows with time pickers and toggles
+      - Save button → "Saved." confirmation
+      - Blocked Times: add/remove blocks with day, label, start/end
+
+  [ ] 22. CLINICIAN PATIENTS
+      - Filter pills: All, Active, Pending, Recently Seen, Needs Follow-up, Unread
+      - Search input filters by name or protocol
+      - Patient row click → detail panel slides in (full-screen on mobile)
+      - Detail shows: info grid, protocol, compounds, dose summary, appt history
+      - "Assign Protocol" and "Message" buttons work
+
+  [ ] 23. CLINICIAN SETTINGS
+      - Profile: first name, last name, credentials, specialty
+      - Public Profile: bio textarea
+      - Appointment Preferences: duration, timezone
+      - Notifications: toggle switches
+      - Security: Change Password button
+      - Save Changes → "Saved ✓" confirmation
+
+  ── MOBILE CHECKS (≤480px) ──────────────────────────────────────────────────
+
+  [ ] 24. CONSUMER MOBILE
+      - Bottom tab bar shows 5 tabs: Overview, Protocol, Tracker, Appts, Messages
+      - All tab content scrolls vertically without horizontal overflow
+      - All buttons have ≥44px touch targets
+      - Text inputs show correct mobile keyboard (inputmode)
+      - iOS zoom prevention (font-size ≥16px on inputs)
+      - Calendar grid fits without horizontal scroll
+
+  [ ] 25. CLINICIAN MOBILE
+      - Bottom tab bar shows 6 tabs: Overview, Schedule, Patients, Appts, Messages, Settings
+      - Patient detail panel slides full-screen from right
+      - "← Back" button closes patient detail
+      - Filter pills wrap without overflow
+      - Message thread compose is usable (keyboard doesn't cover input)
+      - All settings inputs have 16px+ font size
+
+  ── SECURITY & ERROR HANDLING ───────────────────────────────────────────────
+
+  [ ] 26. XSS AUDIT (Phase 30)
+      - Enter <script>alert(1)</script> as display name → verify it renders escaped
+      - Enter HTML in message body → verify it renders escaped
+      - No raw innerHTML assignments without escapeHtml()
+
+  [ ] 27. SESSION EXPIRY (Phase 29)
+      - Let session expire (or manually call db.auth.signOut())
+      - Verify redirect to index.html?session_expired=1
+      - Verify no 401 errors loop in console
+
+  [ ] 28. RLS POLICIES (Phase 29)
+      - Consumer cannot read other users' dose_logs, messages, appointments
+      - Consumer cannot read other users' profiles
+      - Clinician can read all consultations, profiles, appointments
+      - Verify in Supabase SQL editor with test queries
+
+  [ ] 29. ERROR BOUNDARIES (Phase 34)
+      - Disable network → navigate to each tab
+      - Each data view shows error state with "Try again" button
+      - Click "Try again" → re-attempts the fetch
+      - No spinner runs forever
+      - No blank/white div on failed tab switch
+
+  [ ] 30. CLEAN SIGN OUT
+      - Consumer: click "Sign Out" in nav or settings
+      - Redirects to index.html
+      - Clinician: click "Sign Out" → redirects to index.html
+      - No console errors on sign out
+
+══════════════════════════════════════════════════════════════════════════════════
+  END SMOKE TEST CHECKLIST
+══════════════════════════════════════════════════════════════════════════════════
+-->
 </body>
 </html>

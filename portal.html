@@ -1391,7 +1391,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <button class="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
         </div>
         <div class="notif-list" id="notifList">
-          <div class="notif-empty">No notifications yet.</div>
+          <div class="notif-empty"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" style="display:block;margin:0 auto 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>No notifications yet.</div>
         </div>
       </div>
     </div>
@@ -1843,7 +1843,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <div class="p-card">
           <div class="compounds-label" style="margin-bottom:12px;">Today's Appointments</div>
-          <div class="appt-list" id="clTodayAppts"><div class="cl-empty"><div class="cl-empty-title">No appointments today.</div></div></div>
+          <div class="appt-list" id="clTodayAppts"></div>
         </div>
 
         <div class="cl-two-col">
@@ -3552,8 +3552,9 @@ function initClinicianPortal(user, role, greeting) {
         });
         renderApptList('clTodayAppts', todayRows, 'clinician');
       })
-      .catch(function() {
-        renderApptList('clTodayAppts', [], 'clinician');
+      .catch(function(err) {
+        handleSupabaseError(err, 'cl overview today appts');
+        showInlineEmpty('clTodayAppts', 'Could not load appointments.', 'Refresh the page to try again.', { icon: 'calendar' });
       });
   }
 
@@ -4286,8 +4287,7 @@ function renderApptList(elId, appts, role) {
         emptySub = '';
       }
     }
-    el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(emptyTitle) + '</div>' +
-      (emptySub ? '<div class="inline-empty-sub">' + escapeHtml(emptySub) + '</div>' : '') + '</div>';
+    showInlineEmpty(el, emptyTitle, emptySub, { icon: 'calendar' });
     return;
   }
   el.innerHTML = '';
@@ -4724,8 +4724,7 @@ function _renderConsumerApptList(appts) {
   // Show all appointments (upcoming + past/cancelled)
   if (appts.length === 0) {
     section.style.display = 'block';
-    list.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">No appointments yet.</div>' +
-      '<div class="inline-empty-sub">Book your first session below.</div></div>';
+    showInlineEmpty(list, 'No appointments yet.', 'Book your first session below.', { icon: 'calendar' });
     return;
   }
   section.style.display = 'block';
@@ -5055,8 +5054,7 @@ function initClPatients() {
     .catch(function(err) {
       console.warn('[Pulse] consultations fetch failed:', err && err.message);
       _clPatientRows = [];
-      var errEl = document.getElementById('clPatientList');
-      if (errEl) errEl.innerHTML = '<div class="list-error">Unable to load patients. <button onclick="initClPatients()" class="retry-btn">Try again</button></div>';
+      showListError('clPatientList', 'initClPatients');
     });
 }
 
@@ -5191,7 +5189,7 @@ function renderPatientList(filter) {
   }
 
   if (rows.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
+    showInlineEmpty(el, 'No patients yet.', 'Patients will appear here after they complete intake.', { icon: 'users' });
     return;
   }
 
@@ -5223,7 +5221,7 @@ function renderPatientList(filter) {
   }
 
   if (patients.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
+    showInlineEmpty(el, 'No patients found.', 'Try a different filter or search term.', { icon: 'users' });
     return;
   }
   el.innerHTML = '';
@@ -5793,7 +5791,7 @@ function _renderClThreadListFromCache() {
   threads.sort(function(a, b) { return b.latestTime > a.latestTime ? 1 : -1; });
 
   if (threads.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No messages yet.</div><div class="cl-empty-sub">Messages from members will appear here.</div></div>';
+    showInlineEmpty(el, 'No messages yet.', 'Messages from members will appear here.', { icon: 'message' });
     return;
   }
   el.innerHTML = threads.map(function(t) {
@@ -5821,7 +5819,7 @@ function _renderClThreadListMock() {
   var el = document.getElementById('clMsgList');
   if (!el) return;
   if (MOCK_THREADS.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No messages.</div></div>';
+    showInlineEmpty(el, 'No messages.', 'Patient messages will appear here.', { icon: 'message' });
     return;
   }
   el.innerHTML = MOCK_THREADS.map(function(t) {
@@ -5942,7 +5940,7 @@ function _renderClBubblesFromDB(rows) {
   if (!el) return;
   var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   if (rows.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet.</div>';
+    showInlineEmpty(el, 'No messages yet.', 'Start the conversation below.', { icon: 'message' });
     return;
   }
   el.innerHTML = rows.map(function(m) {
@@ -6187,7 +6185,7 @@ function renderConsumerThreadFromDB(rows) {
   var el = document.getElementById('consumerMsgBubbles');
   if (!el) return;
   if (rows.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet. Send one below.</div>';
+    showInlineEmpty(el, 'No messages yet.', 'Send your first message below.', { icon: 'message' });
     return;
   }
   var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -6467,8 +6465,9 @@ function renderCalendar() {
         var emp = document.createElement('div');
         emp.id = 'trackerEmpty';
         emp.className = 'cl-empty';
-        emp.innerHTML = '<div class="inline-empty-title">No doses logged yet.</div>' +
-          '<div class="inline-empty-sub">Start tracking your protocol below.</div>';
+        emp.innerHTML = '<div style="margin-bottom:10px;">' + _emptyIcons.clipboard + '</div>' +
+          '<div class="inline-empty-title">No doses logged yet.</div>' +
+          '<div class="inline-empty-sub">Tap "Log Dose" above to start tracking your protocol.</div>';
         calCard.appendChild(emp);
       }
     }
@@ -6776,20 +6775,39 @@ async function doSignOut() {
   window.location.href = 'index.html';
 }
 
-// ── Phase 9B helper: render a compact inline empty state ──
-function showInlineEmpty(containerId, title, subtitle) {
-  var el = document.getElementById(containerId);
+// ── Phase 9B / Phase 34: render a compact inline empty state with icon ──
+// Phase 34 upgrade: adds SVG icon, short message, and optional CTA button
+var _emptyIcons = {
+  calendar:  '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  users:     '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',
+  message:   '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  book:      '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  bell:      '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><rect x="8" y="2" width="8" height="4" rx="1"/><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>'
+};
+
+function showInlineEmpty(containerId, title, subtitle, opts) {
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
-  el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(title) + '</div>' +
-    (subtitle ? '<div class="inline-empty-sub">' + escapeHtml(subtitle) + '</div>' : '') + '</div>';
+  opts = opts || {};
+  var iconHtml = opts.icon && _emptyIcons[opts.icon] ? '<div style="margin-bottom:10px;">' + _emptyIcons[opts.icon] + '</div>' : '';
+  var ctaHtml = opts.cta ? '<div style="margin-top:12px;"><button class="btn-green" onclick="' + escapeAttr(opts.cta.onclick) + '">' + escapeHtml(opts.cta.label) + '</button></div>' : '';
+  el.innerHTML = '<div class="cl-empty" style="padding:32px 20px;">' + iconHtml +
+    '<div class="inline-empty-title">' + escapeHtml(title) + '</div>' +
+    (subtitle ? '<div class="inline-empty-sub">' + escapeHtml(subtitle) + '</div>' : '') +
+    ctaHtml + '</div>';
 }
 
-// ── Phase 9C helper: show an inline error with a retry button ──
+// ── Phase 9C / Phase 34: show an inline error with a retry button ──
 function showListError(containerId, retryFnName) {
-  var el = document.getElementById(containerId);
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
-  var msg = (containerId === 'clApptList') ? 'Unable to load appointments.' : 'Something went wrong.';
-  el.innerHTML = '<div class="list-error">' + msg + ' <button onclick="' + retryFnName + '()" class="retry-btn">Try again</button></div>';
+  el.innerHTML = '<div class="cl-empty" style="padding:32px 20px;">' +
+    '<div style="margin-bottom:10px;"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(200,80,80,0.5)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>' +
+    '<div class="inline-empty-title" style="color:rgba(200,80,80,0.75);">Something went wrong.</div>' +
+    '<div class="inline-empty-sub">Try again in a moment.</div>' +
+    '<div style="margin-top:12px;"><button class="retry-btn" onclick="' + escapeAttr(retryFnName) + '()">Try again</button></div>' +
+    '</div>';
 }
 
 // ── Phase 9D: session expiry via onAuthStateChange ──
@@ -6840,7 +6858,7 @@ function _renderNotifPanel() {
   var list = document.getElementById('notifList');
   if (!list) return;
   if (_notifData.length === 0) {
-    list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+    list.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" style="display:block;margin:0 auto 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>No notifications yet.</div>';
     return;
   }
   list.innerHTML = _notifData.map(function(n) {

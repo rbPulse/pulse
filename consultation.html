@@ -1376,11 +1376,8 @@ function _autoAssignClinician(slotDateTime) {
     candidates.push({ id: cl.id, count: _clinicianApptCounts[cl.id] || 0 });
   });
 
-  console.log('[Pulse] auto-assign: eligible=' + _eligibleClinicians.length + ', candidates=' + candidates.length + ', memberState=' + _memberState);
   if (candidates.length === 0) return null;
-  // Sort by fewest appointments (ties broken by ID for determinism)
   candidates.sort(function(a, b) { return a.count - b.count || a.id.localeCompare(b.id); });
-  console.log('[Pulse] auto-assigned clinician:', candidates[0].id);
   return candidates[0].id;
 }
 
@@ -1921,8 +1918,8 @@ async function saveConsultation() {
       state: (document.getElementById('state') || {}).value || null,
       zip_code: (document.getElementById('zipCode') || {}).value || null,
       sex: (document.getElementById('sex') || {}).value || null,
-      dob: (function(){ var e = document.getElementById('dob'); var v = e ? e.value : ''; console.log('[Pulse] dob element:', !!e, 'value:', v); return v || null; })(),
-      current_weight: (function(){ var e = document.getElementById('weight'); var v = e ? e.value : ''; console.log('[Pulse] weight element:', !!e, 'value:', v); return v || null; })(),
+      dob: (document.getElementById('dob') || {}).value || null,
+      current_weight: (document.getElementById('weight') || {}).value || null,
       target_weight: null,
       goals: typeof selectedGoals !== 'undefined' ? selectedGoals : [],
       booking_date: typeof selectedDate !== 'undefined' ? selectedDate : null,
@@ -1930,7 +1927,6 @@ async function saveConsultation() {
       protocol: (document.getElementById('protoName') || {}).textContent || null,
       submitted_at: new Date().toISOString()
     };
-    console.log('[Pulse] saveConsultation data.dob=' + data.dob + ', data.current_weight=' + data.current_weight);
     var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: data });
     if (cInsert.error) console.error('[Pulse] consultation insert failed:', cInsert.error.message);
 

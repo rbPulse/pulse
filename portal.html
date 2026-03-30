@@ -3527,7 +3527,7 @@ function initClinicianPortal(user, role, greeting) {
     _loadClAppts('today');
     // Also render overview list from DB
     var overviewListEl = document.getElementById('clTodayAppts');
-    if (overviewListEl) overviewListEl.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+    if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
     db.from('appointments')
       .select('*, profiles!appointments_consumer_id_fkey(display_name)')
       .eq('clinician_id', currentUserId)
@@ -3964,17 +3964,7 @@ function filterClAppts(filter, pillEl) {
 
 function _loadClAppts(filter) {
   // Show skeleton rows while loading
-  var apptListEl = document.getElementById('clApptList');
-  if (apptListEl) apptListEl.innerHTML = [0,1,2].map(function() {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="height:13px;width:72px;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:50%;margin-bottom:6px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:70%;"></div>' +
-      '</div>' +
-      '<div class="skeleton-pulse" style="height:20px;width:64px;border-radius:999px;"></div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clApptList', 'list-rows');
   db.from('appointments')
     .select('*, profiles!appointments_consumer_id_fkey(display_name)')
     .eq('clinician_id', currentUserId)
@@ -4369,6 +4359,8 @@ function initConsumerBooking() {
     return;
   }
 
+  // Show skeleton while availability loads
+  showSkeleton('bookDateChips', 'card');
   // Fetch clinician availability
   var availQuery = CLINICIAN_ID
     ? db.from('availability').select('day_of_week,active,slot_duration_minutes').eq('clinician_id', CLINICIAN_ID)
@@ -4690,6 +4682,8 @@ function _loadAndRenderConsumerAppts() {
     _renderConsumerApptList(consumerAppts);
     return;
   }
+  var _caSection = document.getElementById('consumerApptSection');
+  if (_caSection) { _caSection.style.display = 'block'; showSkeleton('consumerApptList', 'list-rows'); }
   db.from('appointments')
     .select('*')
     .eq('consumer_id', currentUserId)
@@ -5010,31 +5004,11 @@ function initClPatients() {
   }
   if (!currentUserId) {
     // Auth not yet resolved — show loading skeleton and wait; caller will retry once auth is known
-    var elWait = document.getElementById('clPatientList');
-    if (elWait) elWait.innerHTML = [0,1,2,3].map(function() {
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-        '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-        '<div style="flex:1;">' +
-          '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
-          '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
-        '</div>' +
-        '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
-      '</div>';
-    }).join('');
+    showSkeleton('clPatientList', 'list-rows');
     return;
   }
   // Show skeleton loading state for patient list
-  var el = document.getElementById('clPatientList');
-  if (el) el.innerHTML = [0,1,2,3].map(function() {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
-      '</div>' +
-      '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clPatientList', 'list-rows');
 
   // Step 1: fetch all consultations with a non-null status, ordered newest first
   db.from('consultations')
@@ -5212,7 +5186,7 @@ function renderPatientList(filter) {
   // Use loaded rows (or mock in PREVIEW_MODE)
   var rows = _clPatientRows;
   if (!rows) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading patients…</div></div>';
+    showSkeleton(el, 'list-rows');
     return;
   }
 
@@ -5736,16 +5710,7 @@ function initClMessages() {
 // ── Load thread list from Supabase ──
 function _loadClThreadList() {
   // Show skeleton rows while loading
-  var msgListEl = document.getElementById('clMsgList');
-  if (msgListEl) msgListEl.innerHTML = [0,1,2].map(function() {
-    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:45%;margin-bottom:7px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:80%;"></div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clMsgList', 'message-rows');
   db.from('messages')
     .select('thread_id, sender_role, sender_name, body, created_at, read')
     .order('created_at', { ascending: false })
@@ -6185,6 +6150,7 @@ function initConsumerMessages() {
 }
 
 function loadConsumerMessages() {
+  showSkeleton('consumerMsgBubbles', 'message-rows');
   db.from('messages')
     .select('*')
     .eq('thread_id', currentUserId)
@@ -6778,6 +6744,30 @@ function escapeHtml(str) {
 function escapeAttr(str) {
   if (str == null) return '';
   return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+// ── Phase 33: skeleton loading helper ──
+// Injects shimmering placeholder bars matching the shape of the expected content.
+// Types: 'stat-cards' (4 overview stat blocks), 'list-rows' (3 generic rows),
+// 'message-rows' (3 thread rows), 'card' (single content card).
+function showSkeleton(containerId, type) {
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!el) return;
+  var html = '';
+  if (type === 'stat-cards') {
+    html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      [1,2,3,4].map(function(){ return '<div style="padding:18px 20px;"><div class="skeleton-pulse" style="height:10px;width:50%;margin-bottom:10px;"></div><div class="skeleton-pulse" style="height:22px;width:40%;margin-bottom:6px;"></div><div class="skeleton-pulse" style="height:10px;width:65%;"></div></div>'; }).join('') +
+      '</div>';
+  } else if (type === 'list-rows') {
+    html = [1,2,3].map(function(){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;"><div class="skeleton-pulse" style="height:12px;width:55%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:35%;"></div></div><div class="skeleton-pulse" style="width:50px;height:18px;border-radius:999px;"></div></div>'; }).join('');
+  } else if (type === 'message-rows') {
+    html = [1,2,3].map(function(){ return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;"><div class="skeleton-pulse" style="height:12px;width:40%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:70%;"></div></div><div class="skeleton-pulse" style="width:36px;height:10px;"></div></div>'; }).join('');
+  } else if (type === 'card') {
+    html = '<div style="padding:24px;"><div class="skeleton-pulse" style="height:14px;width:45%;margin-bottom:14px;"></div><div class="skeleton-pulse" style="height:10px;width:80%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:60%;"></div></div>';
+  } else {
+    html = '<div style="padding:20px;"><div class="skeleton-pulse" style="height:12px;width:50%;margin-bottom:10px;"></div><div class="skeleton-pulse" style="height:12px;width:70%;"></div></div>';
+  }
+  el.innerHTML = html;
 }
 
 // ── Sign out ──

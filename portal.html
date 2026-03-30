@@ -3421,13 +3421,16 @@ function initPortal(user) {
             });
         }
         // Check for active/completed appointments that need the consultation flow
+        console.log('[Pulse] checking appointments for redirect...');
         db.from('appointments').select('id, status').eq('consumer_id', user.id)
           .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
           .order('scheduled_at', { ascending: false })
           .limit(1)
           .then(function(apptCheck) {
+            console.log('[Pulse] appointment check result:', JSON.stringify(apptCheck.data));
             if (apptCheck.data && apptCheck.data.length > 0) {
               var apptStatus = apptCheck.data[0].status;
+              console.log('[Pulse] appointment status:', apptStatus);
               var d = c.data || {};
               var hasProtocol = d.assigned_protocol || c.protocol_assigned;
               // Completed appointment — send to Step 6 (summary/evaluation results)
@@ -3443,7 +3446,7 @@ function initPortal(user) {
             }
             populatePortal(user, c, greeting);
           })
-          .catch(function() { populatePortal(user, c, greeting); });
+          .catch(function(err) { console.warn('[Pulse] appointment check failed:', err); populatePortal(user, c, greeting); });
       })
       .catch(function(err) { handleSupabaseError(err, 'consultations load'); populatePortal(user, null, greeting); });
     loadDoseLogs();

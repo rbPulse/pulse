@@ -3536,11 +3536,17 @@ function initClinicianPortal(user, role, greeting) {
   document.getElementById('clGreetLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('clGreetSub').textContent = "Here's your day at a glance.";
 
-  // Stats
-  document.getElementById('clStatToday').textContent    = m.stats.today;
-  document.getElementById('clStatWeek').textContent     = m.stats.week;
-  document.getElementById('clStatPatients').textContent = m.stats.patients;
-  document.getElementById('clStatUnread').textContent   = m.stats.unread;
+  // Stats — load real counts when not preview
+  if (PREVIEW_MODE || !currentUserId) {
+    document.getElementById('clStatToday').textContent    = m.stats.today;
+    document.getElementById('clStatWeek').textContent     = m.stats.week;
+    document.getElementById('clStatPatients').textContent = m.stats.patients;
+    document.getElementById('clStatUnread').textContent   = m.stats.unread;
+  } else {
+    // Show "—" while loading, then replace with real counts
+    ['clStatToday','clStatWeek','clStatPatients','clStatUnread'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
+    _loadClOverviewStats();
+  }
 
   // Today's appointments — use mock in PREVIEW_MODE, otherwise load from DB
   if (PREVIEW_MODE || !currentUserId) {
@@ -3551,11 +3557,12 @@ function initClinicianPortal(user, role, greeting) {
     // Also render overview list from DB
     var overviewListEl = document.getElementById('clTodayAppts');
     if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
+    var _todayStart = new Date(); _todayStart.setHours(0,0,0,0);
+    var _todayEnd   = new Date(); _todayEnd.setHours(23,59,59,999);
     db.from('appointments')
       .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-      .eq('clinician_id', currentUserId)
-      .gte('scheduled_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
-      .lte('scheduled_at', new Date(new Date().setHours(23,59,59,999)).toISOString())
+      .gte('scheduled_at', _todayStart.toISOString())
+      .lte('scheduled_at', _todayEnd.toISOString())
       .order('scheduled_at', { ascending: true })
       .then(function(res) {
         if (res.error) throw res.error;
@@ -3581,17 +3588,25 @@ function initClinicianPortal(user, role, greeting) {
       });
   }
 
-  // Recent activity
+  // Recent activity — load from DB when not preview
   var actEl = document.getElementById('clRecentActivity');
-  actEl.innerHTML = m.recentActivity.map(function(a) {
-    return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(a.patient) + '</strong> ' + escapeHtml(a.action) + '</span><span class="activity-time-text">' + escapeHtml(a.time) + '</span></div>';
-  }).join('');
+  if (PREVIEW_MODE || !currentUserId) {
+    actEl.innerHTML = m.recentActivity.map(function(a) {
+      return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(a.patient) + '</strong> ' + escapeHtml(a.action) + '</span><span class="activity-time-text">' + escapeHtml(a.time) + '</span></div>';
+    }).join('');
+  } else {
+    _loadClRecentActivity(actEl);
+  }
 
-  // Availability (sidebar summary)
+  // Availability (sidebar summary) — load from DB when not preview
   var avEl = document.getElementById('clAvailability');
-  avEl.innerHTML = m.schedule.map(function(s) {
-    return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + escapeHtml(s.day.slice(0,3)) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + escapeHtml(s.slots) + '</span></div>';
-  }).join('');
+  if (PREVIEW_MODE || !currentUserId) {
+    avEl.innerHTML = m.schedule.map(function(s) {
+      return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + escapeHtml(s.day.slice(0,3)) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + escapeHtml(s.slots) + '</span></div>';
+    }).join('');
+  } else {
+    _renderAvailSidebar(avEl);
+  }
 
   // Schedule tab
   initClSchedule();
@@ -3800,6 +3815,91 @@ async function sendClPasswordReset() {
   }
 }
 
+// ── Clinician overview — real DB helpers ──
+
+function _loadClOverviewStats() {
+  // Count appointments today
+  var _ts = new Date(); _ts.setHours(0,0,0,0);
+  var _te = new Date(); _te.setHours(23,59,59,999);
+  db.from('appointments').select('id', { count: 'exact', head: true })
+    .gte('scheduled_at', _ts.toISOString()).lte('scheduled_at', _te.toISOString())
+    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+    .then(function(r) { if (!r.error) document.getElementById('clStatToday').textContent = r.count || 0; })
+    .catch(function() { document.getElementById('clStatToday').textContent = '0'; });
+  // Count appointments this week
+  var _ws = new Date(); _ws.setDate(_ws.getDate() - _ws.getDay()); _ws.setHours(0,0,0,0);
+  var _we = new Date(_ws); _we.setDate(_we.getDate() + 6); _we.setHours(23,59,59,999);
+  db.from('appointments').select('id', { count: 'exact', head: true })
+    .gte('scheduled_at', _ws.toISOString()).lte('scheduled_at', _we.toISOString())
+    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+    .then(function(r) { if (!r.error) document.getElementById('clStatWeek').textContent = r.count || 0; })
+    .catch(function() { document.getElementById('clStatWeek').textContent = '0'; });
+  // Count patients (distinct consultations)
+  db.from('consultations').select('user_id', { count: 'exact', head: true })
+    .then(function(r) { if (!r.error) document.getElementById('clStatPatients').textContent = r.count || 0; })
+    .catch(function() { document.getElementById('clStatPatients').textContent = '0'; });
+  // Count unread messages
+  db.from('messages').select('id', { count: 'exact', head: true })
+    .eq('read', false).eq('sender_role', 'consumer')
+    .then(function(r) { if (!r.error) document.getElementById('clStatUnread').textContent = r.count || 0; })
+    .catch(function() { document.getElementById('clStatUnread').textContent = '0'; });
+}
+
+function _loadClRecentActivity(el) {
+  // Build recent activity from real DB: last 5 dose_logs + messages + appointments
+  db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name)')
+    .order('logged_at', { ascending: false }).limit(5)
+    .then(function(r) {
+      if (r.error || !r.data || r.data.length === 0) {
+        showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
+        return;
+      }
+      el.innerHTML = r.data.map(function(d) {
+        var name = (d.profiles && d.profiles.display_name) || d.user_id.slice(0,8).toUpperCase();
+        var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
+        var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+        return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(name) + '</strong> Logged a dose</span><span class="activity-time-text">' + timeLabel + '</span></div>';
+      }).join('');
+    })
+    .catch(function() {
+      showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
+    });
+}
+
+function _renderAvailSidebar(el) {
+  var DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  el.innerHTML = AVAIL_STATE.map(function(s) {
+    var startFmt = _fmtTime12(s.start), endFmt = _fmtTime12(s.end);
+    var slots = s.on ? (startFmt + ' – ' + endFmt) : 'Off';
+    return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + escapeHtml(s.day.slice(0,3)) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + escapeHtml(slots) + '</span></div>';
+  }).join('');
+  // Also try loading saved availability from DB
+  db.from('availability').select('day_of_week,active,slot_duration_minutes')
+    .eq('clinician_id', currentUserId)
+    .then(function(r) {
+      if (r.error || !r.data || r.data.length === 0) return;
+      r.data.forEach(function(row) {
+        if (row.day_of_week >= 0 && row.day_of_week <= 6) {
+          AVAIL_STATE[row.day_of_week].on = row.active;
+        }
+      });
+      // Re-render with DB data
+      el.innerHTML = AVAIL_STATE.map(function(s) {
+        var startFmt = _fmtTime12(s.start), endFmt = _fmtTime12(s.end);
+        var slots = s.on ? (startFmt + ' – ' + endFmt) : 'Off';
+        return '<div class="avail-row"><span class="avail-dot' + (s.on ? ' on' : '') + '"></span><span class="avail-day-name">' + escapeHtml(s.day.slice(0,3)) + '</span><span class="avail-hours' + (s.on ? ' on' : '') + '">' + escapeHtml(slots) + '</span></div>';
+      }).join('');
+    }).catch(function(){});
+}
+
+function _fmtTime12(t) {
+  if (!t) return '';
+  var parts = t.split(':'), h = parseInt(parts[0]), m = parts[1] || '00';
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
+}
+
 // ── CLINICIAN SCHEDULE EDITOR ──
 // Day-of-week index map (matches JS Date.getDay())
 var _DOW_INDEX = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
@@ -3991,7 +4091,6 @@ function _loadClAppts(filter) {
   showSkeleton('clApptList', 'list-rows');
   db.from('appointments')
     .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-    .eq('clinician_id', currentUserId)
     .order('scheduled_at', { ascending: true })
     .then(function(res) {
       if (res.error) throw res.error;
@@ -5032,11 +5131,10 @@ function initClPatients() {
   // Show skeleton loading state for patient list
   showSkeleton('clPatientList', 'list-rows');
 
-  // Step 1: fetch all consultations with a non-null status, ordered newest first
+  // Step 1: fetch all consultations, ordered newest first
   db.from('consultations')
     .select('*')
-    .not('status', 'is', null)
-    .order('submitted_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .then(function(res) {
       if (res.error) throw res.error;
       var consultations = res.data || [];

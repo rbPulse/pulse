@@ -1198,6 +1198,167 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 }
 
 /* ── END PHASE 31 ─────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PHASE 32 — MOBILE CLINICIAN PORTAL AUDIT (≤480px)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 32A: CLINICIAN BOTTOM TAB BAR — 6 TABS FIT ─────────────────────────────
+   Schedule tab was missing from the mobile bottom bar; added in HTML.
+   Ensure all 6 tabs fit without overflow on 320px screens.
+*/
+@media(max-width:480px) {
+  .pbb-clinician .pbb-item {
+    min-width: 0;
+    padding: 8px 4px 6px;
+    font-size: 7px;
+  }
+  .pbb-clinician .pbb-icon { font-size: 14px; }
+  .pbb-clinician .pbb-label { font-size: 7px; letter-spacing: 0.02em; }
+}
+
+/* ── 32B: PATIENT LIST ROWS — READABLE & TAPPABLE ───────────────────────────
+   Ensure 44px minimum tap targets and readable text on narrow screens.
+*/
+@media(max-width:480px) {
+  .patient-row {
+    padding: 14px 12px;
+    gap: 10px;
+    min-height: 44px;
+  }
+  .patient-name-text { font-size: 14px; }
+  .patient-proto-text { font-size: 12px; }
+  .patient-meta-text { font-size: 9px; }
+  .pat-row-right { gap: 6px; }
+  .pat-status-badge { font-size: 7px; padding: 2px 6px; }
+  .pat-next-appt { font-size: 8px; max-width: 60px; }
+  #clPatSearch { font-size: 16px; padding: 10px 12px; min-height: 44px; }
+  .filter-bar { gap: 4px; }
+  .filter-pill { font-size: 8px; padding: 5px 10px; letter-spacing: 0.08em; }
+}
+
+/* ── 32C: PATIENT DETAIL PANEL — FULL-SCREEN SLIDE-IN ────────────────────────
+   Already full-screen at 768px (Phase 14C), but reinforce at ≤480px
+   with tighter padding and ensure it covers the bottom tab bar.
+*/
+@media(max-width:480px) {
+  .patient-detail-panel {
+    padding: 16px 14px 90px;
+    z-index: 200;
+  }
+  .pdp-title { font-size: 16px; }
+  .pdp-subtitle { font-size: 9px; }
+  .pdp-section-label { font-size: 8px; }
+  .pdp-info-grid { grid-template-columns: 1fr; gap: 6px; }
+  .pdp-proto-name { font-size: 14px; }
+  .pdp-proto-note { font-size: 12px; }
+  .pdp-compound { font-size: 8px; padding: 3px 8px; }
+  .dose-stat-row { flex-wrap: wrap; gap: 10px; }
+  .dose-stat-item { min-width: 70px; }
+  .pdp-mobile-back {
+    display: block;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+    font-size: 13px;
+  }
+}
+
+/* ── 32D: CLINICIAN APPOINTMENTS — COMPACT BUT READABLE ──────────────────────
+*/
+@media(max-width:480px) {
+  .appt-row {
+    padding: 12px 10px;
+    gap: 8px;
+    min-height: 44px;
+    flex-wrap: wrap;
+  }
+  .appt-time { font-size: 10px; min-width: 60px; }
+  .appt-patient { font-size: 13px; }
+  .appt-type-text { font-size: 11px; }
+  .appt-dur { font-size: 9px; }
+  .appt-badge { font-size: 7px; padding: 2px 7px; }
+  /* Appointment detail panel */
+  .appt-detail-panel { padding: 14px 12px; }
+  .adp-name { font-size: 14px; }
+  .adp-meta { font-size: 10px; }
+  .adp-notes { font-size: 14px; min-height: 56px; }
+  .adp-actions { gap: 5px; }
+  .adp-btn {
+    font-size: 9px;
+    padding: 8px 12px;
+    min-height: 36px;
+  }
+}
+
+/* ── 32E: CLINICIAN MESSAGES — FULL-HEIGHT THREAD VIEW ───────────────────────
+   Make the message bubbles area fill available height on mobile.
+*/
+@media(max-width:480px) {
+  #tab-cl-messages .p-card { padding: 12px; }
+  #tab-cl-messages .msg-bubbles {
+    max-height: calc(100vh - 280px);
+    min-height: 200px;
+  }
+  #tab-cl-messages .thread-header { margin-bottom: 10px; padding-bottom: 10px; }
+  #tab-cl-messages .thread-who { font-size: 13px; }
+  #tab-cl-messages .msg-compose-input { font-size: 16px; }
+  #tab-cl-messages .msg-send-btn { min-height: 38px; padding: 0 14px; }
+  /* Thread list rows — tappable */
+  .msg-row { min-height: 44px; padding: 12px 10px; }
+}
+
+/* ── 32F: CLINICIAN SETTINGS — INPUTMODE + MOBILE LAYOUT ─────────────────────
+   Tighten settings card padding; full-width save button.
+*/
+@media(max-width:480px) {
+  #tab-cl-settings .p-card { padding: 16px 14px; }
+  #tab-cl-settings .settings-section-lbl { font-size: 8px; }
+  #tab-cl-settings .settings-toggle-text { font-size: 13px; }
+  #tab-cl-settings .btn-green,
+  #tab-cl-settings .btn-ghost {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+  /* Bio textarea */
+  #clBio { font-size: 16px; }
+}
+
+/* ── 32G: CLINICIAN OVERVIEW — COMPACT STAT GRID ─────────────────────────────
+*/
+@media(max-width:480px) {
+  .cl-stat-grid { gap: 6px; }
+  .cl-stat-tile { padding: 14px 14px; }
+  .cl-stat-num { font-size: 20px; }
+  .cl-stat-lbl { font-size: 7px; }
+  /* Today's appointments card */
+  #tab-cl-overview .p-card { padding: 16px 12px; }
+  /* Two-col becomes single col (already at 768px), reduce gap */
+  .cl-two-col { gap: 10px; }
+  .cl-two-col .p-card { padding: 16px 12px; }
+}
+
+/* ── 32H: CLINICIAN SCHEDULE — AVAILABILITY EDITOR COMPACT ───────────────────
+*/
+@media(max-width:480px) {
+  .avail-editor-row { flex-wrap: wrap; gap: 8px; }
+  .avail-day-label { min-width: 60px; font-size: 10px; }
+  .avail-time-input { width: 80px; font-size: 12px; padding: 6px 8px; }
+  .avail-time-range { gap: 5px; }
+  /* Blocked times */
+  .block-row { flex-wrap: wrap; gap: 6px; padding: 10px 10px; }
+  .block-label-text { font-size: 12px; }
+  .block-meta { font-size: 9px; }
+  /* Add block form */
+  #addBlockForm .settings-grid { gap: 8px; }
+  #addBlockForm input[type="time"] { font-size: 16px; }
+}
+
+/* ── END PHASE 32 ─────────────────────────────────────────────────────────── */
 </style>
 </head>
 <body>
@@ -1341,6 +1502,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- Clinician tabs (shown when role=clinician|admin) -->
       <div class="pbb-clinician" id="pbbClinician" style="display:none;">
         <div class="pbb-item active" id="pbb-cl-overview"      onclick="switchTab('cl-overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
+        <div class="pbb-item"        id="pbb-cl-schedule"      onclick="switchTab('cl-schedule')"><span class="pbb-icon">▦</span><span class="pbb-label">Schedule</span></div>
         <div class="pbb-item"        id="pbb-cl-patients"      onclick="switchTab('cl-patients')"><span class="pbb-icon">♟</span><span class="pbb-label">Patients</span></div>
         <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Appts</span></div>
         <div class="pbb-item"        id="pbb-cl-messages"      onclick="switchTab('cl-messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
@@ -1624,7 +1786,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Display Name</label>
-                <input class="settings-input" id="settingsDisplayName" type="text" placeholder="Your name" onblur="saveConsumerSettings()"/>
+                <input class="settings-input" id="settingsDisplayName" type="text" placeholder="Your name" inputmode="text" autocomplete="name" onblur="saveConsumerSettings()"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Email</label>
@@ -1852,21 +2014,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">First Name</label>
-                <input class="settings-input" id="clFirstName" type="text" placeholder="First name"/>
+                <input class="settings-input" id="clFirstName" type="text" placeholder="First name" inputmode="text" autocomplete="given-name"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Last Name</label>
-                <input class="settings-input" id="clLastName" type="text" placeholder="Last name"/>
+                <input class="settings-input" id="clLastName" type="text" placeholder="Last name" inputmode="text" autocomplete="family-name"/>
               </div>
             </div>
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Credentials</label>
-                <input class="settings-input" id="clCredentials" type="text" placeholder="MD, FACSM"/>
+                <input class="settings-input" id="clCredentials" type="text" placeholder="MD, FACSM" inputmode="text"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Specialty</label>
-                <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine"/>
+                <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine" inputmode="text"/>
               </div>
             </div>
             <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>

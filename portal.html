@@ -5763,6 +5763,11 @@ function _normalisePatientRow(consultation, profile) {
   // Member since: prefer submitted_at, fallback to created_at
   var memberSince = consultation.submitted_at || consultation.created_at || null;
 
+  // Prescription data from evaluation
+  var prescriptionGiven = consultation.prescription_given || d.prescription_given || null;
+  var prescribedProtocols = consultation.prescribed_protocols || d.prescribed_protocols || null;
+  var evaluationDate = consultation.evaluation_date || d.evaluation_date || null;
+
   return {
     id:            consultation.user_id,
     name:          name,
@@ -5775,6 +5780,9 @@ function _normalisePatientRow(consultation, profile) {
     lastSeen:      (profile && profile.last_seen) ? profile.last_seen : null,
     subStatus:       (profile && profile.subscription_status) ? profile.subscription_status : null,
     notify_messages: profile ? (profile.notify_messages !== false) : true,
+    prescriptionGiven: prescriptionGiven,
+    prescribedProtocols: prescribedProtocols,
+    evaluationDate: evaluationDate,
     _consultation: consultation,
     _profile:      profile,
     _rawData:      d
@@ -5806,9 +5814,11 @@ function searchPatients(q) {
 // NEW = intake done, no appointment
 // SCHEDULED = has upcoming appointment, no protocol yet
 // IN TREATMENT = clinician assigned a protocol
-function _patStatusChip(status, hasProtocol, hasUpcomingAppt) {
-  if (hasProtocol) {
-    return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">In Treatment</span>';
+function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven) {
+  if (prescriptionGiven === true) {
+    return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Prescribed</span>';
+  } else if (prescriptionGiven === false) {
+    return '<span class="pat-status-badge" style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);">Not Prescribed</span>';
   } else if (hasUpcomingAppt) {
     return '<span class="pat-status-badge" style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">Scheduled</span>';
   } else {
@@ -5879,7 +5889,7 @@ function renderPatientList(filter) {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
-            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt) +
+            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
@@ -6106,6 +6116,66 @@ function buildPatientDetail(p) {
       infoGridHtml +
       asyncHtml +
     '</div>' +
+
+    // ── Evaluation section (only if evaluation was submitted) ──
+    (function() {
+      var rxGiven = p.prescriptionGiven;
+      if (rxGiven === null || rxGiven === undefined) return '';
+      var evalHtml = '<div class="pdp-section"><div class="pdp-section-label">Evaluation</div>';
+      var evalDateStr = p.evaluationDate ? new Date(p.evaluationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      evalHtml += '<div class="pdp-info-grid" style="margin-bottom:14px;">' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Prescription</div><div class="pdp-info-value" style="color:' + (rxGiven ? 'var(--green)' : 'rgba(200,80,80,0.8)') + ';">' + (rxGiven ? 'Yes' : 'No') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Evaluation Date</div><div class="pdp-info-value">' + escapeHtml(evalDateStr) + '</div></div>' +
+      '</div>';
+
+      if (!rxGiven) {
+        var noRxReason = d.no_prescription_reason || c.no_prescription_reason || '—';
+        evalHtml += '<div class="pdp-info-row" style="margin-bottom:14px;"><div class="pdp-info-label">Reason</div><div class="pdp-info-value">' + escapeHtml(noRxReason) + '</div></div>';
+      } else {
+        // Show prescribed protocols as expandable rows
+        var protocols = p.prescribedProtocols || {};
+        var protoIdx = 0;
+        var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
+        allProtos.forEach(function(pName) {
+          var key = pName.toLowerCase().replace(/\s+/g, '_');
+          if (!protocols[key]) return;
+          protoIdx++;
+          var doseAmt = d.dose_amount || c.dose_amount || '—';
+          var doseUnit = d.dose_unit || c.dose_unit || '';
+          var freq = d.frequency || c.frequency || '—';
+          var tmg = d.timing || c.timing || '—';
+          var tmgInst = d.timing_instructions || c.timing_instructions || '—';
+          var dur = d.duration || c.duration || '—';
+          var pv = d.protocol_version || c.protocol_version || '—';
+          var otherN = d.other_notes || c.other_notes || '';
+          evalHtml += '<details style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--card);">' +
+            '<summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:500;color:#fff;display:flex;align-items:center;justify-content:space-between;list-style:none;">' +
+              '<span>Protocol ' + protoIdx + ': ' + escapeHtml(pName) + '</span>' +
+              '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--green);letter-spacing:0.1em;">v' + escapeHtml(String(pv)) + '</span>' +
+            '</summary>' +
+            '<div style="padding:0 14px 12px;border-top:1px solid var(--border);">' +
+              '<div class="pdp-info-grid" style="margin-top:10px;">' +
+                '<div class="pdp-info-row"><div class="pdp-info-label">Dose</div><div class="pdp-info-value">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +
+                '<div class="pdp-info-row"><div class="pdp-info-label">Frequency</div><div class="pdp-info-value">' + escapeHtml(freq) + '</div></div>' +
+                '<div class="pdp-info-row"><div class="pdp-info-label">Timing</div><div class="pdp-info-value">' + escapeHtml(tmg) + '</div></div>' +
+                '<div class="pdp-info-row"><div class="pdp-info-label">Timing Instructions</div><div class="pdp-info-value">' + escapeHtml(tmgInst) + '</div></div>' +
+                '<div class="pdp-info-row"><div class="pdp-info-label">Duration</div><div class="pdp-info-value">' + escapeHtml(dur) + '</div></div>' +
+                (otherN && otherN !== 'no prescription' ? '<div class="pdp-info-row"><div class="pdp-info-label">Notes</div><div class="pdp-info-value">' + escapeHtml(otherN) + '</div></div>' : '') +
+              '</div>' +
+            '</div>' +
+          '</details>';
+        });
+        if (protoIdx === 0) evalHtml += '<div style="font-size:12px;color:var(--grey2);">No protocols selected.</div>';
+      }
+
+      // Session notes
+      var sNotes = d.session_notes || c.session_notes || '';
+      if (sNotes && sNotes !== 'no prescription') {
+        evalHtml += '<div style="margin-top:14px;"><div class="pdp-info-label" style="margin-bottom:4px;">Session Notes</div><div style="font-size:12px;color:var(--grey);line-height:1.6;white-space:pre-wrap;">' + escapeHtml(sNotes) + '</div></div>';
+      }
+      evalHtml += '</div>';
+      return evalHtml;
+    })() +
 
     '<div class="pdp-section" id="pdpAssignSection-' + escapeAttr(p.id) + '" style="display:none;">' +
       '<div class="pdp-section-label">Change Protocol</div>' +

@@ -8079,12 +8079,9 @@ function _leaveClinicianSession() {
 }
 
 // ── POST-CALL EVALUATION FORM ──
-function _showEvaluationForm(apptId) {
-  // Find the patient data from the appointment
-  var _evalPatientName = '—';
-  var _evalConsumerId = null;
+var _EVAL_PROTOCOLS = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
 
-  // Create/show the evaluation overlay
+function _showEvaluationForm(apptId) {
   var evalOverlay = document.getElementById('evalOverlay');
   if (!evalOverlay) {
     evalOverlay = document.createElement('div');
@@ -8093,122 +8090,231 @@ function _showEvaluationForm(apptId) {
     document.body.appendChild(evalOverlay);
   }
   evalOverlay.style.display = 'flex';
+
+  var _lbl = 'font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);display:block;margin-bottom:6px;';
+  var _sec = 'font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.26em;text-transform:uppercase;color:var(--green);margin-bottom:14px;margin-top:28px;';
+
+  var protoRows = _EVAL_PROTOCOLS.map(function(p) {
+    var key = p.toLowerCase().replace(/\s+/g,'_');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+      '<span style="font-size:13px;color:var(--grey);">' + escapeHtml(p) + '</span>' +
+      '<select class="book-select eval-proto-toggle" data-proto="' + escapeAttr(key) + '" style="width:80px;font-size:12px;padding:6px 10px;" disabled>' +
+        '<option value="no">No</option><option value="yes">Yes</option>' +
+      '</select></div>';
+  }).join('');
+
   evalOverlay.innerHTML =
     '<div style="max-width:640px;width:100%;margin:0 auto;padding:48px 24px 64px;">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:40px;">' +
         '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
         '<span style="font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:0.28em;color:#fff;text-transform:uppercase;">Pulse</span>' +
       '</div>' +
-      '<div style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Patient Evaluation</div>' +
+      '<div style="' + _sec + '">Patient Evaluation</div>' +
       '<div style="font-size:24px;font-weight:600;color:#fff;margin-bottom:6px;">Complete your evaluation</div>' +
-      '<div style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:32px;">Review the session and submit your recommended protocol for this patient.</div>' +
+      '<div style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:32px;">Review the session and submit your evaluation for this patient.</div>' +
       '<div id="evalPatientInfo" style="margin-bottom:24px;"></div>' +
+
+      // Session Notes
       '<div style="margin-bottom:20px;">' +
-        '<label style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);display:block;margin-bottom:6px;">Session Notes</label>' +
+        '<label style="' + _lbl + '">Session Notes</label>' +
         '<textarea id="evalNotes" class="settings-input" rows="4" placeholder="Document key findings, patient concerns, and clinical observations…" style="resize:vertical;min-height:80px;line-height:1.6;"></textarea>' +
       '</div>' +
+
+      // Prescription Decision
+      '<div style="' + _sec + '">Prescription Decision</div>' +
       '<div style="margin-bottom:20px;">' +
-        '<label style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);display:block;margin-bottom:6px;">Recommended Protocol</label>' +
-        '<select id="evalProtocol" class="book-select"><option value="">Select a protocol</option></select>' +
+        '<label style="' + _lbl + '">Are you providing the member a prescription?</label>' +
+        '<select id="evalPrescriptionGiven" class="book-select" onchange="_onPrescriptionDecisionChange()">' +
+          '<option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option>' +
+        '</select>' +
       '</div>' +
-      '<div style="margin-bottom:20px;">' +
-        '<label style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);display:block;margin-bottom:6px;">Instructions for Patient <span style="opacity:0.4;font-size:7px;">(optional)</span></label>' +
-        '<textarea id="evalInstructions" class="settings-input" rows="3" placeholder="Special instructions, dosing notes, lifestyle recommendations…" style="resize:vertical;min-height:60px;line-height:1.6;"></textarea>' +
+
+      // No-prescription reason (hidden by default)
+      '<div id="evalNoRxSection" style="display:none;margin-bottom:20px;">' +
+        '<label style="' + _lbl + '">Reason for not prescribing <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
+        '<textarea id="evalNoRxReason" class="settings-input" rows="3" placeholder="Explain why a prescription is not being provided…" style="resize:vertical;min-height:60px;line-height:1.6;" oninput="_evalCheckSubmit()"></textarea>' +
       '</div>' +
-      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
-        '<button class="btn-green" id="evalSubmitBtn" onclick="_submitEvaluation(\'' + escapeAttr(apptId) + '\')">Submit Evaluation</button>' +
+
+      // Prescribed Protocols
+      '<div id="evalRxSection" style="opacity:0.3;pointer-events:none;">' +
+        '<div style="' + _sec + '">Prescribed Protocols</div>' +
+        '<div style="margin-bottom:20px;">' + protoRows + '</div>' +
+
+        // Instructions
+        '<div style="' + _sec + '">Instructions</div>' +
+        '<div class="settings-grid" style="margin-bottom:12px;">' +
+          '<div class="settings-field"><label style="' + _lbl + '">Dose Amount <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalDoseAmount" class="settings-input" type="number" placeholder="e.g. 250" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Dose Unit <span style="color:rgba(200,80,80,0.7);">*</span></label><select id="evalDoseUnit" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="mL">mL</option></select></div>' +
+        '</div>' +
+        '<div class="settings-grid" style="margin-bottom:12px;">' +
+          '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalFrequency" class="settings-input" type="text" placeholder="e.g. 2x daily" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><select id="evalTiming" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Before Bed">Before Bed</option></select></div>' +
+        '</div>' +
+        '<div style="margin-bottom:12px;"><label style="' + _lbl + '">Timing Instructions <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTimingInstructions" class="settings-input" type="text" placeholder="e.g. 30 min before meals" oninput="_evalCheckSubmit()"/></div>' +
+        '<div class="settings-grid" style="margin-bottom:12px;">' +
+          '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalDuration" class="settings-input" type="text" placeholder="e.g. 8 weeks" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Protocol Version <span style="color:rgba(200,80,80,0.7);">*</span></label><select id="evalProtoVersion" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>' +
+        '</div>' +
+        '<div style="margin-bottom:20px;"><label style="' + _lbl + '">Other Notes <span style="opacity:0.4;font-size:7px;">(optional)</span></label><textarea id="evalOtherNotes" class="settings-input" rows="2" placeholder="Additional notes…" style="resize:vertical;min-height:50px;line-height:1.6;"></textarea></div>' +
+      '</div>' +
+
+      // Submit
+      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:24px;">' +
+        '<button class="btn-green" id="evalSubmitBtn" disabled style="opacity:0.4;cursor:not-allowed;" onclick="_submitEvaluation(\'' + escapeAttr(apptId) + '\')">Submit Evaluation</button>' +
         '<span id="evalMsg" style="display:none;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.08em;"></span>' +
       '</div>' +
     '</div>';
 
-  // Populate protocol dropdown
-  var protoSelect = document.getElementById('evalProtocol');
-  var protoOptions = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery Stack','Performance Stack','Optimize Stack'];
-  protoOptions.forEach(function(opt) {
-    var o = document.createElement('option'); o.value = opt; o.textContent = opt;
-    protoSelect.appendChild(o);
+  // Attach change listeners to protocol toggles
+  document.querySelectorAll('.eval-proto-toggle').forEach(function(sel) {
+    sel.addEventListener('change', _evalCheckSubmit);
   });
 
   // Load patient info
   db.from('appointments').select('consumer_id, notes, scheduled_at').eq('id', apptId).limit(1)
     .then(function(r) {
       if (!r.data || r.data.length === 0) return;
-      _evalConsumerId = r.data[0].consumer_id;
       var existingNotes = r.data[0].notes || '';
       if (existingNotes) document.getElementById('evalNotes').value = existingNotes;
-
-      // Load patient profile
-      return db.from('profiles').select('display_name, email, dob, sex, state').eq('user_id', _evalConsumerId).limit(1);
+      return db.from('profiles').select('display_name, email, dob, sex, state').eq('user_id', r.data[0].consumer_id).limit(1);
     })
     .then(function(pr) {
       if (!pr || !pr.data || pr.data.length === 0) return;
       var p = pr.data[0];
-      _evalPatientName = p.display_name || '—';
       var infoEl = document.getElementById('evalPatientInfo');
       if (infoEl) {
         infoEl.innerHTML =
           '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">' +
             '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Patient</div>' +
-            '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + escapeHtml(_evalPatientName) + '</div>' +
+            '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + escapeHtml(p.display_name || '—') + '</div>' +
             '<div style="font-size:12px;color:var(--grey2);">' + escapeHtml(p.email || '') + (p.dob ? ' · DOB: ' + escapeHtml(p.dob) : '') + (p.sex ? ' · ' + escapeHtml(p.sex) : '') + '</div>' +
           '</div>';
       }
     })
     .catch(function(e) { console.warn('[Pulse] eval form load failed:', e); });
+}
 
-  // Store consumer ID for submission
-  evalOverlay._apptId = apptId;
+function _onPrescriptionDecisionChange() {
+  var val = document.getElementById('evalPrescriptionGiven').value;
+  var rxSection = document.getElementById('evalRxSection');
+  var noRxSection = document.getElementById('evalNoRxSection');
+  if (val === 'yes') {
+    rxSection.style.opacity = '1'; rxSection.style.pointerEvents = 'auto';
+    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ s.disabled = false; });
+    noRxSection.style.display = 'none';
+  } else if (val === 'no') {
+    rxSection.style.opacity = '0.3'; rxSection.style.pointerEvents = 'none';
+    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ s.disabled = true; s.value = 'no'; });
+    noRxSection.style.display = 'block';
+  } else {
+    rxSection.style.opacity = '0.3'; rxSection.style.pointerEvents = 'none';
+    noRxSection.style.display = 'none';
+  }
+  _evalCheckSubmit();
+}
+
+function _evalCheckSubmit() {
+  var btn = document.getElementById('evalSubmitBtn');
+  if (!btn) return;
+  var decision = document.getElementById('evalPrescriptionGiven').value;
+  var valid = false;
+
+  if (decision === 'no') {
+    var reason = (document.getElementById('evalNoRxReason') || {}).value || '';
+    valid = reason.trim().length > 0;
+  } else if (decision === 'yes') {
+    // At least one protocol must be Yes
+    var anyProto = false;
+    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ if (s.value === 'yes') anyProto = true; });
+    var doseAmt = (document.getElementById('evalDoseAmount') || {}).value || '';
+    var doseUnit = (document.getElementById('evalDoseUnit') || {}).value || '';
+    var freq = (document.getElementById('evalFrequency') || {}).value || '';
+    var timing = (document.getElementById('evalTiming') || {}).value || '';
+    var timingInst = (document.getElementById('evalTimingInstructions') || {}).value || '';
+    var dur = (document.getElementById('evalDuration') || {}).value || '';
+    var protoVer = (document.getElementById('evalProtoVersion') || {}).value || '';
+    valid = anyProto && doseAmt && doseUnit && freq && timing && timingInst.trim() && dur.trim() && protoVer;
+  }
+
+  btn.disabled = !valid;
+  btn.style.opacity = valid ? '1' : '0.4';
+  btn.style.cursor = valid ? 'pointer' : 'not-allowed';
 }
 
 async function _submitEvaluation(apptId) {
   var btn = document.getElementById('evalSubmitBtn');
   var msg = document.getElementById('evalMsg');
-  var protocol = document.getElementById('evalProtocol').value;
-  var notes = document.getElementById('evalNotes').value.trim();
-  var instructions = document.getElementById('evalInstructions').value.trim();
-
-  if (!protocol) {
-    if (msg) { msg.textContent = 'Please select a protocol.'; msg.style.color = 'rgba(200,80,80,0.85)'; msg.style.display = 'inline'; }
-    return;
-  }
+  var decision = document.getElementById('evalPrescriptionGiven').value;
+  var notes = (document.getElementById('evalNotes') || {}).value || '';
 
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
   if (msg) msg.style.display = 'none';
 
   try {
-    // Get consumer_id from appointment
     var apptRes = await db.from('appointments').select('consumer_id').eq('id', apptId).limit(1);
     var consumerId = (apptRes.data && apptRes.data.length > 0) ? apptRes.data[0].consumer_id : null;
     if (!consumerId) throw new Error('Patient not found');
 
-    // Update appointment notes
-    await db.from('appointments').update({
-      notes: notes,
-      status: 'completed'
-    }).eq('id', apptId);
+    // Build evaluation data
+    var evalData = {
+      prescription_given: decision === 'yes',
+      session_notes: notes.trim(),
+      evaluation_date: new Date().toISOString()
+    };
 
-    // Set assigned_protocol on consultation
+    if (decision === 'no') {
+      evalData.no_prescription_reason = (document.getElementById('evalNoRxReason') || {}).value || '';
+      evalData.prescribed_protocols = {};
+      _EVAL_PROTOCOLS.forEach(function(p) { evalData.prescribed_protocols[p.toLowerCase().replace(/\s+/g,'_')] = false; });
+      evalData.dose_amount = 'no prescription';
+      evalData.dose_unit = 'no prescription';
+      evalData.frequency = 'no prescription';
+      evalData.timing = 'no prescription';
+      evalData.timing_instructions = 'no prescription';
+      evalData.duration = 'no prescription';
+      evalData.other_notes = 'no prescription';
+      evalData.protocol_version = 'no prescription';
+    } else {
+      evalData.prescribed_protocols = {};
+      var assignedNames = [];
+      document.querySelectorAll('.eval-proto-toggle').forEach(function(s) {
+        var key = s.getAttribute('data-proto');
+        evalData.prescribed_protocols[key] = s.value === 'yes';
+        if (s.value === 'yes') {
+          var name = _EVAL_PROTOCOLS.find(function(p){ return p.toLowerCase().replace(/\s+/g,'_') === key; });
+          if (name) assignedNames.push(name);
+        }
+      });
+      evalData.dose_amount = (document.getElementById('evalDoseAmount') || {}).value || '';
+      evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
+      evalData.frequency = (document.getElementById('evalFrequency') || {}).value || '';
+      evalData.timing = (document.getElementById('evalTiming') || {}).value || '';
+      evalData.timing_instructions = (document.getElementById('evalTimingInstructions') || {}).value || '';
+      evalData.duration = (document.getElementById('evalDuration') || {}).value || '';
+      evalData.other_notes = (document.getElementById('evalOtherNotes') || {}).value || '';
+      evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';
+    }
+
+    // Update appointment
+    await db.from('appointments').update({ notes: notes.trim(), status: 'completed' }).eq('id', apptId);
+
+    // Update consultation with evaluation data
+    var assignedProtocolStr = decision === 'yes' ? (assignedNames || []).join(', ') : 'no prescription';
     var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
     if (cRes.data && cRes.data.length > 0) {
       var cId = cRes.data[0].id;
       var cData = cRes.data[0].data || {};
-      cData.assigned_protocol = protocol;
-      cData.clinician_notes = notes;
-      cData.clinician_instructions = instructions;
-      cData.evaluation_date = new Date().toISOString();
-      await db.from('consultations').update({ data: cData, protocol_assigned: protocol }).eq('id', cId);
+      Object.assign(cData, evalData);
+      cData.assigned_protocol = assignedProtocolStr;
+      await db.from('consultations').update({ data: cData, protocol_assigned: assignedProtocolStr }).eq('id', cId);
     }
 
-    // Also update profile with assigned protocol
-    await db.from('profiles').upsert({
-      user_id: consumerId,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
+    // Update profile
+    await db.from('profiles').upsert({ user_id: consumerId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 
     if (msg) { msg.textContent = 'Evaluation submitted successfully.'; msg.style.color = 'var(--green)'; msg.style.display = 'inline'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Submitted ✓'; }
 
-    // Close after delay and return to overview
     setTimeout(function() {
       var overlay = document.getElementById('evalOverlay');
       if (overlay) overlay.style.display = 'none';

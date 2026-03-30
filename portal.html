@@ -1198,6 +1198,167 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 }
 
 /* ── END PHASE 31 ─────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PHASE 32 — MOBILE CLINICIAN PORTAL AUDIT (≤480px)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 32A: CLINICIAN BOTTOM TAB BAR — 6 TABS FIT ─────────────────────────────
+   Schedule tab was missing from the mobile bottom bar; added in HTML.
+   Ensure all 6 tabs fit without overflow on 320px screens.
+*/
+@media(max-width:480px) {
+  .pbb-clinician .pbb-item {
+    min-width: 0;
+    padding: 8px 4px 6px;
+    font-size: 7px;
+  }
+  .pbb-clinician .pbb-icon { font-size: 14px; }
+  .pbb-clinician .pbb-label { font-size: 7px; letter-spacing: 0.02em; }
+}
+
+/* ── 32B: PATIENT LIST ROWS — READABLE & TAPPABLE ───────────────────────────
+   Ensure 44px minimum tap targets and readable text on narrow screens.
+*/
+@media(max-width:480px) {
+  .patient-row {
+    padding: 14px 12px;
+    gap: 10px;
+    min-height: 44px;
+  }
+  .patient-name-text { font-size: 14px; }
+  .patient-proto-text { font-size: 12px; }
+  .patient-meta-text { font-size: 9px; }
+  .pat-row-right { gap: 6px; }
+  .pat-status-badge { font-size: 7px; padding: 2px 6px; }
+  .pat-next-appt { font-size: 8px; max-width: 60px; }
+  #clPatSearch { font-size: 16px; padding: 10px 12px; min-height: 44px; }
+  .filter-bar { gap: 4px; }
+  .filter-pill { font-size: 8px; padding: 5px 10px; letter-spacing: 0.08em; }
+}
+
+/* ── 32C: PATIENT DETAIL PANEL — FULL-SCREEN SLIDE-IN ────────────────────────
+   Already full-screen at 768px (Phase 14C), but reinforce at ≤480px
+   with tighter padding and ensure it covers the bottom tab bar.
+*/
+@media(max-width:480px) {
+  .patient-detail-panel {
+    padding: 16px 14px 90px;
+    z-index: 200;
+  }
+  .pdp-title { font-size: 16px; }
+  .pdp-subtitle { font-size: 9px; }
+  .pdp-section-label { font-size: 8px; }
+  .pdp-info-grid { grid-template-columns: 1fr; gap: 6px; }
+  .pdp-proto-name { font-size: 14px; }
+  .pdp-proto-note { font-size: 12px; }
+  .pdp-compound { font-size: 8px; padding: 3px 8px; }
+  .dose-stat-row { flex-wrap: wrap; gap: 10px; }
+  .dose-stat-item { min-width: 70px; }
+  .pdp-mobile-back {
+    display: block;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+    font-size: 13px;
+  }
+}
+
+/* ── 32D: CLINICIAN APPOINTMENTS — COMPACT BUT READABLE ──────────────────────
+*/
+@media(max-width:480px) {
+  .appt-row {
+    padding: 12px 10px;
+    gap: 8px;
+    min-height: 44px;
+    flex-wrap: wrap;
+  }
+  .appt-time { font-size: 10px; min-width: 60px; }
+  .appt-patient { font-size: 13px; }
+  .appt-type-text { font-size: 11px; }
+  .appt-dur { font-size: 9px; }
+  .appt-badge { font-size: 7px; padding: 2px 7px; }
+  /* Appointment detail panel */
+  .appt-detail-panel { padding: 14px 12px; }
+  .adp-name { font-size: 14px; }
+  .adp-meta { font-size: 10px; }
+  .adp-notes { font-size: 14px; min-height: 56px; }
+  .adp-actions { gap: 5px; }
+  .adp-btn {
+    font-size: 9px;
+    padding: 8px 12px;
+    min-height: 36px;
+  }
+}
+
+/* ── 32E: CLINICIAN MESSAGES — FULL-HEIGHT THREAD VIEW ───────────────────────
+   Make the message bubbles area fill available height on mobile.
+*/
+@media(max-width:480px) {
+  #tab-cl-messages .p-card { padding: 12px; }
+  #tab-cl-messages .msg-bubbles {
+    max-height: calc(100vh - 280px);
+    min-height: 200px;
+  }
+  #tab-cl-messages .thread-header { margin-bottom: 10px; padding-bottom: 10px; }
+  #tab-cl-messages .thread-who { font-size: 13px; }
+  #tab-cl-messages .msg-compose-input { font-size: 16px; }
+  #tab-cl-messages .msg-send-btn { min-height: 38px; padding: 0 14px; }
+  /* Thread list rows — tappable */
+  .msg-row { min-height: 44px; padding: 12px 10px; }
+}
+
+/* ── 32F: CLINICIAN SETTINGS — INPUTMODE + MOBILE LAYOUT ─────────────────────
+   Tighten settings card padding; full-width save button.
+*/
+@media(max-width:480px) {
+  #tab-cl-settings .p-card { padding: 16px 14px; }
+  #tab-cl-settings .settings-section-lbl { font-size: 8px; }
+  #tab-cl-settings .settings-toggle-text { font-size: 13px; }
+  #tab-cl-settings .btn-green,
+  #tab-cl-settings .btn-ghost {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+  /* Bio textarea */
+  #clBio { font-size: 16px; }
+}
+
+/* ── 32G: CLINICIAN OVERVIEW — COMPACT STAT GRID ─────────────────────────────
+*/
+@media(max-width:480px) {
+  .cl-stat-grid { gap: 6px; }
+  .cl-stat-tile { padding: 14px 14px; }
+  .cl-stat-num { font-size: 20px; }
+  .cl-stat-lbl { font-size: 7px; }
+  /* Today's appointments card */
+  #tab-cl-overview .p-card { padding: 16px 12px; }
+  /* Two-col becomes single col (already at 768px), reduce gap */
+  .cl-two-col { gap: 10px; }
+  .cl-two-col .p-card { padding: 16px 12px; }
+}
+
+/* ── 32H: CLINICIAN SCHEDULE — AVAILABILITY EDITOR COMPACT ───────────────────
+*/
+@media(max-width:480px) {
+  .avail-editor-row { flex-wrap: wrap; gap: 8px; }
+  .avail-day-label { min-width: 60px; font-size: 10px; }
+  .avail-time-input { width: 80px; font-size: 12px; padding: 6px 8px; }
+  .avail-time-range { gap: 5px; }
+  /* Blocked times */
+  .block-row { flex-wrap: wrap; gap: 6px; padding: 10px 10px; }
+  .block-label-text { font-size: 12px; }
+  .block-meta { font-size: 9px; }
+  /* Add block form */
+  #addBlockForm .settings-grid { gap: 8px; }
+  #addBlockForm input[type="time"] { font-size: 16px; }
+}
+
+/* ── END PHASE 32 ─────────────────────────────────────────────────────────── */
 </style>
 </head>
 <body>
@@ -1230,7 +1391,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <button class="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
         </div>
         <div class="notif-list" id="notifList">
-          <div class="notif-empty">No notifications yet.</div>
+          <div class="notif-empty"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" style="display:block;margin:0 auto 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>No notifications yet.</div>
         </div>
       </div>
     </div>
@@ -1341,6 +1502,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- Clinician tabs (shown when role=clinician|admin) -->
       <div class="pbb-clinician" id="pbbClinician" style="display:none;">
         <div class="pbb-item active" id="pbb-cl-overview"      onclick="switchTab('cl-overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
+        <div class="pbb-item"        id="pbb-cl-schedule"      onclick="switchTab('cl-schedule')"><span class="pbb-icon">▦</span><span class="pbb-label">Schedule</span></div>
         <div class="pbb-item"        id="pbb-cl-patients"      onclick="switchTab('cl-patients')"><span class="pbb-icon">♟</span><span class="pbb-label">Patients</span></div>
         <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Appts</span></div>
         <div class="pbb-item"        id="pbb-cl-messages"      onclick="switchTab('cl-messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
@@ -1624,7 +1786,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Display Name</label>
-                <input class="settings-input" id="settingsDisplayName" type="text" placeholder="Your name" onblur="saveConsumerSettings()"/>
+                <input class="settings-input" id="settingsDisplayName" type="text" placeholder="Your name" inputmode="text" autocomplete="name" onblur="saveConsumerSettings()"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Email</label>
@@ -1681,7 +1843,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <div class="p-card">
           <div class="compounds-label" style="margin-bottom:12px;">Today's Appointments</div>
-          <div class="appt-list" id="clTodayAppts"><div class="cl-empty"><div class="cl-empty-title">No appointments today.</div></div></div>
+          <div class="appt-list" id="clTodayAppts"></div>
         </div>
 
         <div class="cl-two-col">
@@ -1852,21 +2014,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">First Name</label>
-                <input class="settings-input" id="clFirstName" type="text" placeholder="First name"/>
+                <input class="settings-input" id="clFirstName" type="text" placeholder="First name" inputmode="text" autocomplete="given-name"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Last Name</label>
-                <input class="settings-input" id="clLastName" type="text" placeholder="Last name"/>
+                <input class="settings-input" id="clLastName" type="text" placeholder="Last name" inputmode="text" autocomplete="family-name"/>
               </div>
             </div>
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Credentials</label>
-                <input class="settings-input" id="clCredentials" type="text" placeholder="MD, FACSM"/>
+                <input class="settings-input" id="clCredentials" type="text" placeholder="MD, FACSM" inputmode="text"/>
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Specialty</label>
-                <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine"/>
+                <input class="settings-input" id="clSpecialty" type="text" placeholder="Sports Medicine" inputmode="text"/>
               </div>
             </div>
             <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>
@@ -3365,7 +3527,7 @@ function initClinicianPortal(user, role, greeting) {
     _loadClAppts('today');
     // Also render overview list from DB
     var overviewListEl = document.getElementById('clTodayAppts');
-    if (overviewListEl) overviewListEl.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading…</div></div>';
+    if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
     db.from('appointments')
       .select('*, profiles!appointments_consumer_id_fkey(display_name)')
       .eq('clinician_id', currentUserId)
@@ -3390,8 +3552,9 @@ function initClinicianPortal(user, role, greeting) {
         });
         renderApptList('clTodayAppts', todayRows, 'clinician');
       })
-      .catch(function() {
-        renderApptList('clTodayAppts', [], 'clinician');
+      .catch(function(err) {
+        handleSupabaseError(err, 'cl overview today appts');
+        showInlineEmpty('clTodayAppts', 'Could not load appointments.', 'Refresh the page to try again.', { icon: 'calendar' });
       });
   }
 
@@ -3802,17 +3965,7 @@ function filterClAppts(filter, pillEl) {
 
 function _loadClAppts(filter) {
   // Show skeleton rows while loading
-  var apptListEl = document.getElementById('clApptList');
-  if (apptListEl) apptListEl.innerHTML = [0,1,2].map(function() {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="height:13px;width:72px;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:50%;margin-bottom:6px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:70%;"></div>' +
-      '</div>' +
-      '<div class="skeleton-pulse" style="height:20px;width:64px;border-radius:999px;"></div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clApptList', 'list-rows');
   db.from('appointments')
     .select('*, profiles!appointments_consumer_id_fkey(display_name)')
     .eq('clinician_id', currentUserId)
@@ -4134,8 +4287,7 @@ function renderApptList(elId, appts, role) {
         emptySub = '';
       }
     }
-    el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(emptyTitle) + '</div>' +
-      (emptySub ? '<div class="inline-empty-sub">' + escapeHtml(emptySub) + '</div>' : '') + '</div>';
+    showInlineEmpty(el, emptyTitle, emptySub, { icon: 'calendar' });
     return;
   }
   el.innerHTML = '';
@@ -4207,6 +4359,8 @@ function initConsumerBooking() {
     return;
   }
 
+  // Show skeleton while availability loads
+  showSkeleton('bookDateChips', 'card');
   // Fetch clinician availability
   var availQuery = CLINICIAN_ID
     ? db.from('availability').select('day_of_week,active,slot_duration_minutes').eq('clinician_id', CLINICIAN_ID)
@@ -4528,6 +4682,8 @@ function _loadAndRenderConsumerAppts() {
     _renderConsumerApptList(consumerAppts);
     return;
   }
+  var _caSection = document.getElementById('consumerApptSection');
+  if (_caSection) { _caSection.style.display = 'block'; showSkeleton('consumerApptList', 'list-rows'); }
   db.from('appointments')
     .select('*')
     .eq('consumer_id', currentUserId)
@@ -4568,8 +4724,7 @@ function _renderConsumerApptList(appts) {
   // Show all appointments (upcoming + past/cancelled)
   if (appts.length === 0) {
     section.style.display = 'block';
-    list.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">No appointments yet.</div>' +
-      '<div class="inline-empty-sub">Book your first session below.</div></div>';
+    showInlineEmpty(list, 'No appointments yet.', 'Book your first session below.', { icon: 'calendar' });
     return;
   }
   section.style.display = 'block';
@@ -4848,31 +5003,11 @@ function initClPatients() {
   }
   if (!currentUserId) {
     // Auth not yet resolved — show loading skeleton and wait; caller will retry once auth is known
-    var elWait = document.getElementById('clPatientList');
-    if (elWait) elWait.innerHTML = [0,1,2,3].map(function() {
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-        '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-        '<div style="flex:1;">' +
-          '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
-          '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
-        '</div>' +
-        '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
-      '</div>';
-    }).join('');
+    showSkeleton('clPatientList', 'list-rows');
     return;
   }
   // Show skeleton loading state for patient list
-  var el = document.getElementById('clPatientList');
-  if (el) el.innerHTML = [0,1,2,3].map(function() {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:55%;margin-bottom:6px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:75%;"></div>' +
-      '</div>' +
-      '<div class="skeleton-pulse" style="height:20px;width:52px;border-radius:999px;"></div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clPatientList', 'list-rows');
 
   // Step 1: fetch all consultations with a non-null status, ordered newest first
   db.from('consultations')
@@ -4919,8 +5054,7 @@ function initClPatients() {
     .catch(function(err) {
       console.warn('[Pulse] consultations fetch failed:', err && err.message);
       _clPatientRows = [];
-      var errEl = document.getElementById('clPatientList');
-      if (errEl) errEl.innerHTML = '<div class="list-error">Unable to load patients. <button onclick="initClPatients()" class="retry-btn">Try again</button></div>';
+      showListError('clPatientList', 'initClPatients');
     });
 }
 
@@ -5050,12 +5184,12 @@ function renderPatientList(filter) {
   // Use loaded rows (or mock in PREVIEW_MODE)
   var rows = _clPatientRows;
   if (!rows) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">Loading patients…</div></div>';
+    showSkeleton(el, 'list-rows');
     return;
   }
 
   if (rows.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
+    showInlineEmpty(el, 'No patients yet.', 'Patients will appear here after they complete intake.', { icon: 'users' });
     return;
   }
 
@@ -5087,7 +5221,7 @@ function renderPatientList(filter) {
   }
 
   if (patients.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No patients found.</div></div>';
+    showInlineEmpty(el, 'No patients found.', 'Try a different filter or search term.', { icon: 'users' });
     return;
   }
   el.innerHTML = '';
@@ -5574,16 +5708,7 @@ function initClMessages() {
 // ── Load thread list from Supabase ──
 function _loadClThreadList() {
   // Show skeleton rows while loading
-  var msgListEl = document.getElementById('clMsgList');
-  if (msgListEl) msgListEl.innerHTML = [0,1,2].map(function() {
-    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);">' +
-      '<div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div>' +
-      '<div style="flex:1;">' +
-        '<div class="skeleton-pulse" style="height:13px;width:45%;margin-bottom:7px;"></div>' +
-        '<div class="skeleton-pulse" style="height:11px;width:80%;"></div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
+  showSkeleton('clMsgList', 'message-rows');
   db.from('messages')
     .select('thread_id, sender_role, sender_name, body, created_at, read')
     .order('created_at', { ascending: false })
@@ -5666,7 +5791,7 @@ function _renderClThreadListFromCache() {
   threads.sort(function(a, b) { return b.latestTime > a.latestTime ? 1 : -1; });
 
   if (threads.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No messages yet.</div><div class="cl-empty-sub">Messages from members will appear here.</div></div>';
+    showInlineEmpty(el, 'No messages yet.', 'Messages from members will appear here.', { icon: 'message' });
     return;
   }
   el.innerHTML = threads.map(function(t) {
@@ -5694,7 +5819,7 @@ function _renderClThreadListMock() {
   var el = document.getElementById('clMsgList');
   if (!el) return;
   if (MOCK_THREADS.length === 0) {
-    el.innerHTML = '<div class="cl-empty"><div class="cl-empty-title">No messages.</div></div>';
+    showInlineEmpty(el, 'No messages.', 'Patient messages will appear here.', { icon: 'message' });
     return;
   }
   el.innerHTML = MOCK_THREADS.map(function(t) {
@@ -5815,7 +5940,7 @@ function _renderClBubblesFromDB(rows) {
   if (!el) return;
   var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   if (rows.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet.</div>';
+    showInlineEmpty(el, 'No messages yet.', 'Start the conversation below.', { icon: 'message' });
     return;
   }
   el.innerHTML = rows.map(function(m) {
@@ -6023,6 +6148,7 @@ function initConsumerMessages() {
 }
 
 function loadConsumerMessages() {
+  showSkeleton('consumerMsgBubbles', 'message-rows');
   db.from('messages')
     .select('*')
     .eq('thread_id', currentUserId)
@@ -6059,7 +6185,7 @@ function renderConsumerThreadFromDB(rows) {
   var el = document.getElementById('consumerMsgBubbles');
   if (!el) return;
   if (rows.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:28px 16px;font-size:12px;color:rgba(255,255,255,0.22);">No messages yet. Send one below.</div>';
+    showInlineEmpty(el, 'No messages yet.', 'Send your first message below.', { icon: 'message' });
     return;
   }
   var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -6339,8 +6465,9 @@ function renderCalendar() {
         var emp = document.createElement('div');
         emp.id = 'trackerEmpty';
         emp.className = 'cl-empty';
-        emp.innerHTML = '<div class="inline-empty-title">No doses logged yet.</div>' +
-          '<div class="inline-empty-sub">Start tracking your protocol below.</div>';
+        emp.innerHTML = '<div style="margin-bottom:10px;">' + _emptyIcons.clipboard + '</div>' +
+          '<div class="inline-empty-title">No doses logged yet.</div>' +
+          '<div class="inline-empty-sub">Tap "Log Dose" above to start tracking your protocol.</div>';
         calCard.appendChild(emp);
       }
     }
@@ -6618,26 +6745,69 @@ function escapeAttr(str) {
   return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
+// ── Phase 33: skeleton loading helper ──
+// Injects shimmering placeholder bars matching the shape of the expected content.
+// Types: 'stat-cards' (4 overview stat blocks), 'list-rows' (3 generic rows),
+// 'message-rows' (3 thread rows), 'card' (single content card).
+function showSkeleton(containerId, type) {
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!el) return;
+  var html = '';
+  if (type === 'stat-cards') {
+    html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      [1,2,3,4].map(function(){ return '<div style="padding:18px 20px;"><div class="skeleton-pulse" style="height:10px;width:50%;margin-bottom:10px;"></div><div class="skeleton-pulse" style="height:22px;width:40%;margin-bottom:6px;"></div><div class="skeleton-pulse" style="height:10px;width:65%;"></div></div>'; }).join('') +
+      '</div>';
+  } else if (type === 'list-rows') {
+    html = [1,2,3].map(function(){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;"><div class="skeleton-pulse" style="height:12px;width:55%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:35%;"></div></div><div class="skeleton-pulse" style="width:50px;height:18px;border-radius:999px;"></div></div>'; }).join('');
+  } else if (type === 'message-rows') {
+    html = [1,2,3].map(function(){ return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,0.04);"><div class="skeleton-pulse" style="width:32px;height:32px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;"><div class="skeleton-pulse" style="height:12px;width:40%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:70%;"></div></div><div class="skeleton-pulse" style="width:36px;height:10px;"></div></div>'; }).join('');
+  } else if (type === 'card') {
+    html = '<div style="padding:24px;"><div class="skeleton-pulse" style="height:14px;width:45%;margin-bottom:14px;"></div><div class="skeleton-pulse" style="height:10px;width:80%;margin-bottom:8px;"></div><div class="skeleton-pulse" style="height:10px;width:60%;"></div></div>';
+  } else {
+    html = '<div style="padding:20px;"><div class="skeleton-pulse" style="height:12px;width:50%;margin-bottom:10px;"></div><div class="skeleton-pulse" style="height:12px;width:70%;"></div></div>';
+  }
+  el.innerHTML = html;
+}
+
 // ── Sign out ──
 async function doSignOut() {
   await db.auth.signOut();
   window.location.href = 'index.html';
 }
 
-// ── Phase 9B helper: render a compact inline empty state ──
-function showInlineEmpty(containerId, title, subtitle) {
-  var el = document.getElementById(containerId);
+// ── Phase 9B / Phase 34: render a compact inline empty state with icon ──
+// Phase 34 upgrade: adds SVG icon, short message, and optional CTA button
+var _emptyIcons = {
+  calendar:  '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  users:     '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',
+  message:   '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  book:      '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  bell:      '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"><rect x="8" y="2" width="8" height="4" rx="1"/><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>'
+};
+
+function showInlineEmpty(containerId, title, subtitle, opts) {
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
-  el.innerHTML = '<div class="cl-empty"><div class="inline-empty-title">' + escapeHtml(title) + '</div>' +
-    (subtitle ? '<div class="inline-empty-sub">' + escapeHtml(subtitle) + '</div>' : '') + '</div>';
+  opts = opts || {};
+  var iconHtml = opts.icon && _emptyIcons[opts.icon] ? '<div style="margin-bottom:10px;">' + _emptyIcons[opts.icon] + '</div>' : '';
+  var ctaHtml = opts.cta ? '<div style="margin-top:12px;"><button class="btn-green" onclick="' + escapeAttr(opts.cta.onclick) + '">' + escapeHtml(opts.cta.label) + '</button></div>' : '';
+  el.innerHTML = '<div class="cl-empty" style="padding:32px 20px;">' + iconHtml +
+    '<div class="inline-empty-title">' + escapeHtml(title) + '</div>' +
+    (subtitle ? '<div class="inline-empty-sub">' + escapeHtml(subtitle) + '</div>' : '') +
+    ctaHtml + '</div>';
 }
 
-// ── Phase 9C helper: show an inline error with a retry button ──
+// ── Phase 9C / Phase 34: show an inline error with a retry button ──
 function showListError(containerId, retryFnName) {
-  var el = document.getElementById(containerId);
+  var el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
-  var msg = (containerId === 'clApptList') ? 'Unable to load appointments.' : 'Something went wrong.';
-  el.innerHTML = '<div class="list-error">' + msg + ' <button onclick="' + retryFnName + '()" class="retry-btn">Try again</button></div>';
+  el.innerHTML = '<div class="cl-empty" style="padding:32px 20px;">' +
+    '<div style="margin-bottom:10px;"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="rgba(200,80,80,0.5)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>' +
+    '<div class="inline-empty-title" style="color:rgba(200,80,80,0.75);">Something went wrong.</div>' +
+    '<div class="inline-empty-sub">Try again in a moment.</div>' +
+    '<div style="margin-top:12px;"><button class="retry-btn" onclick="' + escapeAttr(retryFnName) + '()">Try again</button></div>' +
+    '</div>';
 }
 
 // ── Phase 9D: session expiry via onAuthStateChange ──
@@ -6688,7 +6858,7 @@ function _renderNotifPanel() {
   var list = document.getElementById('notifList');
   if (!list) return;
   if (_notifData.length === 0) {
-    list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+    list.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" style="display:block;margin:0 auto 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>No notifications yet.</div>';
     return;
   }
   list.innerHTML = _notifData.map(function(n) {
@@ -7118,5 +7288,228 @@ function _markNoShow(apptId) {
   }
 })();
 </script>
+
+<!--
+══════════════════════════════════════════════════════════════════════════════════
+  PHASE 35 — END-TO-END SMOKE TEST CHECKLIST
+  Each item is manually verifiable in the browser.
+  Open portal.html with ?preview=1 for mock-data walkthrough,
+  or test against live Supabase for full auth flow.
+══════════════════════════════════════════════════════════════════════════════════
+
+  ── CONSUMER FLOW ────────────────────────────────────────────────────────────
+
+  [ ] 1. SIGN UP
+      - Go to index.html → click Get Started / Sign Up
+      - Create a new account with email + password
+      - Verify Supabase sends confirmation email (check Supabase dashboard)
+
+  [ ] 2. REDIRECT TO INTAKE
+      - After sign-up, portal.html redirects to consultation.html?new=1
+      - Consultation form loads with all fields visible
+      - No console errors
+
+  [ ] 3. COMPLETE INTAKE
+      - Fill out all required consultation fields
+      - Submit the form → verify success toast / confirmation
+      - Verify row appears in Supabase consultations table with status
+
+  [ ] 4. PORTAL SHOWS PENDING STATE
+      - Navigate to portal.html
+      - Loading spinner appears briefly → portal loads
+      - Overview shows: protocol "—", compounds "—", streak "—"
+      - Action card reads "Start your protocol" with booking CTA
+      - Member card shows "Founding Member" badge
+
+  [ ] 5. CLINICIAN SEES NEW INTAKE
+      - Log in as clinician account
+      - First-time setup overlay appears if cl_setup not set
+      - Complete setup → portal loads
+      - Go to Patients tab → new patient appears in list
+      - Click patient row → detail panel slides open
+      - Patient detail shows: consultation data, "No protocol assigned"
+
+  [ ] 6. CLINICIAN ASSIGNS PROTOCOL
+      - In patient detail, click "Assign Protocol"
+      - Select a protocol (e.g., "Growth") → assign compounds
+      - Verify consultation row updates with protocol + compounds
+      - Verify in-portal notification is inserted for the patient (Phase 27)
+
+  [ ] 7. MEMBER SEES ACTIVE PROTOCOL
+      - Switch back to consumer account
+      - Overview stat cards populate: protocol name, compound count, streak
+      - Protocol tab shows: protocol name, category badge, compounds list
+      - 30/60/90 timeline card is visible
+      - Resources tab populates with protocol-specific content
+
+  [ ] 8. MEMBER LOGS A DOSE
+      - Go to Tracker tab
+      - Click "Log Dose" button
+      - Button changes to "✓ Logged today"
+      - Calendar grid shows today highlighted green
+      - Streak counter increments
+      - Overview "Day Streak" stat updates
+      - Sidebar streak row updates (desktop)
+
+  [ ] 9. STREAK UPDATES
+      - Refresh page → streak value persists (read from profiles.current_streak)
+      - Log dose on consecutive days → streak increments
+      - Skip a day → streak resets to 1 on next log
+      - 28-Day Rate percentage calculates correctly
+
+  [ ] 10. MEMBER BOOKS APPOINTMENT
+      - Go to Appointments tab
+      - Select appointment type from dropdown
+      - Select clinician from dropdown
+      - Available date chips appear for next 14 days
+      - Click a date → time slots appear
+      - Click a time slot → confirmation card appears
+      - Click "Confirm Appointment" → appointment appears in list
+      - Status shows "Pending"
+
+  [ ] 11. CLINICIAN CONFIRMS APPOINTMENT
+      - Log in as clinician → go to Appointments tab
+      - New appointment appears with "Pending" badge
+      - Click appointment row → detail panel opens
+      - Click "Confirm" → badge changes to "Confirmed"
+      - Verify consumer notification inserted (Phase 27)
+      - Verify email sent via Edge Function (Phase 26, check Resend dashboard)
+
+  [ ] 12. BOTH SEE CONFIRMED APPOINTMENT
+      - Consumer: Appointments tab shows "Confirmed" badge
+      - Clinician: Overview "Today's Appointments" shows updated status
+      - Clinician: Appointments tab → "Today" filter shows confirmed
+
+  [ ] 13. MEMBER SENDS A MESSAGE
+      - Consumer: go to Messages tab
+      - Type a message in the compose input
+      - Click "Send" → message appears as green bubble (from-me)
+      - Bubble shows timestamp
+      - Verify message row inserted in Supabase messages table
+
+  [ ] 14. CLINICIAN SEES THREAD WITH REAL NAME
+      - Clinician: go to Messages tab
+      - Thread list shows patient's display name (not UUID)
+      - Unread dot appears on the thread row
+      - Sidebar "Messages" badge shows unread count (Phase 18)
+      - Click thread → conversation view opens
+      - Patient message visible as grey bubble (from-them)
+      - Sender label shows patient's display name
+
+  [ ] 15. CLINICIAN REPLIES
+      - Type a reply in the clinician message compose input
+      - Click "Send" → message appears as green bubble (from-me)
+      - Verify message row inserted in Supabase messages table
+      - Verify consumer notification inserted (Phase 27)
+      - Verify email sent to consumer (Phase 26)
+
+  [ ] 16. MEMBER SEES REPLY
+      - Consumer: Messages tab auto-polls (15s interval)
+      - Clinician reply appears as grey bubble (from-them)
+      - Sender label shows clinician's name
+      - Unread dot clears when Messages tab is active (Phase 18)
+
+  [ ] 17. UNREAD BADGES CLEAR ON VIEW
+      - Consumer: navigate away from Messages → navigate back
+      - Verify unread dot in sidebar disappears after viewing
+      - Clinician: open a thread with unread messages
+      - Verify sidebar badge count decrements
+
+  [ ] 18. MEMBER ACCESSES RESOURCES
+      - Consumer: go to Resources tab
+      - Protocol Guide card appears with expandable sections
+      - Click a section → it expands with content
+      - Injection Guide card appears with numbered steps
+      - Common Questions card appears with FAQ items
+      - Support request textarea and send button are visible
+
+  [ ] 19. SUBSCRIPTION STATUS (Phase 28)
+      - If profiles.subscription_status !== 'active':
+        Consumer Overview shows amber "inactive" banner
+      - Clinician patient list shows "Inactive" chip next to patient name
+      - If subscription_status === 'active': no banner, "Active" chip
+
+  ── CLINICIAN-SPECIFIC CHECKS ───────────────────────────────────────────────
+
+  [ ] 20. CLINICIAN OVERVIEW
+      - Stat cards: Appts Today, This Week, Active Patients, Unread Messages
+      - Today's Appointments list renders (or empty state with icon)
+      - Recent Activity list populates
+      - Availability sidebar summary shows days on/off
+
+  [ ] 21. CLINICIAN SCHEDULE
+      - Appointment Settings: duration dropdown, buffer dropdown
+      - Weekly Availability: 7 day rows with time pickers and toggles
+      - Save button → "Saved." confirmation
+      - Blocked Times: add/remove blocks with day, label, start/end
+
+  [ ] 22. CLINICIAN PATIENTS
+      - Filter pills: All, Active, Pending, Recently Seen, Needs Follow-up, Unread
+      - Search input filters by name or protocol
+      - Patient row click → detail panel slides in (full-screen on mobile)
+      - Detail shows: info grid, protocol, compounds, dose summary, appt history
+      - "Assign Protocol" and "Message" buttons work
+
+  [ ] 23. CLINICIAN SETTINGS
+      - Profile: first name, last name, credentials, specialty
+      - Public Profile: bio textarea
+      - Appointment Preferences: duration, timezone
+      - Notifications: toggle switches
+      - Security: Change Password button
+      - Save Changes → "Saved ✓" confirmation
+
+  ── MOBILE CHECKS (≤480px) ──────────────────────────────────────────────────
+
+  [ ] 24. CONSUMER MOBILE
+      - Bottom tab bar shows 5 tabs: Overview, Protocol, Tracker, Appts, Messages
+      - All tab content scrolls vertically without horizontal overflow
+      - All buttons have ≥44px touch targets
+      - Text inputs show correct mobile keyboard (inputmode)
+      - iOS zoom prevention (font-size ≥16px on inputs)
+      - Calendar grid fits without horizontal scroll
+
+  [ ] 25. CLINICIAN MOBILE
+      - Bottom tab bar shows 6 tabs: Overview, Schedule, Patients, Appts, Messages, Settings
+      - Patient detail panel slides full-screen from right
+      - "← Back" button closes patient detail
+      - Filter pills wrap without overflow
+      - Message thread compose is usable (keyboard doesn't cover input)
+      - All settings inputs have 16px+ font size
+
+  ── SECURITY & ERROR HANDLING ───────────────────────────────────────────────
+
+  [ ] 26. XSS AUDIT (Phase 30)
+      - Enter <script>alert(1)</script> as display name → verify it renders escaped
+      - Enter HTML in message body → verify it renders escaped
+      - No raw innerHTML assignments without escapeHtml()
+
+  [ ] 27. SESSION EXPIRY (Phase 29)
+      - Let session expire (or manually call db.auth.signOut())
+      - Verify redirect to index.html?session_expired=1
+      - Verify no 401 errors loop in console
+
+  [ ] 28. RLS POLICIES (Phase 29)
+      - Consumer cannot read other users' dose_logs, messages, appointments
+      - Consumer cannot read other users' profiles
+      - Clinician can read all consultations, profiles, appointments
+      - Verify in Supabase SQL editor with test queries
+
+  [ ] 29. ERROR BOUNDARIES (Phase 34)
+      - Disable network → navigate to each tab
+      - Each data view shows error state with "Try again" button
+      - Click "Try again" → re-attempts the fetch
+      - No spinner runs forever
+      - No blank/white div on failed tab switch
+
+  [ ] 30. CLEAN SIGN OUT
+      - Consumer: click "Sign Out" in nav or settings
+      - Redirects to index.html
+      - Clinician: click "Sign Out" → redirects to index.html
+      - No console errors on sign out
+
+══════════════════════════════════════════════════════════════════════════════════
+  END SMOKE TEST CHECKLIST
+══════════════════════════════════════════════════════════════════════════════════
+-->
 </body>
 </html>

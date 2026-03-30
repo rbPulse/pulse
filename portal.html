@@ -3349,14 +3349,26 @@ function initPortal(user) {
       });
     })();
 
+    // Load consultation, but also check for pending appointments before redirecting
     db.from('consultations').select('*').eq('user_id', user.id)
       .order('created_at', {ascending: false}).limit(1)
       .then(function(res) {
         var c = res.data && res.data.length > 0 ? res.data[0] : null;
         if (!c) {
-          // No consultation on file — send them to the intake form
-          window.location.href = 'consultation.html?new=1';
-          return;
+          // No consultation — check if they have a pending appointment anyway
+          // (consultation insert may have failed but appointment succeeded, or RLS blocks consultation read)
+          return db.from('appointments').select('id').eq('consumer_id', user.id)
+            .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+            .limit(1)
+            .then(function(apptRes) {
+              if (apptRes.data && apptRes.data.length > 0) {
+                // Has appointment — send to consultation.html which will show waiting page
+                window.location.href = 'consultation.html';
+                return;
+              }
+              // No consultation AND no appointment — send to intake form
+              window.location.href = 'consultation.html?new=1';
+            });
         }
         populatePortal(user, c, greeting);
       })

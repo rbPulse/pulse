@@ -414,6 +414,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         </div>
       </div>
       <div class="form-group">
+        <label class="field-label" for="phoneNumber">Phone number</label>
+        <input type="tel" id="phoneNumber" placeholder="(555) 555-5555" inputmode="tel" autocomplete="tel"/>
+        <div class="field-error" id="err-phoneNumber">Required</div>
+      </div>
+      <div class="form-group">
         <label class="field-label" for="streetAddress">Street address</label>
         <input type="text" id="streetAddress" placeholder="123 Main St"/>
         <div class="field-error" id="err-streetAddress">Required</div>
@@ -975,7 +980,7 @@ document.querySelectorAll('.goal-chip').forEach(function(chip){
 });
 
 // ── Auto-clear errors on input/change ──
-['firstName','lastName','streetAddress','city','state','zipCode','dob','sex'].forEach(function(id){
+['firstName','lastName','phoneNumber','streetAddress','city','state','zipCode','dob','sex'].forEach(function(id){
   var el = document.getElementById(id);
   if(!el) return;
   el.addEventListener('input', function(){ clearFieldError(id); });
@@ -1042,7 +1047,7 @@ function submitStep1(){
   var firstErrEl = null;
 
   // Required text/select fields
-  var required = ['firstName','lastName','streetAddress','city','state','zipCode','sex'];
+  var required = ['firstName','lastName','phoneNumber','streetAddress','city','state','zipCode','sex'];
   required.forEach(function(id){
     var el = document.getElementById(id);
     var err = document.getElementById('err-'+id);
@@ -1701,6 +1706,7 @@ async function saveConsultation() {
       height: (function(){ var ft = (document.getElementById('heightFt')||{}).value; var inc = (document.getElementById('heightIn')||{}).value; return (ft && inc !== '') ? ft + "'" + inc + '"' : null; })(),
       first_name: (document.getElementById('firstName') || {}).value || null,
       last_name: (document.getElementById('lastName') || {}).value || null,
+      phone_number: (document.getElementById('phoneNumber') || {}).value || null,
       street_address: (document.getElementById('streetAddress') || {}).value || null,
       apt_unit: (document.getElementById('aptUnit') || {}).value || null,
       city: (document.getElementById('city') || {}).value || null,

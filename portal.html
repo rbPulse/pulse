@@ -3420,17 +3420,23 @@ function initPortal(user) {
               window.location.href = 'consultation.html?new=1';
             });
         }
-        // Check if member has a pending upcoming appointment — if so, send to waiting page
-        db.from('appointments').select('id').eq('consumer_id', user.id)
-          .gte('scheduled_at', new Date().toISOString())
+        // Check for active/completed appointments that need the consultation flow
+        db.from('appointments').select('id, status').eq('consumer_id', user.id)
           .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+          .order('scheduled_at', { ascending: false })
           .limit(1)
           .then(function(apptCheck) {
             if (apptCheck.data && apptCheck.data.length > 0) {
-              // Check if clinician has assigned a protocol yet — if not, go to waiting page
+              var apptStatus = apptCheck.data[0].status;
               var d = c.data || {};
-              var hasProtocol = d.assigned_protocol || c.protocol;
-              if (!hasProtocol) {
+              var hasProtocol = d.assigned_protocol || c.protocol_assigned;
+              // Completed appointment — send to Step 6 (summary/evaluation results)
+              if (apptStatus === 'completed') {
+                window.location.href = 'consultation.html';
+                return;
+              }
+              // Pending/confirmed appointment, no protocol yet — send to waiting page
+              if ((apptStatus === 'pending' || apptStatus === 'confirmed') && !hasProtocol) {
                 window.location.href = 'consultation.html';
                 return;
               }

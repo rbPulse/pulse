@@ -583,6 +583,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .sub-chip-paused { background:rgba(255,180,50,0.12); color:rgba(255,180,50,0.8); }
 .sub-chip-cancelled { background:rgba(255,80,80,0.1); color:rgba(255,80,80,0.7); }
 
+/* ── INACTIVE SUBSCRIPTION CHIP (Phase 28) ── */
+.sub-chip-inactive { background:rgba(255,180,50,0.09); border:1px solid rgba(255,180,50,0.22); color:rgba(255,180,50,0.75); }
+
 /* ── PHASES 13 & 14: MOBILE RESPONSIVENESS ─────────────────────────────────── */
 
 /* Nav gear icon (visible only on mobile, used to access Settings) */
@@ -1096,10 +1099,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- ── OVERVIEW TAB ── -->
       <div class="portal-tab active" id="tab-overview">
 
-        <!-- Subscription status banner (Phase 12) — shown by JS when subscription is not active -->
+        <!-- Subscription status banner (Phase 28) — shown by JS when subscription_status !== 'active' -->
         <div id="subStatusBanner" style="display:none;background:rgba(255,180,50,0.07);border:1px solid rgba(255,180,50,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;">
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,180,50,0.85);letter-spacing:0.05em;">Your subscription is not yet active.</span>
-          <a href="consultation.html" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);text-decoration:none;white-space:nowrap;">Get Started →</a>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,180,50,0.85);letter-spacing:0.05em;">Your subscription is inactive.</span>
+          <a href="https://calendly.com" target="_blank" rel="noopener" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,180,50,0.9);text-decoration:none;white-space:nowrap;border:1px solid rgba(255,180,50,0.35);border-radius:999px;padding:4px 12px;transition:border-color .2s;">[Reactivate]</a>
         </div>
 
         <div class="greeting-line" id="greetingLine">Good evening.</div>
@@ -1984,6 +1987,14 @@ var CLINICIAN_ID = null;
  * create policy "users see own notifications" on notifications for select using (auth.uid() = user_id);
  * create policy "users update own notifications" on notifications for update using (auth.uid() = user_id);
  * create policy "service insert notifications" on notifications for insert with check (true);
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * ── Phase 28: add subscription_status to profiles ────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * alter table profiles add column if not exists subscription_status text default 'free' check (subscription_status in ('free','active','paused','cancelled'));
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -4582,6 +4593,13 @@ function _subStatusChip(subStatus) {
   return '<span class="sub-chip sub-chip-free">Free</span>';
 }
 
+// Phase 28: "Inactive" chip — shown in clinician patient list next to names
+// where subscription_status is anything other than 'active'
+function _subInactiveChip(subStatus) {
+  if (!subStatus || subStatus === 'active') return '';
+  return '<span class="sub-chip sub-chip-inactive">Inactive</span>';
+}
+
 function renderPatientList(filter) {
   var el = document.getElementById('clPatientList');
   if (!el) return;
@@ -4642,7 +4660,7 @@ function renderPatientList(filter) {
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
             _patStatusChip(p.status, !!p.protocol) +
-            _subStatusChip(p.subStatus) +
+            _subInactiveChip(p.subStatus) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +

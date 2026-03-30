@@ -943,6 +943,261 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 @media(min-width:769px) {
   #p15-toast { bottom: 32px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PHASE 31 — MOBILE CONSUMER PORTAL AUDIT
+   Targeted fixes for consumer-facing components on ≤768px and ≤480px.
+   Does NOT alter clinician-only sections or the nav bar.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 31A: CARD PADDING REDUCTION ─────────────────────────────────────────────
+   .p-card and .p-card-sm use 24-28px horizontal padding — too generous on
+   narrow screens. Reduce so content gets more breathing room without clipping.
+*/
+@media(max-width:768px) {
+  .p-card { padding: 18px 18px; }
+  .p-card-sm { padding: 14px 16px; }
+}
+@media(max-width:480px) {
+  .p-card { padding: 16px 14px; }
+  .p-card-sm { padding: 12px 14px; }
+}
+
+/* ── 31B: GREETING / SECTION HEADER SPACING ──────────────────────────────────
+   tab-title and greeting-sub margins waste vertical space on small screens.
+*/
+@media(max-width:480px) {
+  .greeting-line { margin-bottom: 2px; }
+  .greeting-sub { margin-bottom: 16px; }
+  .tab-title { margin-bottom: 16px; }
+  .tab-eyebrow { margin-bottom: 6px; }
+}
+
+/* ── 31C: OVERVIEW STAT CARDS ────────────────────────────────────────────────
+   At ≤480px keep 2-col but reduce padding and font-size so values like
+   "BPC-157" don't truncate. ov-stat-sub is 11px — lift to 12px minimum.
+*/
+@media(max-width:480px) {
+  .overview-stats { gap: 8px; margin-bottom: 12px; }
+  .ov-stat { padding: 14px 14px; }
+  .ov-stat-val { font-size: 18px; }
+  .ov-stat-sub { font-size: 12px; margin-top: 2px; }
+  .ov-stat-label { font-size: 7px; margin-bottom: 4px; }
+}
+
+/* ── 31D: MEMBER CARD ────────────────────────────────────────────────────────
+   Reduce padding on mobile; already flex-direction:column via 768px rule.
+*/
+@media(max-width:480px) {
+  .member-card { padding: 14px 16px; margin-bottom: 12px; gap: 10px; }
+  .member-since { font-size: 11px; }
+}
+
+/* ── 31E: ACTION CARD ────────────────────────────────────────────────────────
+   Tighten padding, ensure button is full-width and at least 44px tall.
+*/
+@media(max-width:480px) {
+  .action-card { padding: 18px 16px; }
+  .action-card-title { font-size: 16px; margin-bottom: 5px; }
+  .action-card-sub,
+  .action-card-proto { font-size: 13px; margin-bottom: 14px; }
+  .action-card .btn-green,
+  .action-card .btn-ghost {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0 20px;
+  }
+}
+
+/* ── 31F: TRACKER — LOG CARD (stack layout + full-width button) ──────────────
+   On narrow screens the info + button row can be cramped; stack vertically.
+*/
+@media(max-width:480px) {
+  .log-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .log-card > div:last-child { width: 100%; }
+  .log-card .btn-green {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+  .log-card-sub { font-size: 12px; }
+}
+
+/* ── 31G: TRACKER — STREAK ROW SPACING ──────────────────────────────────────
+   Three blocks side-by-side with gap:20px is tight at 320px.
+*/
+@media(max-width:480px) {
+  .streak-row { gap: 12px; padding-top: 14px; }
+  .streak-num { font-size: 17px; }
+  .streak-lbl { font-size: 7px; }
+}
+
+/* ── 31H: CONSUMER APPOINTMENT ROWS ─────────────────────────────────────────
+   consumer-appt-row needs readable font and stacked layout on very narrow
+   screens; appt-action-row buttons must have adequate touch targets.
+*/
+@media(max-width:480px) {
+  .consumer-appt-row {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px 10px;
+  }
+  .consumer-appt-name { font-size: 14px; }
+  .consumer-appt-meta { font-size: 11px; }
+  .appt-action-row { margin-top: 6px; }
+  .appt-action-btn {
+    min-height: 36px;
+    padding: 7px 14px;
+    font-size: 9px;
+  }
+}
+
+/* ── 31I: MESSAGES TAB — FULL-HEIGHT THREAD + STICKY COMPOSE ────────────────
+   At 768px the p-card has extra padding; thread view needs explicit height
+   so msg-bubbles scrolls and compose bar sticks to the bottom.
+   Note: 13C already handles ≤480px; extend the same treatment to 768px.
+*/
+@media(max-width:768px) {
+  #tab-messages .p-card {
+    padding: 14px 12px;
+  }
+  .thread-view.active {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 160px);
+  }
+  .msg-bubbles {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
+  }
+  .msg-compose-row {
+    position: sticky;
+    bottom: 0;
+    background: var(--card);
+    padding: 10px 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+  }
+}
+@media(max-width:480px) {
+  .thread-view.active {
+    max-height: calc(100vh - 130px);
+  }
+  .msg-bubble { font-size: 13px; max-width: 88%; }
+  .msg-send-btn { min-height: 44px; padding: 0 16px; }
+  .msg-compose-input { font-size: 16px; /* prevents iOS auto-zoom */ }
+}
+
+/* ── 31J: RESOURCES TAB — CARD PADDING REDUCTION ────────────────────────────
+   resource-card-item already stacks to 1-col at 768px; reduce padding.
+   res-card also benefits from tighter padding on mobile.
+*/
+@media(max-width:480px) {
+  .resource-card-item { padding: 16px 16px; }
+  .rc-title { font-size: 13px; }
+  .rc-body { font-size: 12px; }
+  .res-card { padding: 18px 14px; }
+  .res-faq-item summary { font-size: 13px; }
+  .res-faq-body { font-size: 13px; }
+}
+
+/* ── 31K: BOOKING FORM — FULL-WIDTH CONFIRM BUTTON ──────────────────────────
+   Confirm Appointment button should be full-width on mobile for easy tap.
+*/
+@media(max-width:480px) {
+  #bookConfirmBtn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+}
+
+/* ── 31L: MODAL BUTTONS (Phase 15) — 44px TOUCH TARGETS ─────────────────────
+   p15-footer buttons not covered by 13E; add min-height on mobile.
+*/
+@media(max-width:480px) {
+  .p15-btn-cancel-action,
+  .p15-btn-dismiss,
+  .p15-btn-confirm {
+    min-height: 44px;
+    padding: 0 18px;
+    line-height: 44px;
+  }
+  .p15-footer { flex-wrap: wrap; }
+  .p15-modal { padding: 20px 16px; }
+}
+
+/* ── 31M: SUPPORT REQUEST FOOTER (Resources tab) ────────────────────────────
+   Stack the sent message + button on very narrow screens.
+*/
+@media(max-width:480px) {
+  .support-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .support-footer .btn-green {
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+  .support-textarea { font-size: 16px; /* prevents iOS auto-zoom */ }
+}
+
+/* ── 31N: SUBSCRIPTION BANNER — STACK ON NARROW SCREENS ─────────────────────
+   The subscription status banner (inline style flex row) can overflow on 320px.
+   Force it to column on mobile without touching inline styles — override here.
+*/
+@media(max-width:480px) {
+  #subStatusBanner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+
+/* ── 31O: PROTOCOL CARD PADDING REDUCTION ────────────────────────────────────
+   proto-header-card and compounds-card use generous 28px padding.
+*/
+@media(max-width:480px) {
+  .proto-header-card { padding: 18px 16px; }
+  .compounds-card { padding: 18px 16px; }
+  .timeline-card { padding: 18px 16px; }
+  .proto-name { font-size: clamp(18px, 5vw, 24px); }
+  .tl-title { font-size: 13px; }
+  .tl-body { font-size: 12px; }
+}
+
+/* ── 31P: EMPTY STATE — REDUCE PADDING ON MOBILE ────────────────────────────
+*/
+@media(max-width:480px) {
+  .empty-state { padding: 40px 20px; }
+  .empty-title { font-size: 17px; }
+  .empty-sub { font-size: 13px; }
+  .empty-state .btn-green {
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 44px;
+    line-height: 44px;
+    padding: 0;
+  }
+}
+
+/* ── END PHASE 31 ─────────────────────────────────────────────────────────── */
 </style>
 </head>
 <body>

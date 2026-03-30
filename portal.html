@@ -4492,6 +4492,8 @@ function _applyClApptFilter(rows, filter) {
   var filtered;
   if (filter === 'today') {
     filtered = rows.filter(function(a) {
+      var st = a._rawStatus || a.status;
+      if (st === 'completed' || st === 'cancelled' || st === 'cancelled_by_member' || st === 'cancelled_by_clinician') return false;
       return a.isToday || a.date === 'Today' ||
         (a.scheduledAt && a.scheduledAt >= todayStart && a.scheduledAt <= new Date(todayStart.getTime() + 86399999));
     });
@@ -4504,9 +4506,11 @@ function _applyClApptFilter(rows, filter) {
     });
   } else if (filter === 'past') {
     filtered = rows.filter(function(a) {
+      var st = a._rawStatus || a.status;
+      // Completed appointments always show in past regardless of date
+      if (st === 'completed') return true;
       var apptTime = a.scheduledAt || null;
       var isBeforeNow = apptTime ? apptTime < now : false;
-      var st = a._rawStatus || a.status;
       return isBeforeNow && st !== 'cancelled' && st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician';
     });
     // Past shows most-recent first

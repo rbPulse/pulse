@@ -1504,6 +1504,8 @@ function submitStep3(){
     return;
   }
   errEl.style.display = 'none';
+  // Save consultation + appointment now (before going to waiting page)
+  saveConsultation();
   goToStep(4);
 }
 
@@ -1891,7 +1893,7 @@ function sendEmail(client, to, subject, body_html) {
 var _origGoToStep = goToStep;
 goToStep = function(n) {
   _origGoToStep(n);
-  if (n === 6) { saveConsultation(); }
+  // saveConsultation is called at step 3 (booking confirm); no need to call again at step 6
 };
 
 async function saveConsultation() {

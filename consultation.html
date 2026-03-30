@@ -1227,7 +1227,7 @@ function _generateRealSlots(day) {
   var dateStr = day.toISOString().slice(0, 10);
   var slots = [];
   var slotsSeen = {};
-  var cutoff = Date.now() + 60 * 60 * 1000; // 1 hour from now
+  var cutoff = Date.now() + 10 * 60 * 1000; // 10 minutes from now (testing)
 
   _eligibleClinicians.forEach(function(cl) {
     var avail = (_clinicianAvail[cl.id] || []).find(function(a) { return a.day_of_week === dow && a.active; });
@@ -1239,7 +1239,7 @@ function _generateRealSlots(day) {
         if (h * 60 + m + dur > 17 * 60) break; // don't go past 5pm
         var slotTime = new Date(day);
         slotTime.setHours(h, m, 0, 0);
-        // Skip slots less than 1 hour from now
+        // Skip slots less than 10 min from now (testing)
         if (slotTime.getTime() < cutoff) continue;
         var slotISO = slotTime.toISOString();
         // Check if this clinician already has an appointment at this time

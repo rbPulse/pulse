@@ -1921,22 +1921,33 @@ async function saveConsultation() {
       protocol: (document.getElementById('protoName') || {}).textContent || null,
       submitted_at: new Date().toISOString()
     };
-    await client.from('consultations').insert({ user_id: session.user.id, data: data });
+    var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: data });
+    if (cInsert.error) console.error('[Pulse] consultation insert failed:', cInsert.error.message);
 
-    // Auto-assign clinician and create appointment row if booking was made
-    if (selectedDate && selectedSlot && _useRealAvail) {
-      var slotDt = window._selectedSlotTs ? new Date(window._selectedSlotTs) : null;
-      if (slotDt) {
-        var assignedId = _autoAssignClinician(slotDt);
-        if (assignedId) {
-          await client.from('appointments').insert({
-            consumer_id: session.user.id,
-            clinician_id: assignedId,
-            scheduled_at: slotDt.toISOString(),
-            duration_minutes: _slotDuration,
-            status: 'pending'
-          }).then(function(){}).catch(function(){});
-        }
+    // Create appointment row if booking was made
+    if (selectedDate && selectedSlot) {
+      // Build the slot datetime
+      var slotDt = null;
+      if (window._selectedSlotTs) {
+        slotDt = new Date(window._selectedSlotTs);
+      } else if (selectedDate instanceof Date) {
+        // Parse selectedSlot time and apply to selectedDate
+        slotDt = new Date(selectedDate);
+        var _tp = to24h(selectedSlot).split(':');
+        slotDt.setHours(parseInt(_tp[0]), parseInt(_tp[1]), 0, 0);
+      }
+      if (slotDt && !isNaN(slotDt.getTime())) {
+        // Auto-assign clinician if real availability was loaded
+        var assignedId = _useRealAvail ? _autoAssignClinician(slotDt) : null;
+        var aInsert = await client.from('appointments').insert({
+          consumer_id: session.user.id,
+          clinician_id: assignedId,
+          scheduled_at: slotDt.toISOString(),
+          duration_minutes: _slotDuration || 30,
+          status: 'pending'
+        });
+        if (aInsert.error) console.error('[Pulse] appointment insert failed:', aInsert.error.message);
+        else console.log('[Pulse] appointment created:', slotDt.toISOString(), 'clinician:', assignedId);
       }
     }
 
@@ -1956,7 +1967,7 @@ async function saveConsultation() {
     }
     // Redirect to portal after a short delay so user sees confirmation screen
     setTimeout(function(){ window.location.href = 'portal.html'; }, 2500);
-  } catch(e) { /* silent fail — don't interrupt the UX */ }
+  } catch(e) { console.error('[Pulse] saveConsultation error:', e); }
 }
 </script>
 <script type="module">

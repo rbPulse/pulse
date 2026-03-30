@@ -7972,7 +7972,16 @@ function _joinClinicianSession(apptId) {
         '</div>' +
         '<button onclick="_leaveClinicianSession()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);color:rgba(220,90,90,0.85);padding:7px 16px;border-radius:999px;cursor:pointer;">End Session</button>' +
       '</div>' +
-      '<div id="dailySessionContainer" style="flex:1;overflow:hidden;"></div>' +
+      '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">' +
+        '<div id="dailySessionContainer" style="flex:1;overflow:hidden;min-height:300px;"></div>' +
+        '<div style="border-top:1px solid var(--border);padding:14px 24px;flex-shrink:0;">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+            '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--green);">Session Notes</span>' +
+            '<span id="sessionNotesSaved" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>' +
+          '</div>' +
+          '<textarea id="sessionLiveNotes" placeholder="Take notes during the session..." style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:none;height:80px;outline:none;line-height:1.6;transition:border-color .2s;"></textarea>' +
+        '</div>' +
+      '</div>' +
       '<div id="dailySessionStatus" style="text-align:center;padding:20px;color:var(--grey);font-size:13px;">Connecting…</div>';
     document.body.appendChild(overlay);
   } else {
@@ -8010,14 +8019,53 @@ function _joinClinicianSession(apptId) {
       });
       _clDailyFrame.on('error', function() { _showClSessionError('Connection error'); });
       _clDailyFrame.join({ url: result.data.roomUrl, token: result.data.token });
+
+      // Start auto-saving session notes every 10 seconds
+      _startSessionNotesAutoSave(apptId);
     })
     .catch(function(err) { _showClSessionError(err.message || 'Network error'); });
   });
 }
 
 var _clSessionApptId = null; // tracks the appointment being video-called
+var _sessionNotesTimer = null;
+var _sessionNotesLastSaved = '';
+
+function _startSessionNotesAutoSave(apptId) {
+  if (_sessionNotesTimer) clearInterval(_sessionNotesTimer);
+  // Load existing notes
+  db.from('appointments').select('notes').eq('id', apptId).limit(1)
+    .then(function(r) {
+      if (r.data && r.data.length > 0 && r.data[0].notes) {
+        var el = document.getElementById('sessionLiveNotes');
+        if (el && !el.value) { el.value = r.data[0].notes; _sessionNotesLastSaved = r.data[0].notes; }
+      }
+    }).catch(function(){});
+  // Auto-save every 10 seconds if changed
+  _sessionNotesTimer = setInterval(function() { _saveSessionNotes(apptId); }, 10000);
+}
+
+function _saveSessionNotes(apptId) {
+  var el = document.getElementById('sessionLiveNotes');
+  if (!el) return;
+  var val = el.value.trim();
+  if (val === _sessionNotesLastSaved) return;
+  _sessionNotesLastSaved = val;
+  db.from('appointments').update({ notes: val }).eq('id', apptId)
+    .then(function() {
+      var saved = document.getElementById('sessionNotesSaved');
+      if (saved) { saved.style.display = 'inline'; setTimeout(function(){ saved.style.display = 'none'; }, 2000); }
+    }).catch(function(){});
+}
+
+function _stopSessionNotesAutoSave() {
+  if (_sessionNotesTimer) { clearInterval(_sessionNotesTimer); _sessionNotesTimer = null; }
+  // Final save
+  if (_clSessionApptId) _saveSessionNotes(_clSessionApptId);
+}
 
 function _leaveClinicianSession() {
+  _stopSessionNotesAutoSave();
   if (_clDailyFrame) { try { _clDailyFrame.destroy(); } catch(e) {} _clDailyFrame = null; }
   var overlay = document.getElementById('dailySessionOverlay');
   if (overlay) overlay.style.display = 'none';

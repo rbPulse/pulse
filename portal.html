@@ -1967,6 +1967,26 @@ var CLINICIAN_ID = null;
  * ────────────────────────────────────────────────────────────────────────────
  */
 
+/*
+ * ── Phase 27: create notifications table ─────────────────────────────────────
+ * Run this SQL in your Supabase dashboard (SQL Editor):
+ *
+ * create table if not exists notifications (
+ *   id uuid primary key default gen_random_uuid(),
+ *   user_id uuid references auth.users(id) on delete cascade,
+ *   type text,
+ *   body text,
+ *   read boolean default false,
+ *   created_at timestamptz default now(),
+ *   link text
+ * );
+ * alter table notifications enable row level security;
+ * create policy "users see own notifications" on notifications for select using (auth.uid() = user_id);
+ * create policy "users update own notifications" on notifications for update using (auth.uid() = user_id);
+ * create policy "service insert notifications" on notifications for insert with check (true);
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+
 /* ── SUPABASE EDGE FUNCTION: send-email (Phase 26) ──────────────────────────
    DEPLOY INSTRUCTIONS:
      1. supabase functions new send-email
@@ -3612,12 +3632,12 @@ function _updateApptStatus(apptId, newStatus) {
               );
             }
           }
-          // Insert in-portal notification for the patient
+          // Insert in-portal notification for the patient (Phase 27)
           var consumerId = apptRow.consumerId;
           if (newStatus === 'confirmed') {
-            _insertNotification(consumerId, 'appt_confirmed', 'Your appointment is confirmed.', 'appointments');
+            createNotification(consumerId, 'appt_confirmed', 'Your appointment is confirmed.', 'appointments');
           } else if (newStatus === 'cancelled_by_clinician') {
-            _insertNotification(consumerId, 'appt_cancelled', 'Your appointment has been cancelled by your clinician.', 'appointments');
+            createNotification(consumerId, 'appt_cancelled', 'Your appointment has been cancelled by your clinician.', 'appointments');
           }
         }
       }
@@ -4930,8 +4950,8 @@ function _saveAssignedProtocol(patientId) {
     .then(function(msgRes) {
       if (msgRes && msgRes.error) console.warn('[Pulse] protocol welcome message failed:', msgRes.error.message);
       if (saveStatusEl) saveStatusEl.textContent = 'Protocol assigned!';
-      // Insert in-portal notification for the patient
-      _insertNotification(patientId, 'protocol_assigned', 'Your protocol has been assigned: ' + proto + '.', 'overview');
+      // Insert in-portal notification for the patient (Phase 27)
+      createNotification(patientId, 'protocol_assigned', 'Your protocol has been assigned: ' + proto + '.', 'protocol');
       // Notify patient that their protocol has been assigned (fire-and-forget)
       if (!PREVIEW_MODE && _clPatientRows) {
         for (var ni = 0; ni < _clPatientRows.length; ni++) {
@@ -5423,8 +5443,8 @@ function sendClMessage() {
         _openClThreadReal(_sentThreadId);
         return;
       }
-      // Insert in-portal notification for the patient
-      _insertNotification(_sentThreadId, 'new_message', 'Your clinician replied to your message.', 'messages');
+      // Insert in-portal notification for the patient (Phase 27)
+      createNotification(_sentThreadId, 'new_message', 'Your clinician replied to your message.', 'messages');
       // Notify patient of clinician reply (fire-and-forget, Phase 17)
       if (!PREVIEW_MODE) {
         var _threadEntry = _clThreadCache[_sentThreadId];
@@ -5671,6 +5691,10 @@ function sendConsumerMessage() {
           '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
           '<p><a href="' + window.location.origin + '/portal.html">Go to portal</a> to reply.</p>'
         );
+        // Phase 27: insert notification for clinician if their user ID is available
+        if (CLINICIAN_ID) {
+          createNotification(CLINICIAN_ID, 'new_message', 'New message from ' + (_memberDisplayName || 'a patient') + '.', 'cl-messages');
+        }
       }
     })
     .catch(function(err) {
@@ -6286,6 +6310,13 @@ function _insertNotification(userId, type, body, link) {
     .catch(function() {});
 }
 
+// ── Phase 27: Public createNotification helper ──
+// createNotification(userId, type, body, link) — inserts into the notifications table.
+// Trigger points: protocol_assigned, appt_confirmed, new_message, appt_cancelled.
+function createNotification(userId, type, body, link) {
+  _insertNotification(userId, type, body, link || null);
+}
+
 // ── Phase 15: Appointment Cancellation & Reschedule ─────────────────────────
 
 // Internal state for the modals
@@ -6412,6 +6443,8 @@ function _confirmConsumerCancel() {
           '<p><a href="' + window.location.origin + '/portal.html">Log in to the portal</a> to review their schedule.</p>'
         );
       }
+      // Phase 27: insert notification for the consumer confirming their cancellation
+      createNotification(currentUserId, 'appt_cancelled', 'Your appointment has been cancelled.', 'appointments');
       showToast("Appointment cancelled. We've notified your care team.");
     })
     .catch(function(err) { console.warn('[Pulse] p15 cancel failed:', err && err.message); });

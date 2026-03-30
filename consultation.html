@@ -1467,21 +1467,14 @@ function runCountdownTick() {
   var hrs  = Math.floor((secsUntil % 86400) / 3600);
   var mins = Math.floor((secsUntil % 3600) / 60);
 
-  // Enable join button 5 minutes before appointment
-  var FIVE_MIN = 5 * 60;
-  if (secsUntil <= FIVE_MIN && secsUntil > 0) {
-    digits.textContent = mins + 'm ' + (secsUntil % 60) + 's';
-    unit.textContent = 'session opens soon';
-    joinBtn.classList.add('ready');
-    joinBtn.disabled = false;
-    joinHint.textContent = 'You can join now';
-  } else if (secsUntil > FIVE_MIN) {
+  // Join button always enabled
+  if (secsUntil > 0) {
     digits.textContent = days + 'd ' + hrs + 'h ' + mins + 'm';
     unit.textContent = 'until session';
-    joinBtn.classList.remove('ready');
-    joinBtn.disabled = true;
-    joinHint.textContent = 'Opens 5 minutes before your appointment';
   }
+  joinBtn.classList.add('ready');
+  joinBtn.disabled = false;
+  joinHint.textContent = 'You can join now';
 
   if (secsUntil <= 0) {
     clearInterval(countdownInterval);

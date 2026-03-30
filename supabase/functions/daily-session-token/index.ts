@@ -73,24 +73,9 @@ serve(async (req) => {
 
     // 5. Enforce join window: 5 minutes before appointment start, with 60-min grace after
     const apptTime = new Date(appt.scheduled_at).getTime();
-    const now = Date.now();
     const duration = (appt.duration_minutes || 30) * 60 * 1000;
-    const windowStart = apptTime - 5 * 60 * 1000; // 5 min before
-    const windowEnd = apptTime + duration + 60 * 60 * 1000; // 60 min grace after
 
-    if (now < windowStart) {
-      const minsUntil = Math.ceil((windowStart - now) / 60000);
-      return new Response(JSON.stringify({ error: "Too early", minutesUntilOpen: minsUntil }), {
-        status: 425,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (now > windowEnd) {
-      return new Response(JSON.stringify({ error: "Session window has closed" }), {
-        status: 410,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // No time window restriction — allow joining at any time
 
     // 6. Get or create Daily room for this appointment (idempotent)
     let roomName = appt.daily_room_name;

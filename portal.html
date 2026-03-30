@@ -2012,6 +2012,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="filter-pill active" id="pflt-all"      onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-active"   onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-pending"  onclick="filterPatients('pending',this)">Pending</div>
+          <div class="filter-pill"        id="pflt-notrx"    onclick="filterPatients('notrx',this)">Not Prescribed</div>
           <div class="filter-pill"        id="pflt-seen"     onclick="filterPatients('seen',this)">Recently Seen</div>
         </div>
         <div style="padding:8px 0 4px;">
@@ -5789,7 +5790,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','active','pending','seen'].forEach(function(f) {
+  ['all','active','pending','notrx','seen'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -5848,8 +5849,10 @@ function renderPatientList(filter) {
   var patients = rows;
   // Active = prescribed (evaluation submitted with prescription=yes)
   if (filter === 'active')   patients = rows.filter(function(p){ return p.prescriptionGiven === true; });
-  // Pending = no evaluation yet (has appointment but hasn't been evaluated)
+  // Pending = no evaluation yet
   if (filter === 'pending')  patients = rows.filter(function(p){ return p.prescriptionGiven === null || p.prescriptionGiven === undefined; });
+  // Not Prescribed = evaluation submitted, prescription = no
+  if (filter === 'notrx')    patients = rows.filter(function(p){ return p.prescriptionGiven === false; });
   if (filter === 'seen')     patients = rows.filter(function(p){
     // "recently seen" — joined within last 30 days
     if (!p.memberSince) return false;

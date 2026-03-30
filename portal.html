@@ -1366,6 +1366,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   #addBlockForm input[type="time"] { font-size: 16px; }
 }
 
+/* ── CLINICIAN OVERVIEW CALENDAR ── */
+.cl-cal-day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;
+  border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.25);
+  cursor:default;transition:background .15s,color .15s,border-color .15s;
+  border:1px solid transparent;
+}
+.cl-cal-day.future{color:rgba(255,255,255,0.7);cursor:pointer;}
+.cl-cal-day.future:hover{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);}
+.cl-cal-day.today{color:#fff;border-color:rgba(58,122,92,0.4);}
+.cl-cal-day.selected{background:rgba(58,122,92,0.18);border-color:rgba(58,122,92,0.5);color:#fff;}
+.cl-cal-day.has-appts::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 4px rgba(58,122,92,0.5);
+}
+.cl-cal-day.empty{cursor:default;}
+
 /* ── END PHASE 32 ─────────────────────────────────────────────────────────── */
 </style>
 </head>
@@ -1845,8 +1863,30 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
 
         <div class="p-card">
-          <div class="compounds-label" style="margin-bottom:12px;">Today's Appointments</div>
-          <div class="appt-list" id="clTodayAppts"></div>
+          <!-- Calendar header with month nav -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div class="compounds-label" style="margin-bottom:0;" id="clOverviewCalMonth">March 2026</div>
+            <div style="display:flex;gap:4px;">
+              <button class="btn-ghost" style="padding:5px 10px;font-size:11px;line-height:1;" id="clCalPrev" onclick="_clCalNav(-1)">‹</button>
+              <button class="btn-ghost" style="padding:5px 10px;font-size:11px;line-height:1;" id="clCalNext" onclick="_clCalNav(1)">›</button>
+            </div>
+          </div>
+          <!-- Mini calendar grid -->
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Su</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Mo</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Tu</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">We</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Th</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Fr</div>
+            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Sa</div>
+          </div>
+          <div id="clOverviewCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+          <!-- Appointment list for selected day -->
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <div class="compounds-label" style="margin-bottom:12px;" id="clOverviewDayLabel">Today's Appointments</div>
+            <div class="appt-list" id="clTodayAppts"></div>
+          </div>
         </div>
 
         <div class="cl-two-col">
@@ -3632,49 +3672,14 @@ function initClinicianPortal(user, role, greeting) {
     _loadClOverviewStats();
   }
 
-  // Today's appointments — use mock in PREVIEW_MODE, otherwise load from DB
+  // Overview calendar + appointment list
   if (PREVIEW_MODE || !currentUserId) {
     renderApptList('clTodayAppts', ALL_APPTS.filter(function(a){ return a.date==='Today'; }), 'clinician');
+    _renderClOverviewCal();
   } else {
     _clApptRows = null;
     _loadClAppts('today');
-    // Also render overview list from DB
-    var overviewListEl = document.getElementById('clTodayAppts');
-    if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
-    var _todayStart = new Date(); _todayStart.setHours(0,0,0,0);
-    var _todayEnd   = new Date(); _todayEnd.setHours(23,59,59,999);
-    function _loadOverviewAppts(tryJoin) {
-      var selStr = tryJoin ? '*, profiles!appointments_consumer_id_fkey(display_name)' : '*';
-      var _ovQ = db.from('appointments').select(selStr);
-      if (currentUserId) _ovQ = _ovQ.eq('clinician_id', currentUserId);
-      _ovQ.gte('scheduled_at', _todayStart.toISOString())
-        .lte('scheduled_at', _todayEnd.toISOString())
-        .order('scheduled_at', { ascending: true })
-        .then(function(res) {
-          if (res.error) throw res.error;
-          var todayRows = (res.data || []).map(function(a) {
-            var dt = new Date(a.scheduled_at);
-            var displayName = (a.profiles && a.profiles.display_name) ? a.profiles.display_name : (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
-            var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-            var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
-            return {
-              _id: a.id, date: 'Today',
-              time: dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}),
-              scheduledAt: dt, patient: displayName, initials: initials,
-              type: 'Appointment', dur: (a.duration_minutes || 30) + ' min',
-              status: displayStatus, _rawStatus: a.status, notes: a.notes || '',
-              consumerId: a.consumer_id
-            };
-          });
-          renderApptList('clTodayAppts', todayRows, 'clinician');
-        })
-        .catch(function(err) {
-          if (tryJoin) { _loadOverviewAppts(false); return; }
-          handleSupabaseError(err, 'cl overview today appts');
-          showInlineEmpty('clTodayAppts', 'No appointments today.', 'Your schedule is clear.', { icon: 'calendar' });
-        });
-    }
-    _loadOverviewAppts(true);
+    _loadClOverviewCalData();
   }
 
   // Recent activity — load from DB when not preview
@@ -4041,6 +4046,152 @@ function _fmtTime12(t) {
   var ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
   return h + ':' + m + ' ' + ampm;
+}
+
+// ── CLINICIAN OVERVIEW CALENDAR ──
+var _clCalDate = new Date(); // currently viewed month
+var _clCalSelected = new Date(); // selected day
+_clCalSelected.setHours(0,0,0,0);
+var _clCalApptDates = {}; // { 'YYYY-MM-DD': true } — days with appointments
+var _clCalApptCache = {}; // { 'YYYY-MM-DD': [appointment rows] }
+
+function _clCalNav(dir) {
+  _clCalDate.setMonth(_clCalDate.getMonth() + dir);
+  // Don't go before current month
+  var now = new Date();
+  if (_clCalDate.getFullYear() < now.getFullYear() ||
+      (_clCalDate.getFullYear() === now.getFullYear() && _clCalDate.getMonth() < now.getMonth())) {
+    _clCalDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  _renderClOverviewCal();
+}
+
+function _renderClOverviewCal() {
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var grid = document.getElementById('clOverviewCalGrid');
+  var label = document.getElementById('clOverviewCalMonth');
+  if (!grid || !label) return;
+
+  var year = _clCalDate.getFullYear();
+  var month = _clCalDate.getMonth();
+  label.textContent = MONTHS[month] + ' ' + year;
+
+  // Disable prev if on current month
+  var now = new Date();
+  var prevBtn = document.getElementById('clCalPrev');
+  if (prevBtn) {
+    var canGoPrev = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth());
+    prevBtn.style.opacity = canGoPrev ? '1' : '0.25';
+    prevBtn.disabled = !canGoPrev;
+  }
+
+  grid.innerHTML = '';
+  var firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  // Empty cells for days before the 1st
+  for (var e = 0; e < firstDay; e++) {
+    var empty = document.createElement('div');
+    empty.className = 'cl-cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dt = new Date(year, month, d);
+    dt.setHours(0,0,0,0);
+    var cell = document.createElement('div');
+    cell.className = 'cl-cal-day';
+    cell.textContent = d;
+
+    var dateStr = dt.toISOString().slice(0, 10);
+    var isPast = dt < today;
+    var isToday = dt.getTime() === today.getTime();
+    var isSelected = dt.getTime() === _clCalSelected.getTime();
+
+    if (isPast && !isToday) {
+      // past — greyed out
+    } else {
+      cell.classList.add('future');
+      if (isToday) cell.classList.add('today');
+      if (isSelected) cell.classList.add('selected');
+      if (_clCalApptDates[dateStr]) cell.classList.add('has-appts');
+      (function(d2, ds) {
+        cell.addEventListener('click', function() {
+          _clCalSelected = new Date(d2);
+          _renderClOverviewCal();
+          _loadClOverviewDayAppts(ds);
+        });
+      })(dt, dateStr);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function _loadClOverviewCalData() {
+  if (PREVIEW_MODE || !currentUserId) { _renderClOverviewCal(); return; }
+  // Load all appointments for the next 60 days to mark calendar dots
+  var start = new Date(); start.setHours(0,0,0,0);
+  var end = new Date(start); end.setDate(end.getDate() + 60);
+
+  var q = db.from('appointments').select('id, scheduled_at, duration_minutes, status, consumer_id');
+  q = q.eq('clinician_id', currentUserId);
+  q.gte('scheduled_at', start.toISOString())
+    .lte('scheduled_at', end.toISOString())
+    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+    .order('scheduled_at', { ascending: true })
+    .then(function(res) {
+      if (res.error) { _renderClOverviewCal(); return; }
+      _clCalApptDates = {};
+      _clCalApptCache = {};
+      (res.data || []).forEach(function(a) {
+        var ds = new Date(a.scheduled_at).toISOString().slice(0, 10);
+        _clCalApptDates[ds] = true;
+        if (!_clCalApptCache[ds]) _clCalApptCache[ds] = [];
+        _clCalApptCache[ds].push(a);
+      });
+      _renderClOverviewCal();
+      // Load today's appointments into the list
+      var todayStr = new Date().toISOString().slice(0, 10);
+      _loadClOverviewDayAppts(todayStr);
+    })
+    .catch(function() { _renderClOverviewCal(); });
+}
+
+function _loadClOverviewDayAppts(dateStr) {
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dt = new Date(dateStr + 'T12:00:00');
+  var label = document.getElementById('clOverviewDayLabel');
+  var today = new Date(); today.setHours(0,0,0,0);
+  var isToday = dt.toISOString().slice(0,10) === today.toISOString().slice(0,10);
+  if (label) label.textContent = isToday ? "Today's Appointments" : DAYS[dt.getDay()] + ', ' + MONTHS[dt.getMonth()] + ' ' + dt.getDate();
+
+  var cached = _clCalApptCache[dateStr];
+  if (cached && cached.length > 0) {
+    // Resolve display names from profiles if possible
+    var consumerIds = cached.map(function(a) { return a.consumer_id; }).filter(Boolean);
+    if (consumerIds.length > 0) {
+      db.from('profiles').select('user_id, display_name').in('user_id', consumerIds)
+        .then(function(pr) {
+          var nameMap = {};
+          (pr.data || []).forEach(function(p) { nameMap[p.user_id] = p.display_name; });
+          var rows = cached.map(function(a) {
+            var adt = new Date(a.scheduled_at);
+            var dn = nameMap[a.consumer_id] || (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
+            var initials = dn.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+            var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
+            return { _id:a.id, date:dateStr, time:adt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}), patient:dn, initials:initials, dur:(a.duration_minutes||30)+' min', status:displayStatus, _rawStatus:a.status, consumerId:a.consumer_id };
+          });
+          renderApptList('clTodayAppts', rows, 'clinician');
+        })
+        .catch(function() { renderApptList('clTodayAppts', [], 'clinician'); });
+    } else {
+      renderApptList('clTodayAppts', [], 'clinician');
+    }
+  } else {
+    renderApptList('clTodayAppts', [], 'clinician');
+  }
 }
 
 // ── CLINICIAN SCHEDULE EDITOR ──

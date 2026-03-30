@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
@@ -744,109 +745,27 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     </div>
   </div>
 
-  <!-- STEP 5: LIVE SESSION -->
+  <!-- STEP 5: LIVE SESSION (Daily Prebuilt) -->
   <div class="step" id="step-5">
     <div class="step-eyebrow">Step 5 of 6</div>
     <h1 class="step-title">Live consultation</h1>
+    <p class="step-sub" id="sessionStatus">Connecting to your session…</p>
 
-    <div class="session-layout">
-      <!-- LEFT: Video + controls -->
-      <div class="session-left">
-        <div class="video-grid">
-          <!-- Clinician tile (main) -->
-          <div class="video-tile video-tile--main">
-            <div class="video-avatar" style="width:80px;height:80px;">
-              <svg viewBox="0 0 24 24" style="width:34px;height:34px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div>
-            <div class="video-tile-label">Dr. Elguizaoui</div>
-            <div class="video-tile-live"><div class="live-dot"></div>Live</div>
-          </div>
-          <!-- Patient tile -->
-          <div class="video-tile">
-            <div class="video-avatar">
-              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div>
-            <div class="video-tile-label">You</div>
-          </div>
-        </div>
+    <!-- Daily Prebuilt iframe container -->
+    <div id="dailyContainer" style="width:100%;height:70vh;min-height:400px;border-radius:12px;overflow:hidden;background:var(--card);border:1px solid var(--border);display:none;"></div>
 
-        <div class="session-timer" id="sessionTimer">00:00</div>
+    <!-- Error state -->
+    <div id="sessionError" style="display:none;text-align:center;padding:48px 24px;">
+      <div style="font-size:16px;font-weight:500;color:rgba(200,80,80,0.8);margin-bottom:8px;" id="sessionErrorMsg">Unable to connect</div>
+      <div style="font-size:13px;color:var(--grey);margin-bottom:16px;">Please try again or contact support.</div>
+      <button class="btn-primary" onclick="_joinDailySession()">Retry</button>
+    </div>
 
-        <!-- Controls -->
-        <div class="video-controls">
-          <div class="vc-btn" title="Mute" onclick="toggleVC(this)">
-            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </div>
-          <div class="vc-btn" title="Camera" onclick="toggleVC(this)">
-            <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-          </div>
-          <div class="vc-btn" title="Share screen" onclick="toggleVC(this)">
-            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </div>
-          <div class="vc-btn end-call" title="End call" onclick="endSession()">
-            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.41 7.72 15.65 6.43 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 5.18 3h3.12a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z" transform="rotate(135 12 12)"/></svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: Chart + chat + protocol -->
-      <div class="session-right">
-
-        <!-- Patient chart -->
-        <div class="session-panel">
-          <div class="panel-header">
-            <div class="panel-title">Patient chart</div>
-            <div class="panel-badge">Intake data</div>
-          </div>
-          <div class="chart-body" id="sessionChartBody">
-            <div class="chart-row"><span class="chart-key">Goals</span><span class="chart-val" id="chartGoals">--</span></div>
-            <div class="chart-row" style="align-items:flex-start;"><span class="chart-key">History</span><span class="chart-val" id="chartHistory" style="text-align:right;"></span></div>
-            <div class="chart-row"><span class="chart-key">Peptides</span><span class="chart-val" id="chartPeptides">--</span></div>
-            <div class="chart-row"><span class="chart-key">Meds</span><span class="chart-val" id="chartMeds" style="font-size:11px;max-width:160px;text-align:right;">--</span></div>
-          </div>
-        </div>
-
-        <!-- Chat -->
-        <div class="session-panel">
-          <div class="panel-header">
-            <div class="panel-title">Session chat</div>
-          </div>
-          <div class="chat-messages" id="chatMessages">
-            <div class="chat-msg chat-msg--them">
-              <div class="chat-sender">Dr. Elguizaoui</div>
-              <div class="chat-bubble">Hello! I have reviewed your intake. Ready to go through your goals today.</div>
-            </div>
-          </div>
-          <div class="chat-input-row">
-            <input class="chat-input" id="chatInput" placeholder="Type a message..." onkeydown="chatKeydown(event)"/>
-            <button class="chat-send-btn" onclick="sendChat()">
-              <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Protocol recommendation -->
-        <div class="session-panel">
-          <div class="panel-header">
-            <div class="panel-title">Protocol recommendation</div>
-          </div>
-          <div class="proto-card">
-            <div class="proto-pending" id="protoPending">
-              <span class="proto-pulse"></span>Awaiting clinician input
-            </div>
-            <div class="proto-reveal" id="protoReveal">
-              <div class="proto-header">
-                <div class="proto-name" id="protoName">Recovery + Repair</div>
-                <div class="proto-category" id="protoCategory">Performance</div>
-              </div>
-              <div class="proto-compounds" id="protoCompounds"></div>
-              <div class="proto-note" id="protoNote"></div>
-              <button class="proto-trigger" onclick="goToStep(6)">View full summary →</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
+    <!-- Post-call: shown after leaving -->
+    <div id="sessionEnded" style="display:none;text-align:center;padding:48px 24px;">
+      <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Session complete</div>
+      <div style="font-size:13px;color:var(--grey);margin-bottom:20px;">Your clinician will finalize your protocol recommendation.</div>
+      <button class="btn-primary" onclick="goToStep(6)">View Summary →</button>
     </div>
   </div>
 
@@ -1548,9 +1467,20 @@ function runCountdownTick() {
   var hrs  = Math.floor((secsUntil % 86400) / 3600);
   var mins = Math.floor((secsUntil % 3600) / 60);
 
-  if (secsUntil > 0) {
+  // Enable join button 5 minutes before appointment
+  var FIVE_MIN = 5 * 60;
+  if (secsUntil <= FIVE_MIN && secsUntil > 0) {
+    digits.textContent = mins + 'm ' + (secsUntil % 60) + 's';
+    unit.textContent = 'session opens soon';
+    joinBtn.classList.add('ready');
+    joinBtn.disabled = false;
+    joinHint.textContent = 'You can join now';
+  } else if (secsUntil > FIVE_MIN) {
     digits.textContent = days + 'd ' + hrs + 'h ' + mins + 'm';
     unit.textContent = 'until session';
+    joinBtn.classList.remove('ready');
+    joinBtn.disabled = true;
+    joinHint.textContent = 'Opens 5 minutes before your appointment';
   }
 
   if (secsUntil <= 0) {
@@ -1558,7 +1488,8 @@ function runCountdownTick() {
     digits.textContent = '0d 0h 0m';
     unit.textContent = 'session is ready';
     joinBtn.classList.add('ready');
-    joinHint.textContent = 'Your clinician is ready';
+    joinBtn.disabled = false;
+    joinHint.textContent = 'Your session is ready — join now';
     gsap.to(joinBtn, {scale:1.03, repeat:-1, yoyo:true, duration:1.2, ease:'sine.inOut'});
   }
 }
@@ -1618,30 +1549,110 @@ function to24h(slot) {
 }
 
 // ── STEP 5: LIVE SESSION ──
-var sessionInterval = null;
-var sessionSeconds = 0;
+// ── DAILY VIDEO SESSION ──
+var _dailyCallFrame = null;
+var _memberApptId = null; // set when appointment is loaded on step 4
 
-function startSessionTimer(){
-  if(sessionInterval) clearInterval(sessionInterval);
-  sessionSeconds = 0;
-  sessionInterval = setInterval(function(){
-    sessionSeconds++;
-    var m = Math.floor(sessionSeconds / 60);
-    var s = sessionSeconds % 60;
-    var el = document.getElementById('sessionTimer');
-    if(el) el.textContent = (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
-  }, 1000);
+var SUPABASE_FUNCTIONS_URL = 'https://zvfqukbbglxongvuymzt.supabase.co/functions/v1';
+
+async function _joinDailySession() {
+  var container = document.getElementById('dailyContainer');
+  var statusEl = document.getElementById('sessionStatus');
+  var errorEl = document.getElementById('sessionError');
+  var endedEl = document.getElementById('sessionEnded');
+  if (errorEl) errorEl.style.display = 'none';
+  if (endedEl) endedEl.style.display = 'none';
+  if (container) container.style.display = 'none';
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Connecting to your session…'; }
+
+  try {
+    var client = window._sbClient;
+    if (!client) throw new Error('Not authenticated');
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) throw new Error('Not authenticated');
+
+    if (!_memberApptId) throw new Error('No appointment found');
+
+    // Call the Edge Function to get room URL + token
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token
+      },
+      body: JSON.stringify({ appointmentId: _memberApptId })
+    });
+
+    var data = await res.json();
+    if (!res.ok) {
+      if (data.minutesUntilOpen) {
+        throw new Error('Session opens in ' + data.minutesUntilOpen + ' minutes');
+      }
+      throw new Error(data.error || 'Failed to connect');
+    }
+
+    // Destroy existing call frame if any
+    if (_dailyCallFrame) {
+      try { _dailyCallFrame.destroy(); } catch(e) {}
+      _dailyCallFrame = null;
+    }
+
+    if (statusEl) statusEl.style.display = 'none';
+    if (container) container.style.display = 'block';
+
+    // Create Daily Prebuilt iframe
+    _dailyCallFrame = window.DailyIframe.createFrame(container, {
+      iframeStyle: { width: '100%', height: '100%', border: 'none', borderRadius: '12px' },
+      showLeaveButton: true,
+      showFullscreenButton: true
+    });
+
+    // Handle call events
+    _dailyCallFrame.on('left-meeting', function() {
+      _cleanupDaily();
+      // Mark appointment as completed
+      if (_memberApptId && client) {
+        client.from('appointments').update({ status: 'completed' }).eq('id', _memberApptId)
+          .then(function(){}).catch(function(){});
+      }
+      // Show post-call state
+      if (container) container.style.display = 'none';
+      if (endedEl) endedEl.style.display = 'block';
+    });
+
+    _dailyCallFrame.on('error', function(e) {
+      console.error('[Pulse] Daily error:', e);
+      _cleanupDaily();
+      _showSessionError('Connection error. Please try again.');
+    });
+
+    // Join the room
+    await _dailyCallFrame.join({ url: data.roomUrl, token: data.token });
+
+  } catch(err) {
+    console.error('[Pulse] session join failed:', err);
+    _showSessionError(err.message || 'Unable to connect');
+  }
 }
 
-function toggleVC(btn){
-  btn.style.opacity = btn.style.opacity === '0.35' ? '1' : '0.35';
+function _showSessionError(msg) {
+  var statusEl = document.getElementById('sessionStatus');
+  var errorEl = document.getElementById('sessionError');
+  var msgEl = document.getElementById('sessionErrorMsg');
+  var container = document.getElementById('dailyContainer');
+  if (statusEl) statusEl.style.display = 'none';
+  if (container) container.style.display = 'none';
+  if (msgEl) msgEl.textContent = msg;
+  if (errorEl) errorEl.style.display = 'block';
 }
 
-function endSession(){
-  if(sessionInterval) clearInterval(sessionInterval);
-  // Reveal protocol recommendation after brief delay (simulate clinician finalizing)
-  setTimeout(revealProtocol, 600);
-  goToStep(6);
+function _cleanupDaily() {
+  if (_dailyCallFrame) {
+    try { _dailyCallFrame.destroy(); } catch(e) {}
+    _dailyCallFrame = null;
+  }
+  var container = document.getElementById('dailyContainer');
+  if (container) container.innerHTML = '';
 }
 
 // Protocol data keyed by first selected goal
@@ -1798,13 +1809,10 @@ var _origShowStep2 = showStep;
 showStep = function(n){
   _origShowStep2(n);
   if(n === 5){
-    startSessionTimer();
-    populateSessionChart();
-    // After 8s simulate clinician sending protocol recommendation
-    setTimeout(revealProtocol, 8000);
+    _joinDailySession();
   }
   if(n === 6){
-    if(sessionInterval) clearInterval(sessionInterval);
+    _cleanupDaily();
     populateSummaryDate();
     var proto = getProtocolForPatient();
     document.getElementById('summProtoName').textContent = proto.name;
@@ -1975,9 +1983,9 @@ async function saveConsultation() {
           scheduled_at: slotDt.toISOString(),
           duration_minutes: _slotDuration || 30,
           status: 'pending'
-        });
+        }).select('id').single();
         if (aInsert.error) console.error('[Pulse] appointment insert failed:', aInsert.error.message);
-        else console.log('[Pulse] appointment created:', slotDt.toISOString(), 'clinician:', assignedId);
+        else if (aInsert.data) _memberApptId = aInsert.data.id;
       }
     }
 
@@ -2027,6 +2035,7 @@ window._sbClient = createClient(
 
     if (hasAppointment) {
         var appt = apptRes.data[0];
+        _memberApptId = appt.id; // Store for Daily session join
         var apptDt = new Date(appt.scheduled_at);
         var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];

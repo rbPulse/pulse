@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
 // Prevents any redirect to index.html or consultation.html when ?preview=1.
@@ -4606,7 +4607,14 @@ function _renderApptPatientDetail(patient, appt, panel) {
   var canCancel = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
   var safeType = escapeAttr(appt.type || 'Appointment');
 
-  var actionsHtml =
+  // Join Session: enabled 5 min before appointment
+  var _apptTime = appt.scheduledAt ? appt.scheduledAt.getTime() : 0;
+  var _canJoin = _apptTime && (Date.now() >= _apptTime - 5 * 60 * 1000) && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician';
+  var joinBtnHtml = (rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician')
+    ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" ' + (_canJoin ? '' : 'disabled style="opacity:0.4;cursor:not-allowed;border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" ') + 'onclick="_joinClinicianSession(\'' + safeId + '\')">Join Session</button>'
+    : '';
+
+  var actionsHtml = joinBtnHtml +
     (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
     '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
     (canCancel ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '');
@@ -7939,6 +7947,81 @@ function _markNoShow(apptId) {
     });
   }
 })();
+
+// ── DAILY VIDEO SESSION (Clinician) ──
+var _clDailyFrame = null;
+var SUPABASE_FUNCTIONS_URL = 'https://zvfqukbbglxongvuymzt.supabase.co/functions/v1';
+
+function _joinClinicianSession(apptId) {
+  if (!apptId || !currentUserId) return;
+  var overlay = document.getElementById('dailySessionOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'dailySessionOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;';
+    overlay.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
+          '<span style="font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:0.28em;color:#fff;text-transform:uppercase;">Pulse Session</span>' +
+        '</div>' +
+        '<button onclick="_leaveClinicianSession()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);color:rgba(220,90,90,0.85);padding:7px 16px;border-radius:999px;cursor:pointer;">End Session</button>' +
+      '</div>' +
+      '<div id="dailySessionContainer" style="flex:1;overflow:hidden;"></div>' +
+      '<div id="dailySessionStatus" style="text-align:center;padding:20px;color:var(--grey);font-size:13px;">Connecting…</div>';
+    document.body.appendChild(overlay);
+  } else {
+    overlay.style.display = 'flex';
+    var c = document.getElementById('dailySessionContainer'); if (c) c.innerHTML = '';
+    var s = document.getElementById('dailySessionStatus'); if (s) { s.style.display = 'block'; s.textContent = 'Connecting…'; }
+  }
+
+  db.auth.getSession().then(function(r) {
+    if (!r.data || !r.data.session) { _showClSessionError('Not authenticated'); return; }
+    fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r.data.session.access_token },
+      body: JSON.stringify({ appointmentId: apptId })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(result) {
+      if (!result.ok) { _showClSessionError(result.data.error || 'Failed to connect'); return; }
+      var statusEl = document.getElementById('dailySessionStatus');
+      if (statusEl) statusEl.style.display = 'none';
+      var container = document.getElementById('dailySessionContainer');
+
+      if (_clDailyFrame) { try { _clDailyFrame.destroy(); } catch(e) {} _clDailyFrame = null; }
+
+      _clDailyFrame = window.DailyIframe.createFrame(container, {
+        iframeStyle: { width: '100%', height: '100%', border: 'none' },
+        showLeaveButton: true,
+        showFullscreenButton: true
+      });
+
+      _clDailyFrame.on('left-meeting', function() {
+        _leaveClinicianSession();
+        db.from('appointments').update({ status: 'completed' }).eq('id', apptId)
+          .then(function(){}).catch(function(){});
+      });
+      _clDailyFrame.on('error', function() { _showClSessionError('Connection error'); });
+      _clDailyFrame.join({ url: result.data.roomUrl, token: result.data.token });
+    })
+    .catch(function(err) { _showClSessionError(err.message || 'Network error'); });
+  });
+}
+
+function _leaveClinicianSession() {
+  if (_clDailyFrame) { try { _clDailyFrame.destroy(); } catch(e) {} _clDailyFrame = null; }
+  var overlay = document.getElementById('dailySessionOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'today');
+  switchTab('cl-overview');
+}
+
+function _showClSessionError(msg) {
+  var statusEl = document.getElementById('dailySessionStatus');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.innerHTML = '<span style="color:rgba(200,80,80,0.8);">' + escapeHtml(msg) + '</span>'; }
+}
 </script>
 
 <!--

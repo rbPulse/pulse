@@ -4625,6 +4625,7 @@ function _renderApptPatientDetail(patient, appt, panel) {
         '<div class="pdp-info-row"><div class="pdp-info-label">Email</div><div class="pdp-info-value">' + escapeHtml(patient.email || '—') + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Phone</div><div class="pdp-info-value">' + escapeHtml(d.phone_number || '—') + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Date of Birth</div><div class="pdp-info-value">' + escapeHtml(d.dob || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Age</div><div class="pdp-info-value">' + escapeHtml(String(_calcAge(d.dob))) + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Sex</div><div class="pdp-info-value">' + escapeHtml(d.sex || '—') + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Height</div><div class="pdp-info-value">' + escapeHtml(d.height || '—') + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Weight</div><div class="pdp-info-value">' + escapeHtml(d.current_weight || '—') + '</div></div>' +
@@ -6047,6 +6048,7 @@ function buildPatientDetail(p) {
     _infoRow('Full Name',       '<span class="--em">' + fullName + '</span>') +
     _infoRow('Email',           email) +
     _infoRow('Date of Birth',   _fv(dob)) +
+    _infoRow('Age',             _fv(String(_calcAge(dob)))) +
     _infoRow('Sex',             _fv(sex)) +
     _infoRow('Primary Goal',    _fv(primaryGoal)) +
     _infoRow('Secondary Goals', _fv(secondaryGoalsStr));
@@ -7378,6 +7380,17 @@ function submitSupportRequest() {
 }
 
 // ── HTML escape utilities ──
+function _calcAge(dob) {
+  if (!dob) return '—';
+  var d = new Date(dob);
+  if (isNaN(d.getTime())) return '—';
+  var now = new Date();
+  var age = now.getFullYear() - d.getFullYear();
+  var m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age;
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)

@@ -1998,6 +1998,168 @@ var CLINICIAN_ID = null;
  * ────────────────────────────────────────────────────────────────────────────
  */
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════════
+ * ── Phase 29: COMPLETE RLS POLICY AUDIT — ALL 7 TABLES ───────────────────────
+ * Run the full block below in the Supabase SQL Editor to establish a clean,
+ * consistent policy set across every table.  Policies are idempotent (drop-
+ * if-exists before create) so the block can be re-run safely at any time.
+ *
+ * Rules enforced:
+ *   • Consumers  → read/write only their own rows (user_id = auth.uid())
+ *   • Clinicians → read all rows; write where operationally required
+ *   • Unauthenticated → no access (RLS blocks all anon requests)
+ *
+ * ── 1. consultations ────────────────────────────────────────────────────────
+ * alter table consultations enable row level security;
+ *
+ * drop policy if exists "consumers read own consultations"  on consultations;
+ * drop policy if exists "consumers insert own consultations" on consultations;
+ * drop policy if exists "consumers update own consultations" on consultations;
+ * drop policy if exists "clinicians read all consultations"  on consultations;
+ * drop policy if exists "clinicians update all consultations" on consultations;
+ *
+ * create policy "consumers read own consultations"
+ *   on consultations for select
+ *   using (auth.uid() IS NOT NULL AND user_id = auth.uid());
+ *
+ * create policy "consumers insert own consultations"
+ *   on consultations for insert
+ *   with check (auth.uid() IS NOT NULL AND user_id = auth.uid());
+ *
+ * create policy "consumers update own consultations"
+ *   on consultations for update
+ *   using (auth.uid() IS NOT NULL AND user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ *
+ * create policy "clinicians read all consultations"
+ *   on consultations for select
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * create policy "clinicians update all consultations"
+ *   on consultations for update
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'))
+ *   with check ((auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * ── 2. appointments ─────────────────────────────────────────────────────────
+ * alter table appointments enable row level security;
+ *
+ * drop policy if exists "consumers manage own appointments"    on appointments;
+ * drop policy if exists "clinicians manage all appointments"   on appointments;
+ *
+ * create policy "consumers manage own appointments"
+ *   on appointments for all
+ *   using  (auth.uid() IS NOT NULL AND consumer_id = auth.uid())
+ *   with check (consumer_id = auth.uid());
+ *
+ * create policy "clinicians manage all appointments"
+ *   on appointments for all
+ *   using  (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'))
+ *   with check ((auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * ── 3. availability ─────────────────────────────────────────────────────────
+ * alter table availability enable row level security;
+ *
+ * drop policy if exists "clinicians manage own availability" on availability;
+ * drop policy if exists "consumers read availability"        on availability;
+ *
+ * create policy "clinicians manage own availability"
+ *   on availability for all
+ *   using  (auth.uid() IS NOT NULL AND clinician_id = auth.uid())
+ *   with check (clinician_id = auth.uid());
+ *
+ * create policy "consumers read availability"
+ *   on availability for select
+ *   using (auth.uid() IS NOT NULL);
+ *
+ * ── 4. dose_logs ────────────────────────────────────────────────────────────
+ * alter table dose_logs enable row level security;
+ *
+ * drop policy if exists "users manage own dose logs"  on dose_logs;
+ * drop policy if exists "clinicians read dose logs"   on dose_logs;
+ *
+ * create policy "users manage own dose logs"
+ *   on dose_logs for all
+ *   using  (auth.uid() IS NOT NULL AND user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ *
+ * create policy "clinicians read dose logs"
+ *   on dose_logs for select
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * ── 5. profiles ─────────────────────────────────────────────────────────────
+ * alter table profiles enable row level security;
+ *
+ * drop policy if exists "users manage own profile"       on profiles;
+ * drop policy if exists "clinicians read all profiles"   on profiles;
+ *
+ * create policy "users manage own profile"
+ *   on profiles for all
+ *   using  (auth.uid() IS NOT NULL AND user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ *
+ * create policy "clinicians read all profiles"
+ *   on profiles for select
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * ── 6. notifications ────────────────────────────────────────────────────────
+ * alter table notifications enable row level security;
+ *
+ * drop policy if exists "users see own notifications"    on notifications;
+ * drop policy if exists "users update own notifications" on notifications;
+ * drop policy if exists "service insert notifications"   on notifications;
+ * drop policy if exists "users manage own notifications" on notifications;
+ * drop policy if exists "clinicians insert notifications" on notifications;
+ *
+ * create policy "users manage own notifications"
+ *   on notifications for all
+ *   using  (auth.uid() IS NOT NULL AND user_id = auth.uid())
+ *   with check (user_id = auth.uid());
+ *
+ * create policy "clinicians insert notifications"
+ *   on notifications for insert
+ *   with check (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * ── 7. messages ─────────────────────────────────────────────────────────────
+ * alter table messages enable row level security;
+ *
+ * drop policy if exists "consumers can read own thread"    on messages;
+ * drop policy if exists "consumers can insert own thread"  on messages;
+ * drop policy if exists "clinicians can read all"          on messages;
+ * drop policy if exists "clinicians can insert all"        on messages;
+ * drop policy if exists "clinicians can update read flag"  on messages;
+ *
+ * create policy "consumers can read own thread"
+ *   on messages for select
+ *   using (auth.uid() IS NOT NULL AND thread_id = auth.uid()::text);
+ *
+ * create policy "consumers can insert own thread"
+ *   on messages for insert
+ *   with check (auth.uid() IS NOT NULL AND thread_id = auth.uid()::text);
+ *
+ * create policy "clinicians can read all"
+ *   on messages for select
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * create policy "clinicians can insert all"
+ *   on messages for insert
+ *   with check (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ *
+ * create policy "clinicians can update read flag"
+ *   on messages for update
+ *   using (auth.uid() IS NOT NULL
+ *     AND (auth.jwt() -> 'user_metadata' ->> 'role') IN ('clinician','admin'));
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
 /* ── SUPABASE EDGE FUNCTION: send-email (Phase 26) ──────────────────────────
    DEPLOY INSTRUCTIONS:
      1. supabase functions new send-email
@@ -2062,6 +2224,31 @@ function sendEmail(to, subject, body_html) {
     db.functions.invoke('send-email', { body: { to: to, subject: subject, body_html: body_html } })
       .then(function(){}).catch(function(){});
   } catch(e) { /* non-fatal — email failure must never break the UI */ }
+}
+
+// ── Phase 29: handleSupabaseError — central 401/403 handler ──────────────────
+// Call this in every critical query's catch block.
+// If the error indicates an auth failure the user is signed out and redirected
+// to index.html?session_expired=1; otherwise the error is logged normally.
+function handleSupabaseError(error, context) {
+  if (!error) return;
+  var msg = (error.message || '').toLowerCase();
+  var status = error.status || (error.code ? parseInt(error.code, 10) : 0);
+  var isAuthError = status === 401 || status === 403 ||
+    msg.indexOf('jwt') !== -1 ||
+    msg.indexOf('not authenticated') !== -1 ||
+    msg.indexOf('invalid token') !== -1 ||
+    msg.indexOf('token expired') !== -1;
+  if (isAuthError) {
+    console.warn('[Pulse] Auth error in', context || 'unknown', '— signing out:', error.message);
+    db.auth.signOut().then(function() {
+      window.location.href = 'index.html?session_expired=1';
+    }).catch(function() {
+      window.location.href = 'index.html?session_expired=1';
+    });
+  } else {
+    console.warn('[Pulse] Supabase error in', context || 'unknown', ':', error.message);
+  }
 }
 
 // Module-level display name cache (set on every consumer sign-in)
@@ -2688,7 +2875,7 @@ function initPortal(user) {
           if (row.current_streak != null) { _syncStreakToOverview(row.current_streak); }
         }
       })
-      .catch(function() { /* non-fatal; keep initial name */ });
+      .catch(function(err) { handleSupabaseError(err, 'profiles upsert'); });
 
     // Populate settings tab fields (initial fill; may be overwritten above after upsert resolves)
     var settingsNameEl = document.getElementById('settingsDisplayName');

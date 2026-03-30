@@ -6117,61 +6117,118 @@ function buildPatientDetail(p) {
       asyncHtml +
     '</div>' +
 
-    // ── Evaluation section (only if evaluation was submitted) ──
+    // ── Evaluation section (shows all evaluations from history) ──
     (function() {
-      var rxGiven = p.prescriptionGiven;
-      if (rxGiven === null || rxGiven === undefined) return '';
-      var evalHtml = '<div class="pdp-section"><div class="pdp-section-label">Evaluation</div>';
-      var evalDateStr = p.evaluationDate ? new Date(p.evaluationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-      evalHtml += '<div class="pdp-info-grid" style="margin-bottom:14px;">' +
-        '<div class="pdp-info-row"><div class="pdp-info-label">Prescription</div><div class="pdp-info-value" style="color:' + (rxGiven ? 'var(--green)' : 'rgba(200,80,80,0.8)') + ';">' + (rxGiven ? 'Yes' : 'No') + '</div></div>' +
-        '<div class="pdp-info-row"><div class="pdp-info-label">Evaluation Date</div><div class="pdp-info-value">' + escapeHtml(evalDateStr) + '</div></div>' +
-      '</div>';
+      var evals = (d.evaluations && Array.isArray(d.evaluations)) ? d.evaluations : [];
+      // Also include the latest top-level eval if evaluations array is empty but data exists
+      if (evals.length === 0 && (p.prescriptionGiven !== null && p.prescriptionGiven !== undefined)) {
+        evals = [{
+          prescription_given: p.prescriptionGiven,
+          prescribed_protocols: p.prescribedProtocols || d.prescribed_protocols || {},
+          evaluation_date: p.evaluationDate || d.evaluation_date,
+          dose_amount: d.dose_amount || c.dose_amount,
+          dose_unit: d.dose_unit || c.dose_unit,
+          frequency: d.frequency || c.frequency,
+          timing: d.timing || c.timing,
+          timing_instructions: d.timing_instructions || c.timing_instructions,
+          duration: d.duration || c.duration,
+          protocol_version: d.protocol_version || c.protocol_version,
+          other_notes: d.other_notes || c.other_notes,
+          session_notes: d.session_notes || c.session_notes,
+          no_prescription_reason: d.no_prescription_reason || c.no_prescription_reason
+        }];
+      }
+      if (evals.length === 0) return '';
 
-      if (!rxGiven) {
-        var noRxReason = d.no_prescription_reason || c.no_prescription_reason || '—';
-        evalHtml += '<div class="pdp-info-row" style="margin-bottom:14px;"><div class="pdp-info-label">Reason</div><div class="pdp-info-value">' + escapeHtml(noRxReason) + '</div></div>';
-      } else {
-        // Show prescribed protocols as expandable rows
-        var protocols = p.prescribedProtocols || {};
-        var protoIdx = 0;
-        var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
+      var evalHtml = '<div class="pdp-section"><div class="pdp-section-label">Evaluations</div>';
+
+      // Build per-protocol version history: { protocolName: [ { eval, version, date, ... } ] }
+      var protoHistory = {};
+      var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
+      var hasAnyPrescription = false;
+      var latestNoRxReason = null;
+
+      evals.forEach(function(ev, idx) {
+        var evDate = ev.evaluation_date ? new Date(ev.evaluation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+        if (ev.prescription_given === false) {
+          latestNoRxReason = ev.no_prescription_reason || '—';
+        }
+        if (!ev.prescription_given || !ev.prescribed_protocols) return;
+        hasAnyPrescription = true;
         allProtos.forEach(function(pName) {
           var key = pName.toLowerCase().replace(/\s+/g, '_');
-          if (!protocols[key]) return;
-          protoIdx++;
-          var doseAmt = d.dose_amount || c.dose_amount || '—';
-          var doseUnit = d.dose_unit || c.dose_unit || '';
-          var freq = d.frequency || c.frequency || '—';
-          var tmg = d.timing || c.timing || '—';
-          var tmgInst = d.timing_instructions || c.timing_instructions || '—';
-          var dur = d.duration || c.duration || '—';
-          var pv = d.protocol_version || c.protocol_version || '—';
-          var otherN = d.other_notes || c.other_notes || '';
-          evalHtml += '<details style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--card);">' +
-            '<summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:500;color:#fff;display:flex;align-items:center;justify-content:space-between;user-select:none;">' +
-              '<span>Protocol ' + protoIdx + ': ' + escapeHtml(pName) + '</span>' +
-              '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--grey2);letter-spacing:0.1em;">Protocol Version ' + escapeHtml(String(pv)) + ' ▾</span>' +
-            '</summary>' +
-            '<div style="padding:0 14px 12px;border-top:1px solid var(--border);">' +
-              '<div class="pdp-info-grid" style="margin-top:10px;">' +
-                '<div class="pdp-info-row"><div class="pdp-info-label">Dose</div><div class="pdp-info-value">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +
-                '<div class="pdp-info-row"><div class="pdp-info-label">Frequency</div><div class="pdp-info-value">' + escapeHtml(freq) + '</div></div>' +
-                '<div class="pdp-info-row"><div class="pdp-info-label">Timing</div><div class="pdp-info-value">' + escapeHtml(tmg) + '</div></div>' +
-                '<div class="pdp-info-row"><div class="pdp-info-label">Timing Instructions</div><div class="pdp-info-value">' + escapeHtml(tmgInst) + '</div></div>' +
-                '<div class="pdp-info-row"><div class="pdp-info-label">Duration</div><div class="pdp-info-value">' + escapeHtml(dur) + '</div></div>' +
-                (otherN && otherN !== 'no prescription' ? '<div class="pdp-info-row"><div class="pdp-info-label">Notes</div><div class="pdp-info-value">' + escapeHtml(otherN) + '</div></div>' : '') +
-              '</div>' +
-            '</div>' +
-          '</details>';
+          if (!ev.prescribed_protocols[key]) return;
+          if (!protoHistory[pName]) protoHistory[pName] = [];
+          protoHistory[pName].push({
+            version: ev.protocol_version || '—',
+            date: evDate,
+            dose: (ev.dose_amount || '—') + ' ' + (ev.dose_unit || ''),
+            frequency: ev.frequency || '—',
+            timing: ev.timing || '—',
+            timingInstructions: ev.timing_instructions || '—',
+            duration: ev.duration || '—',
+            notes: ev.other_notes || '',
+            sessionNotes: ev.session_notes || ''
+          });
         });
-        if (protoIdx === 0) evalHtml += '<div style="font-size:12px;color:var(--grey2);">No protocols selected.</div>';
+      });
+
+      // Latest prescription status
+      var latestEval = evals[evals.length - 1];
+      var latestRx = latestEval.prescription_given;
+      var latestDateStr = latestEval.evaluation_date ? new Date(latestEval.evaluation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      evalHtml += '<div class="pdp-info-grid" style="margin-bottom:14px;">' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Prescription</div><div class="pdp-info-value" style="color:' + (latestRx ? 'var(--green)' : 'rgba(200,80,80,0.8)') + ';">' + (latestRx ? 'Yes' : 'No') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Latest Evaluation</div><div class="pdp-info-value">' + escapeHtml(latestDateStr) + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Total Evaluations</div><div class="pdp-info-value">' + evals.length + '</div></div>' +
+      '</div>';
+
+      if (latestRx === false && latestNoRxReason) {
+        evalHtml += '<div class="pdp-info-row" style="margin-bottom:14px;"><div class="pdp-info-label">Reason</div><div class="pdp-info-value">' + escapeHtml(latestNoRxReason) + '</div></div>';
       }
 
-      // Session notes
-      var sNotes = d.session_notes || c.session_notes || '';
-      if (sNotes && sNotes !== 'no prescription') {
-        evalHtml += '<div style="margin-top:14px;"><div class="pdp-info-label" style="margin-bottom:4px;">Session Notes</div><div style="font-size:12px;color:var(--grey);line-height:1.6;white-space:pre-wrap;">' + escapeHtml(sNotes) + '</div></div>';
+      // Render protocol rows grouped by name with version history
+      var protoNames = Object.keys(protoHistory);
+      if (protoNames.length > 0) {
+        protoNames.forEach(function(pName) {
+          var versions = protoHistory[pName];
+          var vCount = versions.length;
+          evalHtml += '<details style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--card);">' +
+            '<summary style="padding:10px 14px;cursor:pointer;font-size:13px;font-weight:500;color:#fff;display:flex;align-items:center;justify-content:space-between;user-select:none;">' +
+              '<span>' + escapeHtml(pName) + '</span>' +
+              '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--grey2);letter-spacing:0.08em;">' + vCount + ' version' + (vCount > 1 ? 's' : '') + ' ▾</span>' +
+            '</summary>' +
+            '<div style="padding:0 14px 12px;border-top:1px solid var(--border);">';
+
+          // Show each version, newest first
+          versions.slice().reverse().forEach(function(v, vi) {
+            var isLatest = vi === 0;
+            evalHtml += '<div style="' + (vi > 0 ? 'margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);' : 'margin-top:10px;') + '">';
+            evalHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+              '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:' + (isLatest ? 'var(--green)' : 'var(--grey2)') + ';">Version ' + escapeHtml(String(v.version)) + '</span>' +
+              '<span style="font-size:10px;color:rgba(255,255,255,0.2);">·</span>' +
+              '<span style="font-size:10px;color:var(--grey2);">' + escapeHtml(v.date) + '</span>' +
+              (isLatest ? '<span style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.12em;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:1px 6px;border-radius:999px;">CURRENT</span>' : '') +
+            '</div>';
+            evalHtml += '<div class="pdp-info-grid">' +
+              '<div class="pdp-info-row"><div class="pdp-info-label">Dose</div><div class="pdp-info-value">' + escapeHtml(v.dose) + '</div></div>' +
+              '<div class="pdp-info-row"><div class="pdp-info-label">Frequency</div><div class="pdp-info-value">' + escapeHtml(v.frequency) + '</div></div>' +
+              '<div class="pdp-info-row"><div class="pdp-info-label">Timing</div><div class="pdp-info-value">' + escapeHtml(v.timing) + '</div></div>' +
+              '<div class="pdp-info-row"><div class="pdp-info-label">Timing Instructions</div><div class="pdp-info-value">' + escapeHtml(v.timingInstructions) + '</div></div>' +
+              '<div class="pdp-info-row"><div class="pdp-info-label">Duration</div><div class="pdp-info-value">' + escapeHtml(v.duration) + '</div></div>' +
+              (v.notes && v.notes !== 'no prescription' ? '<div class="pdp-info-row"><div class="pdp-info-label">Notes</div><div class="pdp-info-value">' + escapeHtml(v.notes) + '</div></div>' : '') +
+            '</div>';
+            evalHtml += '</div>';
+          });
+
+          evalHtml += '</div></details>';
+        });
+      }
+
+      // Session notes from latest evaluation
+      var latestNotes = latestEval.session_notes || '';
+      if (latestNotes && latestNotes !== 'no prescription') {
+        evalHtml += '<div style="margin-top:14px;"><div class="pdp-info-label" style="margin-bottom:4px;">Session Notes</div><div style="font-size:12px;color:var(--grey);line-height:1.6;white-space:pre-wrap;">' + escapeHtml(latestNotes) + '</div></div>';
       }
       evalHtml += '</div>';
       return evalHtml;
@@ -8374,14 +8431,20 @@ async function _submitEvaluation(apptId) {
       evaluation_date: evalData.evaluation_date
     }).eq('id', apptId);
 
-    // Update consultation — both data JSON and dedicated columns
+    // Update consultation — append evaluation to evaluations array + update latest columns
     var assignedProtocolStr = decision === 'yes' ? (assignedNames || []).join(', ') : 'no prescription';
     var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
     if (cRes.data && cRes.data.length > 0) {
       var cId = cRes.data[0].id;
       var cData = cRes.data[0].data || {};
-      Object.assign(cData, evalData);
+      // Append to evaluations array (preserves history)
+      if (!Array.isArray(cData.evaluations)) cData.evaluations = [];
+      cData.evaluations.push(evalData);
+      // Also set latest values at top level for quick access
       cData.assigned_protocol = assignedProtocolStr;
+      cData.prescription_given = evalData.prescription_given;
+      cData.prescribed_protocols = evalData.prescribed_protocols;
+      cData.evaluation_date = evalData.evaluation_date;
       await db.from('consultations').update({
         data: cData,
         protocol_assigned: assignedProtocolStr,
@@ -8401,7 +8464,7 @@ async function _submitEvaluation(apptId) {
       }).eq('id', cId);
     }
 
-    // Update member profile with current active protocol data
+    // Update member profile with latest active protocol data
     await db.from('profiles').upsert({
       user_id: consumerId,
       prescription_given: evalData.prescription_given,

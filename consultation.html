@@ -1572,6 +1572,7 @@ async function _joinDailySession() {
     if (!session) throw new Error('Not authenticated');
 
     if (!_memberApptId) throw new Error('No appointment found');
+    console.log('[Pulse] Joining session for appointment:', _memberApptId);
 
     // Call the Edge Function to get room URL + token
     var res = await fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
@@ -1583,12 +1584,18 @@ async function _joinDailySession() {
       body: JSON.stringify({ appointmentId: _memberApptId })
     });
 
-    var data = await res.json();
+    console.log('[Pulse] Edge Function response status:', res.status);
+    var data;
+    try { data = await res.json(); } catch(e) {
+      console.error('[Pulse] Edge Function response not JSON:', e);
+      throw new Error('Edge Function returned invalid response (status ' + res.status + ')');
+    }
+    console.log('[Pulse] Edge Function response:', JSON.stringify(data));
     if (!res.ok) {
       if (data.minutesUntilOpen) {
         throw new Error('Session opens in ' + data.minutesUntilOpen + ' minutes');
       }
-      throw new Error(data.error || 'Failed to connect');
+      throw new Error(data.error || 'Failed to connect (status ' + res.status + ')');
     }
 
     // Destroy existing call frame if any

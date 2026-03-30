@@ -1615,88 +1615,52 @@ buildCalendar();
 // Init first step
 gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1});
 
-/* ── SUPABASE EDGE FUNCTION: send-notification ──────────────────────────────
-   Deploy: supabase functions new send-notification
-   Set secret: supabase secrets set RESEND_API_KEY=your_key
+/* ── SUPABASE EDGE FUNCTION: send-email (Phase 26) ──────────────────────────
+   DEPLOY INSTRUCTIONS:
+     1. supabase functions new send-email
+     2. Copy the code below into supabase/functions/send-email/index.ts
+     3. supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
+     4. supabase functions deploy send-email
 
-   // supabase/functions/send-notification/index.ts
-   import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+   // supabase/functions/send-email/index.ts
+   import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
    const RESEND_URL = "https://api.resend.com/emails";
-   const FROM = "Pulse <notifications@pulse.health>"; // replace with verified sender
+   const FROM_ADDRESS = "Pulse <notifications@pulse.health>"; // replace with your verified Resend sender
 
    serve(async (req: Request) => {
+     if (req.method === "OPTIONS") {
+       return new Response(null, {
+         headers: {
+           "Access-Control-Allow-Origin": "*",
+           "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+         }
+       });
+     }
      try {
-       const { type, to, subject: subjectOverride, ...data } = await req.json();
+       const { to, subject, body_html } = await req.json();
+       if (!to)       return new Response(JSON.stringify({ error: "missing: to" }),       { status: 400 });
+       if (!subject)  return new Response(JSON.stringify({ error: "missing: subject" }),  { status: 400 });
+       if (!body_html)return new Response(JSON.stringify({ error: "missing: body_html" }),{ status: 400 });
 
-       if (!to) return new Response(JSON.stringify({ error: "missing to" }), { status: 400 });
-
-       let subject = "";
-       let html = "";
-
-       switch (type) {
-         case "new_intake":
-           subject = "New intake received";
-           html = `<p>A new intake form has been submitted.</p>
-                   <p><strong>Patient:</strong> ${data.patientName || "Unknown"}</p>
-                   <p><strong>Submitted:</strong> ${data.submittedAt ? new Date(data.submittedAt).toLocaleString() : "—"}</p>
-                   <p>Log in to the Pulse portal to review and assign a protocol.</p>`;
-           break;
-
-         case "protocol_assigned":
-           subject = "Your protocol has been assigned";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>Your clinician has assigned you a protocol: <strong>${data.protocolName || "—"}</strong>.</p>
-                   <p>Log in to the Pulse portal to view your protocol details and get started.</p>`;
-           break;
-
-         case "new_message_clinician":
-           subject = `New message from ${data.senderName || "a patient"}`;
-           html = `<p>You have a new message from <strong>${data.senderName || "a patient"}</strong>.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p>Log in to the Pulse portal to reply.</p>`;
-           break;
-
-         case "new_message_consumer":
-           subject = "Your clinician replied";
-           html = `<p>Your clinician has sent you a new message.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p>Log in to the Pulse portal to view the full conversation.</p>`;
-           break;
-
-         case "appointment_confirmed":
-           subject = "Appointment confirmed";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>Your appointment has been confirmed.</p>
-                   <p><strong>Date/Time:</strong> ${data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : "—"}</p>
-                   <p><strong>Duration:</strong> ${data.durationMinutes || 30} minutes</p>
-                   <p>We look forward to seeing you.</p>`;
-           break;
-
-         case "appointment_cancelled_clinician":
-           subject = "Appointment update";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>We're sorry to let you know that your clinician has had to cancel your appointment.</p>
-                   <p><strong>Original time:</strong> ${data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : "—"}</p>
-                   <p>Please log in to the Pulse portal to reschedule at your convenience.</p>`;
-           break;
-
-         default:
-           return new Response(JSON.stringify({ error: "unknown type" }), { status: 400 });
-       }
+       const apiKey = Deno.env.get("RESEND_API_KEY");
+       if (!apiKey) return new Response(JSON.stringify({ error: "RESEND_API_KEY not set" }), { status: 500 });
 
        const res = await fetch(RESEND_URL, {
          method: "POST",
          headers: {
-           "Authorization": `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
+           "Authorization": `Bearer ${apiKey}`,
            "Content-Type": "application/json"
          },
-         body: JSON.stringify({ from: FROM, to, subject: subjectOverride || subject, html })
+         body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html: body_html })
        });
 
        const resBody = await res.json();
        if (!res.ok) return new Response(JSON.stringify({ error: resBody }), { status: res.status });
-       return new Response(JSON.stringify({ ok: true, id: resBody.id }), { status: 200 });
+       return new Response(JSON.stringify({ ok: true, id: resBody.id }), {
+         status: 200,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+       });
      } catch (err) {
        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
      }
@@ -1704,6 +1668,18 @@ gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1})
    ────────────────────────────────────────────────────────────────────────── */
 
 var CLINICIAN_EMAIL = 'clinician@pulse.health'; // replace with real clinician email
+
+// ── Phase 26: sendEmail helper — calls the send-email Edge Function ──────────
+// Usage: sendEmail(client, to, subject, body_html)
+// Accepts the Supabase client as first arg since window._sbClient may not be
+// ready at declaration time in consultation.html.
+function sendEmail(client, to, subject, body_html) {
+  if (!client || !to || !subject || !body_html) return;
+  try {
+    client.functions.invoke('send-email', { body: { to: to, subject: subject, body_html: body_html } })
+      .then(function(){}).catch(function(){});
+  } catch(e) { /* non-fatal — email failure must never break the UI */ }
+}
 
 // ── Supabase (loaded via ES module) ──
 // Override goToStep to save consultation data on step 6
@@ -1739,14 +1715,19 @@ async function saveConsultation() {
       submitted_at: new Date().toISOString()
     };
     await client.from('consultations').insert({ user_id: session.user.id, data: data });
-    // Notify clinician of new intake (fire-and-forget)
+    // Phase 26: Notify clinician of new intake via send-email Edge Function (fire-and-forget)
     if (CLINICIAN_EMAIL) {
-      client.functions.invoke('send-notification', { body: {
-        type: 'new_intake',
-        to: CLINICIAN_EMAIL,
-        patientName: (data.first_name || '') + (data.last_name ? ' ' + data.last_name : ''),
-        submittedAt: data.submitted_at
-      }}).then(function(){}).catch(function(){});
+      var _patientName = (data.first_name || '') + (data.last_name ? ' ' + data.last_name : '') || 'Unknown';
+      var _submittedAt = data.submitted_at ? new Date(data.submitted_at).toLocaleString() : '—';
+      sendEmail(
+        client,
+        CLINICIAN_EMAIL,
+        'New intake received — ' + _patientName,
+        '<p>A new intake form has been submitted.</p>' +
+        '<p><strong>Patient:</strong> ' + _patientName + '</p>' +
+        '<p><strong>Submitted:</strong> ' + _submittedAt + '</p>' +
+        '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to review and assign a protocol.</p>'
+      );
     }
     // Redirect to portal after a short delay so user sees confirmation screen
     setTimeout(function(){ window.location.href = 'portal.html'; }, 2500);

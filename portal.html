@@ -1967,102 +1967,52 @@ var CLINICIAN_ID = null;
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-/* ── SUPABASE EDGE FUNCTION: send-notification ──────────────────────────────
-   Deploy: supabase functions new send-notification
-   Set secret: supabase secrets set RESEND_API_KEY=your_key
+/* ── SUPABASE EDGE FUNCTION: send-email (Phase 26) ──────────────────────────
+   DEPLOY INSTRUCTIONS:
+     1. supabase functions new send-email
+     2. Copy the code below into supabase/functions/send-email/index.ts
+     3. supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
+     4. supabase functions deploy send-email
 
-   // supabase/functions/send-notification/index.ts
-   import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+   // supabase/functions/send-email/index.ts
+   import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
    const RESEND_URL = "https://api.resend.com/emails";
-   const FROM = "Pulse <notifications@pulse.health>"; // replace with verified sender
+   const FROM_ADDRESS = "Pulse <notifications@pulse.health>"; // replace with your verified Resend sender
 
    serve(async (req: Request) => {
+     if (req.method === "OPTIONS") {
+       return new Response(null, {
+         headers: {
+           "Access-Control-Allow-Origin": "*",
+           "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+         }
+       });
+     }
      try {
-       const { type, to, subject: subjectOverride, ...data } = await req.json();
+       const { to, subject, body_html } = await req.json();
+       if (!to)       return new Response(JSON.stringify({ error: "missing: to" }),       { status: 400 });
+       if (!subject)  return new Response(JSON.stringify({ error: "missing: subject" }),  { status: 400 });
+       if (!body_html)return new Response(JSON.stringify({ error: "missing: body_html" }),{ status: 400 });
 
-       if (!to) return new Response(JSON.stringify({ error: "missing to" }), { status: 400 });
-
-       let subject = "";
-       let html = "";
-
-       switch (type) {
-         case "new_intake":
-           subject = "New intake received";
-           html = `<p>A new intake form has been submitted.</p>
-                   <p><strong>Patient:</strong> ${data.patientName || "Unknown"}</p>
-                   <p><strong>Submitted:</strong> ${data.submittedAt ? new Date(data.submittedAt).toLocaleString() : "—"}</p>
-                   <p>Log in to the Pulse portal to review and assign a protocol.</p>`;
-           break;
-
-         case "protocol_assigned":
-           subject = "Your protocol has been assigned";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>Your clinician has assigned you a protocol: <strong>${data.protocolName || "—"}</strong>.</p>
-                   <p>Log in to the Pulse portal to view your protocol details and get started.</p>`;
-           break;
-
-         case "new_message_clinician":
-           subject = `New message from ${data.senderName || "a patient"}`;
-           html = `<p>You have a new message from <strong>${data.senderName || "a patient"}</strong>.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p>Log in to the Pulse portal to reply.</p>`;
-           break;
-
-         case "new_message_consumer":
-           subject = "Your clinician replied";
-           html = `<p>Your clinician has sent you a new message.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p>Log in to the Pulse portal to view the full conversation.</p>`;
-           break;
-
-         case "new_message_from_consumer":
-           subject = `New message from ${data.sender_name || "a patient"}`;
-           html = `<p>You have a new message from <strong>${data.sender_name || "a patient"}</strong>.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p><a href="${data.portal_link || "#"}">Go to portal</a> to reply.</p>`;
-           break;
-
-         case "clinician_replied":
-           subject = "Your Pulse clinician replied";
-           html = `<p>Your clinician has sent you a new message.</p>
-                   <blockquote style="border-left:3px solid #ccc;padding-left:12px;color:#555;">${data.preview || ""}</blockquote>
-                   <p><a href="${data.portal_link || "#"}">Go to portal</a> to view the full conversation.</p>`;
-           break;
-
-         case "appointment_confirmed":
-           subject = "Appointment confirmed";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>Your appointment has been confirmed.</p>
-                   <p><strong>Date/Time:</strong> ${data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : "—"}</p>
-                   <p><strong>Duration:</strong> ${data.durationMinutes || 30} minutes</p>
-                   <p>We look forward to seeing you.</p>`;
-           break;
-
-         case "appointment_cancelled_clinician":
-           subject = "Appointment update";
-           html = `<p>Hi ${data.patientName || "there"},</p>
-                   <p>We're sorry to let you know that your clinician has had to cancel your appointment.</p>
-                   <p><strong>Original time:</strong> ${data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : "—"}</p>
-                   <p>Please log in to the Pulse portal to reschedule at your convenience.</p>`;
-           break;
-
-         default:
-           return new Response(JSON.stringify({ error: "unknown type" }), { status: 400 });
-       }
+       const apiKey = Deno.env.get("RESEND_API_KEY");
+       if (!apiKey) return new Response(JSON.stringify({ error: "RESEND_API_KEY not set" }), { status: 500 });
 
        const res = await fetch(RESEND_URL, {
          method: "POST",
          headers: {
-           "Authorization": `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
+           "Authorization": `Bearer ${apiKey}`,
            "Content-Type": "application/json"
          },
-         body: JSON.stringify({ from: FROM, to, subject: subjectOverride || subject, html })
+         body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html: body_html })
        });
 
        const resBody = await res.json();
        if (!res.ok) return new Response(JSON.stringify({ error: resBody }), { status: res.status });
-       return new Response(JSON.stringify({ ok: true, id: resBody.id }), { status: 200 });
+       return new Response(JSON.stringify({ ok: true, id: resBody.id }), {
+         status: 200,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+       });
      } catch (err) {
        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
      }
@@ -2071,6 +2021,17 @@ var CLINICIAN_ID = null;
 
 // Phase 17 — required Supabase migration:
 // alter table profiles add column if not exists notify_messages boolean default true;
+
+// ── Phase 26: sendEmail helper — calls the send-email Edge Function ──────────
+// Usage: sendEmail(to, subject, body_html)
+// All notification triggers use this wrapper (fire-and-forget).
+function sendEmail(to, subject, body_html) {
+  if (!to || !subject || !body_html) return;
+  try {
+    db.functions.invoke('send-email', { body: { to: to, subject: subject, body_html: body_html } })
+      .then(function(){}).catch(function(){});
+  } catch(e) { /* non-fatal — email failure must never break the UI */ }
+}
 
 // Module-level display name cache (set on every consumer sign-in)
 var _memberDisplayName = '';
@@ -3627,13 +3588,29 @@ function _updateApptStatus(apptId, newStatus) {
             }
           }
           if (patientEmail) {
-            db.functions.invoke('send-notification', { body: {
-              type: newStatus === 'confirmed' ? 'appointment_confirmed' : 'appointment_cancelled_clinician',
-              to: patientEmail,
-              patientName: patientName,
-              scheduledAt: apptRow.scheduledAt ? apptRow.scheduledAt.toISOString() : null,
-              durationMinutes: parseInt((apptRow.dur || '30'), 10) || 30
-            }}).then(function(){}).catch(function(){});
+            // Phase 26: notify patient of appointment confirmed or cancelled by clinician
+            var _apptDateStr = apptRow.scheduledAt ? new Date(apptRow.scheduledAt).toLocaleString() : '—';
+            var _apptDur = parseInt((apptRow.dur || '30'), 10) || 30;
+            if (newStatus === 'confirmed') {
+              sendEmail(
+                patientEmail,
+                'Your Pulse appointment is confirmed',
+                '<p>Hi ' + (patientName || 'there') + ',</p>' +
+                '<p>Your appointment has been confirmed.</p>' +
+                '<p><strong>Date/Time:</strong> ' + _apptDateStr + '</p>' +
+                '<p><strong>Duration:</strong> ' + _apptDur + ' minutes</p>' +
+                '<p>We look forward to seeing you.</p>'
+              );
+            } else {
+              sendEmail(
+                patientEmail,
+                'Your Pulse appointment has been cancelled',
+                '<p>Hi ' + (patientName || 'there') + ',</p>' +
+                '<p>We\'re sorry to let you know that your clinician has had to cancel your appointment.</p>' +
+                '<p><strong>Original time:</strong> ' + _apptDateStr + '</p>' +
+                '<p>Please <a href="' + window.location.origin + '/portal.html">log in to the Pulse portal</a> to reschedule at your convenience.</p>'
+              );
+            }
           }
           // Insert in-portal notification for the patient
           var consumerId = apptRow.consumerId;
@@ -4962,12 +4939,14 @@ function _saveAssignedProtocol(patientId) {
             var _pEmail = _clPatientRows[ni].email || null;
             var _pName  = _clPatientRows[ni].name  || null;
             if (_pEmail) {
-              db.functions.invoke('send-notification', { body: {
-                type: 'protocol_assigned',
-                to: _pEmail,
-                patientName: _pName,
-                protocolName: proto
-              }}).then(function(){}).catch(function(){});
+              // Phase 26: notify member that their protocol has been assigned
+              sendEmail(
+                _pEmail,
+                'Your Pulse protocol has been assigned',
+                '<p>Hi ' + (_pName || 'there') + ',</p>' +
+                '<p>Your clinician has assigned you a protocol: <strong>' + proto + '</strong>.</p>' +
+                '<p>Log in to the <a href="' + window.location.origin + '/portal.html">Pulse portal</a> to view your protocol details and get started.</p>'
+              );
             }
             break;
           }
@@ -5461,15 +5440,14 @@ function sendClMessage() {
           }
         }
         if (patientEmail && _consumerNotifyPref) {
-          try {
-            db.functions.invoke('send-notification', { body: {
-              type: 'clinician_replied',
-              to: patientEmail,
-              sender_name: clDisplayName,
-              preview: text.slice(0, 120),
-              portal_link: window.location.origin + '/portal.html'
-            }}).then(function(){}).catch(function(){});
-          } catch(e) { /* non-fatal — failed notification must not break message send */ }
+          // Phase 26: notify patient that clinician replied
+          sendEmail(
+            patientEmail,
+            'Your Pulse clinician replied',
+            '<p>Your clinician has sent you a new message.</p>' +
+            '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
+            '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to view the full conversation.</p>'
+          );
         }
       }
     })
@@ -5685,15 +5663,14 @@ function sendConsumerMessage() {
       // TODO: ideally check clinician's notify_messages preference server-side;
       // for now we always fire and let the Edge Function or clinician setting handle opt-out.
       if (!PREVIEW_MODE) {
-        try {
-          db.functions.invoke('send-notification', { body: {
-            type: 'new_message_from_consumer',
-            to: _clinicianEmail,
-            sender_name: _memberDisplayName,
-            preview: text.slice(0, 120),
-            portal_link: window.location.origin + '/portal.html'
-          }}).then(function(){}).catch(function(){});
-        } catch(e) { /* non-fatal — failed notification must not break message send */ }
+        // Phase 26: notify clinician of new consumer message
+        sendEmail(
+          _clinicianEmail,
+          'New message from ' + (_memberDisplayName || 'a patient'),
+          '<p>You have a new message from <strong>' + (_memberDisplayName || 'a patient') + '</strong>.</p>' +
+          '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
+          '<p><a href="' + window.location.origin + '/portal.html">Go to portal</a> to reply.</p>'
+        );
       }
     })
     .catch(function(err) {
@@ -6417,6 +6394,24 @@ function _confirmConsumerCancel() {
     .then(function(res) {
       if (res && res.error) { console.warn('[Pulse] p15 cancel error:', res.error.message); return; }
       _loadAndRenderConsumerAppts();
+      // Phase 26: email the member a cancellation confirmation, and notify the clinician
+      if (currentUserEmail) {
+        sendEmail(
+          currentUserEmail,
+          'Your Pulse appointment has been cancelled',
+          '<p>Hi ' + (_memberDisplayName || 'there') + ',</p>' +
+          '<p>Your appointment has been cancelled as requested.</p>' +
+          '<p>You can book a new appointment at any time from your <a href="' + window.location.origin + '/portal.html">Pulse portal</a>.</p>'
+        );
+      }
+      if (_clinicianEmail) {
+        sendEmail(
+          _clinicianEmail,
+          'Appointment cancelled by member',
+          '<p>A patient (<strong>' + (_memberDisplayName || 'unknown') + '</strong>) has cancelled their appointment.</p>' +
+          '<p><a href="' + window.location.origin + '/portal.html">Log in to the portal</a> to review their schedule.</p>'
+        );
+      }
       showToast("Appointment cancelled. We've notified your care team.");
     })
     .catch(function(err) { console.warn('[Pulse] p15 cancel failed:', err && err.message); });

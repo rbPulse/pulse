@@ -3498,6 +3498,9 @@ async function submitClSetup() {
 // ── Clinician portal init ──
 function initClinicianPortal(user, role, greeting) {
   _clApptRows = null; // reset on each portal init
+  _myPatientIds = null; // reset patient cache
+  // Set CLINICIAN_ID so consumer booking and all queries use the real clinician
+  if (currentUserId) CLINICIAN_ID = currentUserId;
   // Show clinician sidebar, hide consumer sidebar
   document.getElementById('sidebar-consumer').style.display = 'none';
   document.getElementById('sidebar-clinician').style.display = 'block';
@@ -3559,9 +3562,10 @@ function initClinicianPortal(user, role, greeting) {
     if (overviewListEl) showSkeleton(overviewListEl, 'list-rows');
     var _todayStart = new Date(); _todayStart.setHours(0,0,0,0);
     var _todayEnd   = new Date(); _todayEnd.setHours(23,59,59,999);
-    db.from('appointments')
-      .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-      .gte('scheduled_at', _todayStart.toISOString())
+    var _ovQ = db.from('appointments')
+      .select('*, profiles!appointments_consumer_id_fkey(display_name)');
+    if (currentUserId) _ovQ = _ovQ.eq('clinician_id', currentUserId);
+    _ovQ.gte('scheduled_at', _todayStart.toISOString())
       .lte('scheduled_at', _todayEnd.toISOString())
       .order('scheduled_at', { ascending: true })
       .then(function(res) {
@@ -3817,53 +3821,91 @@ async function sendClPasswordReset() {
 
 // ── Clinician overview — real DB helpers ──
 
+// _myPatientIds: cached list of consumer user_ids assigned to this clinician
+// Populated by _loadMyPatients, used to scope all clinician queries.
+var _myPatientIds = null;
+
 function _loadClOverviewStats() {
-  // Count appointments today
-  var _ts = new Date(); _ts.setHours(0,0,0,0);
-  var _te = new Date(); _te.setHours(23,59,59,999);
-  db.from('appointments').select('id', { count: 'exact', head: true })
-    .gte('scheduled_at', _ts.toISOString()).lte('scheduled_at', _te.toISOString())
-    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
-    .then(function(r) { if (!r.error) document.getElementById('clStatToday').textContent = r.count || 0; })
-    .catch(function() { document.getElementById('clStatToday').textContent = '0'; });
-  // Count appointments this week
-  var _ws = new Date(); _ws.setDate(_ws.getDate() - _ws.getDay()); _ws.setHours(0,0,0,0);
-  var _we = new Date(_ws); _we.setDate(_we.getDate() + 6); _we.setHours(23,59,59,999);
-  db.from('appointments').select('id', { count: 'exact', head: true })
-    .gte('scheduled_at', _ws.toISOString()).lte('scheduled_at', _we.toISOString())
-    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
-    .then(function(r) { if (!r.error) document.getElementById('clStatWeek').textContent = r.count || 0; })
-    .catch(function() { document.getElementById('clStatWeek').textContent = '0'; });
-  // Count patients (distinct consultations)
-  db.from('consultations').select('user_id', { count: 'exact', head: true })
-    .then(function(r) { if (!r.error) document.getElementById('clStatPatients').textContent = r.count || 0; })
-    .catch(function() { document.getElementById('clStatPatients').textContent = '0'; });
-  // Count unread messages
-  db.from('messages').select('id', { count: 'exact', head: true })
-    .eq('read', false).eq('sender_role', 'consumer')
-    .then(function(r) { if (!r.error) document.getElementById('clStatUnread').textContent = r.count || 0; })
-    .catch(function() { document.getElementById('clStatUnread').textContent = '0'; });
+  // First get my patients, then count scoped data
+  _loadMyPatients(function(patientIds) {
+    // Count appointments today
+    var _ts = new Date(); _ts.setHours(0,0,0,0);
+    var _te = new Date(); _te.setHours(23,59,59,999);
+    var q1 = db.from('appointments').select('id', { count: 'exact', head: true })
+      .eq('clinician_id', currentUserId)
+      .gte('scheduled_at', _ts.toISOString()).lte('scheduled_at', _te.toISOString())
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+    q1.then(function(r) { if (!r.error) document.getElementById('clStatToday').textContent = r.count || 0; })
+      .catch(function() { document.getElementById('clStatToday').textContent = '0'; });
+    // Count appointments this week
+    var _ws = new Date(); _ws.setDate(_ws.getDate() - _ws.getDay()); _ws.setHours(0,0,0,0);
+    var _we = new Date(_ws); _we.setDate(_we.getDate() + 6); _we.setHours(23,59,59,999);
+    var q2 = db.from('appointments').select('id', { count: 'exact', head: true })
+      .eq('clinician_id', currentUserId)
+      .gte('scheduled_at', _ws.toISOString()).lte('scheduled_at', _we.toISOString())
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+    q2.then(function(r) { if (!r.error) document.getElementById('clStatWeek').textContent = r.count || 0; })
+      .catch(function() { document.getElementById('clStatWeek').textContent = '0'; });
+    // Patient count = my assigned patients
+    document.getElementById('clStatPatients').textContent = patientIds.length;
+    // Count unread messages from my patients only
+    if (patientIds.length > 0) {
+      db.from('messages').select('id', { count: 'exact', head: true })
+        .eq('read', false).eq('sender_role', 'consumer')
+        .in('thread_id', patientIds)
+        .then(function(r) { if (!r.error) document.getElementById('clStatUnread').textContent = r.count || 0; })
+        .catch(function() { document.getElementById('clStatUnread').textContent = '0'; });
+    } else {
+      document.getElementById('clStatUnread').textContent = '0';
+    }
+  });
+}
+
+// Load patient IDs assigned to this clinician (via appointments table)
+function _loadMyPatients(cb) {
+  if (_myPatientIds !== null) { cb(_myPatientIds); return; }
+  db.from('appointments').select('consumer_id')
+    .eq('clinician_id', currentUserId)
+    .then(function(r) {
+      if (r.error) { _myPatientIds = []; cb([]); return; }
+      var seen = {}; _myPatientIds = [];
+      (r.data || []).forEach(function(a) {
+        if (a.consumer_id && !seen[a.consumer_id]) {
+          seen[a.consumer_id] = true;
+          _myPatientIds.push(a.consumer_id);
+        }
+      });
+      cb(_myPatientIds);
+    })
+    .catch(function() { _myPatientIds = []; cb([]); });
 }
 
 function _loadClRecentActivity(el) {
-  // Build recent activity from real DB: last 5 dose_logs + messages + appointments
-  db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name)')
-    .order('logged_at', { ascending: false }).limit(5)
-    .then(function(r) {
-      if (r.error || !r.data || r.data.length === 0) {
-        showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
-        return;
-      }
-      el.innerHTML = r.data.map(function(d) {
-        var name = (d.profiles && d.profiles.display_name) || d.user_id.slice(0,8).toUpperCase();
-        var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
-        var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+  // Build recent activity from real DB: dose_logs from my patients only
+  _loadMyPatients(function(patientIds) {
+    if (patientIds.length === 0) {
+      showInlineEmpty(el, 'No recent activity.', 'Activity from your patients will appear here.', { icon: 'clipboard' });
+      return;
+    }
+    db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name)')
+      .in('user_id', patientIds)
+      .order('logged_at', { ascending: false }).limit(5)
+      .then(function(r) {
+        if (r.error || !r.data || r.data.length === 0) {
+          showInlineEmpty(el, 'No recent activity.', 'Activity from your patients will appear here.', { icon: 'clipboard' });
+          return;
+        }
+        el.innerHTML = r.data.map(function(d) {
+          var name = (d.profiles && d.profiles.display_name) || d.user_id.slice(0,8).toUpperCase();
+          var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
+          var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
         return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(name) + '</strong> Logged a dose</span><span class="activity-time-text">' + timeLabel + '</span></div>';
       }).join('');
     })
     .catch(function() {
       showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
     });
+  }); // end _loadMyPatients
 }
 
 function _renderAvailSidebar(el) {
@@ -4089,9 +4131,10 @@ function filterClAppts(filter, pillEl) {
 function _loadClAppts(filter) {
   // Show skeleton rows while loading
   showSkeleton('clApptList', 'list-rows');
-  db.from('appointments')
-    .select('*, profiles!appointments_consumer_id_fkey(display_name)')
-    .order('scheduled_at', { ascending: true })
+  var q = db.from('appointments')
+    .select('*, profiles!appointments_consumer_id_fkey(display_name)');
+  if (currentUserId) q = q.eq('clinician_id', currentUserId);
+  q.order('scheduled_at', { ascending: true })
     .then(function(res) {
       if (res.error) throw res.error;
       var rows = (res.data || []).map(function(a) {
@@ -4435,6 +4478,16 @@ function renderApptList(elId, appts, role) {
 }
 
 // ── CONSUMER BOOKING ──
+function _populateCliniciansMock(clinEl) {
+  MOCK_CLINICIANS_LIST.forEach(function(c) {
+    var o = document.createElement('option'); o.value = c.id;
+    o.textContent = c.name + ' · ' + c.specialty;
+    clinEl.appendChild(o);
+  });
+  bookingState.clinician = MOCK_CLINICIANS_LIST[0].id;
+  clinEl.onchange = function(){ bookingState.clinician = this.value; };
+}
+
 // State for the live slot-generation approach
 var _bookAvailRows  = null; // clinician availability rows from DB
 var _bookTakenSlots = [];   // { scheduled_at: ISOString, duration_minutes: N }
@@ -4455,16 +4508,46 @@ function initConsumerBooking() {
       typeEl.appendChild(o);
     });
   }
-  // Populate clinician select once
+  // Populate clinician select — load real clinicians from profiles, fallback to mock
   var clinEl = document.getElementById('bookClinician');
   if (clinEl && clinEl.options.length === 0) {
-    MOCK_CLINICIANS_LIST.forEach(function(c) {
-      var o = document.createElement('option'); o.value = c.id;
-      o.textContent = c.name + ' · ' + c.specialty;
-      clinEl.appendChild(o);
-    });
-    bookingState.clinician = MOCK_CLINICIANS_LIST[0].id;
-    clinEl.onchange = function(){ bookingState.clinician = this.value; };
+    if (!PREVIEW_MODE && currentUserId) {
+      // Load clinicians from profiles: users whose metadata has role=clinician
+      // We query profiles that have a display_name and were upserted by clinician accounts
+      db.from('profiles').select('user_id, display_name')
+        .not('display_name', 'is', null)
+        .then(function(r) {
+          // Filter: we can't query user_metadata from profiles, so we use a heuristic —
+          // clinician profiles have display_name starting with "Dr." or were inserted via clinician setup.
+          // For now, load all profiles and let the booking use whichever clinician the user picks.
+          // Better approach: query availability table for clinician_ids (only clinicians have availability rows).
+          return db.from('availability').select('clinician_id').limit(100);
+        })
+        .then(function(ar) {
+          if (ar.error || !ar.data || ar.data.length === 0) { _populateCliniciansMock(clinEl); return; }
+          // Get unique clinician IDs from availability
+          var clIds = []; var seen = {};
+          ar.data.forEach(function(row) { if (row.clinician_id && !seen[row.clinician_id]) { seen[row.clinician_id] = true; clIds.push(row.clinician_id); } });
+          if (clIds.length === 0) { _populateCliniciansMock(clinEl); return; }
+          // Fetch their profiles for display names
+          db.from('profiles').select('user_id, display_name').in('user_id', clIds)
+            .then(function(pr) {
+              if (pr.error || !pr.data || pr.data.length === 0) { _populateCliniciansMock(clinEl); return; }
+              pr.data.forEach(function(p) {
+                var o = document.createElement('option'); o.value = p.user_id;
+                o.textContent = p.display_name || p.user_id.slice(0,8);
+                clinEl.appendChild(o);
+              });
+              bookingState.clinician = pr.data[0].user_id;
+              CLINICIAN_ID = pr.data[0].user_id;
+              clinEl.onchange = function(){ bookingState.clinician = this.value; CLINICIAN_ID = this.value; };
+            })
+            .catch(function() { _populateCliniciansMock(clinEl); });
+        })
+        .catch(function() { _populateCliniciansMock(clinEl); });
+    } else {
+      _populateCliniciansMock(clinEl);
+    }
   }
 
   // Load consumer's existing appointments, then render slot grid
@@ -5131,24 +5214,33 @@ function initClPatients() {
   // Show skeleton loading state for patient list
   showSkeleton('clPatientList', 'list-rows');
 
-  // Step 1: fetch all consultations, ordered newest first
-  db.from('consultations')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .then(function(res) {
-      if (res.error) throw res.error;
-      var consultations = res.data || [];
-      if (consultations.length === 0) {
-        _clPatientRows = [];
-        renderPatientList(_patFilter);
-        return;
-      }
-      // Deduplicate by user_id — keep the newest consultation per user
-      var seen = {};
-      var unique = [];
-      consultations.forEach(function(c) {
-        if (!seen[c.user_id]) { seen[c.user_id] = true; unique.push(c); }
-      });
+  // Step 0: get my assigned patient IDs (from appointments), then fetch their consultations
+  _loadMyPatients(function(patientIds) {
+    if (patientIds.length === 0) {
+      _clPatientRows = [];
+      renderPatientList(_patFilter);
+      return;
+    }
+
+    // Step 1: fetch consultations for my patients only
+    db.from('consultations')
+      .select('*')
+      .in('user_id', patientIds)
+      .order('created_at', { ascending: false })
+      .then(function(res) {
+        if (res.error) throw res.error;
+        var consultations = res.data || [];
+        if (consultations.length === 0) {
+          _clPatientRows = [];
+          renderPatientList(_patFilter);
+          return;
+        }
+        // Deduplicate by user_id — keep the newest consultation per user
+        var seen = {};
+        var unique = [];
+        consultations.forEach(function(c) {
+          if (!seen[c.user_id]) { seen[c.user_id] = true; unique.push(c); }
+        });
 
       // Step 2: fetch profiles for all those user_ids
       var ids = unique.map(function(c){ return c.user_id; });
@@ -5177,6 +5269,7 @@ function initClPatients() {
       _clPatientRows = [];
       showListError('clPatientList', 'initClPatients');
     });
+  }); // end _loadMyPatients
 }
 
 // Convert a MOCK_PATIENTS entry into the normalised shape so PREVIEW_MODE re-uses the same render path
@@ -5830,18 +5923,28 @@ function initClMessages() {
 function _loadClThreadList() {
   // Show skeleton rows while loading
   showSkeleton('clMsgList', 'message-rows');
-  db.from('messages')
-    .select('thread_id, sender_role, sender_name, body, created_at, read')
-    .order('created_at', { ascending: false })
-    .then(function(res) {
-      if (res.error) throw res.error;
-      _buildClThreadCache(res.data || []);
-      _renderClThreadListFromCache();
-    })
-    .catch(function(err) {
-      console.warn('[Pulse] messages table unavailable for clinician, using mock data:', err && err.message);
-      showListError('clMsgList', '_loadClThreadList');
-    });
+  // Scope to my patients only
+  _loadMyPatients(function(patientIds) {
+    var q = db.from('messages')
+      .select('thread_id, sender_role, sender_name, body, created_at, read');
+    if (patientIds.length > 0) {
+      q = q.in('thread_id', patientIds);
+    } else {
+      // No patients yet — show empty
+      showInlineEmpty('clMsgList', 'No messages yet.', 'Messages from your patients will appear here.', { icon: 'message' });
+      return;
+    }
+    q.order('created_at', { ascending: false })
+      .then(function(res) {
+        if (res.error) throw res.error;
+        _buildClThreadCache(res.data || []);
+        _renderClThreadListFromCache();
+      })
+      .catch(function(err) {
+        console.warn('[Pulse] messages table unavailable for clinician:', err && err.message);
+        showListError('clMsgList', '_loadClThreadList');
+      });
+  });
 }
 
 // ── Build per-thread summary from flat message list ──
@@ -6220,12 +6323,16 @@ function _updateClMsgBadge(count) {
 function _startClinicianUnreadPoll() {
   if (_clinicianUnreadPollTimer || !currentUserId) return;
   function check() {
-    db.from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('sender_role', 'consumer')
-      .eq('read', false)
-      .then(function(res) { _updateClMsgBadge(!res.error ? (res.count || 0) : 0); })
-      .catch(function() {});
+    _loadMyPatients(function(patientIds) {
+      if (patientIds.length === 0) { _updateClMsgBadge(0); return; }
+      db.from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('sender_role', 'consumer')
+        .eq('read', false)
+        .in('thread_id', patientIds)
+        .then(function(res) { _updateClMsgBadge(!res.error ? (res.count || 0) : 0); })
+        .catch(function() {});
+    });
   }
   check();
   _clinicianUnreadPollTimer = setInterval(check, 60000);

@@ -7976,12 +7976,16 @@ function _joinClinicianSession(apptId) {
     var s = document.getElementById('dailySessionStatus'); if (s) { s.style.display = 'block'; s.textContent = 'Connecting…'; }
   }
 
-  db.functions.invoke('daily-session-token', {
-    body: { appointmentId: apptId }
-  }).then(function(invokeRes) {
-    if (invokeRes.error) { _showClSessionError(invokeRes.error.message || 'Edge Function error'); return; }
-    var result = { ok: true, data: invokeRes.data };
-    if (!result.data || !result.data.roomUrl) { _showClSessionError((result.data && result.data.error) || 'No room URL'); return; }
+  db.auth.getSession().then(function(r) {
+    if (!r.data || !r.data.session) { _showClSessionError('Not authenticated'); return; }
+    fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r.data.session.access_token },
+      body: JSON.stringify({ appointmentId: apptId })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(result) {
+      if (!result.ok) { _showClSessionError(result.data.error || 'Failed to connect'); return; }
       var statusEl = document.getElementById('dailySessionStatus');
       if (statusEl) statusEl.style.display = 'none';
       var container = document.getElementById('dailySessionContainer');

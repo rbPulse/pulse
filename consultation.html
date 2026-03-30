@@ -1572,20 +1572,23 @@ async function _joinDailySession() {
     if (!session) throw new Error('Not authenticated');
 
     if (!_memberApptId) throw new Error('No appointment found');
-    console.log('[Pulse] Joining session for appointment:', _memberApptId);
 
-    // Call the Edge Function using the Supabase client (handles auth automatically)
-    var invokeRes = await client.functions.invoke('daily-session-token', {
-      body: { appointmentId: _memberApptId }
+    // Call the Edge Function to get room URL + token
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/daily-session-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token
+      },
+      body: JSON.stringify({ appointmentId: _memberApptId })
     });
 
-    console.log('[Pulse] Edge Function response:', JSON.stringify(invokeRes));
-    if (invokeRes.error) {
-      throw new Error(invokeRes.error.message || 'Edge Function error');
-    }
-    var data = invokeRes.data;
-    if (!data || !data.roomUrl) {
-      throw new Error((data && data.error) || 'No room URL returned');
+    var data = await res.json();
+    if (!res.ok) {
+      if (data.minutesUntilOpen) {
+        throw new Error('Session opens in ' + data.minutesUntilOpen + ' minutes');
+      }
+      throw new Error(data.error || 'Failed to connect');
     }
 
     // Destroy existing call frame if any

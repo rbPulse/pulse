@@ -2289,6 +2289,37 @@ RESOURCES_MAP['recovery_stack'] = RESOURCES_MAP['repair'];
 RESOURCES_MAP['performance_stack'] = RESOURCES_MAP['growth'];
 RESOURCES_MAP['optimize_stack'] = RESOURCES_MAP['growth'];
 
+// Generic fallback — shown before a protocol is assigned
+RESOURCES_MAP['generic'] = {
+  guide: {
+    title: 'Welcome to Pulse Resources',
+    sections: [
+      { heading: 'How Pulse protocols work', body: 'Each Pulse protocol is a clinician-designed peptide programme tailored to a specific health goal — sleep, recovery, performance, body composition, or longevity. Once your protocol is assigned, this section will update with guides specific to your compounds.' },
+      { heading: 'What to expect from your consultation', body: 'Your clinician will review your intake form and goals, then assign the protocol best matched to your physiology. You will receive a notification and your full protocol details will appear in the Protocol tab.' },
+      { heading: 'How to prepare', body: 'Ensure you have reviewed your intake information for accuracy. If you have any pre-existing conditions or are taking medications, note these for your clinician — they affect protocol selection and dosing.' },
+      { heading: 'Peptide storage basics', body: 'All Pulse peptides arrive lyophilised (freeze-dried) and should be stored at room temperature until reconstituted. Once reconstituted with bacteriostatic water, refrigerate at 2–8°C and use within 30 days.' }
+    ]
+  },
+  injectionGuide: {
+    steps: [
+      'Wash hands thoroughly with soap and water for at least 20 seconds.',
+      'Clean the injection site (abdomen or outer thigh) with an alcohol swab. Allow to air-dry for 10 seconds.',
+      'Pinch a fold of skin between your thumb and index finger.',
+      'Insert the needle at a 45° angle for subcutaneous injection.',
+      'Slowly depress the plunger over 3–5 seconds.',
+      'Withdraw the needle and apply gentle pressure with a clean swab.',
+      'Dispose of the used needle immediately in a sharps container.'
+    ]
+  },
+  faq: [
+    { q: 'When will my protocol be assigned?', a: 'Your clinician will review your intake form and assign a protocol within 1–2 business days. You will see your protocol appear in the Protocol tab once it is confirmed.' },
+    { q: 'Where do I find my injection supplies?', a: 'Your Pulse pod includes all necessary syringes, alcohol swabs, and bacteriostatic water. If anything is missing or damaged, contact support immediately.' },
+    { q: 'Are peptides safe?', a: 'All Pulse protocols use research-backed peptides with established safety profiles. Your clinician will only assign compounds appropriate for your health status and goals.' },
+    { q: 'Do I need to refrigerate my peptides?', a: 'Lyophilised (dry powder) peptides can be stored at room temperature before reconstitution. Once you add bacteriostatic water, store in the refrigerator at 2–8°C and use within 30 days.' },
+    { q: 'What if I have a question before my protocol is assigned?', a: 'Use the Messages tab to send a direct message to your clinician or the support team. We typically respond within one business day.' }
+  ]
+};
+
 // ── Role resolution ──
 // Priority: user_metadata.role → URL param (preview only) → default 'consumer'
 // To set a real role: update user.user_metadata via Supabase admin API
@@ -4236,17 +4267,7 @@ function populatePortal(user, consultation, greeting) {
   document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('greetingSub').textContent = 'Welcome to your Pulse member portal.';
 
-  // Resources tab: show empty state if no protocol, content otherwise
-  var resNoProto = document.getElementById('resourcesNoProto');
-  var resContent = document.getElementById('resourcesContent');
-  if (proto) {
-    if (resNoProto) resNoProto.style.display = 'none';
-    if (resContent) resContent.style.display = '';
-  } else {
-    if (resNoProto) resNoProto.style.display = '';
-    if (resContent) resContent.style.display = 'none';
-  }
-  // Pre-populate resources tab content even before the user navigates to it
+  // Pre-populate resources tab content (generic fallback shown when no protocol assigned yet)
   initResourcesTab();
 
   if (proto) {
@@ -5688,18 +5709,17 @@ function initResourcesTab() {
   var noProtoEl = document.getElementById('resourcesNoProto');
   var contentEl = document.getElementById('resourcesContent');
 
-  if (!resData) {
-    if (noProtoEl) noProtoEl.style.display = '';
-    if (contentEl) contentEl.style.display = 'none';
-    return;
-  }
-
+  // Always hide the static empty-state placeholder — we render generic content instead
   if (noProtoEl) noProtoEl.style.display = 'none';
   if (contentEl) contentEl.style.display = '';
 
+  // Fall back to generic resources when no protocol is assigned yet
+  var resKey = proto || 'generic';
+  resData = resData || RESOURCES_MAP['generic'];
+
   // Only render once per proto (avoid duplicating cards on repeated tab visits)
-  if (contentEl && contentEl.getAttribute('data-res-proto') === proto) return;
-  if (contentEl) contentEl.setAttribute('data-res-proto', proto);
+  if (contentEl && contentEl.getAttribute('data-res-proto') === resKey) return;
+  if (contentEl) contentEl.setAttribute('data-res-proto', resKey);
 
   // Build HTML
   var html = '';

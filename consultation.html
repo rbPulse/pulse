@@ -1924,6 +1924,29 @@ async function saveConsultation() {
     var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: data });
     if (cInsert.error) console.error('[Pulse] consultation insert failed:', cInsert.error.message);
 
+    // Upsert member profile with intake data so clinicians can access it
+    var fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
+    var pUpsert = await client.from('profiles').upsert({
+      user_id:      session.user.id,
+      email:        data.email || session.user.email || null,
+      display_name: fullName || session.user.email.split('@')[0],
+      phone:        data.phone_number || null,
+      street:       data.street_address || null,
+      apt:          data.apt_unit || null,
+      city:         data.city || null,
+      state:        data.state || null,
+      zip:          data.zip_code || null,
+      dob:          data.dob || null,
+      sex:          data.sex || null,
+      height:       data.height || null,
+      weight:       data.current_weight || null,
+      target_weight: data.target_weight || null,
+      goals:        data.goals || null,
+      last_seen:    new Date().toISOString(),
+      updated_at:   new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (pUpsert.error) console.error('[Pulse] profile upsert failed:', pUpsert.error.message);
+
     // Create appointment row if booking was made
     if (selectedDate && selectedSlot) {
       // Build the slot datetime

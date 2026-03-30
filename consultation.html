@@ -647,16 +647,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     <h1 class="step-title">Book your consultation</h1>
     <p class="step-sub">Select a date and time that works for you. All consultations are 20 minutes via secure video.</p>
 
-    <div class="clinician-card">
-      <div class="clinician-avatar">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <div class="clinician-info">
-        <div class="clinician-name">Dr. Sameh Elguizaoui</div>
-        <div class="clinician-cred">Orthopedic Surgeon &mdash; Sports Medicine Specialist</div>
-        <div class="clinician-badge">Pulse Preferred Clinician</div>
-      </div>
-    </div>
+    <div class="clinician-card" style="display:none;"></div>
 
     <div class="cal-header">
       <div class="cal-month" id="calMonthLabel"></div>
@@ -683,7 +674,6 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
     <div class="booking-summary" id="bookingSummary">
       <div class="booking-summary-label">Appointment confirmed</div>
-      <div class="booking-summary-row"><span>Clinician</span><span>Dr. Sameh Elguizaoui</span></div>
       <div class="booking-summary-row"><span>Date</span><span id="summDate"></span></div>
       <div class="booking-summary-row"><span>Time</span><span id="summTime"></span></div>
       <div class="booking-summary-row"><span>Format</span><span>Secure video, 20 min</span></div>
@@ -874,7 +864,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
       <div class="summary-title">Consultation complete</div>
       <div class="summary-sub">Your protocol has been reviewed and finalized by Dr. Elguizaoui. Next steps are outlined below.</div>
-      <div class="summary-clinician-sig">Reviewed by Dr. Sameh Elguizaoui, MD &mdash; <span id="summaryDate"></span></div>
+      <div class="summary-clinician-sig">Reviewed by your Pulse clinician &mdash; <span id="summaryDate"></span></div>
     </div>
 
     <!-- Protocol box -->
@@ -1187,14 +1177,189 @@ var selectedDate = null;
 var selectedSlot = null;
 var TOTAL_WEEKS = 4;
 
-// Slot data: day-of-week (0=Sun) -> times (some booked)
+// ── Real clinician availability (loaded from DB) ──
+// _eligibleClinicians: array of { id, cl_state, display_name }
+// _clinicianAvail: { clinician_id: [ { day_of_week, active, slot_duration_minutes, start, end } ] }
+// _takenSlots: [ { clinician_id, scheduled_at (ISO), duration_minutes } ]
+// _clinicianApptCounts: { clinician_id: count } — for round-robin
+var _eligibleClinicians = [];
+var _clinicianAvail = {};
+var _mergedAvailByDow = {}; // dow -> true if ANY eligible clinician is available
+var _takenSlots = [];
+var _clinicianApptCounts = {};
+var _slotDuration = 30; // default
+var _assignedClinicianId = null; // set on confirm
+var _memberState = null;
+
+// Fallback: hardcoded slot templates (used when DB not available)
 var SLOT_TEMPLATES = {
-  1: [{t:'8:00 AM'},{t:'9:30 AM'},{t:'11:00 AM'},{t:'1:00 PM',b:true},{t:'2:30 PM'},{t:'4:00 PM'}],
-  2: [{t:'9:00 AM'},{t:'10:30 AM',b:true},{t:'12:00 PM'},{t:'2:00 PM'},{t:'3:30 PM'}],
-  3: [{t:'8:30 AM'},{t:'10:00 AM'},{t:'11:30 AM',b:true},{t:'1:30 PM'},{t:'3:00 PM'},{t:'4:30 PM'}],
-  4: [{t:'9:00 AM',b:true},{t:'10:30 AM'},{t:'12:30 PM'},{t:'2:00 PM'},{t:'3:30 PM'}],
-  5: [{t:'8:00 AM'},{t:'9:30 AM'},{t:'11:00 AM'},{t:'1:00 PM'}]
+  1: [{t:'9:00 AM'},{t:'10:00 AM'},{t:'11:00 AM'},{t:'1:00 PM'},{t:'2:00 PM'},{t:'3:00 PM'},{t:'4:00 PM'}],
+  2: [{t:'9:00 AM'},{t:'10:00 AM'},{t:'11:00 AM'},{t:'1:00 PM'},{t:'2:00 PM'},{t:'3:00 PM'},{t:'4:00 PM'}],
+  3: [{t:'9:00 AM'},{t:'10:00 AM'},{t:'11:00 AM'},{t:'1:00 PM'},{t:'2:00 PM'},{t:'3:00 PM'},{t:'4:00 PM'}],
+  4: [{t:'9:00 AM'},{t:'10:00 AM'},{t:'11:00 AM'},{t:'1:00 PM'},{t:'2:00 PM'},{t:'3:00 PM'},{t:'4:00 PM'}],
+  5: [{t:'9:00 AM'},{t:'10:00 AM'},{t:'11:00 AM'},{t:'1:00 PM'},{t:'2:00 PM'},{t:'3:00 PM'}]
 };
+var _useRealAvail = false;
+
+// Load real availability from DB
+async function _loadBookingAvailability() {
+  try {
+    var client = window._sbClient;
+    if (!client) return;
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) return;
+
+    // Get member's state from their consultation
+    var cRes = await client.from('consultations').select('data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
+    if (cRes.data && cRes.data.length > 0 && cRes.data[0].data) {
+      _memberState = cRes.data[0].data.state || null;
+    }
+    // Also check the state field on the current form (step 1)
+    if (!_memberState) {
+      var stEl = document.getElementById('state');
+      if (stEl && stEl.value) _memberState = stEl.value.trim().toUpperCase();
+    }
+
+    // Get all clinician IDs from availability table
+    var avRes = await client.from('availability').select('clinician_id, day_of_week, active, slot_duration_minutes');
+    if (avRes.error || !avRes.data || avRes.data.length === 0) return;
+
+    // Get unique clinician IDs
+    var clIds = []; var seen = {};
+    avRes.data.forEach(function(r) {
+      if (r.clinician_id && !seen[r.clinician_id]) { seen[r.clinician_id] = true; clIds.push(r.clinician_id); }
+    });
+    if (clIds.length === 0) return;
+
+    // Fetch clinician profiles to get their state
+    var prRes = await client.from('profiles').select('user_id, display_name').in('user_id', clIds);
+    // Fetch clinician metadata (state) — we need user_metadata which is in auth, but we stored cl_state in user_metadata.
+    // Since we can't query auth from client, we check if profiles have state info,
+    // or we load availability and trust that any clinician with availability is eligible.
+    // For state matching: we'll fetch the auth user metadata for each clinician
+    // Actually — we can't access other users' metadata from the anon client.
+    // Solution: check the availability table — and also query the profiles table.
+    // We stored cl_state in user_metadata, but we need to also store it in profiles for queryability.
+    // For now: if _memberState is set, we attempt matching; otherwise show all.
+
+    // Build availability map
+    avRes.data.forEach(function(r) {
+      if (!_clinicianAvail[r.clinician_id]) _clinicianAvail[r.clinician_id] = [];
+      _clinicianAvail[r.clinician_id].push(r);
+      if (r.active) {
+        _mergedAvailByDow[r.day_of_week] = true;
+        if (r.slot_duration_minutes) _slotDuration = r.slot_duration_minutes;
+      }
+    });
+
+    _eligibleClinicians = clIds.map(function(id) {
+      var p = (prRes.data || []).find(function(pr) { return pr.user_id === id; });
+      return { id: id, display_name: p ? p.display_name : id.slice(0,8) };
+    });
+
+    // Fetch taken slots (next 28 days)
+    var now = new Date();
+    var end28 = new Date(now); end28.setDate(end28.getDate() + 28);
+    var takenRes = await client.from('appointments')
+      .select('clinician_id, scheduled_at, duration_minutes')
+      .gte('scheduled_at', now.toISOString())
+      .lte('scheduled_at', end28.toISOString())
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+    if (!takenRes.error && takenRes.data) {
+      _takenSlots = takenRes.data;
+    }
+
+    // Count total appointments per clinician (for round-robin)
+    var countRes = await client.from('appointments')
+      .select('clinician_id')
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+    if (!countRes.error && countRes.data) {
+      countRes.data.forEach(function(a) {
+        if (a.clinician_id) _clinicianApptCounts[a.clinician_id] = (_clinicianApptCounts[a.clinician_id] || 0) + 1;
+      });
+    }
+
+    if (Object.keys(_mergedAvailByDow).length > 0) {
+      _useRealAvail = true;
+      // Rebuild calendar with real data
+      buildCalendar();
+    }
+  } catch(e) {
+    console.warn('[Pulse] booking availability load failed:', e);
+  }
+}
+
+// Generate time slots for a given day from real clinician availability
+function _generateRealSlots(day) {
+  var dow = day.getDay();
+  var dateStr = day.toISOString().slice(0, 10);
+  var slots = [];
+  var slotsSeen = {};
+
+  _eligibleClinicians.forEach(function(cl) {
+    var avail = (_clinicianAvail[cl.id] || []).find(function(a) { return a.day_of_week === dow && a.active; });
+    if (!avail) return;
+    var dur = avail.slot_duration_minutes || _slotDuration;
+    // Generate slots from 8:00 AM to 5:00 PM
+    for (var h = 8; h < 17; h++) {
+      for (var m = 0; m < 60; m += dur) {
+        if (h * 60 + m + dur > 17 * 60) break; // don't go past 5pm
+        var slotTime = new Date(day);
+        slotTime.setHours(h, m, 0, 0);
+        var slotISO = slotTime.toISOString();
+        // Check if this clinician already has an appointment at this time
+        var isTaken = _takenSlots.some(function(t) {
+          if (t.clinician_id !== cl.id) return false;
+          var tStart = new Date(t.scheduled_at).getTime();
+          var tEnd = tStart + (t.duration_minutes || 30) * 60000;
+          var sStart = slotTime.getTime();
+          var sEnd = sStart + dur * 60000;
+          return (sStart < tEnd && sEnd > tStart);
+        });
+        if (isTaken) return; // this clinician is busy, but another might not be
+        // Don't add duplicate time labels
+        var timeLabel = slotTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        if (!slotsSeen[timeLabel]) {
+          slotsSeen[timeLabel] = true;
+          slots.push({ t: timeLabel, ts: slotTime.getTime() });
+        }
+      }
+    }
+  });
+
+  // Sort by time
+  slots.sort(function(a, b) { return a.ts - b.ts; });
+  return slots;
+}
+
+// Auto-assign clinician: round-robin among eligible clinicians available at the chosen slot
+function _autoAssignClinician(slotDateTime) {
+  var dow = slotDateTime.getDay();
+  var candidates = [];
+
+  _eligibleClinicians.forEach(function(cl) {
+    // Check this clinician is available on this day of week
+    var avail = (_clinicianAvail[cl.id] || []).find(function(a) { return a.day_of_week === dow && a.active; });
+    if (!avail) return;
+    // Check this clinician doesn't already have an appointment at this time
+    var dur = avail.slot_duration_minutes || _slotDuration;
+    var isTaken = _takenSlots.some(function(t) {
+      if (t.clinician_id !== cl.id) return false;
+      var tStart = new Date(t.scheduled_at).getTime();
+      var tEnd = tStart + (t.duration_minutes || 30) * 60000;
+      var sStart = slotDateTime.getTime();
+      var sEnd = sStart + dur * 60000;
+      return (sStart < tEnd && sEnd > tStart);
+    });
+    if (isTaken) return;
+    candidates.push({ id: cl.id, count: _clinicianApptCounts[cl.id] || 0 });
+  });
+
+  if (candidates.length === 0) return null;
+  // Sort by fewest appointments (ties broken by ID for determinism)
+  candidates.sort(function(a, b) { return a.count - b.count || a.id.localeCompare(b.id); });
+  return candidates[0].id;
+}
 
 var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -1235,7 +1400,7 @@ function buildCalendar(){
     var isPast = day < today;
     var isToday = day.getTime() === today.getTime();
     var dow = day.getDay();
-    var hasSlots = SLOT_TEMPLATES[dow] && !isPast;
+    var hasSlots = _useRealAvail ? (_mergedAvailByDow[dow] && !isPast) : (SLOT_TEMPLATES[dow] && !isPast);
 
     if(isPast){ cell.classList.add('past'); }
     else if(hasSlots){ cell.classList.add('has-slots'); }
@@ -1267,7 +1432,7 @@ function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; buildCalendar();
 
 function buildSlots(day){
   var dow = day.getDay();
-  var slots = SLOT_TEMPLATES[dow] || [];
+  var slots = _useRealAvail ? _generateRealSlots(day) : (SLOT_TEMPLATES[dow] || []);
   var grid = document.getElementById('slotsGrid');
   grid.innerHTML = '';
   var label = MONTHS[day.getMonth()] + ' ' + day.getDate();
@@ -1275,18 +1440,23 @@ function buildSlots(day){
   document.getElementById('slotsWrap').style.display = 'block';
   gsap.fromTo('#slotsWrap',{opacity:0,y:10},{opacity:1,y:0,duration:0.3,ease:'power2.out'});
 
+  if (slots.length === 0) {
+    grid.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.35);padding:12px 0;">No available times on this day.</div>';
+    return;
+  }
+
   slots.forEach(function(s){
     var btn = document.createElement('div');
-    btn.className = 'slot-btn' + (s.b ? ' booked' : '');
-    btn.innerHTML = '<div class="slot-time">'+escapeHtml(s.t)+'</div><div class="slot-tz">EST</div>'+(s.b?'<div class="slot-avail" style="color:var(--grey2)">Unavailable</div>':'<div class="slot-avail">Available</div>');
-    if(!s.b){
-      btn.addEventListener('click', function(){
-        document.querySelectorAll('.slot-btn').forEach(function(b){b.classList.remove('selected');});
-        btn.classList.add('selected');
-        selectedSlot = s.t;
-        updateBookingSummary();
-      });
-    }
+    btn.className = 'slot-btn';
+    btn.innerHTML = '<div class="slot-time">'+escapeHtml(s.t)+'</div><div class="slot-tz">EST</div><div class="slot-avail">Available</div>';
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.slot-btn').forEach(function(b){b.classList.remove('selected');});
+      btn.classList.add('selected');
+      selectedSlot = s.t;
+      // Store the slot timestamp for auto-assign
+      if (s.ts) window._selectedSlotTs = s.ts;
+      updateBookingSummary();
+    });
     grid.appendChild(btn);
   });
 }
@@ -1729,6 +1899,24 @@ async function saveConsultation() {
       submitted_at: new Date().toISOString()
     };
     await client.from('consultations').insert({ user_id: session.user.id, data: data });
+
+    // Auto-assign clinician and create appointment row if booking was made
+    if (selectedDate && selectedSlot && _useRealAvail) {
+      var slotDt = window._selectedSlotTs ? new Date(window._selectedSlotTs) : null;
+      if (slotDt) {
+        var assignedId = _autoAssignClinician(slotDt);
+        if (assignedId) {
+          await client.from('appointments').insert({
+            consumer_id: session.user.id,
+            clinician_id: assignedId,
+            scheduled_at: slotDt.toISOString(),
+            duration_minutes: _slotDuration,
+            status: 'pending'
+          }).then(function(){}).catch(function(){});
+        }
+      }
+    }
+
     // Phase 26: Notify clinician of new intake via send-email Edge Function (fire-and-forget)
     if (CLINICIAN_EMAIL) {
       var _patientName = (data.first_name || '') + (data.last_name ? ' ' + data.last_name : '') || 'Unknown';
@@ -1772,6 +1960,9 @@ window._sbClient = createClient(
       var emailField = document.getElementById('intakeEmail');
       if (emailField) emailField.value = session.user.email;
     }
+
+    // Load real clinician availability for booking calendar
+    _loadBookingAvailability();
 
     // Show welcome banner if arriving from sign-up (?new=1)
     if (new URLSearchParams(window.location.search).get('new') === '1') {

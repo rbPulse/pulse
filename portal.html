@@ -1711,18 +1711,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="p-card">
           <div class="compounds-label">Book an Appointment</div>
 
-          <div class="book-step-grid">
-            <div class="settings-field">
-              <label class="settings-field-lbl">Appointment Type</label>
-              <select class="book-select" id="bookType">
-                <option value="">Select type</option>
-              </select>
-            </div>
-            <div class="settings-field">
-              <label class="settings-field-lbl">Clinician</label>
-              <select class="book-select" id="bookClinician"></select>
-            </div>
+          <div class="settings-field" style="margin-bottom:16px;">
+            <label class="settings-field-lbl">Appointment Type</label>
+            <select class="book-select" id="bookType">
+              <option value="">Select type</option>
+            </select>
           </div>
+          <!-- Clinician is auto-assigned on confirm -->
 
           <div class="settings-field" style="margin-bottom:18px;">
             <div class="settings-field-lbl" style="margin-bottom:10px;">Available Times</div>
@@ -4554,47 +4549,7 @@ function initConsumerBooking() {
       typeEl.appendChild(o);
     });
   }
-  // Populate clinician select — load real clinicians from profiles, fallback to mock
-  var clinEl = document.getElementById('bookClinician');
-  if (clinEl && clinEl.options.length === 0) {
-    if (!PREVIEW_MODE && currentUserId) {
-      // Load clinicians from profiles: users whose metadata has role=clinician
-      // We query profiles that have a display_name and were upserted by clinician accounts
-      db.from('profiles').select('user_id, display_name')
-        .not('display_name', 'is', null)
-        .then(function(r) {
-          // Filter: we can't query user_metadata from profiles, so we use a heuristic —
-          // clinician profiles have display_name starting with "Dr." or were inserted via clinician setup.
-          // For now, load all profiles and let the booking use whichever clinician the user picks.
-          // Better approach: query availability table for clinician_ids (only clinicians have availability rows).
-          return db.from('availability').select('clinician_id').limit(100);
-        })
-        .then(function(ar) {
-          if (ar.error || !ar.data || ar.data.length === 0) { _populateCliniciansMock(clinEl); return; }
-          // Get unique clinician IDs from availability
-          var clIds = []; var seen = {};
-          ar.data.forEach(function(row) { if (row.clinician_id && !seen[row.clinician_id]) { seen[row.clinician_id] = true; clIds.push(row.clinician_id); } });
-          if (clIds.length === 0) { _populateCliniciansMock(clinEl); return; }
-          // Fetch their profiles for display names
-          db.from('profiles').select('user_id, display_name').in('user_id', clIds)
-            .then(function(pr) {
-              if (pr.error || !pr.data || pr.data.length === 0) { _populateCliniciansMock(clinEl); return; }
-              pr.data.forEach(function(p) {
-                var o = document.createElement('option'); o.value = p.user_id;
-                o.textContent = p.display_name || p.user_id.slice(0,8);
-                clinEl.appendChild(o);
-              });
-              bookingState.clinician = pr.data[0].user_id;
-              CLINICIAN_ID = pr.data[0].user_id;
-              clinEl.onchange = function(){ bookingState.clinician = this.value; CLINICIAN_ID = this.value; };
-            })
-            .catch(function() { _populateCliniciansMock(clinEl); });
-        })
-        .catch(function() { _populateCliniciansMock(clinEl); });
-    } else {
-      _populateCliniciansMock(clinEl);
-    }
-  }
+  // Clinician is auto-assigned on booking confirm (no dropdown needed)
 
   // Load consumer's existing appointments, then render slot grid
   if (PREVIEW_MODE || !currentUserId) {
@@ -4612,28 +4567,27 @@ function initConsumerBooking() {
 
   // Show skeleton while availability loads
   showSkeleton('bookDateChips', 'card');
-  // Fetch clinician availability
-  var availQuery = CLINICIAN_ID
-    ? db.from('availability').select('day_of_week,active,slot_duration_minutes').eq('clinician_id', CLINICIAN_ID)
-    : db.from('availability').select('day_of_week,active,slot_duration_minutes');
-
-  availQuery.then(function(ar) {
+  // Fetch ALL clinicians' availability (merged view — clinician auto-assigned on confirm)
+  db.from('availability').select('clinician_id,day_of_week,active,slot_duration_minutes')
+  .then(function(ar) {
     if (ar.error) throw ar.error;
     _bookAvailRows = ar.data || [];
-    if (_bookAvailRows.length > 0) {
-      _bookSlotDur = _bookAvailRows[0].slot_duration_minutes || 30;
-    }
-    // Fetch taken slots (next 14 days, non-cancelled)
+    // Build per-clinician availability map for auto-assign
+    _bookClinicianAvail = {};
+    _bookAvailRows.forEach(function(r) {
+      if (!_bookClinicianAvail[r.clinician_id]) _bookClinicianAvail[r.clinician_id] = [];
+      _bookClinicianAvail[r.clinician_id].push(r);
+      if (r.active && r.slot_duration_minutes) _bookSlotDur = r.slot_duration_minutes;
+    });
+    // Fetch taken slots (next 14 days, non-cancelled) across ALL clinicians
     var now  = new Date();
     var end14 = new Date(now); end14.setDate(end14.getDate() + 14);
-    var q = db.from('appointments')
-      .select('scheduled_at,duration_minutes')
+    return db.from('appointments')
+      .select('clinician_id,scheduled_at,duration_minutes')
       .gte('scheduled_at', now.toISOString())
       .lte('scheduled_at', end14.toISOString())
       .neq('status', 'cancelled_by_member')
       .neq('status', 'cancelled_by_clinician');
-    if (CLINICIAN_ID) q = q.eq('clinician_id', CLINICIAN_ID);
-    return q;
   })
   .then(function(tr) {
     if (tr && tr.error) throw tr.error;
@@ -4646,6 +4600,37 @@ function initConsumerBooking() {
     showListError('bookDateChips', 'initConsumerBooking');
     _loadAndRenderConsumerAppts();
   });
+}
+
+// Per-clinician availability map for portal booking auto-assign
+var _bookClinicianAvail = {};
+
+// Auto-assign clinician for portal booking: round-robin among available clinicians
+function _portalAutoAssignClinician(slotDt) {
+  var dow = slotDt.getDay();
+  var candidates = [];
+  var clIds = Object.keys(_bookClinicianAvail);
+  clIds.forEach(function(clId) {
+    var avail = _bookClinicianAvail[clId].find(function(a) { return a.day_of_week === dow && a.active; });
+    if (!avail) return;
+    var dur = avail.slot_duration_minutes || _bookSlotDur;
+    // Check not double-booked
+    var isTaken = _bookTakenSlots.some(function(t) {
+      if (t.clinician_id !== clId) return false;
+      var tStart = new Date(t.scheduled_at).getTime();
+      var tEnd = tStart + (t.duration_minutes || 30) * 60000;
+      var sStart = slotDt.getTime();
+      var sEnd = sStart + dur * 60000;
+      return (sStart < tEnd && sEnd > tStart);
+    });
+    if (isTaken) return;
+    // Count existing appointments for this clinician
+    var count = _bookTakenSlots.filter(function(t) { return t.clinician_id === clId; }).length;
+    candidates.push({ id: clId, count: count });
+  });
+  if (candidates.length === 0) return null;
+  candidates.sort(function(a, b) { return a.count - b.count || a.id.localeCompare(b.id); });
+  return candidates[0].id;
 }
 
 function _renderBookingGrid() {
@@ -4906,9 +4891,11 @@ function confirmBooking() {
     return;
   }
 
+  // Auto-assign clinician: round-robin among eligible clinicians available at this slot
+  var _assignedClId = _portalAutoAssignClinician(scheduledAt);
   db.from('appointments').insert({
     consumer_id: currentUserId,
-    clinician_id: CLINICIAN_ID,
+    clinician_id: _assignedClId,
     scheduled_at: scheduledAt.toISOString(),
     duration_minutes: _bookSlotDur,
     status: 'pending'

@@ -2042,6 +2042,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div id="clNameError" style="display:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:rgba(210,80,80,0.9);margin-top:6px;">Name is required.</div>
           </div>
           <div class="settings-section">
+            <div class="settings-section-lbl">Address</div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Street Address</label>
+              <input class="settings-input" id="clStreet" type="text" placeholder="123 Main St" autocomplete="street-address"/>
+            </div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Apt / Suite / Unit <span style="opacity:0.4;font-size:7px;">(optional)</span></label>
+              <input class="settings-input" id="clApt" type="text" placeholder="Suite 200" autocomplete="address-line2"/>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-field-lbl">City</label>
+                <input class="settings-input" id="clCity" type="text" placeholder="New York" autocomplete="address-level2"/>
+              </div>
+              <div class="settings-field">
+                <label class="settings-field-lbl">State</label>
+                <input class="settings-input" id="clState" type="text" placeholder="NY" autocomplete="address-level1"/>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-field-lbl">Zip Code</label>
+                <input class="settings-input" id="clZip" type="text" placeholder="10001" inputmode="numeric" autocomplete="postal-code"/>
+              </div>
+              <div class="settings-field"></div>
+            </div>
+          </div>
+          <div class="settings-section">
             <div class="settings-section-lbl">Public Profile</div>
             <div class="settings-field">
               <label class="settings-field-lbl">Bio / About</label>
@@ -3407,6 +3435,9 @@ async function applyClProfile(meta) {
   var ce = document.getElementById('clCredentials'); if (ce && meta.cl_credentials) ce.value = meta.cl_credentials;
   var se = document.getElementById('clSpecialty');   if (se && meta.cl_specialty)   se.value = meta.cl_specialty;
   var be = document.getElementById('clBio');         if (be && meta.cl_bio)         be.value = meta.cl_bio;
+  // Address fields
+  var _aF = { clStreet:'cl_street', clApt:'cl_apt', clCity:'cl_city', clState:'cl_state', clZip:'cl_zip' };
+  Object.keys(_aF).forEach(function(elId) { var el = document.getElementById(elId); if (el && meta[_aF[elId]]) el.value = meta[_aF[elId]]; });
   if (meta.cl_timezone) {
     var tze = document.getElementById('clSettingsTimezone');
     if (tze) tze.value = meta.cl_timezone;
@@ -3699,6 +3730,11 @@ async function saveClinicianSettings() {
   var bio         = beEl ? beEl.value.trim()  : '';
   var timezone    = tzeEl ? tzeEl.value : '';
   var duration    = dseEl ? (parseInt(dseEl.value) || 30) : 30;
+  var street  = (document.getElementById('clStreet') || {}).value || '';
+  var apt     = (document.getElementById('clApt')    || {}).value || '';
+  var city    = (document.getElementById('clCity')   || {}).value || '';
+  var state   = (document.getElementById('clState')  || {}).value || '';
+  var zip     = (document.getElementById('clZip')    || {}).value || '';
 
   // 7A — Loading state
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
@@ -3733,7 +3769,12 @@ async function saveClinicianSettings() {
         cl_bio:         bio,
         cl_timezone:    timezone,
         cl_appt_duration: duration,
-        cl_duration:    duration
+        cl_duration:    duration,
+        cl_street:      street.trim(),
+        cl_apt:         apt.trim(),
+        cl_city:        city.trim(),
+        cl_state:       state.trim(),
+        cl_zip:         zip.trim()
       })
     });
     if (r.error) throw r.error;

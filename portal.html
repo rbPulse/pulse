@@ -3774,11 +3774,13 @@ async function saveClinicianSettings() {
     });
     if (r.error) throw r.error;
 
-    // Phase 17: persist notify_messages to clinician's profile row (non-fatal)
+    // Persist clinician profile data to profiles table (non-fatal)
     if (currentUserId) {
       db.from('profiles').upsert({
         user_id:         currentUserId,
+        display_name:    'Dr. ' + firstName,
         notify_messages: _clinicianNotifyMessages,
+        cl_state:        state.trim().toUpperCase() || null,
         updated_at:      new Date().toISOString()
       }, { onConflict: 'user_id' }).then(function(){}).catch(function(){});
     }
@@ -4567,19 +4569,40 @@ function initConsumerBooking() {
 
   // Show skeleton while availability loads
   showSkeleton('bookDateChips', 'card');
-  // Fetch ALL clinicians' availability (merged view — clinician auto-assigned on confirm)
+  // Fetch ALL clinicians' availability + filter by member's state
   db.from('availability').select('clinician_id,day_of_week,active,slot_duration_minutes')
   .then(function(ar) {
     if (ar.error) throw ar.error;
     _bookAvailRows = ar.data || [];
-    // Build per-clinician availability map for auto-assign
+    // Get unique clinician IDs
+    var _clIdSet = {}; _bookAvailRows.forEach(function(r) { _clIdSet[r.clinician_id] = true; });
+    var _clIds = Object.keys(_clIdSet);
+    if (_clIds.length === 0) throw new Error('No clinicians');
+    // Fetch profiles with cl_state for state matching
+    return db.from('profiles').select('user_id, cl_state').in('user_id', _clIds);
+  })
+  .then(function(pr) {
+    if (pr.error) throw pr.error;
+    // State matching: filter clinicians to member's state
+    var ms = (window._memberState || '').toUpperCase().trim();
+    var eligibleIds = {};
+    (pr.data || []).forEach(function(p) {
+      var clState = (p.cl_state || '').toUpperCase().trim();
+      if (!ms || clState === ms) eligibleIds[p.user_id] = true;
+    });
+    // If no match, fall back to all
+    if (Object.keys(eligibleIds).length === 0) {
+      (pr.data || []).forEach(function(p) { eligibleIds[p.user_id] = true; });
+    }
+    // Build per-clinician availability map (only eligible clinicians)
     _bookClinicianAvail = {};
     _bookAvailRows.forEach(function(r) {
+      if (!eligibleIds[r.clinician_id]) return;
       if (!_bookClinicianAvail[r.clinician_id]) _bookClinicianAvail[r.clinician_id] = [];
       _bookClinicianAvail[r.clinician_id].push(r);
       if (r.active && r.slot_duration_minutes) _bookSlotDur = r.slot_duration_minutes;
     });
-    // Fetch taken slots (next 14 days, non-cancelled) across ALL clinicians
+    // Fetch taken slots (next 14 days, non-cancelled) across eligible clinicians
     var now  = new Date();
     var end14 = new Date(now); end14.setDate(end14.getDate() + 14);
     return db.from('appointments')
@@ -4644,9 +4667,11 @@ function _renderBookingGrid() {
   var DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  // Build active-DOW set from availability rows
+  // Build active-DOW set from eligible clinicians' availability rows
   var activeDOW = {};
-  _bookAvailRows.forEach(function(r) { activeDOW[r.day_of_week] = r.active; });
+  _bookAvailRows.forEach(function(r) {
+    if (_bookClinicianAvail[r.clinician_id] && r.active) activeDOW[r.day_of_week] = true;
+  });
 
   // Build a per-date section: { dateStr, label, slots[] }
   var today = new Date(now); today.setHours(0,0,0,0);
@@ -4694,20 +4719,16 @@ function _renderBookingGrid() {
 
 function _generateSlotsForDate(dateObj, cutoffDate) {
   var dow = dateObj.getDay();
-  // Find availability row for this DOW
-  var availRow = null;
-  for (var i = 0; i < _bookAvailRows.length; i++) {
-    if (_bookAvailRows[i].day_of_week === dow && _bookAvailRows[i].active) {
-      availRow = _bookAvailRows[i]; break;
-    }
-  }
-  if (!availRow) return [];
+  // Check if ANY eligible clinician is available this DOW
+  var anyAvail = _bookAvailRows.some(function(r) { return r.day_of_week === dow && r.active; });
+  if (!anyAvail) return [];
 
   var dur = _bookSlotDur || 30;
   var startMin = 9 * 60;  // 9:00 AM
   var endMin   = 17 * 60; // 5:00 PM
 
-  var taken = _bookTakenSlots; // { scheduled_at, duration_minutes }
+  var taken = _bookTakenSlots; // { clinician_id, scheduled_at, duration_minutes }
+  var clIds = Object.keys(_bookClinicianAvail);
   var slots = [];
 
   for (var t = startMin; t + dur <= endMin; t += dur) {
@@ -4717,16 +4738,22 @@ function _generateSlotsForDate(dateObj, cutoffDate) {
     // Skip slots within 24 hours of now
     if (slotDate < cutoffDate) continue;
 
-    // Check if slot overlaps an existing appointment
+    // A slot is available if at least ONE eligible clinician is free at this time
     var slotEnd = new Date(slotDate.getTime() + dur * 60000);
-    var blocked = false;
-    for (var j = 0; j < taken.length; j++) {
-      var ta = new Date(taken[j].scheduled_at);
-      var taEnd = new Date(ta.getTime() + (taken[j].duration_minutes || 30) * 60000);
-      // Overlap check: slot starts before taken ends AND slot ends after taken starts
-      if (slotDate < taEnd && slotEnd > ta) { blocked = true; break; }
-    }
-    if (blocked) continue;
+    var anyFree = clIds.some(function(clId) {
+      // Check clinician is available this DOW
+      var avail = (_bookClinicianAvail[clId] || []).some(function(a) { return a.day_of_week === dow && a.active; });
+      if (!avail) return false;
+      // Check not double-booked
+      var busy = taken.some(function(ta) {
+        if (ta.clinician_id !== clId) return false;
+        var taStart = new Date(ta.scheduled_at).getTime();
+        var taEnd = taStart + (ta.duration_minutes || 30) * 60000;
+        return (slotDate.getTime() < taEnd && slotEnd.getTime() > taStart);
+      });
+      return !busy;
+    });
+    if (!anyFree) continue;
 
     slots.push(fmtMinutes(t));
   }
@@ -5086,6 +5113,8 @@ function populatePortal(user, consultation, greeting) {
   if (consultation && consultation.data) {
     var d = consultation.data;
     firstName = d.first_name || '';
+    // Store member's state for clinician state-matching in booking
+    if (d.state) window._memberState = d.state.toUpperCase().trim();
     var goalKey = (d.goals && d.goals.length > 0) ? d.goals[0]
                 : (d.assigned_protocol || null);
     if (goalKey && PROTOCOL_MAP[goalKey]) {

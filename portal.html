@@ -8295,10 +8295,16 @@ async function _submitEvaluation(apptId) {
       evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';
     }
 
-    // Update appointment
-    await db.from('appointments').update({ notes: notes.trim(), status: 'completed' }).eq('id', apptId);
+    // Update appointment with session data
+    await db.from('appointments').update({
+      notes: notes.trim(),
+      session_notes: notes.trim(),
+      status: 'completed',
+      prescription_given: evalData.prescription_given,
+      evaluation_date: evalData.evaluation_date
+    }).eq('id', apptId);
 
-    // Update consultation with evaluation data
+    // Update consultation — both data JSON and dedicated columns
     var assignedProtocolStr = decision === 'yes' ? (assignedNames || []).join(', ') : 'no prescription';
     var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
     if (cRes.data && cRes.data.length > 0) {
@@ -8306,11 +8312,40 @@ async function _submitEvaluation(apptId) {
       var cData = cRes.data[0].data || {};
       Object.assign(cData, evalData);
       cData.assigned_protocol = assignedProtocolStr;
-      await db.from('consultations').update({ data: cData, protocol_assigned: assignedProtocolStr }).eq('id', cId);
+      await db.from('consultations').update({
+        data: cData,
+        protocol_assigned: assignedProtocolStr,
+        prescription_given: evalData.prescription_given,
+        prescribed_protocols: evalData.prescribed_protocols,
+        dose_amount: evalData.dose_amount,
+        dose_unit: evalData.dose_unit,
+        frequency: evalData.frequency,
+        timing: evalData.timing,
+        timing_instructions: evalData.timing_instructions,
+        duration: evalData.duration,
+        other_notes: evalData.other_notes,
+        protocol_version: evalData.protocol_version,
+        no_prescription_reason: evalData.no_prescription_reason || null,
+        session_notes: notes.trim(),
+        evaluation_date: evalData.evaluation_date
+      }).eq('id', cId);
     }
 
-    // Update profile
-    await db.from('profiles').upsert({ user_id: consumerId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    // Update member profile with current active protocol data
+    await db.from('profiles').upsert({
+      user_id: consumerId,
+      prescription_given: evalData.prescription_given,
+      prescribed_protocols: evalData.prescribed_protocols,
+      protocol_assigned: assignedProtocolStr,
+      dose_amount: evalData.dose_amount,
+      dose_unit: evalData.dose_unit,
+      frequency: evalData.frequency,
+      timing: evalData.timing,
+      timing_instructions: evalData.timing_instructions,
+      duration: evalData.duration,
+      protocol_version: evalData.protocol_version,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
 
     if (msg) { msg.textContent = 'Evaluation submitted successfully.'; msg.style.color = 'var(--green)'; msg.style.display = 'inline'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Submitted ✓'; }

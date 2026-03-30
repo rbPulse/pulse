@@ -1366,22 +1366,26 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   #addBlockForm input[type="time"] { font-size: 16px; }
 }
 
-/* ── CLINICIAN OVERVIEW CALENDAR ── */
-.cl-cal-day{
-  aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;
-  border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.25);
-  cursor:default;transition:background .15s,color .15s,border-color .15s;
-  border:1px solid transparent;
-}
-.cl-cal-day.future{color:rgba(255,255,255,0.7);cursor:pointer;}
-.cl-cal-day.future:hover{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);}
-.cl-cal-day.today{color:#fff;border-color:rgba(58,122,92,0.4);}
-.cl-cal-day.selected{background:rgba(58,122,92,0.18);border-color:rgba(58,122,92,0.5);color:#fff;}
-.cl-cal-day.has-appts::after{
-  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
-  width:4px;height:4px;border-radius:50%;background:var(--green);
-  box-shadow:0 0 4px rgba(58,122,92,0.5);
-}
+/* ── CLINICIAN OVERVIEW DATE PICKER ── */
+.cl-day-arrow{background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;flex-shrink:0;}
+.cl-day-arrow:hover{border-color:rgba(255,255,255,0.25);color:#fff;}
+.cl-day-arrow:disabled{opacity:0.25;cursor:not-allowed;}
+.cl-day-cal-btn{background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
+.cl-day-cal-btn:hover{border-color:rgba(58,122,92,0.4);color:var(--green);}
+/* Popup calendar */
+.cl-cal-popup{display:none;position:absolute;top:36px;right:0;z-index:200;width:260px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,0.6);}
+.cl-cal-popup.open{display:block;}
+.cl-cal-popup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cl-cal-popup-month{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--green);}
+.cl-cal-popup-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-bottom:4px;}
+.cl-cal-popup-dow span{text-align:center;font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,0.2);padding:2px 0;}
+.cl-cal-popup-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cl-cal-day{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,0.2);cursor:default;transition:background .12s,color .12s;border:1px solid transparent;}
+.cl-cal-day.future{color:rgba(255,255,255,0.65);cursor:pointer;}
+.cl-cal-day.future:hover{background:rgba(255,255,255,0.05);}
+.cl-cal-day.today{color:#fff;border-color:rgba(58,122,92,0.35);}
+.cl-cal-day.selected{background:rgba(58,122,92,0.22);border-color:rgba(58,122,92,0.5);color:#fff;}
+.cl-cal-day.has-appts::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--green);}
 .cl-cal-day.empty{cursor:default;}
 
 /* ── END PHASE 32 ─────────────────────────────────────────────────────────── */
@@ -1863,30 +1867,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
 
         <div class="p-card">
-          <!-- Calendar header with month nav -->
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <div class="compounds-label" style="margin-bottom:0;" id="clOverviewCalMonth">March 2026</div>
-            <div style="display:flex;gap:4px;">
-              <button class="btn-ghost" style="padding:5px 10px;font-size:11px;line-height:1;" id="clCalPrev" onclick="_clCalNav(-1)">‹</button>
-              <button class="btn-ghost" style="padding:5px 10px;font-size:11px;line-height:1;" id="clCalNext" onclick="_clCalNav(1)">›</button>
+          <!-- Date picker bar -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <button class="cl-day-arrow" onclick="_clCalStep(-1)" id="clCalPrev">‹</button>
+            <div class="compounds-label" style="margin-bottom:0;flex:1;" id="clOverviewDayLabel">Today's Appointments</div>
+            <div style="position:relative;">
+              <button class="cl-day-cal-btn" onclick="_toggleClCalPopup()" id="clCalToggle" title="Pick a date">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </button>
+              <!-- Mini calendar popup -->
+              <div class="cl-cal-popup" id="clCalPopup">
+                <div class="cl-cal-popup-header">
+                  <button class="cl-day-arrow" onclick="_clCalNav(-1)" id="clCalPopPrev">‹</button>
+                  <span class="cl-cal-popup-month" id="clOverviewCalMonth">March 2026</span>
+                  <button class="cl-day-arrow" onclick="_clCalNav(1)">›</button>
+                </div>
+                <div class="cl-cal-popup-dow">
+                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+                <div class="cl-cal-popup-grid" id="clOverviewCalGrid"></div>
+              </div>
             </div>
+            <button class="cl-day-arrow" onclick="_clCalStep(1)">›</button>
           </div>
-          <!-- Mini calendar grid -->
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Su</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Mo</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Tu</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">We</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Th</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Fr</div>
-            <div style="text-align:center;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(255,255,255,0.2);padding-bottom:4px;">Sa</div>
-          </div>
-          <div id="clOverviewCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
           <!-- Appointment list for selected day -->
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-            <div class="compounds-label" style="margin-bottom:12px;" id="clOverviewDayLabel">Today's Appointments</div>
-            <div class="appt-list" id="clTodayAppts"></div>
-          </div>
+          <div class="appt-list" id="clTodayAppts"></div>
         </div>
 
         <div class="cl-two-col">
@@ -4057,13 +4062,52 @@ var _clCalApptCache = {}; // { 'YYYY-MM-DD': [appointment rows] }
 
 function _clCalNav(dir) {
   _clCalDate.setMonth(_clCalDate.getMonth() + dir);
-  // Don't go before current month
   var now = new Date();
   if (_clCalDate.getFullYear() < now.getFullYear() ||
       (_clCalDate.getFullYear() === now.getFullYear() && _clCalDate.getMonth() < now.getMonth())) {
     _clCalDate = new Date(now.getFullYear(), now.getMonth(), 1);
   }
   _renderClOverviewCal();
+}
+
+// Step one day forward/back
+function _clCalStep(dir) {
+  var now = new Date(); now.setHours(0,0,0,0);
+  var next = new Date(_clCalSelected);
+  next.setDate(next.getDate() + dir);
+  next.setHours(0,0,0,0);
+  if (next < now) return; // can't go before today
+  _clCalSelected = next;
+  _clCalDate = new Date(next.getFullYear(), next.getMonth(), 1);
+  _renderClOverviewCal();
+  _loadClOverviewDayAppts(next.toISOString().slice(0, 10));
+  _updateClDayLabel(next);
+  // Disable prev arrow if on today
+  var prevBtn = document.getElementById('clCalPrev');
+  if (prevBtn) { prevBtn.disabled = next.getTime() <= now.getTime(); }
+}
+
+function _toggleClCalPopup() {
+  var popup = document.getElementById('clCalPopup');
+  if (popup) popup.classList.toggle('open');
+}
+// Close popup on click outside
+document.addEventListener('click', function(e) {
+  var popup = document.getElementById('clCalPopup');
+  var toggle = document.getElementById('clCalToggle');
+  if (popup && popup.classList.contains('open') && !popup.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+    popup.classList.remove('open');
+  }
+});
+
+function _updateClDayLabel(dt) {
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var label = document.getElementById('clOverviewDayLabel');
+  if (!label) return;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var isToday = dt.toISOString().slice(0,10) === today.toISOString().slice(0,10);
+  label.textContent = isToday ? "Today's Appointments" : DAYS[dt.getDay()] + ', ' + MONTHS[dt.getMonth()] + ' ' + dt.getDate();
 }
 
 function _renderClOverviewCal() {
@@ -4121,6 +4165,13 @@ function _renderClOverviewCal() {
           _clCalSelected = new Date(d2);
           _renderClOverviewCal();
           _loadClOverviewDayAppts(ds);
+          _updateClDayLabel(new Date(d2));
+          // Close popup + update prev arrow state
+          var popup = document.getElementById('clCalPopup');
+          if (popup) popup.classList.remove('open');
+          var prevBtn = document.getElementById('clCalPrev');
+          var today = new Date(); today.setHours(0,0,0,0);
+          if (prevBtn) prevBtn.disabled = d2.getTime() <= today.getTime();
         });
       })(dt, dateStr);
     }
@@ -4154,19 +4205,12 @@ function _loadClOverviewCalData() {
       // Load today's appointments into the list
       var todayStr = new Date().toISOString().slice(0, 10);
       _loadClOverviewDayAppts(todayStr);
+      _updateClDayLabel(_clCalSelected);
     })
     .catch(function() { _renderClOverviewCal(); });
 }
 
 function _loadClOverviewDayAppts(dateStr) {
-  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var dt = new Date(dateStr + 'T12:00:00');
-  var label = document.getElementById('clOverviewDayLabel');
-  var today = new Date(); today.setHours(0,0,0,0);
-  var isToday = dt.toISOString().slice(0,10) === today.toISOString().slice(0,10);
-  if (label) label.textContent = isToday ? "Today's Appointments" : DAYS[dt.getDay()] + ', ' + MONTHS[dt.getMonth()] + ' ' + dt.getDate();
-
   var cached = _clCalApptCache[dateStr];
   if (cached && cached.length > 0) {
     // Resolve display names from profiles if possible

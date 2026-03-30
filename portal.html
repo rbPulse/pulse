@@ -3203,18 +3203,22 @@ var _previewParam = new URLSearchParams(window.location.search).get('preview');
 var PREVIEW_MODE = _previewParam === '1' || _previewParam === 'true' || _previewParam === 'pulse2025';
 var currentUserId    = null;
 var currentUserEmail = null;
-db.auth.getSession().then(function(r) {
-  // PREVIEW_MODE always uses a fake user — ignore any real session
-  if (PREVIEW_MODE) {
-    initPortal({ email: 'preview@pulse.com', id: 'preview-uid', created_at: new Date().toISOString(), user_metadata: {} });
-    return;
-  }
-  if (!r.data || !r.data.session) {
+
+// PREVIEW_MODE: skip Supabase entirely — no auth, no network calls
+if (PREVIEW_MODE) {
+  initPortal({ email: 'preview@pulse.com', id: 'preview-uid', created_at: new Date().toISOString(), user_metadata: {} });
+} else {
+  db.auth.getSession().then(function(r) {
+    if (!r.data || !r.data.session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    initPortal(r.data.session.user);
+  }).catch(function(err) {
+    console.warn('[Pulse] getSession failed:', err);
     window.location.href = 'index.html';
-    return;
-  }
-  initPortal(r.data.session.user);
-});
+  });
+}
 
 // ── Sidebar identity block ──
 function setSidebarIdentity(displayName, roleLabel, isClinicianRole) {

@@ -3375,7 +3375,24 @@ function initPortal(user) {
               window.location.href = 'consultation.html?new=1';
             });
         }
-        populatePortal(user, c, greeting);
+        // Check if member has a pending upcoming appointment — if so, send to waiting page
+        db.from('appointments').select('id').eq('consumer_id', user.id)
+          .gte('scheduled_at', new Date().toISOString())
+          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+          .limit(1)
+          .then(function(apptCheck) {
+            if (apptCheck.data && apptCheck.data.length > 0) {
+              // Check if clinician has assigned a protocol yet — if not, go to waiting page
+              var d = c.data || {};
+              var hasProtocol = d.assigned_protocol || c.protocol;
+              if (!hasProtocol) {
+                window.location.href = 'consultation.html';
+                return;
+              }
+            }
+            populatePortal(user, c, greeting);
+          })
+          .catch(function() { populatePortal(user, c, greeting); });
       })
       .catch(function(err) { handleSupabaseError(err, 'consultations load'); populatePortal(user, null, greeting); });
     loadDoseLogs();
@@ -5165,13 +5182,13 @@ function populatePortal(user, consultation, greeting) {
     firstName = d.first_name || '';
     // Store member's state for clinician state-matching in booking
     if (d.state) window._memberState = d.state.toUpperCase().trim();
-    var goalKey = (d.goals && d.goals.length > 0) ? d.goals[0]
-                : (d.assigned_protocol || null);
-    if (goalKey && PROTOCOL_MAP[goalKey]) {
-      proto = PROTOCOL_MAP[goalKey];
-      window._userProto = goalKey;
+    // Only show protocol if a clinician has explicitly assigned one
+    var assignedProto = d.assigned_protocol || consultation.protocol || null;
+    if (assignedProto && PROTOCOL_MAP[assignedProto]) {
+      proto = PROTOCOL_MAP[assignedProto];
+      window._userProto = assignedProto;
     } else {
-      // Consultation exists but no resolvable protocol yet — pending clinician review
+      // Consultation exists but no assigned protocol yet — pending clinician review
       hasPendingReview = true;
     }
   }

@@ -4528,19 +4528,111 @@ function _applyClApptFilter(rows, filter) {
 var _openDetailRow = null;
 
 function toggleApptDetail(appt, role, rowWrapper) {
-  // Close any open panel in the same list
   var list = rowWrapper.parentNode;
-  var existing = list.querySelector('.appt-detail-panel');
+  var existing = list.querySelector('.appt-detail-panel,.patient-detail-panel');
   if (existing) {
     var wasThis = existing.parentNode === rowWrapper;
     existing.remove();
     if (wasThis) { _openDetailRow = null; return; }
   }
   _openDetailRow = rowWrapper;
+
+  // For clinician: show full patient detail panel (same as Patients tab)
+  if (role === 'clinician' && appt.consumerId) {
+    var panel = document.createElement('div');
+    panel.className = 'patient-detail-panel';
+    panel.innerHTML = '<div style="padding:20px;text-align:center;"><div class="skeleton-pulse" style="height:14px;width:50%;margin:0 auto 10px;"></div><div class="skeleton-pulse" style="height:10px;width:70%;margin:0 auto;"></div></div>';
+    rowWrapper.appendChild(panel);
+    // Trigger slide-in on mobile
+    requestAnimationFrame(function(){ panel.classList.add('open'); });
+    // Fetch patient data from consultations + profiles
+    _loadPatientDetailForAppt(appt, panel);
+    return;
+  }
+
+  // Consumer view: standard appointment detail
   var panel = document.createElement('div');
   panel.className = 'appt-detail-panel';
   panel.innerHTML = buildApptDetail(appt, role);
   rowWrapper.appendChild(panel);
+}
+
+// Load full patient detail for an appointment (reuses patient detail panel from Patients tab)
+function _loadPatientDetailForAppt(appt, panel) {
+  var consumerId = appt.consumerId;
+  if (!consumerId) { panel.innerHTML = buildApptDetail(appt, 'clinician'); return; }
+
+  Promise.all([
+    db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1),
+    db.from('profiles').select('*').eq('user_id', consumerId).limit(1)
+  ]).then(function(results) {
+    var cRes = results[0], pRes = results[1];
+    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : { user_id: consumerId, data: {} };
+    var profile = (pRes.data && pRes.data.length > 0) ? pRes.data[0] : null;
+    var patient = _normalisePatientRow(consultation, profile);
+
+    // Merge appointment-specific data
+    patient._apptId = appt._id;
+    patient._apptStatus = appt.status;
+    patient._apptRawStatus = appt._rawStatus || appt.status;
+    patient._apptTime = appt.fullTimeStr || appt.time;
+    patient._apptDur = appt.dur;
+    patient._apptNotes = appt.notes || '';
+
+    // Build the patient detail panel HTML (same as Patients tab but with appointment actions)
+    _renderApptPatientDetail(patient, appt, panel);
+  }).catch(function() {
+    panel.innerHTML = buildApptDetail(appt, 'clinician');
+  });
+}
+
+function _renderApptPatientDetail(patient, appt, panel) {
+  var d = patient._rawData || {};
+  var name = patient.name || '—';
+  var initials = name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
+  var subChip = patient.subStatus ? _subscriptionChip(patient.subStatus) : '';
+  var memberSinceStr = patient.memberSince ? new Date(patient.memberSince).toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'}) : '—';
+
+  var safeId = escapeAttr(appt._id || '');
+  var rawSt = appt._rawStatus || appt.status;
+  var canConfirm = rawSt === 'pending';
+  var canCancel = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
+  var safeType = escapeAttr(appt.type || 'Appointment');
+
+  var actionsHtml =
+    (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
+    '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
+    (canCancel ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '');
+
+  panel.innerHTML =
+    '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
+    '<div class="pdp-close-row">' +
+      '<div><div class="pdp-title">' + escapeHtml(name) + ' ' + subChip + '</div>' +
+      '<div class="pdp-subtitle">Appointment · ' + escapeHtml(appt.fullTimeStr || appt.time || '') + '</div></div>' +
+      '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
+    '</div>' +
+    '<div class="pdp-section"><div class="pdp-section-label">Patient Info</div>' +
+      '<div class="pdp-info-grid">' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Full Name</div><div class="pdp-info-value --em">' + escapeHtml(name) + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Email</div><div class="pdp-info-value">' + escapeHtml(patient.email || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Phone</div><div class="pdp-info-value">' + escapeHtml(d.phone_number || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Date of Birth</div><div class="pdp-info-value">' + escapeHtml(d.dob || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Sex</div><div class="pdp-info-value">' + escapeHtml(d.sex || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Height</div><div class="pdp-info-value">' + escapeHtml(d.height || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Weight</div><div class="pdp-info-value">' + escapeHtml(d.current_weight || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Primary Goal</div><div class="pdp-info-value">' + escapeHtml(patient.goal || '—') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Protocol</div><div class="pdp-info-value" style="color:var(--green);">' + escapeHtml(patient.protocol || 'Not assigned') + '</div></div>' +
+        '<div class="pdp-info-row"><div class="pdp-info-label">Member Since</div><div class="pdp-info-value">' + memberSinceStr + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="pdp-section"><div class="pdp-section-label">Session Notes</div>' +
+      '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes...">' + escapeHtml(appt.notes || '') + '</textarea>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
+        '<button class="adp-btn" style="border-color:rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);" onclick="_saveApptNotes(\'' + safeId + '\')">Save Notes</button>' +
+        '<span id="adp-saved-' + safeId + '" style="display:none;font-family:\'DM Mono\',monospace;font-size:9px;color:var(--green);">Saved ✓</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="adp-actions">' + actionsHtml + '</div>';
 }
 
 function buildApptDetail(a, role) {
@@ -5653,7 +5745,8 @@ function _normalisePatientRow(consultation, profile) {
     subStatus:       (profile && profile.subscription_status) ? profile.subscription_status : null,
     notify_messages: profile ? (profile.notify_messages !== false) : true,
     _consultation: consultation,
-    _profile:      profile
+    _profile:      profile,
+    _rawData:      d
   };
 }
 

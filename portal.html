@@ -4879,7 +4879,7 @@ function renderApptList(elId, appts, role) {
         '<span class="appt-dur-text" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(255,255,255,0.35);white-space:nowrap;flex-shrink:0;">' + escapeHtml(a.dur || '') + '</span>' +
         '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
       '</div>';
-    wrapper.onclick = function(){ toggleApptDetail(a, role || 'clinician', wrapper); };
+    wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,.appt-detail-panel,textarea,button,input,select,a')) return; toggleApptDetail(a, role || 'clinician', wrapper); };
     el.appendChild(wrapper);
   });
 }

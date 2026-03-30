@@ -874,6 +874,43 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
     </div>
 
+    <!-- STATE C: Not prescribed -->
+    <div id="step6-notprescribed" style="display:none;">
+      <div class="summary-header-card">
+        <div class="summary-check" style="border-color:rgba(255,255,255,0.15);">
+          <svg viewBox="0 0 24 24" style="stroke:rgba(255,255,255,0.4);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="summary-title">Your evaluation is complete</div>
+        <div class="summary-sub"><span id="step6NpClinicianName">Your clinician</span> has reviewed your consultation. Based on their clinical assessment, a prescription is not recommended at this time.</div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;text-align:center;">
+        <div style="font-size:14px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto;">If you have questions about this decision, please contact <a href="mailto:support@pulsepeptides.com" style="color:var(--green);text-decoration:none;">support@pulsepeptides.com</a>.</div>
+      </div>
+
+      <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Complete</div>
+          <div class="tl-title">Consultation complete</div>
+          <div class="tl-body">Your live session is complete.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
+          <div class="tl-label">Complete</div>
+          <div class="tl-title">Clinician evaluation</div>
+          <div class="tl-body">Your clinician has completed their review.</div>
+          <div class="tl-tag">Done</div>
+        </div>
+      </div>
+
+      <div class="step-actions" style="justify-content:center;">
+        <a href="index.html" class="btn-secondary" style="text-decoration:none;">Return to Home</a>
+      </div>
+    </div>
+
     <div class="disclaimer-footer">
       This summary is for informational purposes only. All prescriptions are issued by licensed physicians operating within an independent Medical Services Organization. Pulse does not practice medicine.
     </div>
@@ -1846,12 +1883,21 @@ async function _populateStep6() {
     }
 
     // Check if clinician has assigned a protocol
-    var cRes = await client.from('consultations').select('data, protocol_assigned')
+    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
     var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
+    var rxGiven = consultation ? consultation.prescription_given : null;
 
-    if (assignedProto) {
+    if (rxGiven === false || assignedProto === 'no prescription') {
+      // STATE C: Not prescribed
+      document.getElementById('step6-awaiting').style.display = 'none';
+      document.getElementById('step6-assigned').style.display = 'none';
+      document.getElementById('step6-notprescribed').style.display = 'block';
+      var npClName = document.getElementById('step6NpClinicianName');
+      var clNameText = (document.getElementById('step6ClinicianName') || {}).textContent || 'Your clinician';
+      if (npClName) npClName.textContent = clNameText;
+    } else if (assignedProto && assignedProto !== 'no prescription') {
       // STATE B: Protocol assigned
       document.getElementById('step6-awaiting').style.display = 'none';
       document.getElementById('step6-assigned').style.display = 'block';

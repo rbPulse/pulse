@@ -1411,6 +1411,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div class="nav-right">
     <span class="nav-user-email" id="navEmail"></span>
     <span class="nav-role-badge" id="navRoleBadge" style="display:none;"></span>
+    <a href="admin.html" id="navAdminLink" style="display:none;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);padding:3px 9px;border-radius:999px;text-decoration:none;">Admin</a>
     <div style="position:relative;">
       <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="Notifications">
         🔔
@@ -3325,6 +3326,17 @@ function initPortal(user) {
   var role = resolveRole(user);
   window._userRole = role;
 
+  // Check if user is an admin — show admin dashboard link
+  if (currentUserId && !PREVIEW_MODE) {
+    db.from('profiles').select('admin_role').eq('user_id', currentUserId).limit(1)
+      .then(function(r) {
+        if (r.data && r.data.length > 0 && (r.data[0].admin_role === 'admin' || r.data[0].admin_role === 'super_admin')) {
+          var adminLink = document.getElementById('navAdminLink');
+          if (adminLink) adminLink.style.display = 'inline-block';
+        }
+      }).catch(function(){});
+  }
+
   var hour = new Date().getHours();
   var greeting = hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,';
 
@@ -5042,7 +5054,7 @@ function _renderBookingGrid() {
   chipsEl.innerHTML = '';
 
   var now   = new Date();
-  var cutoff = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now (testing)
+  var cutoff = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];

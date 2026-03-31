@@ -61,21 +61,67 @@ serve(async (req) => {
       });
     }
 
-    // 4. Authorize: user must be the consumer or the clinician
+    // 4. Authorize: user must be the consumer, the clinician, or an admin
     const isConsumer = user.id === appt.consumer_id;
     const isClinician = user.id === appt.clinician_id;
+
+    // Check if user is an admin with bypass permission
+    let isAdmin = false;
+    let canBypassJoinWindow = false;
     if (!isConsumer && !isClinician) {
-      return new Response(JSON.stringify({ error: "Not authorized for this appointment" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("admin_role, permissions")
+        .eq("user_id", user.id)
+        .single();
+      if (profile && (profile.admin_role === "admin" || profile.admin_role === "super_admin")) {
+        isAdmin = true;
+        canBypassJoinWindow = true;
+      }
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Not authorized for this appointment" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Check if clinician/consumer has bypass permission
+    if (!canBypassJoinWindow && (isConsumer || isClinician)) {
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("admin_role, permissions")
+        .eq("user_id", user.id)
+        .single();
+      if (userProfile && (userProfile.admin_role === "admin" || userProfile.admin_role === "super_admin")) {
+        canBypassJoinWindow = true;
+      }
+      if (userProfile && userProfile.permissions && userProfile.permissions.can_bypass_video_join_window) {
+        canBypassJoinWindow = true;
+      }
     }
 
     // 5. Enforce join window: 5 minutes before appointment start, with 60-min grace after
+    // Admins with bypass permission skip this check
     const apptTime = new Date(appt.scheduled_at).getTime();
     const duration = (appt.duration_minutes || 30) * 60 * 1000;
 
-    // No time window restriction — allow joining at any time
+    if (!canBypassJoinWindow) {
+      const now = Date.now();
+      const windowStart = apptTime - 5 * 60 * 1000;
+      const windowEnd = apptTime + duration + 60 * 60 * 1000;
+      if (now < windowStart) {
+        const minsUntil = Math.ceil((windowStart - now) / 60000);
+        return new Response(JSON.stringify({ error: "Too early", minutesUntilOpen: minsUntil }), {
+          status: 425, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (now > windowEnd) {
+        return new Response(JSON.stringify({ error: "Session window has closed" }), {
+          status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // 6. Get or create Daily room for this appointment (idempotent)
     let roomName = appt.daily_room_name;
@@ -129,9 +175,11 @@ serve(async (req) => {
     }
 
     // 7. Generate a meeting token for this user
-    const userName = isClinician
-      ? (user.user_metadata?.cl_name ? `Dr. ${user.user_metadata.cl_name.split(" ")[0]}` : "Clinician")
-      : (user.user_metadata?.first_name || user.email?.split("@")[0] || "Patient");
+    const userName = isAdmin
+      ? (user.user_metadata?.cl_name ? `Dr. ${user.user_metadata.cl_name.split(" ")[0]}` : "Admin")
+      : isClinician
+        ? (user.user_metadata?.cl_name ? `Dr. ${user.user_metadata.cl_name.split(" ")[0]}` : "Clinician")
+        : (user.user_metadata?.first_name || user.email?.split("@")[0] || "Patient");
 
     const tokenExpiryTs = Math.floor((apptTime + duration + 60 * 60 * 1000) / 1000);
     const tokenRes = await fetch("https://api.daily.co/v1/meeting-tokens", {
@@ -144,7 +192,7 @@ serve(async (req) => {
         properties: {
           room_name: roomName,
           user_name: userName,
-          is_owner: isClinician,
+          is_owner: isClinician || isAdmin,
           exp: tokenExpiryTs,
         },
       }),
@@ -160,11 +208,22 @@ serve(async (req) => {
     const { token: meetingToken } = await tokenRes.json();
 
     // 8. Update appointment status to confirmed if still pending
-    if (appt.status === "pending" && isClinician) {
+    if (appt.status === "pending" && (isClinician || isAdmin)) {
       await supabase
         .from("appointments")
         .update({ status: "confirmed" })
         .eq("id", appointmentId);
+    }
+
+    // 9. Audit log: admin session join
+    if (isAdmin) {
+      await supabase.from("audit_logs").insert({
+        action: "admin_joined_session",
+        actor_id: user.id,
+        actor_email: user.email,
+        target_id: appointmentId,
+        details: { roomName, userName, appointmentId }
+      }).then(() => {}).catch(() => {});
     }
 
     return new Response(

@@ -1259,7 +1259,7 @@ function _generateRealSlots(day) {
   var dateStr = day.toISOString().slice(0, 10);
   var slots = [];
   var slotsSeen = {};
-  var cutoff = Date.now() + 10 * 60 * 1000; // 10 minutes from now (testing)
+  var cutoff = Date.now() + 60 * 60 * 1000; // 1 hour from now
 
   _eligibleClinicians.forEach(function(cl) {
     var avail = (_clinicianAvail[cl.id] || []).find(function(a) { return a.day_of_week === dow && a.active; });
@@ -1271,7 +1271,7 @@ function _generateRealSlots(day) {
         if (h * 60 + m + dur > 17 * 60) break; // don't go past 5pm
         var slotTime = new Date(day);
         slotTime.setHours(h, m, 0, 0);
-        // Skip slots less than 10 min from now (testing)
+        // Skip slots less than 1 hour from now
         if (slotTime.getTime() < cutoff) continue;
         var slotISO = slotTime.toISOString();
         // Check if this clinician already has an appointment at this time
@@ -1499,14 +1499,21 @@ function runCountdownTick() {
   var hrs  = Math.floor((secsUntil % 86400) / 3600);
   var mins = Math.floor((secsUntil % 3600) / 60);
 
-  // Join button always enabled
-  if (secsUntil > 0) {
+  // Enable join button 5 minutes before appointment
+  var FIVE_MIN = 5 * 60;
+  if (secsUntil <= FIVE_MIN && secsUntil > 0) {
+    digits.textContent = mins + 'm ' + (secsUntil % 60) + 's';
+    unit.textContent = 'session opens soon';
+    joinBtn.classList.add('ready');
+    joinBtn.disabled = false;
+    joinHint.textContent = 'You can join now';
+  } else if (secsUntil > FIVE_MIN) {
     digits.textContent = days + 'd ' + hrs + 'h ' + mins + 'm';
     unit.textContent = 'until session';
+    joinBtn.classList.remove('ready');
+    joinBtn.disabled = true;
+    joinHint.textContent = 'Opens 5 minutes before your appointment';
   }
-  joinBtn.classList.add('ready');
-  joinBtn.disabled = false;
-  joinHint.textContent = 'You can join now';
 
   if (secsUntil <= 0) {
     clearInterval(countdownInterval);

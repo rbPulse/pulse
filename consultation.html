@@ -827,15 +827,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         <div class="summary-clinician-sig">Prescribed by <span id="step6AssignedClinicianName">your Pulse clinician</span> &mdash; <span id="step6AssignedDate"></span></div>
       </div>
 
-      <div class="summary-protocol-box">
-        <div class="spb-eyebrow">Your prescribed protocol</div>
-        <div class="spb-name" id="step6ProtoName"></div>
-        <div class="spb-compounds" id="step6ProtoCompounds"></div>
-        <div class="spb-detail" id="step6ProtoNotes">Your clinician has recommended this protocol based on your intake information, session discussion, and stated goals.</div>
-        <div class="spb-cta">
-          <a href="portal.html" class="btn-primary" style="text-decoration:none;">Go to My Portal</a>
-        </div>
-      </div>
+      <!-- Protocol cards — populated by JS -->
+      <div id="step6ProtocolCards"></div>
 
       <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
       <div class="timeline">
@@ -861,16 +854,15 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <div class="tl-tag">Done</div>
         </div>
         <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">In progress</div>
-          <div class="tl-title">Pharmacy preparation & shipment</div>
-          <div class="tl-body">Your compounds are being prepared by a licensed 503B compounding pharmacy and will ship with tracking.</div>
-          <div class="tl-tag" style="background:rgba(255,180,50,0.08);border-color:rgba(255,180,50,0.2);color:rgba(255,180,50,0.85);">In progress</div>
+          <div class="tl-dot"></div>
+          <div class="tl-label pending">Next</div>
+          <div class="tl-title">Activate your protocol</div>
+          <div class="tl-body">Complete your purchase to begin treatment. Your compounds will be prepared and shipped after activation.</div>
         </div>
       </div>
 
       <div class="step-actions" style="justify-content:center;">
-        <a href="portal.html" class="btn-primary" style="text-decoration:none;">Go to My Portal</a>
+        <a href="checkout.html" class="btn-primary" style="text-decoration:none;">Activate My Protocol</a>
       </div>
     </div>
 
@@ -1901,22 +1893,59 @@ async function _populateStep6() {
       // STATE B: Protocol assigned
       document.getElementById('step6-awaiting').style.display = 'none';
       document.getElementById('step6-assigned').style.display = 'block';
-      var protoNameEl = document.getElementById('step6ProtoName');
-      if (protoNameEl) protoNameEl.textContent = assignedProto;
       var dateEl2 = document.getElementById('step6AssignedDate');
       if (dateEl2) {
-        var d2 = new Date();
-        dateEl2.textContent = months[d2.getMonth()] + ' ' + d2.getDate() + ', ' + d2.getFullYear();
+        var evalDate = (consultation.data && consultation.data.evaluation_date) ? new Date(consultation.data.evaluation_date) : new Date();
+        dateEl2.textContent = months[evalDate.getMonth()] + ' ' + evalDate.getDate() + ', ' + evalDate.getFullYear();
       }
-      // Show compounds if available
-      var protoData = PROTOCOL_MAP[assignedProto.toLowerCase()] || null;
-      if (protoData) {
-        var compEl = document.getElementById('step6ProtoCompounds');
-        if (compEl) {
-          compEl.innerHTML = protoData.compounds.map(function(c) {
-            return '<span class="spb-compound">' + escapeHtml(c) + '</span>';
-          }).join('');
+
+      // Build protocol cards from evaluation data
+      var cardsEl = document.getElementById('step6ProtocolCards');
+      if (cardsEl) {
+        var cd = consultation.data || {};
+        var prescribedProtocols = cd.prescribed_protocols || {};
+        var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
+        var cardsHtml = '';
+
+        allProtos.forEach(function(pName) {
+          var key = pName.toLowerCase().replace(/\s+/g, '_');
+          if (!prescribedProtocols[key]) return;
+
+          // Get compound tags from PROTOCOL_MAP
+          var protoData = PROTOCOL_MAP[pName.toLowerCase()] || PROTOCOL_MAP[key] || null;
+          var compHtml = '';
+          if (protoData && protoData.compounds) {
+            compHtml = protoData.compounds.map(function(c) {
+              return '<span class="spb-compound">' + escapeHtml(c) + '</span>';
+            }).join('');
+          }
+
+          // Dosing details
+          var doseAmt = cd.dose_amount || '—';
+          var doseUnit = cd.dose_unit || '';
+          var freq = cd.frequency || '—';
+          var timing = cd.timing || '—';
+          var timingInst = cd.timing_instructions || '';
+          var dur = cd.duration || '—';
+          var otherNotes = cd.other_notes || '';
+          var dosingLine = escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + ' · ' + escapeHtml(freq) + ' · ' + escapeHtml(timing) + ' · ' + escapeHtml(dur);
+
+          cardsHtml += '<div class="summary-protocol-box" style="margin-bottom:14px;">' +
+            '<div class="spb-eyebrow">Your prescribed protocol</div>' +
+            '<div class="spb-name">' + escapeHtml(pName) + '</div>' +
+            (compHtml ? '<div class="spb-compounds">' + compHtml + '</div>' : '') +
+            '<div style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.04em;color:var(--green);margin:12px 0 8px;">' + dosingLine + '</div>' +
+            (timingInst ? '<div style="font-size:12px;color:var(--grey);margin-bottom:6px;">' + escapeHtml(timingInst) + '</div>' : '') +
+            (otherNotes && otherNotes !== 'no prescription' ? '<div style="font-size:12px;color:var(--grey);line-height:1.6;margin-bottom:6px;font-style:italic;">' + escapeHtml(otherNotes) + '</div>' : '') +
+          '</div>';
+        });
+
+        if (!cardsHtml) {
+          // Fallback: show the protocol name from protocol_assigned
+          cardsHtml = '<div class="summary-protocol-box"><div class="spb-eyebrow">Your prescribed protocol</div>' +
+            '<div class="spb-name">' + escapeHtml(assignedProto) + '</div></div>';
         }
+        cardsEl.innerHTML = cardsHtml;
       }
     } else {
       // STATE A: Awaiting evaluation

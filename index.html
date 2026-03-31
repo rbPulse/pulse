@@ -1683,15 +1683,18 @@ var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 
 function updateNavAuth(user) {
   var area = document.getElementById('navAuthArea');
+  var getStartedBtn = document.querySelector('.nav-auth .nav-auth-btn[href="consultation.html?new=1"]');
   if (!area) return;
   if (user) {
+    if (getStartedBtn) getStartedBtn.style.display = 'none';
     area.innerHTML =
       '<div class="nav-user-pill">' +
         '<a href="portal.html" class="nav-auth-btn">My Portal</a>' +
         '<button class="nav-signout" onclick="doSignOut()">Sign Out</button>' +
       '</div>';
   } else {
-    area.innerHTML = '<button class="nav-auth-btn" onclick="openAuthModal()">Login</button>';
+    if (getStartedBtn) getStartedBtn.style.display = '';
+    area.innerHTML = '<button class="nav-get-started" onclick="openAuthModal()">Login</button>';
   }
 }
 

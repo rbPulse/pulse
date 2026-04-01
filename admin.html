@@ -92,7 +92,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .role-pill.member{color:var(--green);background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);}
 .role-pill.clinician{color:rgba(150,185,255,0.8);background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);}
 .role-pill.admin{color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);}
-.role-pill.super_admin{color:rgba(255,130,130,0.85);background:rgba(255,100,100,0.08);border:1px solid rgba(255,100,100,0.18);}
+.role-pill.super_admin{color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);}
 
 /* ── CREATE USER FORM ── */
 .create-user-form{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:20px;display:none;}
@@ -276,7 +276,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <span class="nav-name">PULSE</span>
   </a>
   <div class="nav-right">
-    <a href="portal.html" class="nav-back">&larr; Back to Portal</a>
     <span class="nav-user-email" id="navEmail"></span>
     <span class="nav-role-badge" id="navRoleBadge"></span>
     <button class="nav-signout" onclick="doSignOut()">Sign Out</button>
@@ -429,20 +428,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <option value="admin">Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>
-          <select class="filter-select" id="userStatusFilter" onchange="filterUsers()">
-            <option value="">All Status</option>
-            <option value="free">Free</option>
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
           <span class="toolbar-count" id="userCount"></span>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Seen</th><th>Joined</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Seen</th><th>Joined</th></tr></thead>
             <tbody id="usersBody">
-              <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+              <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -814,7 +806,7 @@ function loadRecentUsers() {
         return;
       }
       tbody.innerHTML = r.data.map(function(u) {
-        var role = u.admin_role || 'member';
+        var role = u.role || 'member';
         var name = u.display_name || u.email || 'Unknown';
         var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
         return '<tr>' +
@@ -1031,7 +1023,7 @@ function finishCreateUser() {
 var allUsers = [];
 
 function loadUsers() {
-  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role, subscription_status, last_seen, created_at')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, role, admin_role, last_seen, created_at')
     .order('created_at', { ascending: false })
     .then(function(r) {
       allUsers = r.data || [];
@@ -1042,16 +1034,14 @@ function loadUsers() {
 function filterUsers() {
   var q = (document.getElementById('userSearch').value || '').toLowerCase();
   var roleF = document.getElementById('userRoleFilter').value;
-  var statusF = document.getElementById('userStatusFilter').value;
+
 
   var filtered = allUsers.filter(function(u) {
     var name = (u.display_name || '').toLowerCase();
     var email = (u.email || '').toLowerCase();
-    var role = u.admin_role || 'member';
-    var status = u.subscription_status || 'free';
+    var role = u.role || 'member';
     if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
     if (roleF && role !== roleF) return false;
-    if (statusF && status !== statusF) return false;
     return true;
   });
 
@@ -1062,12 +1052,11 @@ function filterUsers() {
 function renderUsersTable(users) {
   var tbody = document.getElementById('usersBody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
     return;
   }
   tbody.innerHTML = users.map(function(u) {
-    var role = u.admin_role || 'member';
-    var status = u.subscription_status || 'free';
+    var role = u.role || 'member';
     var name = u.display_name || u.email || 'Unknown';
     var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
     var seen = timeAgo(u.last_seen);
@@ -1075,7 +1064,6 @@ function renderUsersTable(users) {
       '<td style="color:#fff;font-weight:400;">' + escHtml(name) + '</td>' +
       '<td>' + escHtml(u.email || '--') + '</td>' +
       '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
-      '<td><span class="status-pill ' + status + '">' + status + '</span></td>' +
       '<td>' + seen + '</td>' +
       '<td>' + date + '</td>' +
       '</tr>';
@@ -1107,7 +1095,7 @@ function filterRoles() {
   var filtered = allRoleUsers.filter(function(u) {
     var name = (u.display_name || '').toLowerCase();
     var email = (u.email || '').toLowerCase();
-    var role = u.admin_role || 'member';
+    var role = u.role || 'member';
     if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
     if (roleF && role !== roleF) return false;
     return true;
@@ -1126,7 +1114,7 @@ function renderRolesTable(users) {
   var isSuperAdmin = currentAdminRole === 'super_admin';
 
   tbody.innerHTML = users.map(function(u) {
-    var role = u.admin_role || 'member';
+    var role = u.role || 'member';
     var name = u.display_name || u.email || 'Unknown';
     var isSelf = u.user_id === currentUserId;
 
@@ -1776,7 +1764,7 @@ function renderAnalytics(doseLogs) {
   // ── Role distribution ──
   var roleCounts = { member: 0, clinician: 0, admin: 0, super_admin: 0 };
   allUsers.forEach(function(u) {
-    var r = u.admin_role || 'member';
+    var r = u.role || 'member';
     if (roleCounts[r] !== undefined) roleCounts[r]++;
     else roleCounts.member++;
   });

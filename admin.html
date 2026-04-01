@@ -160,6 +160,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .detail-grid{grid-template-columns:1fr 1fr;}
 }
 
+/* ── THREAD LIST ── */
+.thread-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.thread-item:hover{background:rgba(255,255,255,0.02);}
+.thread-item.active{background:rgba(58,122,92,0.06);border-left:2px solid var(--green);}
+.thread-name{font-size:13px;font-weight:400;color:#fff;margin-bottom:2px;}
+.thread-preview{font-size:11px;color:var(--grey2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.thread-meta{font-family:'DM Mono',monospace;font-size:8px;color:var(--grey2);letter-spacing:0.06em;margin-top:4px;}
+.thread-unread{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-left:6px;vertical-align:middle;}
+
+/* ── MESSAGE BUBBLES ── */
+.msg-header{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:500;}
+.msg-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;max-height:460px;}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.5;word-break:break-word;}
+.msg-bubble.consumer{background:var(--card2);color:var(--grey);align-self:flex-start;border-bottom-left-radius:2px;}
+.msg-bubble.clinician{background:rgba(58,122,92,0.12);color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
+.msg-bubble-meta{font-family:'DM Mono',monospace;font-size:8px;color:var(--grey2);margin-top:4px;letter-spacing:0.04em;}
+
 /* ── CLICKABLE ROW ── */
 .admin-table tr.clickable{cursor:pointer;}
 .admin-table tr.clickable:hover td{background:rgba(255,255,255,0.03);}
@@ -187,6 +204,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .toolbar-count{margin-left:0;margin-top:4px;}
   .admin-table{font-size:11px;}
   .admin-table th,.admin-table td{padding:10px 12px;}
+  #threadList{flex:0 0 100% !important;max-height:300px !important;}
+  #threadView{display:none !important;}
 }
 </style>
 </head>
@@ -414,9 +433,42 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Appointments</div>
           <div class="tab-subtitle">View all appointments across clinicians</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <p>Appointment management — Phase 4</p>
+        <div class="stat-grid" id="apptStats">
+          <div class="stat-card">
+            <div class="stat-card-label">Upcoming</div>
+            <div class="stat-card-value" id="statUpcoming">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Confirmed</div>
+            <div class="stat-card-value" id="statConfirmed">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Cancelled</div>
+            <div class="stat-card-value" id="statCancelled">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Total</div>
+            <div class="stat-card-value" id="statTotalAppts">--</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="apptSearch" placeholder="Search by patient or clinician..." oninput="filterAppointments()"/>
+          <select class="filter-select" id="apptStatusFilter" onchange="filterAppointments()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="cancelled_by_member">Cancelled (Member)</option>
+            <option value="cancelled_by_clinician">Cancelled (Clinician)</option>
+          </select>
+          <span class="toolbar-count" id="apptCount"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Patient</th><th>Clinician</th><th>Date / Time</th><th>Duration</th><th>Status</th><th>Room</th></tr></thead>
+            <tbody id="apptBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -426,9 +478,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Messages</div>
           <div class="tab-subtitle">View all message threads</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <p>Message management — Phase 4</p>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="msgSearch" placeholder="Search threads..." oninput="filterThreads()"/>
+          <span class="toolbar-count" id="msgCount"></span>
+        </div>
+        <div style="display:flex;gap:16px;min-height:400px;">
+          <div class="admin-table-wrap" style="flex:0 0 320px;overflow-y:auto;max-height:600px;" id="threadList">
+            <div style="text-align:center;color:var(--grey2);padding:24px;font-family:'DM Mono',monospace;font-size:11px;">Loading...</div>
+          </div>
+          <div class="admin-table-wrap" style="flex:1;display:flex;flex-direction:column;" id="threadView">
+            <div style="text-align:center;color:var(--grey2);padding:60px 20px;font-family:'DM Mono',monospace;font-size:11px;">Select a thread to view messages.</div>
+          </div>
         </div>
       </div>
 
@@ -438,9 +498,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Audit Log</div>
           <div class="tab-subtitle">Track admin actions and system events</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <p>Audit log viewer — Phase 4</p>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="auditSearch" placeholder="Search by action or actor..." oninput="filterAudit()"/>
+          <span class="toolbar-count" id="auditCount"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Action</th><th>Actor</th><th>Target</th><th>Details</th><th>Timestamp</th></tr></thead>
+            <tbody id="auditBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1061,13 +1129,251 @@ function saveConsultation() {
   );
 }
 
-// ── Update initAdmin to load Phase 2 + 3 data ──
+// ══════════════════════════════════
+// PHASE 4: APPOINTMENTS TAB
+// ══════════════════════════════════
+var allAppointments = [];
+var profileCache = {}; // user_id -> { display_name, email }
+
+function cacheProfiles() {
+  return db.from('profiles').select('user_id, display_name, email').then(function(r) {
+    (r.data || []).forEach(function(p) { profileCache[p.user_id] = p; });
+  });
+}
+
+function profileName(uid) {
+  var p = profileCache[uid];
+  return p ? (p.display_name || p.email || uid.slice(0,8)) : uid ? uid.slice(0,8) + '...' : '--';
+}
+
+function loadAppointments() {
+  db.from('appointments').select('*').order('scheduled_at', { ascending: false })
+    .then(function(r) {
+      allAppointments = r.data || [];
+      updateApptStats();
+      filterAppointments();
+    });
+}
+
+function updateApptStats() {
+  var now = new Date().toISOString();
+  var upcoming = 0, confirmed = 0, cancelled = 0;
+  allAppointments.forEach(function(a) {
+    if (a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician') cancelled++;
+    else if (a.status === 'confirmed') confirmed++;
+    if (a.scheduled_at > now && a.status !== 'cancelled_by_member' && a.status !== 'cancelled_by_clinician') upcoming++;
+  });
+  document.getElementById('statUpcoming').textContent = upcoming;
+  document.getElementById('statConfirmed').textContent = confirmed;
+  document.getElementById('statCancelled').textContent = cancelled;
+  document.getElementById('statTotalAppts').textContent = allAppointments.length;
+}
+
+function filterAppointments() {
+  var q = (document.getElementById('apptSearch').value || '').toLowerCase();
+  var statusF = document.getElementById('apptStatusFilter').value;
+
+  var filtered = allAppointments.filter(function(a) {
+    var patient = profileName(a.consumer_id).toLowerCase();
+    var clinician = profileName(a.clinician_id).toLowerCase();
+    if (q && patient.indexOf(q) === -1 && clinician.indexOf(q) === -1) return false;
+    if (statusF && a.status !== statusF) return false;
+    return true;
+  });
+
+  document.getElementById('apptCount').textContent = filtered.length + ' of ' + allAppointments.length + ' appointments';
+  renderApptTable(filtered);
+}
+
+function apptStatusClass(s) {
+  if (s === 'confirmed') return 'active';
+  if (s === 'pending') return 'paused';
+  if (s && s.indexOf('cancelled') !== -1) return 'cancelled';
+  return 'free';
+}
+
+function apptStatusLabel(s) {
+  if (s === 'cancelled_by_member') return 'Cancelled (Member)';
+  if (s === 'cancelled_by_clinician') return 'Cancelled (Clinician)';
+  return (s || 'unknown').charAt(0).toUpperCase() + (s || 'unknown').slice(1);
+}
+
+function renderApptTable(appts) {
+  var tbody = document.getElementById('apptBody');
+  if (!appts.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No appointments match your filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = appts.map(function(a) {
+    var dt = a.scheduled_at ? new Date(a.scheduled_at) : null;
+    var dateStr = dt ? dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '--';
+    var dur = a.duration_minutes ? a.duration_minutes + ' min' : '30 min';
+    var room = a.daily_room_url ? '<a href="' + escHtml(a.daily_room_url) + '" target="_blank" style="color:var(--green);text-decoration:none;font-family:\'DM Mono\',monospace;font-size:10px;">Join</a>' : '--';
+    return '<tr>' +
+      '<td style="color:#fff;font-weight:400;">' + escHtml(profileName(a.consumer_id)) + '</td>' +
+      '<td>' + escHtml(profileName(a.clinician_id)) + '</td>' +
+      '<td>' + dateStr + '</td>' +
+      '<td>' + dur + '</td>' +
+      '<td><span class="status-pill ' + apptStatusClass(a.status) + '">' + apptStatusLabel(a.status) + '</span></td>' +
+      '<td>' + room + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════
+// PHASE 4: MESSAGES TAB
+// ══════════════════════════════════
+var allThreads = []; // grouped by thread_id
+var selectedThreadId = null;
+
+function loadMessages() {
+  db.from('messages').select('*').order('created_at', { ascending: true })
+    .then(function(r) {
+      var msgs = r.data || [];
+      // Group by thread_id
+      var threadMap = {};
+      msgs.forEach(function(m) {
+        if (!threadMap[m.thread_id]) threadMap[m.thread_id] = [];
+        threadMap[m.thread_id].push(m);
+      });
+      allThreads = Object.keys(threadMap).map(function(tid) {
+        var threadMsgs = threadMap[tid];
+        var last = threadMsgs[threadMsgs.length - 1];
+        var unread = threadMsgs.filter(function(m) { return !m.read; }).length;
+        return {
+          thread_id: tid,
+          messages: threadMsgs,
+          last_message: last,
+          unread: unread,
+          name: profileName(tid),
+          last_at: last.created_at
+        };
+      });
+      // Sort by most recent
+      allThreads.sort(function(a, b) { return b.last_at > a.last_at ? 1 : -1; });
+      filterThreads();
+    });
+}
+
+function filterThreads() {
+  var q = (document.getElementById('msgSearch').value || '').toLowerCase();
+  var filtered = allThreads.filter(function(t) {
+    if (!q) return true;
+    return t.name.toLowerCase().indexOf(q) !== -1;
+  });
+  document.getElementById('msgCount').textContent = filtered.length + ' threads';
+  renderThreadList(filtered);
+}
+
+function renderThreadList(threads) {
+  var container = document.getElementById('threadList');
+  if (!threads.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--grey2);padding:24px;font-family:\'DM Mono\',monospace;font-size:11px;">No threads found.</div>';
+    return;
+  }
+  container.innerHTML = threads.map(function(t) {
+    var active = selectedThreadId === t.thread_id ? ' active' : '';
+    var preview = t.last_message ? t.last_message.body.slice(0, 60) : '';
+    var ago = timeAgo(t.last_at);
+    var unreadDot = t.unread > 0 ? '<span class="thread-unread"></span>' : '';
+    return '<div class="thread-item' + active + '" onclick="openThread(\'' + t.thread_id + '\')">' +
+      '<div class="thread-name">' + escHtml(t.name) + unreadDot + '</div>' +
+      '<div class="thread-preview">' + escHtml(preview) + '</div>' +
+      '<div class="thread-meta">' + t.messages.length + ' messages &middot; ' + ago + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function openThread(threadId) {
+  selectedThreadId = threadId;
+  filterThreads(); // Re-render to highlight
+
+  var thread = allThreads.find(function(t) { return t.thread_id === threadId; });
+  if (!thread) return;
+
+  var view = document.getElementById('threadView');
+  var headerHtml = '<div class="msg-header">' + escHtml(thread.name) + ' <span style="font-weight:300;color:var(--grey2);font-size:11px;">&middot; ' + thread.messages.length + ' messages</span></div>';
+  var msgsHtml = '<div class="msg-list">' + thread.messages.map(function(m) {
+    var cls = m.sender_role === 'clinician' ? 'clinician' : 'consumer';
+    var senderName = m.sender_name || m.sender_role || 'Unknown';
+    var ago = timeAgo(m.created_at);
+    return '<div class="msg-bubble ' + cls + '">' +
+      escHtml(m.body) +
+      '<div class="msg-bubble-meta">' + escHtml(senderName) + ' &middot; ' + ago + '</div>' +
+      '</div>';
+  }).join('') + '</div>';
+
+  view.innerHTML = headerHtml + msgsHtml;
+
+  // Scroll to bottom
+  var msgList = view.querySelector('.msg-list');
+  if (msgList) msgList.scrollTop = msgList.scrollHeight;
+}
+
+// ══════════════════════════════════
+// PHASE 4: AUDIT LOG TAB
+// ══════════════════════════════════
+var allAuditLogs = [];
+
+function loadAuditLogs() {
+  db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
+    .then(function(r) {
+      allAuditLogs = r.data || [];
+      filterAudit();
+    }).catch(function() {
+      // Table might not exist
+      allAuditLogs = [];
+      filterAudit();
+    });
+}
+
+function filterAudit() {
+  var q = (document.getElementById('auditSearch').value || '').toLowerCase();
+  var filtered = allAuditLogs.filter(function(a) {
+    if (!q) return true;
+    var action = (a.action || '').toLowerCase();
+    var actor = (a.actor_email || '').toLowerCase();
+    return action.indexOf(q) !== -1 || actor.indexOf(q) !== -1;
+  });
+  document.getElementById('auditCount').textContent = filtered.length + ' entries';
+  renderAuditTable(filtered);
+}
+
+function renderAuditTable(logs) {
+  var tbody = document.getElementById('auditBody');
+  if (!logs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No audit logs found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map(function(a) {
+    var details = '';
+    if (a.details) {
+      try { details = typeof a.details === 'string' ? a.details : JSON.stringify(a.details).slice(0, 80); } catch(e) { details = '--'; }
+    }
+    var date = a.created_at ? new Date(a.created_at).toLocaleString() : '--';
+    var targetName = a.target_id ? profileName(a.target_id) : '--';
+    return '<tr>' +
+      '<td style="color:#fff;font-weight:400;">' + escHtml(a.action || '--') + '</td>' +
+      '<td>' + escHtml(a.actor_email || (a.actor_id ? profileName(a.actor_id) : '--')) + '</td>' +
+      '<td>' + escHtml(targetName) + '</td>' +
+      '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(details) + '</td>' +
+      '<td>' + date + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ── Update initAdmin to load all phases ──
 var _origInitAdmin = initAdmin;
 initAdmin = function(user, profile) {
   _origInitAdmin(user, profile);
   loadUsers();
   loadRoles();
   loadConsultations();
+  cacheProfiles().then(function() {
+    loadAppointments();
+    loadMessages();
+  });
+  loadAuditLogs();
 };
 </script>
 </body>

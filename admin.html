@@ -963,25 +963,27 @@ function createUser() {
       db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
     }
 
-    // Wait a moment for the profile trigger to fire, then update role and names
+    // Wait a moment for the profile trigger to fire, then upsert role and names
     setTimeout(function() {
       if (newUserId) {
-        var updatePayload = {
+        var upsertPayload = {
+          user_id: newUserId,
+          email: email,
           first_name: firstName || null,
           last_name: lastName || null,
-          display_name: displayName || email.split('@')[0]
+          display_name: displayName || email.split('@')[0],
+          admin_role: (role === 'member') ? null : role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
-        if (role !== 'member') {
-          updatePayload.admin_role = (role === 'clinician') ? 'clinician' : role;
-        }
-        db.from('profiles').update(updatePayload).eq('user_id', newUserId).then(function(ur) {
-          if (ur.error) console.warn('Profile update failed:', ur.error);
+        db.from('profiles').upsert(upsertPayload, { onConflict: 'user_id' }).then(function(ur) {
+          if (ur.error) console.warn('Profile upsert failed:', ur.error);
           finishCreateUser();
         });
       } else {
         finishCreateUser();
       }
-    }, 1000);
+    }, 1500);
   }).catch(function(err) {
     showToast('Error: ' + err.message, 'error');
     btn.disabled = false;

@@ -967,7 +967,7 @@ function createUser() {
         last_name: lastName || null,
         display_name: displayName || email.split('@')[0],
         role: role,
-        admin_role: (role === 'super_admin') ? 'super_admin' : null,
+        admin_role: (role === 'admin' || role === 'super_admin') ? role : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -1163,10 +1163,10 @@ function onRoleChange(selectEl) {
     btnText,
     btnClass,
     function() {
-      // Map role to admin_role value (member = null)
-      var adminRoleValue = (newRole === 'member' || newRole === 'clinician') ? null : newRole;
+      // Update both role and admin_role columns
+      var adminRoleValue = (newRole === 'admin' || newRole === 'super_admin') ? newRole : null;
 
-      db.from('profiles').update({ admin_role: adminRoleValue }).eq('user_id', uid)
+      db.from('profiles').update({ role: newRole, admin_role: adminRoleValue }).eq('user_id', uid)
         .then(function(r) {
           if (r.error) {
             showToast('Failed: ' + r.error.message, 'error');

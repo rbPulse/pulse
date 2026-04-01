@@ -966,7 +966,8 @@ function createUser() {
         first_name: firstName || null,
         last_name: lastName || null,
         display_name: displayName || email.split('@')[0],
-        admin_role: (role === 'member') ? null : role,
+        role: role,
+        admin_role: (role === 'admin' || role === 'super_admin') ? role : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

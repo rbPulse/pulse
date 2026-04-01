@@ -958,32 +958,35 @@ function createUser() {
 
     var newUserId = r.data.user ? r.data.user.id : null;
 
-    // Restore our admin session immediately
-    if (currentSession) {
-      db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
-    }
-
-    // Wait a moment for the profile trigger to fire, then upsert role and names
-    setTimeout(function() {
-      if (newUserId) {
-        var upsertPayload = {
-          user_id: newUserId,
-          email: email,
-          first_name: firstName || null,
-          last_name: lastName || null,
-          display_name: displayName || email.split('@')[0],
-          admin_role: (role === 'member') ? null : role,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        db.from('profiles').upsert(upsertPayload, { onConflict: 'user_id' }).then(function(ur) {
-          if (ur.error) console.warn('Profile upsert failed:', ur.error);
+    // Upsert profile WHILE authenticated as the new user (RLS allows own row)
+    if (newUserId) {
+      var upsertPayload = {
+        user_id: newUserId,
+        email: email,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        display_name: displayName || email.split('@')[0],
+        admin_role: (role === 'member') ? null : role,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      db.from('profiles').upsert(upsertPayload, { onConflict: 'user_id' }).then(function(ur) {
+        if (ur.error) console.warn('Profile upsert failed:', ur.error);
+        // NOW restore admin session after profile is created
+        if (currentSession) {
+          db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token }).then(function() {
+            finishCreateUser();
+          });
+        } else {
           finishCreateUser();
-        });
-      } else {
-        finishCreateUser();
+        }
+      });
+    } else {
+      if (currentSession) {
+        db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
       }
-    }, 1500);
+      finishCreateUser();
+    }
   }).catch(function(err) {
     showToast('Error: ' + err.message, 'error');
     btn.disabled = false;

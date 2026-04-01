@@ -401,10 +401,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </div>
             <div class="form-field">
               <label>Role</label>
-              <select id="newUserRole">
+              <select id="newUserRole" onchange="toggleAdminType()">
                 <option value="member">Member</option>
                 <option value="clinician">Clinician</option>
                 <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-field" id="adminTypeField" style="display:none;">
+              <label>Admin Type</label>
+              <select id="newUserAdminType">
                 <option value="super_admin">Super Admin</option>
               </select>
             </div>
@@ -899,7 +904,15 @@ function toggleCreateUser() {
     document.getElementById('newUserFirstName').value = '';
     document.getElementById('newUserLastName').value = '';
     document.getElementById('newUserRole').value = 'member';
+    document.getElementById('adminTypeField').style.display = 'none';
+    document.getElementById('newUserAdminType').value = 'super_admin';
   }
+}
+
+function toggleAdminType() {
+  var roleSelect = document.getElementById('newUserRole');
+  var adminField = document.getElementById('adminTypeField');
+  adminField.style.display = roleSelect.value === 'admin' ? 'block' : 'none';
 }
 
 function createUser() {
@@ -907,7 +920,11 @@ function createUser() {
   var password = document.getElementById('newUserPassword').value;
   var firstName = document.getElementById('newUserFirstName').value.trim();
   var lastName = document.getElementById('newUserLastName').value.trim();
-  var role = document.getElementById('newUserRole').value;
+  var baseRole = document.getElementById('newUserRole').value;
+  var role = baseRole;
+  if (baseRole === 'admin') {
+    role = document.getElementById('newUserAdminType').value;
+  }
   var displayName = role === 'clinician' ? 'Dr. ' + (lastName || firstName) : ((firstName + ' ' + lastName).trim() || email.split('@')[0]);
 
   if (!email || !password) {

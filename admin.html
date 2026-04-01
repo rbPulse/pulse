@@ -94,6 +94,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .role-pill.admin{color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);}
 .role-pill.super_admin{color:rgba(255,130,130,0.85);background:rgba(255,100,100,0.08);border:1px solid rgba(255,100,100,0.18);}
 
+/* ── CREATE USER FORM ── */
+.create-user-form{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:20px;display:none;}
+.create-user-form.show{display:block;}
+.form-title{font-size:16px;font-weight:500;margin-bottom:20px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.form-field{display:flex;flex-direction:column;gap:4px;}
+.form-field label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);}
+.form-field input,.form-field select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;transition:border-color .2s;}
+.form-field input::placeholder{color:var(--grey2);}
+.form-field input:focus,.form-field select:focus{border-color:rgba(255,255,255,0.15);}
+.form-field select{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--grey);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.form-field select option{background:var(--card);color:#fff;}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;}
+.form-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;transition:opacity .2s;}
+.form-btn.primary{background:var(--green);color:#000;font-weight:500;}
+.form-btn.primary:hover{opacity:0.85;}
+.form-btn.primary:disabled{opacity:0.35;cursor:not-allowed;}
+.form-btn.secondary{background:rgba(255,255,255,0.06);color:var(--grey);}
+.form-btn.secondary:hover{opacity:0.8;}
+.toolbar-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-weight:500;transition:opacity .2s;white-space:nowrap;}
+.toolbar-btn:hover{opacity:0.85;}
+@media(max-width:900px){
+  .form-grid{grid-template-columns:1fr;}
+}
+
 /* ── SEARCH / FILTERS ── */
 .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
 .search-input{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;width:280px;transition:border-color .2s;}
@@ -354,7 +379,39 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Users</div>
           <div class="tab-subtitle">Manage all user profiles and roles</div>
         </div>
+        <!-- Create User Form -->
+        <div class="create-user-form" id="createUserForm">
+          <div class="form-title">Create New User</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Email *</label>
+              <input type="email" id="newUserEmail" placeholder="user@example.com"/>
+            </div>
+            <div class="form-field">
+              <label>Password *</label>
+              <input type="password" id="newUserPassword" placeholder="Min 6 characters"/>
+            </div>
+            <div class="form-field">
+              <label>Display Name</label>
+              <input type="text" id="newUserName" placeholder="John Doe"/>
+            </div>
+            <div class="form-field">
+              <label>Role</label>
+              <select id="newUserRole">
+                <option value="member">Member</option>
+                <option value="clinician">Clinician</option>
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="form-btn secondary" onclick="toggleCreateUser()">Cancel</button>
+            <button class="form-btn primary" id="createUserBtn" onclick="createUser()">Create User</button>
+          </div>
+        </div>
         <div class="toolbar">
+          <button class="toolbar-btn" onclick="toggleCreateUser()">+ Create User</button>
           <input type="text" class="search-input" id="userSearch" placeholder="Search by name or email..." oninput="filterUsers()"/>
           <select class="filter-select" id="userRoleFilter" onchange="filterUsers()">
             <option value="">All Roles</option>
@@ -824,6 +881,120 @@ function closeModal() {
 function confirmModalAction() {
   if (_modalCallback) _modalCallback();
   closeModal();
+}
+
+// ══════════════════════════════════
+// CREATE USER
+// ══════════════════════════════════
+function toggleCreateUser() {
+  var form = document.getElementById('createUserForm');
+  form.classList.toggle('show');
+  if (!form.classList.contains('show')) {
+    document.getElementById('newUserEmail').value = '';
+    document.getElementById('newUserPassword').value = '';
+    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserRole').value = 'member';
+  }
+}
+
+function createUser() {
+  var email = document.getElementById('newUserEmail').value.trim();
+  var password = document.getElementById('newUserPassword').value;
+  var displayName = document.getElementById('newUserName').value.trim();
+  var role = document.getElementById('newUserRole').value;
+
+  if (!email || !password) {
+    showToast('Email and password are required', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+  // Only super_admin can create admin/super_admin users
+  if ((role === 'admin' || role === 'super_admin') && currentAdminRole !== 'super_admin') {
+    showToast('Only super admins can create admin accounts', 'error');
+    return;
+  }
+
+  var btn = document.getElementById('createUserBtn');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  // We need to use Supabase auth.signUp but preserve our current session.
+  // The trick: sign up the new user, then the profile trigger creates their profile.
+  // But signUp will switch our session to the new user — so we need to recover.
+  var currentSession = null;
+
+  db.auth.getSession().then(function(r) {
+    currentSession = r.data.session;
+
+    return db.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          display_name: displayName || email.split('@')[0],
+          role: role === 'clinician' ? 'clinician' : undefined
+        }
+      }
+    });
+  }).then(function(r) {
+    if (r.error) {
+      showToast('Failed: ' + r.error.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Create User';
+      // Restore session
+      if (currentSession) db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
+      return;
+    }
+
+    var newUserId = r.data.user ? r.data.user.id : null;
+
+    // Restore our admin session immediately
+    if (currentSession) {
+      db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
+    }
+
+    // Wait a moment for the profile trigger to fire, then update role
+    setTimeout(function() {
+      if (newUserId && role !== 'member') {
+        var adminRole = (role === 'clinician') ? 'clinician' : role;
+        db.from('profiles').update({
+          admin_role: adminRole,
+          display_name: displayName || email.split('@')[0]
+        }).eq('user_id', newUserId).then(function(ur) {
+          if (ur.error) console.warn('Role update failed:', ur.error);
+          finishCreateUser();
+        });
+      } else if (newUserId && displayName) {
+        db.from('profiles').update({
+          display_name: displayName
+        }).eq('user_id', newUserId).then(function() {
+          finishCreateUser();
+        });
+      } else {
+        finishCreateUser();
+      }
+    }, 1000);
+  }).catch(function(err) {
+    showToast('Error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Create User';
+    if (currentSession) db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
+  });
+}
+
+function finishCreateUser() {
+  showToast('User created successfully', 'success');
+  document.getElementById('createUserBtn').disabled = false;
+  document.getElementById('createUserBtn').textContent = 'Create User';
+  toggleCreateUser();
+  // Reload data
+  loadUsers();
+  loadRoles();
+  loadRecentUsers();
+  loadOverviewStats();
 }
 
 // ══════════════════════════════════

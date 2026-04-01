@@ -396,6 +396,20 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     <p class="step-sub">Just a few basics so we can set up your consultation.</p>
 
     <div class="form-section">
+      <div class="form-section-label">Account</div>
+      <div class="form-group">
+        <label class="field-label" for="intakeEmail">Email address</label>
+        <input type="email" id="intakeEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/>
+        <div class="field-error" id="err-intakeEmail">Required</div>
+      </div>
+      <div class="form-group">
+        <label class="field-label" for="intakePassword">Password</label>
+        <input type="password" id="intakePassword" placeholder="Min 6 characters" autocomplete="new-password"/>
+        <div class="field-error" id="err-intakePassword">Min 6 characters</div>
+      </div>
+    </div>
+
+    <div class="form-section">
       <div class="form-section-label">Personal information</div>
       <div class="form-row">
         <div class="form-group">
@@ -408,11 +422,6 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <input type="text" id="lastName" placeholder="Last name"/>
           <div class="field-error" id="err-lastName">Required</div>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="field-label" for="intakeEmail">Email address</label>
-        <input type="email" id="intakeEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/>
-        <div class="field-error" id="err-intakeEmail">Required</div>
       </div>
       <div class="form-group">
         <label class="field-label" for="phoneNumber">Phone number</label>
@@ -977,7 +986,7 @@ function submitStep1(){
   var valid = true;
   var firstErrEl = null;
 
-  var required = ['firstName','lastName','intakeEmail','phoneNumber','streetAddress','city','state','zipCode'];
+  var required = ['intakeEmail','intakePassword','firstName','lastName','phoneNumber','streetAddress','city','state','zipCode'];
   required.forEach(function(id){
     var el = document.getElementById(id);
     var err = document.getElementById('err-'+id);
@@ -990,14 +999,66 @@ function submitStep1(){
     }
   });
 
+  // Password validation
+  var passEl = document.getElementById('intakePassword');
+  var passErr = document.getElementById('err-intakePassword');
+  if(passEl.value.length < 6){
+    passEl.classList.add('error'); if(passErr) passErr.classList.add('visible');
+    if(!firstErrEl) firstErrEl = passEl;
+    valid = false;
+  } else {
+    passEl.classList.remove('error'); if(passErr) passErr.classList.remove('visible');
+  }
+
   if(!valid){
     if(firstErrEl) firstErrEl.scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
 
-  // Store basic info and load booking availability
-  _loadBookingAvailability();
-  goToStep(2);
+  // If not already logged in, create account
+  var email = document.getElementById('intakeEmail').value.trim();
+  var password = document.getElementById('intakePassword').value;
+  var btn = document.querySelector('#step-1 .btn-primary');
+  var origText = btn ? btn.innerHTML : '';
+
+  if(window._sbClient && !window._sessionUser){
+    if(btn){ btn.disabled = true; btn.innerHTML = 'Creating account…'; }
+    window._sbClient.auth.signUp({ email: email, password: password }).then(function(r){
+      if(r.error){
+        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+        // If user already exists, try signing in instead
+        if(r.error.message && r.error.message.indexOf('already') !== -1){
+          return window._sbClient.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
+            if(r2.error){
+              var errEl = document.getElementById('err-intakeEmail');
+              if(errEl){ errEl.textContent = r2.error.message; errEl.classList.add('visible'); }
+              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+              return;
+            }
+            window._sessionUser = r2.data.user || (r2.data.session ? r2.data.session.user : null);
+            if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+            _loadBookingAvailability();
+            goToStep(2);
+          });
+        }
+        var errEl = document.getElementById('err-intakeEmail');
+        if(errEl){ errEl.textContent = r.error.message; errEl.classList.add('visible'); }
+        return;
+      }
+      window._sessionUser = r.data.user || null;
+      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      _loadBookingAvailability();
+      goToStep(2);
+    }).catch(function(e){
+      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      var errEl = document.getElementById('err-intakeEmail');
+      if(errEl){ errEl.textContent = e.message || 'Something went wrong'; errEl.classList.add('visible'); }
+    });
+  } else {
+    // Already logged in
+    _loadBookingAvailability();
+    goToStep(2);
+  }
 }
 
 // ── Show ineligible screen ──
@@ -2342,10 +2403,15 @@ window._sbClient = createClient(
       return;
     }
 
-    // Pre-fill email field from session
+    // Pre-fill email field from session and mark as logged in
     if (session.user && session.user.email) {
+      window._sessionUser = session.user;
       var emailField = document.getElementById('intakeEmail');
       if (emailField) emailField.value = session.user.email;
+      // Hide password field if already logged in
+      var passField = document.getElementById('intakePassword');
+      var passLabel = passField ? passField.closest('.form-group') : null;
+      if (passLabel) passLabel.style.display = 'none';
     }
 
     // Load real clinician availability for booking calendar

@@ -3328,9 +3328,9 @@ function initPortal(user) {
 
   // Check if user is an admin — show admin dashboard link
   if (currentUserId && !PREVIEW_MODE) {
-    db.from('profiles').select('admin_role').eq('user_id', currentUserId).limit(1)
+    db.from('profiles').select('role').eq('user_id', currentUserId).limit(1)
       .then(function(r) {
-        if (r.data && r.data.length > 0 && (r.data[0].admin_role === 'admin' || r.data[0].admin_role === 'super_admin')) {
+        if (r.data && r.data.length > 0 && (r.data[0].role === 'admin' || r.data[0].role === 'super_admin')) {
           var adminLink = document.getElementById('navAdminLink');
           if (adminLink) adminLink.style.display = 'inline-block';
         }

@@ -739,15 +739,15 @@ db.auth.getSession().then(function(r) {
   currentUserId = user.id;
   currentUserEmail = user.email;
 
-  // Check admin role
-  db.from('profiles').select('admin_role, display_name').eq('user_id', currentUserId).limit(1)
+  // Check role
+  db.from('profiles').select('role, admin_role, display_name').eq('user_id', currentUserId).limit(1)
     .then(function(pr) {
-      if (!pr.data || !pr.data.length || (pr.data[0].admin_role !== 'admin' && pr.data[0].admin_role !== 'super_admin')) {
+      if (!pr.data || !pr.data.length || (pr.data[0].role !== 'admin' && pr.data[0].role !== 'super_admin')) {
         // Not an admin — redirect
         window.location.href = 'portal.html';
         return;
       }
-      currentAdminRole = pr.data[0].admin_role;
+      currentAdminRole = pr.data[0].admin_role || pr.data[0].role;
       initAdmin(user, pr.data[0]);
     }).catch(function() {
       window.location.href = 'portal.html';
@@ -967,7 +967,7 @@ function createUser() {
         last_name: lastName || null,
         display_name: displayName || email.split('@')[0],
         role: role,
-        admin_role: (role === 'admin' || role === 'super_admin') ? role : null,
+        admin_role: (role === 'super_admin') ? 'super_admin' : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

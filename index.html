@@ -1825,10 +1825,10 @@ async function doModalAuth() {
     var defaultDest = window._modalMode === 'signup' ? 'consultation.html?new=1' : 'portal.html';
     if (userId) {
       try {
-        var pr = await window._sbClient.from('profiles').select('admin_role, role').eq('user_id', userId).limit(1);
+        var pr = await window._sbClient.from('profiles').select('role').eq('user_id', userId).limit(1);
         console.log('[Pulse] Login role check:', JSON.stringify(pr));
         if (pr.data && pr.data.length > 0) {
-          var role = pr.data[0].admin_role || pr.data[0].role;
+          var role = pr.data[0].role;
           if (role === 'super_admin' || role === 'admin') {
             window.location.href = window.location.origin + path + 'admin.html';
             return;

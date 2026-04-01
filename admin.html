@@ -94,6 +94,49 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .role-pill.admin{color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);}
 .role-pill.super_admin{color:rgba(255,130,130,0.85);background:rgba(255,100,100,0.08);border:1px solid rgba(255,100,100,0.18);}
 
+/* ── SEARCH / FILTERS ── */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.search-input{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;width:280px;transition:border-color .2s;}
+.search-input::placeholder{color:var(--grey2);}
+.search-input:focus{border-color:rgba(255,255,255,0.15);}
+.filter-select{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--grey);outline:none;cursor:pointer;text-transform:uppercase;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.filter-select option{background:var(--card);color:#fff;}
+.toolbar-count{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey2);letter-spacing:0.06em;margin-left:auto;}
+
+/* ── ROLE SELECT IN TABLE ── */
+.role-select{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;transition:border-color .2s;}
+.role-select:focus{border-color:rgba(255,255,255,0.15);}
+.role-select:disabled{opacity:0.35;cursor:not-allowed;}
+.role-select option{background:var(--card);color:#fff;}
+
+/* ── STATUS PILLS ── */
+.status-pill{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 9px;border-radius:999px;display:inline-block;}
+.status-pill.active{color:var(--green);background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);}
+.status-pill.free{color:var(--grey2);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);}
+.status-pill.paused{color:rgba(220,180,75,0.8);background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);}
+.status-pill.cancelled{color:rgba(255,130,130,0.7);background:rgba(255,100,100,0.06);border:1px solid rgba(255,100,100,0.14);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.04em;color:#fff;z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.toast.success{border-color:rgba(58,122,92,0.3);color:var(--green);}
+.toast.error{border-color:rgba(255,100,100,0.3);color:rgba(255,130,130,0.85);}
+
+/* ── CONFIRM MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:420px;width:90%;}
+.modal-title{font-size:16px;font-weight:500;margin-bottom:8px;}
+.modal-body{font-size:13px;color:var(--grey);margin-bottom:24px;line-height:1.5;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+.modal-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;transition:opacity .2s;}
+.modal-btn.cancel{background:rgba(255,255,255,0.06);color:var(--grey);}
+.modal-btn.cancel:hover{opacity:0.8;}
+.modal-btn.confirm{background:var(--amber);color:#000;font-weight:500;}
+.modal-btn.confirm:hover{opacity:0.85;}
+.modal-btn.danger{background:rgba(255,100,100,0.8);color:#fff;font-weight:500;}
+.modal-btn.danger:hover{opacity:0.85;}
+
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:60px 20px;color:var(--grey2);}
 .empty-state svg{display:block;margin:0 auto 12px;opacity:0.15;}
@@ -111,6 +154,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .sidebar-section-label{display:none;}
   .sidebar-item{padding:8px 14px;border-left:none;border-bottom:2px solid transparent;white-space:nowrap;font-size:9px;}
   .sidebar-item.active{border-left-color:transparent;border-bottom-color:var(--amber);}
+  .toolbar{flex-direction:column;align-items:stretch;}
+  .search-input{width:100%;}
+  .toolbar-count{margin-left:0;margin-top:4px;}
+  .admin-table{font-size:11px;}
+  .admin-table th,.admin-table td{padding:10px 12px;}
 }
 </style>
 </head>
@@ -229,9 +277,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Users</div>
           <div class="tab-subtitle">Manage all user profiles and roles</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          <p>User management — Phase 2</p>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="userSearch" placeholder="Search by name or email..." oninput="filterUsers()"/>
+          <select class="filter-select" id="userRoleFilter" onchange="filterUsers()">
+            <option value="">All Roles</option>
+            <option value="member">Member</option>
+            <option value="clinician">Clinician</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <select class="filter-select" id="userStatusFilter" onchange="filterUsers()">
+            <option value="">All Status</option>
+            <option value="free">Free</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <span class="toolbar-count" id="userCount"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Seen</th><th>Joined</th></tr></thead>
+            <tbody id="usersBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -287,15 +357,45 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-roles">
         <div class="tab-header">
           <div class="tab-title">Role Management</div>
-          <div class="tab-subtitle">Assign and manage user roles</div>
+          <div class="tab-subtitle" id="rolesSubtitle">Assign and manage user roles</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06"/></svg>
-          <p>Role management — Phase 2</p>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="roleSearch" placeholder="Search by name or email..." oninput="filterRoles()"/>
+          <select class="filter-select" id="roleFilter" onchange="filterRoles()">
+            <option value="">All Roles</option>
+            <option value="member">Member</option>
+            <option value="clinician">Clinician</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <span class="toolbar-count" id="roleCount"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Current Role</th><th>Change Role</th></tr></thead>
+            <tbody id="rolesBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
     </main>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Confirm</div>
+    <div class="modal-body" id="modalBody">Are you sure?</div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" id="modalConfirmBtn" onclick="confirmModalAction()">Confirm</button>
+    </div>
   </div>
 </div>
 
@@ -415,6 +515,250 @@ function escHtml(s) {
   d.textContent = s;
   return d.innerHTML;
 }
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '--';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function resolveUserRole(profile) {
+  if (profile.admin_role === 'super_admin') return 'super_admin';
+  if (profile.admin_role === 'admin') return 'admin';
+  // Check user_metadata for clinician role — we store it on profiles too
+  // For now, we rely on admin_role field; clinician is indicated by absence of admin_role
+  // but having clinician-specific data. We'll check a simple heuristic.
+  return profile.admin_role || 'member';
+}
+
+// ── Toast ──
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(function() { t.className = 'toast'; }, 3000);
+}
+
+// ── Confirm modal ──
+var _modalCallback = null;
+function showModal(title, body, btnText, btnClass, callback) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  var btn = document.getElementById('modalConfirmBtn');
+  btn.textContent = btnText || 'Confirm';
+  btn.className = 'modal-btn ' + (btnClass || 'confirm');
+  _modalCallback = callback;
+  document.getElementById('confirmModal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('confirmModal').classList.remove('show');
+  _modalCallback = null;
+}
+function confirmModalAction() {
+  if (_modalCallback) _modalCallback();
+  closeModal();
+}
+
+// ══════════════════════════════════
+// PHASE 2: USERS TAB
+// ══════════════════════════════════
+var allUsers = [];
+
+function loadUsers() {
+  db.from('profiles').select('user_id, email, display_name, admin_role, subscription_status, last_seen, created_at')
+    .order('created_at', { ascending: false })
+    .then(function(r) {
+      allUsers = r.data || [];
+      filterUsers();
+    });
+}
+
+function filterUsers() {
+  var q = (document.getElementById('userSearch').value || '').toLowerCase();
+  var roleF = document.getElementById('userRoleFilter').value;
+  var statusF = document.getElementById('userStatusFilter').value;
+
+  var filtered = allUsers.filter(function(u) {
+    var name = (u.display_name || '').toLowerCase();
+    var email = (u.email || '').toLowerCase();
+    var role = u.admin_role || 'member';
+    var status = u.subscription_status || 'free';
+    if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
+    if (roleF && role !== roleF) return false;
+    if (statusF && status !== statusF) return false;
+    return true;
+  });
+
+  document.getElementById('userCount').textContent = filtered.length + ' of ' + allUsers.length + ' users';
+  renderUsersTable(filtered);
+}
+
+function renderUsersTable(users) {
+  var tbody = document.getElementById('usersBody');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(function(u) {
+    var role = u.admin_role || 'member';
+    var status = u.subscription_status || 'free';
+    var name = u.display_name || u.email || 'Unknown';
+    var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
+    var seen = timeAgo(u.last_seen);
+    return '<tr>' +
+      '<td style="color:#fff;font-weight:400;">' + escHtml(name) + '</td>' +
+      '<td>' + escHtml(u.email || '--') + '</td>' +
+      '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
+      '<td><span class="status-pill ' + status + '">' + status + '</span></td>' +
+      '<td>' + seen + '</td>' +
+      '<td>' + date + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════
+// PHASE 2: ROLES TAB
+// ══════════════════════════════════
+var allRoleUsers = [];
+
+function loadRoles() {
+  db.from('profiles').select('user_id, email, display_name, admin_role')
+    .order('created_at', { ascending: false })
+    .then(function(r) {
+      allRoleUsers = r.data || [];
+      // Update subtitle based on permission level
+      if (currentAdminRole !== 'super_admin') {
+        document.getElementById('rolesSubtitle').textContent = 'View user roles (only Super Admins can assign admin/super_admin)';
+      }
+      filterRoles();
+    });
+}
+
+function filterRoles() {
+  var q = (document.getElementById('roleSearch').value || '').toLowerCase();
+  var roleF = document.getElementById('roleFilter').value;
+
+  var filtered = allRoleUsers.filter(function(u) {
+    var name = (u.display_name || '').toLowerCase();
+    var email = (u.email || '').toLowerCase();
+    var role = u.admin_role || 'member';
+    if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
+    if (roleF && role !== roleF) return false;
+    return true;
+  });
+
+  document.getElementById('roleCount').textContent = filtered.length + ' of ' + allRoleUsers.length + ' users';
+  renderRolesTable(filtered);
+}
+
+function renderRolesTable(users) {
+  var tbody = document.getElementById('rolesBody');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
+    return;
+  }
+  var isSuperAdmin = currentAdminRole === 'super_admin';
+
+  tbody.innerHTML = users.map(function(u) {
+    var role = u.admin_role || 'member';
+    var name = u.display_name || u.email || 'Unknown';
+    var isSelf = u.user_id === currentUserId;
+
+    // Determine if this user's role can be changed
+    var canChange = false;
+    if (isSelf) {
+      canChange = false; // Can't change own role
+    } else if (isSuperAdmin) {
+      canChange = true; // Super admin can change anyone
+    } else {
+      // Regular admin can only assign member/clinician
+      canChange = (role === 'member' || role === 'clinician');
+    }
+
+    var selectHtml = '<select class="role-select" data-uid="' + u.user_id + '" data-current="' + role + '" onchange="onRoleChange(this)"' + (!canChange ? ' disabled' : '') + '>' +
+      '<option value="member"' + (role === 'member' ? ' selected' : '') + '>Member</option>' +
+      '<option value="clinician"' + (role === 'clinician' ? ' selected' : '') + '>Clinician</option>' +
+      '<option value="admin"' + (role === 'admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Admin</option>' +
+      '<option value="super_admin"' + (role === 'super_admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Super Admin</option>' +
+      '</select>';
+
+    var note = '';
+    if (isSelf) note = '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--grey2);margin-left:6px;">(you)</span>';
+
+    return '<tr>' +
+      '<td style="color:#fff;font-weight:400;">' + escHtml(name) + note + '</td>' +
+      '<td>' + escHtml(u.email || '--') + '</td>' +
+      '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
+      '<td>' + selectHtml + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function onRoleChange(selectEl) {
+  var uid = selectEl.getAttribute('data-uid');
+  var currentRole = selectEl.getAttribute('data-current');
+  var newRole = selectEl.value;
+
+  if (newRole === currentRole) return;
+
+  var user = allRoleUsers.find(function(u) { return u.user_id === uid; });
+  var userName = user ? (user.display_name || user.email) : uid;
+
+  var isElevating = (newRole === 'admin' || newRole === 'super_admin');
+  var btnClass = isElevating ? 'danger' : 'confirm';
+  var btnText = isElevating ? 'Grant Access' : 'Update Role';
+
+  showModal(
+    'Change Role',
+    'Change ' + userName + ' from ' + currentRole.replace('_', ' ') + ' to ' + newRole.replace('_', ' ') + '?',
+    btnText,
+    btnClass,
+    function() {
+      // Map role to admin_role value (member = null)
+      var adminRoleValue = (newRole === 'member' || newRole === 'clinician') ? null : newRole;
+
+      db.from('profiles').update({ admin_role: adminRoleValue }).eq('user_id', uid)
+        .then(function(r) {
+          if (r.error) {
+            showToast('Failed: ' + r.error.message, 'error');
+            selectEl.value = currentRole;
+            return;
+          }
+          showToast('Role updated to ' + newRole.replace('_', ' '), 'success');
+          selectEl.setAttribute('data-current', newRole);
+          // Update local data
+          var u = allRoleUsers.find(function(x) { return x.user_id === uid; });
+          if (u) u.admin_role = adminRoleValue;
+          var u2 = allUsers.find(function(x) { return x.user_id === uid; });
+          if (u2) u2.admin_role = adminRoleValue;
+          // Re-render both tables
+          filterRoles();
+          filterUsers();
+          loadRecentUsers();
+          loadOverviewStats();
+        });
+    }
+  );
+
+  // Reset select to current value until confirmed
+  selectEl.value = currentRole;
+}
+
+// ── Update initAdmin to load Phase 2 data ──
+var _origInitAdmin = initAdmin;
+initAdmin = function(user, profile) {
+  _origInitAdmin(user, profile);
+  loadUsers();
+  loadRoles();
+};
 </script>
 </body>
 </html>

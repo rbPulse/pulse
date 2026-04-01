@@ -3841,7 +3841,7 @@ async function saveClinicianSettings() {
   if (PREVIEW_MODE) {
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
     APPT_DURATION = duration;
-    var displayName = 'Dr. ' + firstName;
+    var displayName = 'Dr. ' + (lastName || firstName);
     var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
     setSidebarIdentity(displayName, roleLabel, true);
     if (savedMsg) {
@@ -3898,7 +3898,7 @@ async function saveClinicianSettings() {
     if (dSchedule) dSchedule.value = String(duration);
 
     // 7D — Phase 24: Sidebar sync (no reload) — show full first + last name
-    var displayName = 'Dr. ' + firstName + (lastName ? ' ' + lastName : '');
+    var displayName = 'Dr. ' + (lastName || firstName);
     var roleLabel = (window._userRole === 'admin') ? 'Admin' : 'Clinician';
     setSidebarIdentity(displayName.trim(), roleLabel, true);
 

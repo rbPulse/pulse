@@ -3609,7 +3609,9 @@ async function submitClSetup() {
       await db.from('profiles').upsert({
         user_id:      currentUserId,
         email:        currentUserEmail,
-        display_name: 'Dr. ' + firstName,
+        first_name:   firstName || null,
+        last_name:    lastName || null,
+        display_name: 'Dr. ' + (lastName || firstName),
         role:         'clinician',
         cl_state:     null,
         updated_at:   new Date().toISOString()
@@ -3638,10 +3640,15 @@ function initClinicianPortal(user, role, greeting) {
   if (currentUserId && !PREVIEW_MODE) {
     var meta = user.user_metadata || {};
     var clName = meta.cl_name || user.email.split('@')[0];
+    var clParts = clName.split(' ');
+    var clFirst = clParts[0] || '';
+    var clLast = clParts.slice(1).join(' ') || '';
     db.from('profiles').upsert({
       user_id:      currentUserId,
       email:        currentUserEmail,
-      display_name: 'Dr. ' + clName.split(' ')[0],
+      first_name:   clFirst || null,
+      last_name:    clLast || null,
+      display_name: 'Dr. ' + (clLast || clFirst),
       role:         'clinician',
       updated_at:   new Date().toISOString()
     }, { onConflict: 'user_id' }).then(function(pr) {
@@ -3875,7 +3882,9 @@ async function saveClinicianSettings() {
       db.from('profiles').upsert({
         user_id:         currentUserId,
         email:           currentUserEmail,
-        display_name:    'Dr. ' + firstName,
+        first_name:      firstName || null,
+        last_name:       lastName || null,
+        display_name:    'Dr. ' + (lastName || firstName),
         role:            'clinician',
         notify_messages: _clinicianNotifyMessages,
         cl_state:        state.trim().toUpperCase() || null,
@@ -7496,8 +7505,13 @@ async function saveConsumerSettings() {
   if (nmEl) _memberNotifyMessages = nmEl.checked;
   setSidebarIdentity(_memberDisplayName, 'Member', false);
   try {
+    var nameParts = newName.split(' ');
+    var fName = nameParts[0] || '';
+    var lName = nameParts.slice(1).join(' ') || '';
     var r = await db.from('profiles').upsert({
       user_id:         currentUserId,
+      first_name:      fName || null,
+      last_name:       lName || null,
       display_name:    newName,
       notify_messages: _memberNotifyMessages,
       updated_at:      new Date().toISOString()

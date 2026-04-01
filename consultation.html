@@ -2074,6 +2074,8 @@ async function saveConsultation() {
     var pUpsert = await client.from('profiles').upsert({
       user_id:      session.user.id,
       email:        data.email || session.user.email || null,
+      first_name:   data.first_name || null,
+      last_name:    data.last_name || null,
       display_name: fullName || session.user.email.split('@')[0],
       role:         'member',
       phone:        data.phone_number || null,

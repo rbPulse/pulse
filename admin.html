@@ -392,8 +392,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <input type="password" id="newUserPassword" placeholder="Min 6 characters"/>
             </div>
             <div class="form-field">
-              <label>Display Name</label>
-              <input type="text" id="newUserName" placeholder="John Doe"/>
+              <label>First Name</label>
+              <input type="text" id="newUserFirstName" placeholder="John"/>
+            </div>
+            <div class="form-field">
+              <label>Last Name</label>
+              <input type="text" id="newUserLastName" placeholder="Doe"/>
             </div>
             <div class="form-field">
               <label>Role</label>
@@ -796,7 +800,7 @@ function loadOverviewStats() {
 
 // ── Load recent users ──
 function loadRecentUsers() {
-  db.from('profiles').select('user_id, email, display_name, admin_role, created_at')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role, created_at')
     .order('created_at', { ascending: false }).limit(10)
     .then(function(r) {
       var tbody = document.getElementById('recentUsersBody');
@@ -892,7 +896,8 @@ function toggleCreateUser() {
   if (!form.classList.contains('show')) {
     document.getElementById('newUserEmail').value = '';
     document.getElementById('newUserPassword').value = '';
-    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserFirstName').value = '';
+    document.getElementById('newUserLastName').value = '';
     document.getElementById('newUserRole').value = 'member';
   }
 }
@@ -900,8 +905,10 @@ function toggleCreateUser() {
 function createUser() {
   var email = document.getElementById('newUserEmail').value.trim();
   var password = document.getElementById('newUserPassword').value;
-  var displayName = document.getElementById('newUserName').value.trim();
+  var firstName = document.getElementById('newUserFirstName').value.trim();
+  var lastName = document.getElementById('newUserLastName').value.trim();
   var role = document.getElementById('newUserRole').value;
+  var displayName = role === 'clinician' ? 'Dr. ' + (lastName || firstName) : ((firstName + ' ' + lastName).trim() || email.split('@')[0]);
 
   if (!email || !password) {
     showToast('Email and password are required', 'error');
@@ -956,21 +963,19 @@ function createUser() {
       db.auth.setSession({ access_token: currentSession.access_token, refresh_token: currentSession.refresh_token });
     }
 
-    // Wait a moment for the profile trigger to fire, then update role
+    // Wait a moment for the profile trigger to fire, then update role and names
     setTimeout(function() {
-      if (newUserId && role !== 'member') {
-        var adminRole = (role === 'clinician') ? 'clinician' : role;
-        db.from('profiles').update({
-          admin_role: adminRole,
+      if (newUserId) {
+        var updatePayload = {
+          first_name: firstName || null,
+          last_name: lastName || null,
           display_name: displayName || email.split('@')[0]
-        }).eq('user_id', newUserId).then(function(ur) {
-          if (ur.error) console.warn('Role update failed:', ur.error);
-          finishCreateUser();
-        });
-      } else if (newUserId && displayName) {
-        db.from('profiles').update({
-          display_name: displayName
-        }).eq('user_id', newUserId).then(function() {
+        };
+        if (role !== 'member') {
+          updatePayload.admin_role = (role === 'clinician') ? 'clinician' : role;
+        }
+        db.from('profiles').update(updatePayload).eq('user_id', newUserId).then(function(ur) {
+          if (ur.error) console.warn('Profile update failed:', ur.error);
           finishCreateUser();
         });
       } else {
@@ -1003,7 +1008,7 @@ function finishCreateUser() {
 var allUsers = [];
 
 function loadUsers() {
-  db.from('profiles').select('user_id, email, display_name, admin_role, subscription_status, last_seen, created_at')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role, subscription_status, last_seen, created_at')
     .order('created_at', { ascending: false })
     .then(function(r) {
       allUsers = r.data || [];
@@ -1060,7 +1065,7 @@ function renderUsersTable(users) {
 var allRoleUsers = [];
 
 function loadRoles() {
-  db.from('profiles').select('user_id, email, display_name, admin_role')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role')
     .order('created_at', { ascending: false })
     .then(function(r) {
       allRoleUsers = r.data || [];
@@ -1407,7 +1412,7 @@ var allAppointments = [];
 var profileCache = {}; // user_id -> { display_name, email }
 
 function cacheProfiles() {
-  return db.from('profiles').select('user_id, display_name, email').then(function(r) {
+  return db.from('profiles').select('user_id, first_name, last_name, display_name, email').then(function(r) {
     (r.data || []).forEach(function(p) { profileCache[p.user_id] = p; });
   });
 }

@@ -182,6 +182,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .admin-table tr.clickable:hover td{background:rgba(255,255,255,0.03);}
 .admin-table tr.clickable.selected td{background:rgba(58,122,92,0.06);border-bottom-color:rgba(58,122,92,0.15);}
 
+/* ── CHARTS ── */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;}
+.chart-card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:16px;}
+.chart-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.chart-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey);min-width:80px;text-align:right;letter-spacing:0.04em;}
+.chart-bar-wrap{flex:1;height:24px;background:rgba(255,255,255,0.03);border-radius:4px;overflow:hidden;position:relative;}
+.chart-bar{height:100%;border-radius:4px;transition:width 0.6s ease;min-width:2px;}
+.chart-bar.green{background:var(--green);}
+.chart-bar.amber{background:rgba(220,180,75,0.6);}
+.chart-bar.blue{background:rgba(100,150,255,0.5);}
+.chart-bar.red{background:rgba(255,100,100,0.4);}
+.chart-bar.grey{background:rgba(255,255,255,0.15);}
+.chart-value{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey2);min-width:40px;letter-spacing:0.04em;}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.chart-donut-wrap{display:flex;align-items:center;gap:24px;padding:8px 0;}
+.chart-legend{display:flex;flex-direction:column;gap:8px;}
+.chart-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--grey);}
+.chart-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.chart-legend-value{font-family:'DM Mono',monospace;font-size:11px;color:#fff;margin-left:auto;min-width:30px;text-align:right;}
+.chart-big-num{font-size:48px;font-weight:500;letter-spacing:-0.02em;color:#fff;line-height:1;}
+.chart-big-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);margin-top:6px;}
+@media(max-width:900px){
+  .chart-grid{grid-template-columns:1fr;}
+}
+
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:60px 20px;color:var(--grey2);}
 .empty-state svg{display:block;margin:0 auto 12px;opacity:0.15;}
@@ -268,6 +293,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-messages" onclick="switchTab('messages')">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="sidebar-item-label">Messages</span>
+        </div>
+        <div class="sidebar-section-label">Analytics</div>
+        <div class="sidebar-item" id="nav-analytics" onclick="switchTab('analytics')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="sidebar-item-label">Analytics</span>
         </div>
         <div class="sidebar-section-label">System</div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
@@ -536,6 +566,76 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ANALYTICS TAB -->
+      <div class="admin-tab" id="tab-analytics">
+        <div class="tab-header">
+          <div class="tab-title">Analytics</div>
+          <div class="tab-subtitle">Platform metrics and trends</div>
+        </div>
+
+        <!-- Top-level KPIs -->
+        <div class="stat-grid" id="analyticsKPIs">
+          <div class="stat-card">
+            <div class="stat-card-label">Total Users</div>
+            <div class="stat-card-value" id="kpiUsers">--</div>
+            <div class="stat-card-sub" id="kpiUsersNew">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Conversion Rate</div>
+            <div class="stat-card-value" id="kpiConversion">--</div>
+            <div class="stat-card-sub">signups &rarr; consultations</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Prescription Rate</div>
+            <div class="stat-card-value" id="kpiPrescription">--</div>
+            <div class="stat-card-sub">consultations &rarr; prescribed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Dose Compliance</div>
+            <div class="stat-card-value" id="kpiCompliance">--</div>
+            <div class="stat-card-sub" id="kpiComplianceSub">logs in last 7 days</div>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <!-- Signups over time -->
+          <div class="chart-card">
+            <div class="chart-card-title">User Signups (Last 12 Weeks)</div>
+            <div id="chartSignups"></div>
+          </div>
+
+          <!-- Subscription breakdown -->
+          <div class="chart-card">
+            <div class="chart-card-title">Subscription Status</div>
+            <div class="chart-donut-wrap" id="chartSubscriptions"></div>
+          </div>
+
+          <!-- Consultation funnel -->
+          <div class="chart-card">
+            <div class="chart-card-title">Consultation Funnel</div>
+            <div id="chartFunnel"></div>
+          </div>
+
+          <!-- Role distribution -->
+          <div class="chart-card">
+            <div class="chart-card-title">Role Distribution</div>
+            <div id="chartRoles"></div>
+          </div>
+
+          <!-- Appointments by status -->
+          <div class="chart-card">
+            <div class="chart-card-title">Appointments by Status</div>
+            <div id="chartApptStatus"></div>
+          </div>
+
+          <!-- Dose logging activity -->
+          <div class="chart-card">
+            <div class="chart-card-title">Dose Logging (Last 4 Weeks)</div>
+            <div id="chartDoseLogs"></div>
+          </div>
         </div>
       </div>
 
@@ -1362,6 +1462,160 @@ function renderAuditTable(logs) {
   }).join('');
 }
 
+// ══════════════════════════════════
+// PHASE 5: ANALYTICS TAB
+// ══════════════════════════════════
+
+function renderBarChart(containerId, data, colorClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var max = Math.max.apply(null, data.map(function(d) { return d.value; })) || 1;
+  container.innerHTML = data.map(function(d) {
+    var pct = Math.round((d.value / max) * 100);
+    return '<div class="chart-row">' +
+      '<div class="chart-label">' + escHtml(d.label) + '</div>' +
+      '<div class="chart-bar-wrap"><div class="chart-bar ' + (d.color || colorClass || 'green') + '" style="width:' + pct + '%"></div></div>' +
+      '<div class="chart-value">' + d.value + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderLegendChart(containerId, data) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var total = data.reduce(function(s, d) { return s + d.value; }, 0) || 1;
+  var bigNum = total;
+  var legendHtml = data.map(function(d) {
+    var pct = Math.round((d.value / total) * 100);
+    return '<div class="chart-legend-item">' +
+      '<div class="chart-legend-dot" style="background:' + d.dotColor + ';"></div>' +
+      '<span>' + escHtml(d.label) + ' (' + pct + '%)</span>' +
+      '<span class="chart-legend-value">' + d.value + '</span>' +
+      '</div>';
+  }).join('');
+
+  container.innerHTML = '<div style="text-align:center;min-width:100px;">' +
+    '<div class="chart-big-num">' + bigNum + '</div>' +
+    '<div class="chart-big-label">Total</div>' +
+    '</div>' +
+    '<div class="chart-legend">' + legendHtml + '</div>';
+}
+
+function loadAnalytics() {
+  // We already have allUsers, allConsultations, allAppointments loaded
+  // Just need dose_logs
+  var doseLogs = [];
+
+  db.from('dose_logs').select('*').order('dose_date', { ascending: false }).limit(1000)
+    .then(function(r) { doseLogs = r.data || []; })
+    .catch(function() { doseLogs = []; })
+    .finally(function() { renderAnalytics(doseLogs); });
+}
+
+function renderAnalytics(doseLogs) {
+  var now = new Date();
+
+  // ── KPIs ──
+  var totalUsers = allUsers.length;
+  var last7d = new Date(now.getTime() - 7 * 86400000).toISOString();
+  var last30d = new Date(now.getTime() - 30 * 86400000).toISOString();
+  var newLast30 = allUsers.filter(function(u) { return u.created_at && u.created_at >= last30d; }).length;
+
+  document.getElementById('kpiUsers').textContent = totalUsers;
+  document.getElementById('kpiUsersNew').textContent = '+' + newLast30 + ' last 30 days';
+
+  var totalConsult = allConsultations.length;
+  var convRate = totalUsers > 0 ? Math.round((totalConsult / totalUsers) * 100) : 0;
+  document.getElementById('kpiConversion').textContent = convRate + '%';
+
+  var prescribed = allConsultations.filter(function(c) { return getConsultStatus(c) === 'prescribed'; }).length;
+  var rxRate = totalConsult > 0 ? Math.round((prescribed / totalConsult) * 100) : 0;
+  document.getElementById('kpiPrescription').textContent = rxRate + '%';
+
+  var recentLogs = doseLogs.filter(function(d) { return d.dose_date && d.dose_date >= last7d.slice(0, 10); }).length;
+  document.getElementById('kpiCompliance').textContent = recentLogs;
+  document.getElementById('kpiComplianceSub').textContent = recentLogs + ' logs in last 7 days';
+
+  // ── Signups chart (last 12 weeks) ──
+  var weeks = [];
+  for (var w = 11; w >= 0; w--) {
+    var weekStart = new Date(now.getTime() - (w + 1) * 7 * 86400000);
+    var weekEnd = new Date(now.getTime() - w * 7 * 86400000);
+    var count = allUsers.filter(function(u) {
+      return u.created_at && u.created_at >= weekStart.toISOString() && u.created_at < weekEnd.toISOString();
+    }).length;
+    var label = (weekStart.getMonth() + 1) + '/' + weekStart.getDate();
+    weeks.push({ label: label, value: count });
+  }
+  renderBarChart('chartSignups', weeks, 'green');
+
+  // ── Subscription breakdown ──
+  var subCounts = { free: 0, active: 0, paused: 0, cancelled: 0 };
+  allUsers.forEach(function(u) {
+    var s = u.subscription_status || 'free';
+    if (subCounts[s] !== undefined) subCounts[s]++;
+    else subCounts.free++;
+  });
+  renderLegendChart('chartSubscriptions', [
+    { label: 'Active', value: subCounts.active, dotColor: 'rgba(58,122,92,0.8)' },
+    { label: 'Free', value: subCounts.free, dotColor: 'rgba(255,255,255,0.25)' },
+    { label: 'Paused', value: subCounts.paused, dotColor: 'rgba(220,180,75,0.6)' },
+    { label: 'Cancelled', value: subCounts.cancelled, dotColor: 'rgba(255,100,100,0.5)' }
+  ]);
+
+  // ── Consultation funnel ──
+  var awaiting = allConsultations.filter(function(c) { return getConsultStatus(c) === 'awaiting'; }).length;
+  var notPrescribed = allConsultations.filter(function(c) { return getConsultStatus(c) === 'not_prescribed'; }).length;
+  renderBarChart('chartFunnel', [
+    { label: 'Signups', value: totalUsers, color: 'grey' },
+    { label: 'Consults', value: totalConsult, color: 'blue' },
+    { label: 'Awaiting', value: awaiting, color: 'amber' },
+    { label: 'Prescribed', value: prescribed, color: 'green' },
+    { label: 'Not Rx\'d', value: notPrescribed, color: 'red' }
+  ]);
+
+  // ── Role distribution ──
+  var roleCounts = { member: 0, clinician: 0, admin: 0, super_admin: 0 };
+  allUsers.forEach(function(u) {
+    var r = u.admin_role || 'member';
+    if (roleCounts[r] !== undefined) roleCounts[r]++;
+    else roleCounts.member++;
+  });
+  renderBarChart('chartRoles', [
+    { label: 'Members', value: roleCounts.member, color: 'green' },
+    { label: 'Clinicians', value: roleCounts.clinician, color: 'blue' },
+    { label: 'Admins', value: roleCounts.admin, color: 'amber' },
+    { label: 'Super', value: roleCounts.super_admin, color: 'red' }
+  ]);
+
+  // ── Appointments by status ──
+  var apptCounts = { pending: 0, confirmed: 0, cancelled_by_member: 0, cancelled_by_clinician: 0 };
+  allAppointments.forEach(function(a) {
+    if (apptCounts[a.status] !== undefined) apptCounts[a.status]++;
+  });
+  renderBarChart('chartApptStatus', [
+    { label: 'Pending', value: apptCounts.pending, color: 'amber' },
+    { label: 'Confirmed', value: apptCounts.confirmed, color: 'green' },
+    { label: 'Cxl (Mem)', value: apptCounts.cancelled_by_member, color: 'red' },
+    { label: 'Cxl (Clin)', value: apptCounts.cancelled_by_clinician, color: 'red' }
+  ]);
+
+  // ── Dose logging (last 4 weeks) ──
+  var doseWeeks = [];
+  for (var dw = 3; dw >= 0; dw--) {
+    var dwStart = new Date(now.getTime() - (dw + 1) * 7 * 86400000);
+    var dwEnd = new Date(now.getTime() - dw * 7 * 86400000);
+    var startStr = dwStart.toISOString().slice(0, 10);
+    var endStr = dwEnd.toISOString().slice(0, 10);
+    var dCount = doseLogs.filter(function(d) {
+      return d.dose_date && d.dose_date >= startStr && d.dose_date < endStr;
+    }).length;
+    var dlabel = (dwStart.getMonth() + 1) + '/' + dwStart.getDate();
+    doseWeeks.push({ label: dlabel, value: dCount });
+  }
+  renderBarChart('chartDoseLogs', doseWeeks, 'green');
+}
+
 // ── Update initAdmin to load all phases ──
 var _origInitAdmin = initAdmin;
 initAdmin = function(user, profile) {
@@ -1374,6 +1628,8 @@ initAdmin = function(user, profile) {
     loadMessages();
   });
   loadAuditLogs();
+  // Analytics loads after a short delay to let other data populate
+  setTimeout(loadAnalytics, 1500);
 };
 </script>
 </body>

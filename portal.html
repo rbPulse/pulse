@@ -3680,12 +3680,13 @@ function initClinicianPortal(user, role, greeting) {
   var m = MOCK_CLINICIAN;
   var meta = user.user_metadata || {};
   var name = PREVIEW_MODE ? m.name : (meta.cl_name || meta.name || user.email.split('@')[0]);
-  var displayName = 'Dr. ' + name.split(' ')[0];
+  var nameParts = name.split(' ');
+  var displayName = 'Dr. ' + (nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0]);
 
   // Sidebar identity block
   var roleLabel = role === 'admin' ? 'Admin' : 'Clinician';
   var specialty = PREVIEW_MODE ? m.specialty : (meta.cl_specialty || m.specialty || '');
-  setSidebarIdentity('Dr. ' + name.split(' ')[0], roleLabel, true);
+  setSidebarIdentity(displayName, roleLabel, true);
 
   // Show unread message badge (Phase 18 — real count loaded by _startClinicianUnreadPoll)
   if (PREVIEW_MODE && m.stats.unread > 0) { _updateClMsgBadge(m.stats.unread); }

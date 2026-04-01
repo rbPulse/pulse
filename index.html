@@ -393,6 +393,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .theme-switcher{display:none;}
   /* Nav CTA: keep but reduce size so it doesn't overflow */
   .nav-cta{padding:9px 16px;font-size:10px;letter-spacing:0.1em;}
+  .nav-auth-btn{opacity:0;pointer-events:none;transition:opacity 0.3s ease;}
+  .nav-auth-btn.visible{opacity:1;pointer-events:auto;}
 
   /* General section padding */
   section{padding:64px 20px;}
@@ -1918,6 +1920,19 @@ function initHeroTyper(){
   typeChar();
 }
 document.addEventListener("DOMContentLoaded",initHeroTyper);
+document.addEventListener("DOMContentLoaded",function(){
+  if(window.innerWidth>900)return;
+  var heroBtn=document.querySelector('.hero-actions .btn-green');
+  var navBtn=document.querySelector('.nav-auth-btn');
+  if(!heroBtn||!navBtn)return;
+  function checkScroll(){
+    var rect=heroBtn.getBoundingClientRect();
+    if(rect.bottom<0){navBtn.classList.add('visible');}
+    else{navBtn.classList.remove('visible');}
+  }
+  window.addEventListener('scroll',checkScroll,{passive:true});
+  checkScroll();
+});
 </script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

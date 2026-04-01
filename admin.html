@@ -137,6 +137,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .modal-btn.danger{background:rgba(255,100,100,0.8);color:#fff;font-weight:500;}
 .modal-btn.danger:hover{opacity:0.85;}
 
+/* ── DETAIL PANEL ── */
+.detail-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;margin-top:20px;display:none;}
+.detail-panel.show{display:block;}
+.detail-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.detail-panel-title{font-size:16px;font-weight:500;}
+.detail-close{background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);cursor:pointer;transition:all .2s;}
+.detail-close:hover{border-color:rgba(255,255,255,0.15);color:#fff;}
+.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+.detail-field{min-width:0;}
+.detail-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;}
+.detail-value{font-size:13px;color:#fff;word-break:break-word;}
+.detail-divider{height:1px;background:var(--border);margin:20px 0;}
+.detail-section-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px;}
+.detail-actions{display:flex;gap:10px;margin-top:20px;}
+.detail-actions select{max-width:200px;}
+.detail-actions button{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:8px 18px;border-radius:8px;border:none;cursor:pointer;transition:opacity .2s;}
+.detail-actions .btn-save{background:var(--green);color:#000;font-weight:500;}
+.detail-actions .btn-save:hover{opacity:0.85;}
+.detail-actions .btn-save:disabled{opacity:0.35;cursor:not-allowed;}
+@media(max-width:900px){
+  .detail-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* ── CLICKABLE ROW ── */
+.admin-table tr.clickable{cursor:pointer;}
+.admin-table tr.clickable:hover td{background:rgba(255,255,255,0.03);}
+.admin-table tr.clickable.selected td{background:rgba(58,122,92,0.06);border-bottom-color:rgba(58,122,92,0.15);}
+
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:60px 20px;color:var(--grey2);}
 .empty-state svg{display:block;margin:0 auto 12px;opacity:0.15;}
@@ -311,9 +339,72 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Consultations</div>
           <div class="tab-subtitle">View and manage all consultations</div>
         </div>
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <p>Consultation management — Phase 3</p>
+        <div class="stat-grid" id="consultationStats">
+          <div class="stat-card">
+            <div class="stat-card-label">Awaiting Review</div>
+            <div class="stat-card-value" id="statAwaiting">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Prescribed</div>
+            <div class="stat-card-value" id="statPrescribed">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Not Prescribed</div>
+            <div class="stat-card-value" id="statNotPrescribed">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Total</div>
+            <div class="stat-card-value" id="statTotalConsultations">--</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <input type="text" class="search-input" id="consultSearch" placeholder="Search by name or email..." oninput="filterConsultations()"/>
+          <select class="filter-select" id="consultStatusFilter" onchange="filterConsultations()">
+            <option value="">All Status</option>
+            <option value="awaiting">Awaiting Review</option>
+            <option value="prescribed">Prescribed</option>
+            <option value="not_prescribed">Not Prescribed</option>
+          </select>
+          <span class="toolbar-count" id="consultCount"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Patient</th><th>Email</th><th>Status</th><th>Protocol</th><th>Submitted</th></tr></thead>
+            <tbody id="consultBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Detail panel -->
+        <div class="detail-panel" id="consultDetail">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title" id="consultDetailTitle">Consultation Details</div>
+            <button class="detail-close" onclick="closeConsultDetail()">Close</button>
+          </div>
+          <div class="detail-section-title">Patient Info</div>
+          <div class="detail-grid" id="consultPatientGrid"></div>
+          <div class="detail-divider"></div>
+          <div class="detail-section-title">Intake Responses</div>
+          <div class="detail-grid" id="consultIntakeGrid"></div>
+          <div class="detail-divider"></div>
+          <div class="detail-section-title">Evaluation</div>
+          <div class="detail-grid" id="consultEvalGrid"></div>
+          <div class="detail-actions" id="consultActions">
+            <select class="filter-select" id="consultProtoSelect">
+              <option value="">Assign Protocol...</option>
+              <option value="Sleep">Sleep</option>
+              <option value="Repair">Repair</option>
+              <option value="Growth">Growth</option>
+              <option value="Endurance">Endurance</option>
+              <option value="Shred">Shred</option>
+              <option value="Vitality">Vitality</option>
+              <option value="Recovery Stack">Recovery Stack</option>
+              <option value="Performance Stack">Performance Stack</option>
+              <option value="Optimize Stack">Optimize Stack</option>
+              <option value="no prescription">No Prescription</option>
+            </select>
+            <button class="btn-save" id="consultSaveBtn" onclick="saveConsultation()" disabled>Save Changes</button>
+          </div>
         </div>
       </div>
 
@@ -752,12 +843,231 @@ function onRoleChange(selectEl) {
   selectEl.value = currentRole;
 }
 
-// ── Update initAdmin to load Phase 2 data ──
+// ══════════════════════════════════
+// PHASE 3: CONSULTATIONS TAB
+// ══════════════════════════════════
+var allConsultations = [];
+var selectedConsultId = null;
+
+function getConsultStatus(c) {
+  if (c.prescription_given === false || c.protocol_assigned === 'no prescription') return 'not_prescribed';
+  if (c.protocol_assigned && c.protocol_assigned !== 'no prescription') return 'prescribed';
+  return 'awaiting';
+}
+
+function getConsultStatusLabel(status) {
+  if (status === 'prescribed') return 'Prescribed';
+  if (status === 'not_prescribed') return 'Not Prescribed';
+  return 'Awaiting Review';
+}
+
+function getConsultStatusClass(status) {
+  if (status === 'prescribed') return 'active';
+  if (status === 'not_prescribed') return 'cancelled';
+  return 'paused';
+}
+
+function loadConsultations() {
+  db.from('consultations').select('*, profiles!consultations_user_id_fkey(display_name, email)')
+    .order('created_at', { ascending: false })
+    .then(function(r) {
+      if (r.error) {
+        // Fallback: load without join if FK doesn't exist
+        db.from('consultations').select('*')
+          .order('created_at', { ascending: false })
+          .then(function(r2) {
+            allConsultations = (r2.data || []).map(function(c) {
+              c._name = (c.data && c.data.first_name ? c.data.first_name + ' ' + (c.data.last_name || '') : 'Unknown').trim();
+              c._email = (c.data && c.data.email) || '--';
+              return c;
+            });
+            updateConsultStats();
+            filterConsultations();
+          });
+        return;
+      }
+      allConsultations = (r.data || []).map(function(c) {
+        var p = c.profiles;
+        c._name = p ? (p.display_name || p.email || 'Unknown') : (c.data && c.data.first_name ? c.data.first_name + ' ' + (c.data.last_name || '') : 'Unknown').trim();
+        c._email = p ? (p.email || '--') : ((c.data && c.data.email) || '--');
+        return c;
+      });
+      updateConsultStats();
+      filterConsultations();
+    });
+}
+
+function updateConsultStats() {
+  var awaiting = 0, prescribed = 0, notPrescribed = 0;
+  allConsultations.forEach(function(c) {
+    var s = getConsultStatus(c);
+    if (s === 'awaiting') awaiting++;
+    else if (s === 'prescribed') prescribed++;
+    else notPrescribed++;
+  });
+  document.getElementById('statAwaiting').textContent = awaiting;
+  document.getElementById('statPrescribed').textContent = prescribed;
+  document.getElementById('statNotPrescribed').textContent = notPrescribed;
+  document.getElementById('statTotalConsultations').textContent = allConsultations.length;
+}
+
+function filterConsultations() {
+  var q = (document.getElementById('consultSearch').value || '').toLowerCase();
+  var statusF = document.getElementById('consultStatusFilter').value;
+
+  var filtered = allConsultations.filter(function(c) {
+    var name = (c._name || '').toLowerCase();
+    var email = (c._email || '').toLowerCase();
+    var status = getConsultStatus(c);
+    if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
+    if (statusF && status !== statusF) return false;
+    return true;
+  });
+
+  document.getElementById('consultCount').textContent = filtered.length + ' of ' + allConsultations.length + ' consultations';
+  renderConsultTable(filtered);
+}
+
+function renderConsultTable(consultations) {
+  var tbody = document.getElementById('consultBody');
+  if (!consultations.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No consultations match your filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = consultations.map(function(c) {
+    var status = getConsultStatus(c);
+    var proto = c.protocol_assigned || '--';
+    var date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '--';
+    var sel = selectedConsultId === c.id ? ' selected' : '';
+    return '<tr class="clickable' + sel + '" onclick="openConsultDetail(\'' + c.id + '\')">' +
+      '<td style="color:#fff;font-weight:400;">' + escHtml(c._name) + '</td>' +
+      '<td>' + escHtml(c._email) + '</td>' +
+      '<td><span class="status-pill ' + getConsultStatusClass(status) + '">' + getConsultStatusLabel(status) + '</span></td>' +
+      '<td>' + escHtml(proto) + '</td>' +
+      '<td>' + date + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function openConsultDetail(id) {
+  var c = allConsultations.find(function(x) { return x.id === id; });
+  if (!c) return;
+  selectedConsultId = id;
+  filterConsultations(); // Re-render to highlight selected row
+
+  var panel = document.getElementById('consultDetail');
+  panel.classList.add('show');
+  document.getElementById('consultDetailTitle').textContent = c._name + ' — Consultation';
+
+  // Patient info
+  var d = c.data || {};
+  var patientFields = [
+    { label: 'Name', value: ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || '--' },
+    { label: 'Email', value: d.email || c._email || '--' },
+    { label: 'Phone', value: d.phone_number || '--' },
+    { label: 'Sex', value: d.sex || '--' },
+    { label: 'DOB', value: d.dob || '--' },
+    { label: 'Weight', value: d.current_weight ? d.current_weight + ' lbs' : '--' }
+  ];
+  document.getElementById('consultPatientGrid').innerHTML = patientFields.map(function(f) {
+    return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
+  }).join('');
+
+  // Intake
+  var intakeFields = [
+    { label: 'Height', value: d.height || '--' },
+    { label: 'Target Weight', value: d.target_weight || '--' },
+    { label: 'Goals', value: (d.goals && d.goals.length) ? d.goals.join(', ') : '--' },
+    { label: 'Address', value: [d.street_address, d.apt_unit, d.city, d.state, d.zip_code].filter(Boolean).join(', ') || '--' },
+    { label: 'Booking Date', value: d.booking_date || '--' },
+    { label: 'Submitted', value: d.submitted_at ? new Date(d.submitted_at).toLocaleString() : (c.created_at ? new Date(c.created_at).toLocaleString() : '--') }
+  ];
+  document.getElementById('consultIntakeGrid').innerHTML = intakeFields.map(function(f) {
+    return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
+  }).join('');
+
+  // Evaluation
+  var status = getConsultStatus(c);
+  var evalFields = [
+    { label: 'Status', value: getConsultStatusLabel(status) },
+    { label: 'Protocol Assigned', value: c.protocol_assigned || 'None' },
+    { label: 'Prescription Given', value: c.prescription_given === true ? 'Yes' : c.prescription_given === false ? 'No' : 'Pending' },
+    { label: 'Dose', value: c.dose_amount ? c.dose_amount + ' ' + (c.dose_unit || '') : '--' },
+    { label: 'Frequency', value: c.frequency || '--' },
+    { label: 'Duration', value: c.duration || '--' },
+    { label: 'Session Notes', value: c.session_notes || '--' },
+    { label: 'Evaluation Date', value: c.evaluation_date ? new Date(c.evaluation_date).toLocaleString() : '--' },
+    { label: 'No Rx Reason', value: c.no_prescription_reason || '--' }
+  ];
+  document.getElementById('consultEvalGrid').innerHTML = evalFields.map(function(f) {
+    return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
+  }).join('');
+
+  // Set protocol select
+  var select = document.getElementById('consultProtoSelect');
+  select.value = c.protocol_assigned || '';
+  document.getElementById('consultSaveBtn').disabled = true;
+  select.onchange = function() {
+    document.getElementById('consultSaveBtn').disabled = (select.value === (c.protocol_assigned || ''));
+  };
+
+  // Scroll to panel
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeConsultDetail() {
+  document.getElementById('consultDetail').classList.remove('show');
+  selectedConsultId = null;
+  filterConsultations();
+}
+
+function saveConsultation() {
+  if (!selectedConsultId) return;
+  var c = allConsultations.find(function(x) { return x.id === selectedConsultId; });
+  if (!c) return;
+
+  var newProto = document.getElementById('consultProtoSelect').value;
+  var isPrescribed = newProto && newProto !== 'no prescription';
+
+  var updateData = {
+    protocol_assigned: newProto || null,
+    prescription_given: newProto === 'no prescription' ? false : isPrescribed ? true : null,
+    updated_at: new Date().toISOString()
+  };
+
+  showModal(
+    'Update Consultation',
+    'Set protocol to "' + (newProto || 'None') + '" for ' + c._name + '?',
+    'Update',
+    'confirm',
+    function() {
+      document.getElementById('consultSaveBtn').disabled = true;
+      db.from('consultations').update(updateData).eq('id', selectedConsultId)
+        .then(function(r) {
+          if (r.error) {
+            showToast('Failed: ' + r.error.message, 'error');
+            return;
+          }
+          // Update local data
+          c.protocol_assigned = updateData.protocol_assigned;
+          c.prescription_given = updateData.prescription_given;
+          showToast('Consultation updated', 'success');
+          updateConsultStats();
+          filterConsultations();
+          openConsultDetail(selectedConsultId);
+          loadOverviewStats();
+        });
+    }
+  );
+}
+
+// ── Update initAdmin to load Phase 2 + 3 data ──
 var _origInitAdmin = initAdmin;
 initAdmin = function(user, profile) {
   _origInitAdmin(user, profile);
   loadUsers();
   loadRoles();
+  loadConsultations();
 };
 </script>
 </body>

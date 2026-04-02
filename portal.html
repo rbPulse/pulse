@@ -1847,58 +1847,39 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- ── CLINICIAN OVERVIEW ── -->
       <div class="portal-tab" id="tab-cl-overview">
         <div class="greeting-line" id="clGreetLine">Good evening.</div>
-        <div class="greeting-sub" id="clGreetSub">Here's your day at a glance.</div>
+        <div class="greeting-sub" id="clGreetSub">Here's what needs your attention.</div>
 
         <div class="cl-stat-grid">
-          <div class="cl-stat-tile">
-            <div class="cl-stat-lbl" style="margin-bottom:8px;">Appts Today</div>
-            <div class="cl-stat-num" id="clStatToday">—</div>
+          <div class="cl-stat-card">
+            <div class="cl-stat-num" id="clStatPending">0</div>
+            <div class="cl-stat-label">Pending Reviews</div>
           </div>
-          <div class="cl-stat-tile">
-            <div class="cl-stat-lbl" style="margin-bottom:8px;">This Week</div>
-            <div class="cl-stat-num" id="clStatWeek">—</div>
+          <div class="cl-stat-card">
+            <div class="cl-stat-num" id="clStatInReview">0</div>
+            <div class="cl-stat-label">In Review</div>
           </div>
-          <div class="cl-stat-tile">
-            <div class="cl-stat-lbl" style="margin-bottom:8px;">Active Patients</div>
-            <div class="cl-stat-num" id="clStatPatients">—</div>
+          <div class="cl-stat-card">
+            <div class="cl-stat-num" id="clStatLiveConsults">0</div>
+            <div class="cl-stat-label">Live Consults</div>
           </div>
-          <div class="cl-stat-tile">
-            <div class="cl-stat-lbl" style="margin-bottom:8px;">Unread Messages</div>
-            <div class="cl-stat-num" id="clStatUnread" style="color:var(--green);">—</div>
+          <div class="cl-stat-card">
+            <div class="cl-stat-num" id="clStatActive">0</div>
+            <div class="cl-stat-label">Active Patients</div>
           </div>
-          <div class="cl-stat-tile">
-            <div class="cl-stat-lbl" style="margin-bottom:8px;">Pending Reviews</div>
-            <div class="cl-stat-num" id="clStatPendingReviews" style="color:rgba(220,180,75,0.85);">—</div>
+          <div class="cl-stat-card">
+            <div class="cl-stat-num" id="clStatUnread">0</div>
+            <div class="cl-stat-label">Unread Messages</div>
           </div>
         </div>
 
-        <div class="p-card">
-          <!-- Date picker bar -->
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-            <button class="cl-day-arrow" onclick="_clCalStep(-1)" id="clCalPrev">‹</button>
-            <div class="compounds-label" style="margin-bottom:0;flex:1;" id="clOverviewDayLabel">Today's Appointments</div>
-            <div style="position:relative;">
-              <button class="cl-day-cal-btn" onclick="_toggleClCalPopup()" id="clCalToggle" title="Pick a date">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </button>
-              <!-- Mini calendar popup -->
-              <div class="cl-cal-popup" id="clCalPopup">
-                <div class="cl-cal-popup-header">
-                  <button class="cl-day-arrow" onclick="_clCalNav(-1)" id="clCalPopPrev">‹</button>
-                  <span class="cl-cal-popup-month" id="clOverviewCalMonth">March 2026</span>
-                  <button class="cl-day-arrow" onclick="_clCalNav(1)">›</button>
-                </div>
-                <div class="cl-cal-popup-dow">
-                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-                </div>
-                <div class="cl-cal-popup-grid" id="clOverviewCalGrid"></div>
-              </div>
-            </div>
-            <button class="cl-day-arrow" onclick="_clCalStep(1)">›</button>
-          </div>
-          <!-- Appointment list for selected day -->
-          <div class="appt-list" id="clTodayAppts"></div>
-        </div>
+        <!-- Needs Your Attention — Phase A2 -->
+        <div id="clAttentionSection"></div>
+
+        <!-- Live Consults — Phase A3 -->
+        <div id="clLiveConsultsSection"></div>
+
+        <!-- Recently Evaluated — Phase A4 -->
+        <div id="clRecentlyEvaluated"></div>
 
         <div class="cl-two-col">
           <div class="p-card" style="margin-bottom:0;">
@@ -3733,29 +3714,19 @@ function initClinicianPortal(user, role, greeting) {
   if (PREVIEW_MODE && m.stats.unread > 0) { _updateClMsgBadge(m.stats.unread); }
 
   document.getElementById('clGreetLine').textContent = greeting + ' ' + displayName + '.';
-  document.getElementById('clGreetSub').textContent = "Here's your day at a glance.";
+  document.getElementById('clGreetSub').textContent = "Here's what needs your attention.";
 
   // Stats — load real counts when not preview
   if (PREVIEW_MODE || !currentUserId) {
-    document.getElementById('clStatToday').textContent    = m.stats.today;
-    document.getElementById('clStatWeek').textContent     = m.stats.week;
-    document.getElementById('clStatPatients').textContent = m.stats.patients;
-    document.getElementById('clStatUnread').textContent   = m.stats.unread;
-    document.getElementById('clStatPendingReviews').textContent = m.stats.pendingReviews || 0;
+    document.getElementById('clStatPending').textContent      = m.stats.pendingReviews || 0;
+    document.getElementById('clStatInReview').textContent     = 0;
+    document.getElementById('clStatLiveConsults').textContent = 0;
+    document.getElementById('clStatActive').textContent       = m.stats.patients || 0;
+    document.getElementById('clStatUnread').textContent       = m.stats.unread || 0;
   } else {
     // Show "—" while loading, then replace with real counts
-    ['clStatToday','clStatWeek','clStatPatients','clStatUnread','clStatPendingReviews'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
+    ['clStatPending','clStatInReview','clStatLiveConsults','clStatActive','clStatUnread'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
-  }
-
-  // Overview calendar + appointment list
-  if (PREVIEW_MODE || !currentUserId) {
-    renderApptList('clTodayAppts', ALL_APPTS.filter(function(a){ return a.date==='Today'; }), 'clinician');
-    _renderClOverviewCal();
-  } else {
-    _clApptRows = null;
-    _loadClAppts('today');
-    _loadClOverviewCalData();
   }
 
   // Recent activity — load from DB when not preview
@@ -4008,51 +3979,61 @@ async function sendClPasswordReset() {
 // Populated by _loadMyPatients, used to scope all clinician queries.
 var _myPatientIds = null;
 
-function _loadClOverviewStats() {
-  // First get my patients, then count scoped data
-  _loadMyPatients(function(patientIds) {
-    // Count appointments today
-    var _ts = new Date(); _ts.setHours(0,0,0,0);
-    var _te = new Date(); _te.setHours(23,59,59,999);
-    var q1 = db.from('appointments').select('id', { count: 'exact', head: true })
-      .eq('clinician_id', currentUserId)
-      .gte('scheduled_at', _ts.toISOString()).lte('scheduled_at', _te.toISOString())
-      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
-    q1.then(function(r) { if (!r.error) document.getElementById('clStatToday').textContent = r.count || 0; })
-      .catch(function() { document.getElementById('clStatToday').textContent = '0'; });
-    // Count appointments this week
-    var _ws = new Date(); _ws.setDate(_ws.getDate() - _ws.getDay()); _ws.setHours(0,0,0,0);
-    var _we = new Date(_ws); _we.setDate(_we.getDate() + 6); _we.setHours(23,59,59,999);
-    var q2 = db.from('appointments').select('id', { count: 'exact', head: true })
-      .eq('clinician_id', currentUserId)
-      .gte('scheduled_at', _ws.toISOString()).lte('scheduled_at', _we.toISOString())
-      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
-    q2.then(function(r) { if (!r.error) document.getElementById('clStatWeek').textContent = r.count || 0; })
-      .catch(function() { document.getElementById('clStatWeek').textContent = '0'; });
-    // Active Patients count = prescribed + purchase completed
-    db.from('consultations').select('id', { count: 'exact', head: true })
+async function _loadClOverviewStats() {
+  if (!currentUserId || PREVIEW_MODE) {
+    // Handle preview mode with mock data
+    return;
+  }
+
+  try {
+    // Pending reviews
+    var pending = await db.from('consultations')
+      .select('id', { count: 'exact', head: true })
+      .eq('assigned_clinician_id', currentUserId)
+      .eq('review_status', 'pending_review');
+    document.getElementById('clStatPending').textContent = pending.count || 0;
+
+    // In review
+    var inReview = await db.from('consultations')
+      .select('id', { count: 'exact', head: true })
+      .eq('assigned_clinician_id', currentUserId)
+      .eq('review_status', 'in_review');
+    document.getElementById('clStatInReview').textContent = inReview.count || 0;
+
+    // Live consults (requested + scheduled)
+    var liveConsults = await db.from('consultations')
+      .select('id', { count: 'exact', head: true })
+      .eq('assigned_clinician_id', currentUserId)
+      .in('review_status', ['live_consult_requested', 'live_consult_scheduled']);
+    document.getElementById('clStatLiveConsults').textContent = liveConsults.count || 0;
+
+    // Active patients (prescribed + purchased)
+    var active = await db.from('consultations')
+      .select('id', { count: 'exact', head: true })
       .eq('assigned_clinician_id', currentUserId)
       .eq('review_status', 'prescribed')
-      .eq('purchase_status', 'completed')
-      .then(function(r) { if (!r.error) document.getElementById('clStatPatients').textContent = r.count || 0; })
-      .catch(function() { document.getElementById('clStatPatients').textContent = '0'; });
-    // Count unread messages from my patients only
+      .eq('purchase_status', 'completed');
+    document.getElementById('clStatActive').textContent = active.count || 0;
+
+    // Unread messages — count messages where sender_role='consumer' and read=false
+    // scoped to this clinician's patients
+    var patientRes = await db.from('consultations')
+      .select('user_id')
+      .eq('assigned_clinician_id', currentUserId);
+    var patientIds = (patientRes.data || []).map(function(c) { return c.user_id; });
     if (patientIds.length > 0) {
-      db.from('messages').select('id', { count: 'exact', head: true })
-        .eq('read', false).eq('sender_role', 'consumer')
+      var unread = await db.from('messages')
+        .select('id', { count: 'exact', head: true })
         .in('thread_id', patientIds)
-        .then(function(r) { if (!r.error) document.getElementById('clStatUnread').textContent = r.count || 0; })
-        .catch(function() { document.getElementById('clStatUnread').textContent = '0'; });
+        .eq('sender_role', 'consumer')
+        .eq('read', false);
+      document.getElementById('clStatUnread').textContent = unread.count || 0;
     } else {
-      document.getElementById('clStatUnread').textContent = '0';
+      document.getElementById('clStatUnread').textContent = 0;
     }
-    // Count pending reviews assigned to this clinician
-    db.from('consultations').select('id', { count: 'exact', head: true })
-      .eq('assigned_clinician_id', currentUserId)
-      .eq('review_status', 'pending_review')
-      .then(function(r) { if (!r.error) document.getElementById('clStatPendingReviews').textContent = r.count || 0; })
-      .catch(function() { document.getElementById('clStatPendingReviews').textContent = '0'; });
-  });
+  } catch(e) {
+    console.warn('[Pulse] overview stats failed:', e);
+  }
 }
 
 // Load patient IDs assigned to this clinician (via appointments table AND assigned consultations)

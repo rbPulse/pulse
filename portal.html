@@ -1368,6 +1368,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card.expanded .cl-attn-card-chevron{transform:rotate(90deg);}
 .cl-attn-card-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
 .cl-attn-card.expanded .cl-attn-card-body{display:block;padding-top:16px;}
+@media(max-width:900px){.cl-attn-card-body > div:first-child{grid-template-columns:1fr !important;}}
 .cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .cl-live-section{margin-top:28px;}
 .cl-live-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
@@ -4191,10 +4192,96 @@ function toggleAttentionCard(cardEl) {
   var wasExpanded = cardEl.classList.contains('expanded');
   // Collapse all cards
   document.querySelectorAll('.cl-attn-card.expanded').forEach(function(c) { c.classList.remove('expanded'); });
-  // Toggle this one
   if (!wasExpanded) {
     cardEl.classList.add('expanded');
+    var body = cardEl.querySelector('.cl-attn-card-body');
+    // Only load if not already loaded
+    if (body && body.dataset.loaded !== 'true') {
+      var consultId = cardEl.dataset.consultId;
+      var userId = cardEl.dataset.userId;
+      _loadAttentionCardBody(body, consultId, userId);
+    }
   }
+}
+
+async function _loadAttentionCardBody(bodyEl, consultId, userId) {
+  bodyEl.dataset.loaded = 'true';
+
+  try {
+    var res = await db.from('consultations').select('data').eq('id', consultId).limit(1);
+    if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
+    var d = res.data[0].data || {};
+
+    // Build intake summary
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
+      // LEFT COLUMN: Intake data
+      '<div>' +
+        // Patient info
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Patient Information</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">' +
+          _intakeField('Name', ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || '—') +
+          _intakeField('Email', d.email || '—') +
+          _intakeField('Phone', d.phone_number || '—') +
+          _intakeField('DOB', d.dob || '—') +
+          _intakeField('Sex', d.sex || '—') +
+          _intakeField('State', d.state || '—') +
+          _intakeField('Height', d.height || (d.heightFt ? d.heightFt + '\'' + (d.heightIn || '0') + '"' : '—')) +
+          _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '—') +
+        '</div>' +
+
+        // Goals
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Goals</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">' +
+          (d.goals && d.goals.length ? d.goals.map(function(g) {
+            return '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.08em;padding:3px 10px;border-radius:999px;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);text-transform:capitalize;">' + escapeHtml(g) + '</span>';
+          }).join('') : '<span style="color:var(--grey2);font-size:11px;">None selected</span>') +
+        '</div>' +
+
+        // Medical History
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medical History</div>' +
+        '<div style="margin-bottom:16px;">' +
+          (d.med_history && d.med_history.length
+            ? d.med_history.map(function(h) {
+                var isRisk = ['cancer_active','pregnancy','transplant'].indexOf(h) !== -1;
+                return '<span style="font-size:11px;display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:4px;' +
+                  (isRisk ? 'background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.2);color:rgba(255,130,130,0.8);' : 'background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--grey);') +
+                  '">' + escapeHtml(h.replace(/_/g, ' ')) + '</span>';
+              }).join('')
+            : '<span style="color:var(--grey2);font-size:11px;">None reported</span>') +
+        '</div>' +
+
+        // Medications
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medications</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.medications || 'None reported') + '</div>' +
+
+        // Peptide Use
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Peptide / Hormone Use</div>' +
+        '<div style="font-size:12px;color:var(--grey);line-height:1.5;">' + escapeHtml(d.currentPeptides === 'yes' ? 'Yes — ' + (d.peptideDetailText || 'No details') : d.currentPeptides === 'no' ? 'No' : 'Not specified') + '</div>' +
+      '</div>' +
+
+      // RIGHT COLUMN: Messaging placeholder (Phase B2)
+      '<div id="attn-msg-' + consultId + '">' +
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Messages</div>' +
+        '<div style="color:var(--grey2);font-size:11px;">Messaging will appear here.</div>' +
+      '</div>' +
+    '</div>' +
+
+    // ACTION BUTTONS (Phase B3 placeholder)
+    '<div id="attn-actions-' + consultId + '" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);"></div>';
+
+    bodyEl.innerHTML = html;
+
+  } catch(e) {
+    console.warn('[Pulse] card body load failed:', e);
+    bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
+  }
+}
+
+function _intakeField(label, value) {
+  return '<div style="margin-bottom:4px;">' +
+    '<div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);">' + label + '</div>' +
+    '<div style="font-size:12px;color:#fff;">' + escapeHtml(value) + '</div>' +
+  '</div>';
 }
 
 async function loadLiveConsultsSection() {

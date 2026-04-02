@@ -2032,13 +2032,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Patients</div>
         <div class="tab-title">Your patients.</div>
         <div class="filter-bar">
-          <div class="filter-pill active" id="pflt-all"            onclick="filterPatients('all',this)">All</div>
-          <div class="filter-pill"        id="pflt-pending_review" onclick="filterPatients('pending_review',this)">Pending Review</div>
-          <div class="filter-pill"        id="pflt-active"         onclick="filterPatients('active',this)">Active</div>
+          <div class="filter-pill active" id="pflt-all"               onclick="filterPatients('all',this)">All</div>
+          <div class="filter-pill"        id="pflt-awaiting_review"  onclick="filterPatients('awaiting_review',this)">Awaiting Review</div>
+          <div class="filter-pill"        id="pflt-in_review"        onclick="filterPatients('in_review',this)">In Review</div>
+          <div class="filter-pill"        id="pflt-live_consult"     onclick="filterPatients('live_consult',this)">Live Consult</div>
+          <div class="filter-pill"        id="pflt-active"           onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-awaiting_purchase" onclick="filterPatients('awaiting_purchase',this)">Awaiting Purchase</div>
-          <div class="filter-pill"        id="pflt-pending"        onclick="filterPatients('pending',this)">Pending</div>
-          <div class="filter-pill"        id="pflt-notrx"          onclick="filterPatients('notrx',this)">Not Prescribed</div>
-          <div class="filter-pill"        id="pflt-seen"           onclick="filterPatients('seen',this)">Recently Seen</div>
+          <div class="filter-pill"        id="pflt-notrx"            onclick="filterPatients('notrx',this)">Not Prescribed</div>
+          <div class="filter-pill"        id="pflt-withdrawn"        onclick="filterPatients('withdrawn',this)">Withdrawn</div>
         </div>
         <div style="padding:8px 0 4px;">
           <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
@@ -6424,7 +6425,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','pending_review','active','awaiting_purchase','pending','notrx','seen'].forEach(function(f) {
+  ['all','awaiting_review','in_review','live_consult','active','awaiting_purchase','notrx','withdrawn'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -6499,22 +6500,20 @@ function renderPatientList(filter) {
 
   // Apply filter
   var patients = rows;
-  // Pending Review = async review workflow, awaiting clinician review
-  if (filter === 'pending_review') patients = rows.filter(function(p){ return p.review_status === 'pending_review'; });
+  // Awaiting Review = async review workflow, awaiting clinician review
+  if (filter === 'awaiting_review') patients = rows.filter(function(p){ return p.review_status === 'pending_review'; });
+  // In Review = clinician has started reviewing
+  if (filter === 'in_review') patients = rows.filter(function(p){ return p.review_status === 'in_review'; });
+  // Live Consult = live consult requested or scheduled
+  if (filter === 'live_consult') patients = rows.filter(function(p){ return p.review_status === 'live_consult_requested' || p.review_status === 'live_consult_scheduled'; });
   // Active = prescribed AND purchase completed
   if (filter === 'active')   patients = rows.filter(function(p){ return (p.review_status === 'prescribed' && p.purchase_status === 'completed') || (p.prescriptionGiven === true && p.purchase_status === 'completed'); });
   // Awaiting Purchase = prescribed but purchase not yet completed
   if (filter === 'awaiting_purchase') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status !== 'completed'; });
-  // Pending = no evaluation yet (excludes pending_review which has its own filter)
-  if (filter === 'pending')  patients = rows.filter(function(p){ return (p.prescriptionGiven === null || p.prescriptionGiven === undefined) && p.review_status !== 'pending_review'; });
   // Not Prescribed = evaluation submitted, prescription = no
-  if (filter === 'notrx')    patients = rows.filter(function(p){ return p.prescriptionGiven === false; });
-  if (filter === 'seen')     patients = rows.filter(function(p){
-    // "recently seen" — joined within last 30 days
-    if (!p.memberSince) return false;
-    var d = new Date(p.memberSince);
-    return (Date.now() - d.getTime()) < 30 * 24 * 60 * 60 * 1000;
-  });
+  if (filter === 'notrx')    patients = rows.filter(function(p){ return p.prescriptionGiven === false || p.review_status === 'not_prescribed'; });
+  // Withdrawn
+  if (filter === 'withdrawn') patients = rows.filter(function(p){ return p.review_status === 'withdrawn'; });
 
   // Apply search filter (case-insensitive, by name or protocol)
   if (_patSearch) {
@@ -6804,8 +6803,8 @@ function buildPatientDetail(p) {
         '<div class="pdp-info-label">Last Message</div>' +
         '<div class="pdp-info-value" id="pdpLastMsg-' + escapeAttr(p.id) + '"><span class="skeleton-pulse" style="display:inline-block;width:60px;height:11px;border-radius:4px;"></span></div>' +
       '</div>' +
-      '<div class="pdp-info-row">' +
-        '<div class="pdp-info-label">Upcoming Appts</div>' +
+      '<div class="pdp-info-row" id="pdpUpcomingApptsRow-' + escapeAttr(p.id) + '">' +
+        '<div class="pdp-info-label">Live Consults</div>' +
         '<div class="pdp-info-value" id="pdpUpcomingAppts-' + escapeAttr(p.id) + '"><span class="skeleton-pulse" style="display:inline-block;width:40px;height:11px;border-radius:4px;"></span></div>' +
       '</div>' +
     '</div>' +
@@ -7146,12 +7145,15 @@ function _loadPatientActivity(patientId) {
           return;
         }
         var appts = res.data || [];
-        if (countEl) countEl.textContent = appts.length === 0 ? 'None' : String(appts.length);
-        if (!listEl) return;
         if (appts.length === 0) {
-          listEl.innerHTML = '';
+          var rowEl = document.getElementById('pdpUpcomingApptsRow-' + patientId);
+          if (rowEl) rowEl.style.display = 'none';
+          if (countEl) countEl.textContent = '0';
+          if (listEl) listEl.innerHTML = '';
           return;
         }
+        if (countEl) countEl.textContent = String(appts.length);
+        if (!listEl) return;
         var apptHtml = '<div class="pdp-appt-list">';
         for (var ai = 0; ai < appts.length; ai++) {
           var appt = appts[ai];

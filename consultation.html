@@ -316,6 +316,24 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
   .booking-summary-row{flex-direction:column;gap:2px;margin-bottom:10px;}
   .booking-summary-row span:first-child{font-size:10px;}
 }
+/* ── Review Hub Messaging ── */
+.review-msg-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;}
+.review-msg-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.review-msg-header-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);}
+.review-msg-list{padding:16px;max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:120px;}
+.review-msg-empty{text-align:center;padding:32px 16px;color:var(--grey2);font-size:12px;line-height:1.6;}
+.review-msg-bubble{max-width:80%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.5;word-break:break-word;}
+.review-msg-bubble.consumer{background:rgba(255,255,255,0.06);color:var(--grey);align-self:flex-start;border-bottom-left-radius:2px;}
+.review-msg-bubble.clinician{background:rgba(58,122,92,0.12);color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
+.review-msg-bubble-meta{font-family:'DM Mono',monospace;font-size:8px;color:var(--grey2);margin-top:4px;letter-spacing:0.04em;}
+.review-msg-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);}
+.review-msg-input{flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;resize:none;min-height:40px;max-height:100px;transition:border-color .2s;}
+.review-msg-input::placeholder{color:var(--grey2);}
+.review-msg-input:focus{border-color:rgba(255,255,255,0.15);}
+.review-msg-send{background:var(--green);border:none;border-radius:8px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#000;font-weight:500;cursor:pointer;transition:opacity .2s;white-space:nowrap;}
+.review-msg-send:hover{opacity:0.85;}
+.review-msg-send:disabled{opacity:0.35;cursor:not-allowed;}
+
 @media(max-width:400px){
   .progress-dot{width:18px;height:18px;font-size:7px;}
   .progress-line{margin:0 1px;margin-bottom:10px;}
@@ -594,8 +612,22 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
     </div>
 
-    <!-- Messaging placeholder - Phase 4 will fill this -->
-    <div id="reviewMessaging"></div>
+    <!-- Messaging -->
+    <div id="reviewMessaging">
+      <div class="review-msg-wrap">
+        <div class="review-msg-header">
+          <span class="review-msg-header-title">Messages</span>
+          <span id="reviewMsgStatus" style="font-family:'DM Mono',monospace;font-size:8px;color:var(--grey2);letter-spacing:0.06em;"></span>
+        </div>
+        <div class="review-msg-list" id="reviewMsgList">
+          <div class="review-msg-empty">Your clinician may reach out with questions — you can also message them here.</div>
+        </div>
+        <div class="review-msg-input-wrap">
+          <textarea class="review-msg-input" id="reviewMsgInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReviewMessage();}"></textarea>
+          <button class="review-msg-send" id="reviewMsgSend" onclick="sendReviewMessage()">Send</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Booking placeholder - Phase 8 will fill this -->
     <div id="reviewBooking" style="display:none;"></div>
@@ -1062,6 +1094,9 @@ function submitStep1(){
             if(btn) btn.innerHTML = 'Saving intake...';
             saveFullIntake().then(function(){
               if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+              var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
+              var _u = r2.data.user || (r2.data.session ? r2.data.session.user : null);
+              if(_u) initReviewMessaging(_u.id, _fn.trim() || _u.email.split('@')[0]);
               goToStep(2);
             }).catch(function(e){
               if(btn){ btn.disabled = false; btn.innerHTML = origText; }
@@ -1079,6 +1114,9 @@ function submitStep1(){
       if(btn) btn.innerHTML = 'Saving intake...';
       saveFullIntake().then(function(){
         if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+        var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
+        var _u = r.data.user;
+        if(_u) initReviewMessaging(_u.id, _fn.trim() || _u.email.split('@')[0]);
         goToStep(2);
       }).catch(function(e){
         if(btn){ btn.disabled = false; btn.innerHTML = origText; }
@@ -1095,6 +1133,8 @@ function submitStep1(){
     if(btn){ btn.disabled = true; btn.innerHTML = 'Saving intake...'; }
     saveFullIntake().then(function(){
       if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
+      if(window._sessionUser) initReviewMessaging(window._sessionUser.id, _fn.trim() || (window._sessionUser.email||'').split('@')[0]);
       goToStep(2);
     }).catch(function(e){
       if(btn){ btn.disabled = false; btn.innerHTML = origText; }
@@ -2409,6 +2449,129 @@ async function _updateReminderFlags() {
     await client.from('consultations').update({ data: data }).eq('id', _consultationId);
   } catch(e) { console.warn('[Pulse] reminder flag update failed:', e); }
 }
+
+// ══════════════════════════════════
+// REVIEW HUB MESSAGING
+// ══════════════════════════════════
+var _reviewMsgPollTimer = null;
+var _reviewMsgUserId = null;
+var _reviewMsgUserName = null;
+
+function initReviewMessaging(userId, userName) {
+  _reviewMsgUserId = userId;
+  _reviewMsgUserName = userName || 'Member';
+  loadReviewMessages();
+  // Poll every 15 seconds
+  if (_reviewMsgPollTimer) clearInterval(_reviewMsgPollTimer);
+  _reviewMsgPollTimer = setInterval(loadReviewMessages, 15000);
+}
+
+function stopReviewMessaging() {
+  if (_reviewMsgPollTimer) { clearInterval(_reviewMsgPollTimer); _reviewMsgPollTimer = null; }
+}
+
+async function loadReviewMessages() {
+  if (!_reviewMsgUserId || !window._sbClient) return;
+  try {
+    var r = await window._sbClient.from('messages')
+      .select('*')
+      .eq('thread_id', _reviewMsgUserId)
+      .order('created_at', { ascending: true });
+    if (r.error) { console.warn('[Pulse] msg load error:', r.error); return; }
+    renderReviewMessages(r.data || []);
+    // Mark clinician messages as read
+    var unread = (r.data || []).filter(function(m) { return m.sender_role === 'clinician' && !m.read; });
+    if (unread.length > 0) {
+      var ids = unread.map(function(m) { return m.id; });
+      window._sbClient.from('messages').update({ read: true }).in('id', ids).then(function(){});
+    }
+  } catch(e) { console.warn('[Pulse] msg load failed:', e); }
+}
+
+function renderReviewMessages(messages) {
+  var list = document.getElementById('reviewMsgList');
+  if (!list) return;
+  if (!messages.length) {
+    list.innerHTML = '<div class="review-msg-empty">Your clinician may reach out with questions — you can also message them here.</div>';
+    return;
+  }
+  list.innerHTML = messages.map(function(m) {
+    var cls = m.sender_role === 'clinician' ? 'clinician' : 'consumer';
+    var name = m.sender_name || m.sender_role;
+    var time = _reviewTimeAgo(m.created_at);
+    return '<div class="review-msg-bubble ' + cls + '">' +
+      _escMsg(m.body) +
+      '<div class="review-msg-bubble-meta">' + _escMsg(name) + ' · ' + time + '</div>' +
+      '</div>';
+  }).join('');
+  // Scroll to bottom
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendReviewMessage() {
+  var input = document.getElementById('reviewMsgInput');
+  var btn = document.getElementById('reviewMsgSend');
+  if (!input || !btn) return;
+  var text = input.value.trim();
+  if (!text || !_reviewMsgUserId || !window._sbClient) return;
+
+  btn.disabled = true;
+  input.value = '';
+
+  // Optimistic UI
+  var list = document.getElementById('reviewMsgList');
+  var emptyEl = list.querySelector('.review-msg-empty');
+  if (emptyEl) emptyEl.remove();
+  var bubble = document.createElement('div');
+  bubble.className = 'review-msg-bubble consumer';
+  bubble.innerHTML = _escMsg(text) + '<div class="review-msg-bubble-meta">' + _escMsg(_reviewMsgUserName) + ' · just now</div>';
+  list.appendChild(bubble);
+  list.scrollTop = list.scrollHeight;
+
+  try {
+    var r = await window._sbClient.from('messages').insert({
+      thread_id: _reviewMsgUserId,
+      sender_id: _reviewMsgUserId,
+      sender_role: 'consumer',
+      sender_name: _reviewMsgUserName,
+      body: text,
+      read: false
+    });
+    if (r.error) console.warn('[Pulse] msg send error:', r.error);
+  } catch(e) { console.warn('[Pulse] msg send failed:', e); }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function _reviewTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function _escMsg(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var msgInput = document.getElementById('reviewMsgInput');
+  if (msgInput) {
+    msgInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+  }
+});
 </script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -2479,6 +2642,8 @@ window._sbClient = createClient(
       if (reviewStatus === 'pending_review' || reviewStatus === 'in_review') {
         await _populateReviewHub();
         showStep(2);
+        var _memberName = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
+        initReviewMessaging(session.user.id, _memberName || session.user.email.split('@')[0]);
         return;
       }
 
@@ -2488,6 +2653,8 @@ window._sbClient = createClient(
         var bookingEl = document.getElementById('reviewBooking');
         if (bookingEl) bookingEl.style.display = 'block';
         showStep(2);
+        var _memberName2 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
+        initReviewMessaging(session.user.id, _memberName2 || session.user.email.split('@')[0]);
         return;
       }
 
@@ -2495,6 +2662,8 @@ window._sbClient = createClient(
         // Phase 9: show step 2 with countdown
         await _populateReviewHub();
         showStep(2);
+        var _memberName3 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
+        initReviewMessaging(session.user.id, _memberName3 || session.user.email.split('@')[0]);
         return;
       }
 

@@ -913,11 +913,12 @@ function createUser() {
   var firstName = document.getElementById('newUserFirstName').value.trim();
   var lastName = document.getElementById('newUserLastName').value.trim();
   var baseRole = document.getElementById('newUserRole').value;
-  var role = baseRole;
+  var adminType = null;
   if (baseRole === 'admin') {
-    role = document.getElementById('newUserAdminType').value;
+    adminType = document.getElementById('newUserAdminType').value;
   }
-  var displayName = role === 'clinician' ? 'Dr. ' + (lastName || firstName) : ((firstName + ' ' + lastName).trim() || email.split('@')[0]);
+  var role = baseRole; // member, clinician, or admin
+  var displayName = baseRole === 'clinician' ? 'Dr. ' + (lastName || firstName) : ((firstName + ' ' + lastName).trim() || email.split('@')[0]);
 
   if (!email || !password) {
     showToast('Email and password are required', 'error');
@@ -976,7 +977,7 @@ function createUser() {
         last_name: lastName || null,
         display_name: displayName || email.split('@')[0],
         role: role,
-        admin_role: (role === 'admin' || role === 'super_admin') ? role : null,
+        admin_role: adminType,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

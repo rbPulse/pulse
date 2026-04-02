@@ -899,6 +899,9 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <div style="margin-top:32px;text-align:center;">
         <a href="index.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;background:rgba(255,255,255,0.08);color:var(--grey);">Return Home</a>
       </div>
+      <div style="margin-top:16px;text-align:center;">
+        <button onclick="startNewConsultation()" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);background:none;border:1px solid rgba(58,122,92,0.3);padding:10px 20px;border-radius:8px;cursor:pointer;">Start New Consultation</button>
+      </div>
     </div>
 
     <div class="disclaimer-footer">
@@ -916,6 +919,42 @@ var selectedGoals = [];
 var _intakeCompleted = false;
 var _reminderFlags = { reminder_24h: false, reminder_1h: false };
 var _consultationId = null; // set after first save (booking)
+
+// ── Start New Consultation (after withdrawn or not_prescribed) ──
+function startNewConsultation() {
+  _consultationId = null;
+  selectedDate = null;
+  selectedSlot = null;
+  // Reset form fields
+  document.querySelectorAll('#step-1 input, #step-1 select, #step-1 textarea').forEach(function(el) {
+    if (el.type === 'checkbox') el.checked = false;
+    else el.value = '';
+  });
+  document.querySelectorAll('.goal-chip').forEach(function(c) { c.classList.remove('selected'); });
+  // Re-fill email from session if available
+  if (window._sessionUser && window._sessionUser.email) {
+    var emailField = document.getElementById('intakeEmail');
+    if (emailField) emailField.value = window._sessionUser.email;
+    // Hide password field since already logged in
+    var passField = document.getElementById('intakePassword');
+    var passLabel = passField ? passField.closest('.form-group') : null;
+    if (passLabel) passLabel.style.display = 'none';
+  }
+  // Pre-fill basic info from previous consultation data
+  var cd = window._lastConsultationData || {};
+  if (cd.first_name) { var fn = document.getElementById('firstName'); if (fn) fn.value = cd.first_name; }
+  if (cd.last_name) { var ln = document.getElementById('lastName'); if (ln) ln.value = cd.last_name; }
+  if (cd.phone) { var ph = document.getElementById('intakePhone'); if (ph) ph.value = cd.phone; }
+  if (cd.address) { var addr = document.getElementById('intakeAddress'); if (addr) addr.value = cd.address; }
+  if (cd.city) { var ct = document.getElementById('intakeCity'); if (ct) ct.value = cd.city; }
+  if (cd.state) { var st = document.getElementById('intakeState'); if (st) st.value = cd.state; }
+  if (cd.zip) { var zp = document.getElementById('intakeZip'); if (zp) zp.value = cd.zip; }
+  if (cd.dob) { var db = document.getElementById('intakeDob'); if (db) db.value = cd.dob; }
+  // Show step 1
+  var step1El = document.getElementById('step-1');
+  if (step1El) step1El.style.display = '';
+  goToStep(1);
+}
 
 // ── Goal chip toggle (step 3 chips) ──
 function _initGoalChips() {
@@ -2368,7 +2407,8 @@ async function _populateStep6() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) return;
 
-    // Get clinician name from the appointment
+    // Get clinician name from the appointment or consultation's assigned_clinician_id
+    var _step6ClinicianResolved = false;
     if (_memberApptId) {
       var apptRes = await client.from('appointments').select('clinician_id').eq('id', _memberApptId).limit(1);
       if (apptRes.data && apptRes.data.length > 0 && apptRes.data[0].clinician_id) {
@@ -2379,16 +2419,29 @@ async function _populateStep6() {
           if (nameEl) nameEl.textContent = clName;
           var nameEl2 = document.getElementById('step6AssignedClinicianName');
           if (nameEl2) nameEl2.textContent = clName;
+          _step6ClinicianResolved = true;
         }
       }
     }
 
     // Check if clinician has assigned a protocol
-    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, no_prescription_reason')
+    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, no_prescription_reason, assigned_clinician_id')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
     var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
     var rxGiven = consultation ? consultation.prescription_given : null;
+
+    // Fallback: resolve clinician name from consultation's assigned_clinician_id
+    if (!_step6ClinicianResolved && consultation && consultation.assigned_clinician_id) {
+      var clFallback = await client.from('profiles').select('display_name').eq('user_id', consultation.assigned_clinician_id).limit(1);
+      if (clFallback.data && clFallback.data.length > 0 && clFallback.data[0].display_name) {
+        var clNameFb = clFallback.data[0].display_name;
+        var nameElFb = document.getElementById('step6ClinicianName');
+        if (nameElFb) nameElFb.textContent = clNameFb;
+        var nameEl2Fb = document.getElementById('step6AssignedClinicianName');
+        if (nameEl2Fb) nameEl2Fb.textContent = clNameFb;
+      }
+    }
 
     if (rxGiven === false || assignedProto === 'no prescription') {
       // STATE C: Not prescribed
@@ -2984,16 +3037,19 @@ window._sbClient = createClient(
       }
     }
 
-    // Check for existing consultation (include review_status and assigned_clinician_id)
+    // Store session user for later use (e.g. startNewConsultation)
+    window._sessionUser = session.user;
+
+    // Check for existing consultation (most recent, any status)
     var res = await window._sbClient.from('consultations')
-      .select('id, data, review_status, assigned_clinician_id, live_consult_message, purchase_status, created_at')
+      .select('id, data, review_status, assigned_clinician_id, live_consult_message, purchase_status, protocol_assigned, prescription_given, no_prescription_reason, created_at')
       .eq('user_id', session.user.id)
-      .not('review_status', 'eq', 'withdrawn')
       .order('created_at', { ascending: false })
       .limit(1);
     var hasConsultation = res.data && res.data.length > 0;
     var consultation = hasConsultation ? res.data[0] : null;
     var consultationData = hasConsultation ? (consultation.data || {}) : {};
+    window._lastConsultationData = consultationData;
     var reviewStatus = hasConsultation ? (consultation.review_status || null) : null;
     if (hasConsultation) _consultationId = consultation.id;
 
@@ -3129,21 +3185,14 @@ window._sbClient = createClient(
         document.getElementById('reviewBooking').style.display = 'none';
         var withdrawHome = document.createElement('div');
         withdrawHome.style.cssText = 'margin-top:24px;text-align:center;';
-        withdrawHome.innerHTML = '<a href="index.html" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);text-decoration:none;">Return Home</a>';
+        withdrawHome.innerHTML = '<a href="index.html" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);text-decoration:none;">Return Home</a>' +
+          '<div style="margin-top:16px;">' +
+            '<button onclick="startNewConsultation()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);background:none;border:1px solid rgba(58,122,92,0.3);padding:10px 20px;border-radius:8px;cursor:pointer;">Start New Consultation</button>' +
+          '</div>';
         document.getElementById('reviewStatusCard').after(withdrawHome);
         showStep(2);
         return;
       }
-    }
-
-    // Also check for withdrawn consultations separately (user may have only withdrawn ones)
-    if (!hasConsultation) {
-      var wRes = await window._sbClient.from('consultations')
-        .select('id, review_status')
-        .eq('user_id', session.user.id)
-        .eq('review_status', 'withdrawn')
-        .limit(1);
-      // Withdrawn consultations exist but no active ones — let them start fresh (step 1)
     }
 
     // Check for completed appointments (legacy path — supports old consultations without review_status)
@@ -3221,7 +3270,6 @@ window._sbClient = createClient(
     // No consultation — show step 1 (intake form)
     // Pre-fill email field from session and mark as logged in
     if (session.user && session.user.email) {
-      window._sessionUser = session.user;
       var emailField = document.getElementById('intakeEmail');
       if (emailField) emailField.value = session.user.email;
       // Hide password field if already logged in

@@ -1538,7 +1538,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-section-label">Patients</div>
         <div class="sidebar-item" id="nav-cl-appointments" onclick="switchTab('cl-appointments')">
           <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          <span class="sidebar-item-label">Appointments</span>
+          <span class="sidebar-item-label">Live Consults</span>
         </div>
         <div class="sidebar-item" id="nav-cl-patients" onclick="switchTab('cl-patients')">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1578,7 +1578,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="pbb-item active" id="pbb-cl-overview"      onclick="switchTab('cl-overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
         <div class="pbb-item"        id="pbb-cl-schedule"      onclick="switchTab('cl-schedule')"><span class="pbb-icon">▦</span><span class="pbb-label">Schedule</span></div>
         <div class="pbb-item"        id="pbb-cl-patients"      onclick="switchTab('cl-patients')"><span class="pbb-icon">♟</span><span class="pbb-label">Patients</span></div>
-        <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Appts</span></div>
+        <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Consults</span></div>
         <div class="pbb-item"        id="pbb-cl-messages"      onclick="switchTab('cl-messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
         <div class="pbb-item"        id="pbb-cl-settings"      onclick="switchTab('cl-settings')"><span class="pbb-icon">⚙</span><span class="pbb-label">Settings</span></div>
       </div>
@@ -1940,9 +1940,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Schedule</div>
         <div class="tab-title">Manage availability.</div>
 
-        <!-- Appointment settings -->
+        <!-- Consult settings -->
         <div class="p-card">
-          <div class="compounds-label">Appointment Settings</div>
+          <div class="compounds-label">Consult Settings</div>
           <div class="settings-grid">
             <div class="settings-field">
               <label class="settings-field-lbl">Default Duration</label>
@@ -1954,7 +1954,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               </select>
             </div>
             <div class="settings-field">
-              <label class="settings-field-lbl">Buffer Between Appointments</label>
+              <label class="settings-field-lbl">Buffer Between Consults</label>
               <select class="book-select" id="clBufferSelect" onchange="APPT_BUFFER=parseInt(this.value)">
                 <option value="0">No buffer</option>
                 <option value="10">10 minutes</option>
@@ -2018,14 +2018,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
 
-      <!-- ── CLINICIAN APPOINTMENTS ── -->
+      <!-- ── CLINICIAN LIVE CONSULTS ── -->
       <div class="portal-tab" id="tab-cl-appointments">
-        <div class="tab-eyebrow">Appointments</div>
-        <div class="tab-title">All appointments.</div>
+        <div class="tab-eyebrow">Live Consults</div>
+        <div class="tab-title">Video consultations requested for patients.</div>
         <div class="filter-bar">
-          <div class="filter-pill active" id="flt-today"    onclick="filterClAppts('today',this)">Today</div>
-          <div class="filter-pill"        id="flt-upcoming" onclick="filterClAppts('upcoming',this)">Upcoming</div>
-          <div class="filter-pill"        id="flt-past"     onclick="filterClAppts('past',this)">Past</div>
+          <div class="filter-pill active" id="flt-requested"  onclick="filterClAppts('requested',this)">Requested</div>
+          <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Scheduled</div>
+          <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
         </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>
@@ -2151,7 +2151,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </div>
           </div>
           <div class="settings-section">
-            <div class="settings-section-lbl">Appointment Preferences</div>
+            <div class="settings-section-lbl">Consult Preferences</div>
             <div class="settings-grid">
               <div class="settings-field">
                 <label class="settings-field-lbl">Default Duration</label>
@@ -2270,7 +2270,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <textarea class="p15-textarea" id="p15-cl-cancel-notes" placeholder="Any additional details…"></textarea>
     <div class="p15-footer">
       <button class="p15-btn-dismiss" onclick="_closeP15Modal('p15-cl-cancel-overlay')">Back</button>
-      <button class="p15-btn-cancel-action" onclick="_confirmClCancel()">Cancel Appointment</button>
+      <button class="p15-btn-cancel-action" onclick="_confirmClCancel()">Cancel Consult</button>
     </div>
   </div>
 </div>
@@ -2325,7 +2325,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </select>
         </div>
         <div class="settings-field">
-          <label class="settings-field-lbl">Default Appointment Duration</label>
+          <label class="settings-field-lbl">Default Consult Duration</label>
           <select class="book-select" id="setupDuration">
             <option value="20">20 minutes</option>
             <option value="30" selected>30 minutes</option>
@@ -3797,8 +3797,8 @@ function initClinicianPortal(user, role, greeting) {
   // Schedule tab
   initClSchedule();
 
-  // Appointments tab
-  filterClAppts('today');
+  // Live Consults tab
+  filterClAppts('requested');
 
   // Patients tab
   initClPatients();
@@ -4748,7 +4748,7 @@ function _updateClDayLabel(dt) {
   if (!label) return;
   var today = new Date(); today.setHours(0,0,0,0);
   var isToday = dt.toISOString().slice(0,10) === today.toISOString().slice(0,10);
-  label.textContent = isToday ? "Today's Appointments" : DAYS[dt.getDay()] + ', ' + MONTHS[dt.getMonth()] + ' ' + dt.getDate();
+  label.textContent = isToday ? "Today's Live Consults" : DAYS[dt.getDay()] + ', ' + MONTHS[dt.getMonth()] + ' ' + dt.getDate();
 }
 
 function _renderClOverviewCal() {
@@ -5039,8 +5039,8 @@ function saveAvailability() {
   if (saved) { saved.style.display = 'inline'; setTimeout(function(){ saved.style.display = 'none'; }, 2400); }
 }
 
-// ── CLINICIAN APPOINTMENTS FILTER ──
-var _clApptFilter = 'today';
+// ── CLINICIAN LIVE CONSULTS FILTER ──
+var _clApptFilter = 'requested';
 // Module-level cache of fetched appointments (Phase 23)
 var _clAppointments = [];
 // Loaded real appointment rows from DB (or mock); shared across filters
@@ -5048,7 +5048,7 @@ var _clApptRows = null;
 
 function filterClAppts(filter, pillEl) {
   _clApptFilter = filter;
-  ['today','upcoming','past'].forEach(function(f) {
+  ['requested','scheduled','completed'].forEach(function(f) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -5107,7 +5107,7 @@ function _loadClApptsQuery(filter) {
             return {
               _id: a.id, date: dateLabel, time: timeLabel, fullTimeStr: fullTimeStr,
               scheduledAt: dt, isPast: isPast, isToday: isToday,
-              patient: displayName, initials: initials, type: 'Appointment',
+              patient: displayName, initials: initials, type: 'Live Consult',
           dur: (a.duration_minutes || 30) + ' min',
           status: displayStatus,
           _rawStatus: a.status,
@@ -5128,41 +5128,27 @@ function _loadClApptsQuery(filter) {
 }
 
 function _applyClApptFilter(rows, filter) {
-  var now = new Date();
-  var todayStart = new Date(now); todayStart.setHours(0,0,0,0);
   var filtered;
-  if (filter === 'today') {
+  if (filter === 'requested') {
+    // Live consult requested but not yet scheduled — no appointment row exists,
+    // or appointment status is still 'pending' without a confirmed scheduled_at
     filtered = rows.filter(function(a) {
       var st = a._rawStatus || a.status;
-      if (st === 'completed' || st === 'cancelled' || st === 'cancelled_by_member' || st === 'cancelled_by_clinician') return false;
-      return a.isToday || a.date === 'Today' ||
-        (a.scheduledAt && a.scheduledAt >= todayStart && a.scheduledAt <= new Date(todayStart.getTime() + 86399999));
+      return st === 'live_consult_requested';
     });
-  } else if (filter === 'upcoming') {
-    filtered = rows.filter(function(a) {
-      var apptTime = a.scheduledAt || null;
-      var isAfterToday = apptTime ? apptTime > new Date(todayStart.getTime() + 86399999) : false;
-      var st = a._rawStatus || a.status;
-      return isAfterToday && (st === 'confirmed' || st === 'pending');
-    });
-  } else if (filter === 'past') {
+  } else if (filter === 'scheduled') {
+    // Patient has booked — appointment exists with pending/confirmed status
     filtered = rows.filter(function(a) {
       var st = a._rawStatus || a.status;
-      // Completed appointments always show in past regardless of date
-      if (st === 'completed') return true;
-      var apptTime = a.scheduledAt || null;
-      var isBeforeNow = apptTime ? apptTime < now : false;
-      return isBeforeNow && st !== 'cancelled' && st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician';
+      return st === 'pending' || st === 'confirmed';
     });
-    // Past shows most-recent first
-    filtered = filtered.slice().sort(function(a,b){ return b.scheduledAt - a.scheduledAt; });
   } else if (filter === 'completed') {
-    filtered = rows.filter(function(a) { return a.status === 'completed' || (a._rawStatus || a.status) === 'completed'; });
-  } else if (filter === 'cancelled') {
     filtered = rows.filter(function(a) {
       var st = a._rawStatus || a.status;
-      return st === 'cancelled' || st === 'cancelled_by_member' || st === 'cancelled_by_clinician';
+      return st === 'completed';
     });
+    // Show most-recent first
+    filtered = filtered.slice().sort(function(a,b){ return b.scheduledAt - a.scheduledAt; });
   } else {
     filtered = rows;
   }
@@ -5266,7 +5252,7 @@ function _renderApptPatientDetail(patient, appt, panel) {
     '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
     '<div class="pdp-close-row">' +
       '<div><div class="pdp-title">' + escapeHtml(name) + '</div>' +
-      '<div class="pdp-subtitle">Appointment · ' + escapeHtml(appt.fullTimeStr || appt.time || '') + '</div></div>' +
+      '<div class="pdp-subtitle">Live Consult · ' + escapeHtml(appt.fullTimeStr || appt.time || '') + '</div></div>' +
       '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
     '</div>' +
     '<div class="pdp-section"><div class="pdp-section-label">Patient Info</div>' +
@@ -5488,17 +5474,17 @@ function renderApptList(elId, appts, role) {
   if (!el) return;
   if (!appts || appts.length === 0) {
     // Use filter-specific empty state text for clinician appointment list
-    var emptyTitle = 'No appointments.';
+    var emptyTitle = 'No live consults.';
     var emptySub = '';
     if (elId === 'clApptList') {
-      if (_clApptFilter === 'today') {
-        emptyTitle = 'No appointments for today.';
-        emptySub = 'Your schedule is clear for today.';
-      } else if (_clApptFilter === 'upcoming') {
-        emptyTitle = 'No upcoming appointments.';
-        emptySub = 'No confirmed or pending appointments ahead.';
-      } else if (_clApptFilter === 'past') {
-        emptyTitle = 'No past appointments.';
+      if (_clApptFilter === 'requested') {
+        emptyTitle = 'No requested consults.';
+        emptySub = 'No live consult requests at this time.';
+      } else if (_clApptFilter === 'scheduled') {
+        emptyTitle = 'No scheduled consults.';
+        emptySub = 'No confirmed or pending live consults.';
+      } else if (_clApptFilter === 'completed') {
+        emptyTitle = 'No completed consults.';
         emptySub = '';
       }
     }
@@ -6665,7 +6651,7 @@ function buildPatientDetail(p) {
       '</div>' +
 
       '<div class="pdp-section">' +
-        '<div class="pdp-section-label">Appointments</div>' +
+        '<div class="pdp-section-label">Live Consults</div>' +
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Next</div>' +
         nextHtml +
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin:12px 0 6px;">Recent</div>' +
@@ -7905,7 +7891,7 @@ function switchTab(name) {
   if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
   if (name === 'resources')        { initResourcesTab(); }
   if (name === 'cl-schedule')      { initClSchedule(); }
-  if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
+  if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'requested'); }
   if (name === 'cl-patients')      { initClPatients(); }
   if (name === 'cl-overview')       { loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); }
   if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
@@ -8742,7 +8728,7 @@ function _confirmClCancel() {
     }
   }
   var patientName = apptRow ? (apptRow.patient || '—') : '—';
-  console.log('[Pulse] Appointment cancelled by clinician — Patient:', patientName,
+  console.log('[Pulse] Consult cancelled by clinician — Patient:', patientName,
     '| Reason:', reason, '| Notes:', notes || '(none)');
 
   if (PREVIEW_MODE || !currentUserId) {
@@ -8760,12 +8746,12 @@ function _confirmClCancel() {
     if (_clAppointments) _patchCancel(_clAppointments);
     document.querySelectorAll('.appt-detail-panel').forEach(function(p){ p.remove(); });
     _applyClApptFilter(_clApptRows || ALL_APPTS, _clApptFilter);
-    showToast('Appointment cancelled. Patient has been notified.');
+    showToast('Consult cancelled. Patient has been notified.');
     return;
   }
 
   _updateApptStatus(_p15ClCancelApptId, 'cancelled_by_clinician');
-  showToast('Appointment cancelled. Patient has been notified.');
+  showToast('Consult cancelled. Patient has been notified.');
 }
 
 // ─────────────────────────────────────────────────────
@@ -8949,7 +8935,7 @@ function _leaveClinicianSession() {
   if (_clSessionApptId) {
     _showEvaluationForm(_clSessionApptId);
   } else {
-    if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'today');
+    if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'requested');
     switchTab('cl-overview');
   }
 }
@@ -9313,7 +9299,7 @@ async function _submitEvaluation(apptId) {
         if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
         if (typeof loadAttentionCards === 'function') loadAttentionCards();
       } else {
-        if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'today');
+        if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'requested');
         switchTab('cl-overview');
       }
     }, 1500);
@@ -9606,7 +9592,7 @@ function _showClSessionError(msg) {
       - Status shows "Pending"
 
   [ ] 11. CLINICIAN CONFIRMS APPOINTMENT
-      - Log in as clinician → go to Appointments tab
+      - Log in as clinician → go to Live Consults tab
       - New appointment appears with "Pending" badge
       - Click appointment row → detail panel opens
       - Click "Confirm" → badge changes to "Confirmed"
@@ -9615,8 +9601,8 @@ function _showClSessionError(msg) {
 
   [ ] 12. BOTH SEE CONFIRMED APPOINTMENT
       - Consumer: Appointments tab shows "Confirmed" badge
-      - Clinician: Overview "Today's Appointments" shows updated status
-      - Clinician: Appointments tab → "Today" filter shows confirmed
+      - Clinician: Overview "Today's Live Consults" shows updated status
+      - Clinician: Live Consults tab → "Scheduled" filter shows confirmed
 
   [ ] 13. MEMBER SENDS A MESSAGE
       - Consumer: go to Messages tab
@@ -9671,12 +9657,12 @@ function _showClSessionError(msg) {
 
   [ ] 20. CLINICIAN OVERVIEW
       - Stat cards: Appts Today, This Week, Active Patients, Unread Messages
-      - Today's Appointments list renders (or empty state with icon)
+      - Today's Live Consults list renders (or empty state with icon)
       - Recent Activity list populates
       - Availability sidebar summary shows days on/off
 
   [ ] 21. CLINICIAN SCHEDULE
-      - Appointment Settings: duration dropdown, buffer dropdown
+      - Consult Settings: duration dropdown, buffer dropdown
       - Weekly Availability: 7 day rows with time pickers and toggles
       - Save button → "Saved." confirmation
       - Blocked Times: add/remove blocks with day, label, start/end
@@ -9691,7 +9677,7 @@ function _showClSessionError(msg) {
   [ ] 23. CLINICIAN SETTINGS
       - Profile: first name, last name, credentials, specialty
       - Public Profile: bio textarea
-      - Appointment Preferences: duration, timezone
+      - Consult Preferences: duration, timezone
       - Notifications: toggle switches
       - Security: Change Password button
       - Save Changes → "Saved ✓" confirmation

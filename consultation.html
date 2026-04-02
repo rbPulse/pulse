@@ -764,7 +764,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <div style="width:48px;height:48px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Your consultation is complete</div>
       <div style="font-size:13px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto 20px;">Your Pulse medical specialist will complete their evaluation within 24 hours. You'll be notified once your protocol recommendation is ready.</div>
-      <button class="btn-primary" onclick="goToStep(6)">View Summary →</button>
+      <button class="btn-primary" onclick="_returnToReviewAfterSession()">Return to Review Hub →</button>
     </div>
   </div>
 
@@ -2135,6 +2135,11 @@ async function _joinDailySession() {
         client.from('appointments').update({ status: 'completed' }).eq('id', _memberApptId)
           .then(function(){}).catch(function(){});
       }
+      // Update consultation review_status to in_review
+      if (_consultationId && client) {
+        client.from('consultations').update({ review_status: 'in_review' }).eq('id', _consultationId)
+          .then(function(){}).catch(function(){});
+      }
       // Show post-call state
       if (container) container.style.display = 'none';
       if (endedEl) endedEl.style.display = 'block';
@@ -2173,6 +2178,17 @@ function _cleanupDaily() {
   }
   var container = document.getElementById('dailyContainer');
   if (container) container.innerHTML = '';
+}
+
+function _returnToReviewAfterSession() {
+  goToStep(2);
+  document.getElementById('reviewStatusText').textContent = 'Finalizing review';
+  var iconSpan = document.querySelector('#reviewStatusCard span');
+  if (iconSpan) iconSpan.textContent = '\u23F3';
+  var stepSub = document.querySelector('#step-2 .step-sub');
+  if (stepSub) stepSub.textContent = 'Your live consultation is complete. Your clinician is finalizing their review.';
+  var apptInfo = document.getElementById('reviewApptInfo');
+  if (apptInfo) apptInfo.remove();
 }
 
 // Protocol data keyed by first selected goal
@@ -2993,6 +3009,13 @@ window._sbClient = createClient(
 
       if (reviewStatus === 'pending_review' || reviewStatus === 'in_review') {
         await _populateReviewHub();
+        if (reviewStatus === 'in_review') {
+          document.getElementById('reviewStatusText').textContent = 'Finalizing review';
+          var iconSpanIR = document.querySelector('#reviewStatusCard span');
+          if (iconSpanIR) iconSpanIR.textContent = '\u23F3';
+          var stepSubIR = document.querySelector('#step-2 .step-sub');
+          if (stepSubIR) stepSubIR.textContent = 'Your live consultation is complete. Your clinician is finalizing their review.';
+        }
         showStep(2);
         var _memberName = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName || session.user.email.split('@')[0]);

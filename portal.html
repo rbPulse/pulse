@@ -274,7 +274,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 }
 /* ── CLINICIAN PORTAL ── */
 .nav-role-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.7);padding:3px 9px;border-radius:999px;}
-.cl-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.cl-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
 .cl-stat-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
 .cl-stat-num{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:#fff;line-height:1;margin-bottom:5px;}
 .cl-stat-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);}
@@ -1866,6 +1866,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="cl-stat-lbl" style="margin-bottom:8px;">Unread Messages</div>
             <div class="cl-stat-num" id="clStatUnread" style="color:var(--green);">—</div>
           </div>
+          <div class="cl-stat-tile">
+            <div class="cl-stat-lbl" style="margin-bottom:8px;">Pending Reviews</div>
+            <div class="cl-stat-num" id="clStatPendingReviews" style="color:rgba(220,180,75,0.85);">—</div>
+          </div>
         </div>
 
         <div class="p-card">
@@ -2010,11 +2014,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Patients</div>
         <div class="tab-title">Your patients.</div>
         <div class="filter-bar">
-          <div class="filter-pill active" id="pflt-all"      onclick="filterPatients('all',this)">All</div>
-          <div class="filter-pill"        id="pflt-active"   onclick="filterPatients('active',this)">Active</div>
-          <div class="filter-pill"        id="pflt-pending"  onclick="filterPatients('pending',this)">Pending</div>
-          <div class="filter-pill"        id="pflt-notrx"    onclick="filterPatients('notrx',this)">Not Prescribed</div>
-          <div class="filter-pill"        id="pflt-seen"     onclick="filterPatients('seen',this)">Recently Seen</div>
+          <div class="filter-pill active" id="pflt-all"            onclick="filterPatients('all',this)">All</div>
+          <div class="filter-pill"        id="pflt-pending_review" onclick="filterPatients('pending_review',this)">Pending Review</div>
+          <div class="filter-pill"        id="pflt-active"         onclick="filterPatients('active',this)">Active</div>
+          <div class="filter-pill"        id="pflt-pending"        onclick="filterPatients('pending',this)">Pending</div>
+          <div class="filter-pill"        id="pflt-notrx"          onclick="filterPatients('notrx',this)">Not Prescribed</div>
+          <div class="filter-pill"        id="pflt-seen"           onclick="filterPatients('seen',this)">Recently Seen</div>
         </div>
         <div style="padding:8px 0 4px;">
           <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
@@ -3055,7 +3060,7 @@ var ALL_APPTS = [
 // Replace with real Supabase queries when backend is ready
 var MOCK_CLINICIAN = {
   name: 'Sarah Chen', title: 'MD', specialty: 'Sports Medicine',
-  stats: { today: 4, week: 18, patients: 47, unread: 3 },
+  stats: { today: 4, week: 18, patients: 47, unread: 3, pendingReviews: 5 },
   todayAppts: [
     { time: '9:00 AM',  patient: 'Marcus T.', type: 'Initial Consult', dur: '45 min', status: 'confirmed' },
     { time: '10:15 AM', patient: 'Dana R.',   type: 'Protocol Review', dur: '30 min', status: 'confirmed' },
@@ -3697,9 +3702,10 @@ function initClinicianPortal(user, role, greeting) {
     document.getElementById('clStatWeek').textContent     = m.stats.week;
     document.getElementById('clStatPatients').textContent = m.stats.patients;
     document.getElementById('clStatUnread').textContent   = m.stats.unread;
+    document.getElementById('clStatPendingReviews').textContent = m.stats.pendingReviews || 0;
   } else {
     // Show "—" while loading, then replace with real counts
-    ['clStatToday','clStatWeek','clStatPatients','clStatUnread'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
+    ['clStatToday','clStatWeek','clStatPatients','clStatUnread','clStatPendingReviews'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
   }
 
@@ -3996,26 +4002,45 @@ function _loadClOverviewStats() {
     } else {
       document.getElementById('clStatUnread').textContent = '0';
     }
+    // Count pending reviews assigned to this clinician
+    db.from('consultations').select('id', { count: 'exact', head: true })
+      .eq('assigned_clinician_id', currentUserId)
+      .eq('review_status', 'pending_review')
+      .then(function(r) { if (!r.error) document.getElementById('clStatPendingReviews').textContent = r.count || 0; })
+      .catch(function() { document.getElementById('clStatPendingReviews').textContent = '0'; });
   });
 }
 
-// Load patient IDs assigned to this clinician (via appointments table)
+// Load patient IDs assigned to this clinician (via appointments table AND assigned consultations)
 function _loadMyPatients(cb) {
   if (_myPatientIds !== null) { cb(_myPatientIds); return; }
-  db.from('appointments').select('consumer_id')
+
+  // Query 1: patients from appointments
+  var apptPromise = db.from('appointments').select('consumer_id')
     .eq('clinician_id', currentUserId)
     .then(function(r) {
-      if (r.error) { _myPatientIds = []; cb([]); return; }
-      var seen = {}; _myPatientIds = [];
-      (r.data || []).forEach(function(a) {
-        if (a.consumer_id && !seen[a.consumer_id]) {
-          seen[a.consumer_id] = true;
-          _myPatientIds.push(a.consumer_id);
-        }
-      });
-      cb(_myPatientIds);
+      if (r.error) return [];
+      return (r.data || []).map(function(a){ return a.consumer_id; }).filter(Boolean);
     })
-    .catch(function() { _myPatientIds = []; cb([]); });
+    .catch(function() { return []; });
+
+  // Query 2: patients from consultations assigned to this clinician
+  var consultPromise = db.from('consultations').select('user_id')
+    .eq('assigned_clinician_id', currentUserId)
+    .in('review_status', ['pending_review','in_review','live_consult_requested','live_consult_scheduled','prescribed','not_prescribed'])
+    .then(function(r) {
+      if (r.error) return [];
+      return (r.data || []).map(function(c){ return c.user_id; }).filter(Boolean);
+    })
+    .catch(function() { return []; });
+
+  Promise.all([apptPromise, consultPromise]).then(function(results) {
+    var seen = {}; _myPatientIds = [];
+    results[0].concat(results[1]).forEach(function(id) {
+      if (id && !seen[id]) { seen[id] = true; _myPatientIds.push(id); }
+    });
+    cb(_myPatientIds);
+  }).catch(function() { _myPatientIds = []; cb([]); });
 }
 
 function _loadClRecentActivity(el) {
@@ -5798,12 +5823,16 @@ function _normalisePatientRow(consultation, profile) {
   var prescribedProtocols = consultation.prescribed_protocols || d.prescribed_protocols || null;
   var evaluationDate = consultation.evaluation_date || d.evaluation_date || null;
 
+  // Review status from the async review workflow
+  var reviewStatus = consultation.review_status || null;
+
   return {
     id:            consultation.user_id,
     name:          name,
     protocol:      protocolName,
     goal:          goal,
     status:        status,
+    review_status: reviewStatus,
     streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
     memberSince:   memberSince,
     email:         d.email || (profile && profile.email) || '',
@@ -5821,7 +5850,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','active','pending','notrx','seen'].forEach(function(f) {
+  ['all','pending_review','active','pending','notrx','seen'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -5841,10 +5870,25 @@ function searchPatients(q) {
 }
 
 // Patient journey status chip
-// NEW = intake done, no appointment
-// SCHEDULED = has upcoming appointment, no protocol yet
-// IN TREATMENT = clinician assigned a protocol
-function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven) {
+// Supports both legacy appointment-based flow and async review workflow
+function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven, reviewStatus) {
+  // Async review workflow statuses take precedence when present
+  if (reviewStatus === 'pending_review') {
+    return '<span class="pat-status-badge" style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);">Pending Review</span>';
+  } else if (reviewStatus === 'in_review') {
+    return '<span class="pat-status-badge" style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">In Review</span>';
+  } else if (reviewStatus === 'live_consult_requested') {
+    return '<span class="pat-status-badge" style="background:rgba(140,100,220,0.1);border:1px solid rgba(140,100,220,0.22);color:rgba(170,140,230,0.85);">Live Consult Requested</span>';
+  } else if (reviewStatus === 'live_consult_scheduled') {
+    return '<span class="pat-status-badge" style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">Scheduled</span>';
+  } else if (reviewStatus === 'prescribed') {
+    return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Prescribed</span>';
+  } else if (reviewStatus === 'not_prescribed') {
+    return '<span class="pat-status-badge" style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);">Not Prescribed</span>';
+  } else if (reviewStatus === 'withdrawn') {
+    return '<span class="pat-status-badge" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);">Withdrawn</span>';
+  }
+  // Legacy appointment-based flow
   if (prescriptionGiven === true) {
     return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Prescribed</span>';
   } else if (prescriptionGiven === false) {
@@ -5878,10 +5922,12 @@ function renderPatientList(filter) {
 
   // Apply filter
   var patients = rows;
+  // Pending Review = async review workflow, awaiting clinician review
+  if (filter === 'pending_review') patients = rows.filter(function(p){ return p.review_status === 'pending_review'; });
   // Active = prescribed (evaluation submitted with prescription=yes)
   if (filter === 'active')   patients = rows.filter(function(p){ return p.prescriptionGiven === true; });
-  // Pending = no evaluation yet
-  if (filter === 'pending')  patients = rows.filter(function(p){ return p.prescriptionGiven === null || p.prescriptionGiven === undefined; });
+  // Pending = no evaluation yet (excludes pending_review which has its own filter)
+  if (filter === 'pending')  patients = rows.filter(function(p){ return (p.prescriptionGiven === null || p.prescriptionGiven === undefined) && p.review_status !== 'pending_review'; });
   // Not Prescribed = evaluation submitted, prescription = no
   if (filter === 'notrx')    patients = rows.filter(function(p){ return p.prescriptionGiven === false; });
   if (filter === 'seen')     patients = rows.filter(function(p){
@@ -5915,7 +5961,7 @@ function renderPatientList(filter) {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
-            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven) +
+            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven, p.review_status) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
@@ -6051,8 +6097,16 @@ function buildPatientDetail(p) {
     : (secondaryGoalsRaw ? [secondaryGoalsRaw] : []);
   var secondaryGoalsStr = secondaryGoals.length > 0 ? secondaryGoals.join(', ') : null;
 
+  var phone         = d.phone || d.phone_number || c.phone || null;
+  var state         = d.state || c.state || null;
+  var height        = d.height || c.height || null;
+  var weight        = d.weight || c.weight || null;
   var medications   = d.medications || d.current_medications || c.medications || null;
   var allergies     = d.allergies || c.allergies || null;
+  var medicalHistory = d.medical_history || d.health_conditions || c.medical_history || null;
+  var peptideUse    = d.peptide_use || d.prior_peptide_use || d.peptides || null;
+  var hormoneUse    = d.hormone_use || d.prior_hormone_use || d.hormones || null;
+  var reviewStatusLabel = c.review_status || null;
 
   // Protocol: top-level column takes precedence
   var protocolName  = c.protocol || d.assigned_protocol || d.protocol || null;
@@ -6084,18 +6138,44 @@ function buildPatientDetail(p) {
   var streakStr = streakVal ? streakVal + ' day' + (streakVal === 1 ? '' : 's') : '0 days';
 
   // ── Two-column info grid ──────────────────────────────────────────────────
+  // Review status chip for detail panel
+  var reviewStatusChipHtml = '';
+  if (reviewStatusLabel === 'pending_review') {
+    reviewStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Pending Review</span>';
+  } else if (reviewStatusLabel === 'in_review') {
+    reviewStatusChipHtml = '<span style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);padding:2px 8px;border-radius:999px;font-size:11px;">In Review</span>';
+  } else if (reviewStatusLabel === 'live_consult_requested') {
+    reviewStatusChipHtml = '<span style="background:rgba(140,100,220,0.1);border:1px solid rgba(140,100,220,0.22);color:rgba(170,140,230,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Live Consult Requested</span>';
+  } else if (reviewStatusLabel === 'live_consult_scheduled') {
+    reviewStatusChipHtml = '<span style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);padding:2px 8px;border-radius:999px;font-size:11px;">Scheduled</span>';
+  } else if (reviewStatusLabel === 'prescribed') {
+    reviewStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Prescribed</span>';
+  } else if (reviewStatusLabel === 'not_prescribed') {
+    reviewStatusChipHtml = '<span style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);padding:2px 8px;border-radius:999px;font-size:11px;">Not Prescribed</span>';
+  } else if (reviewStatusLabel === 'withdrawn') {
+    reviewStatusChipHtml = '<span style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);padding:2px 8px;border-radius:999px;font-size:11px;">Withdrawn</span>';
+  }
+
   var col1 =
     _infoRow('Full Name',       '<span class="--em">' + fullName + '</span>') +
     _infoRow('Email',           email) +
+    _infoRow('Phone',           _fv(phone)) +
     _infoRow('Date of Birth',   _fv(dob)) +
     _infoRow('Age',             _fv(String(_calcAge(dob)))) +
     _infoRow('Sex',             _fv(sex)) +
+    _infoRow('State',           _fv(state)) +
+    _infoRow('Height',          _fv(height)) +
+    _infoRow('Weight',          _fv(weight)) +
     _infoRow('Primary Goal',    _fv(primaryGoal)) +
     _infoRow('Secondary Goals', _fv(secondaryGoalsStr));
 
   var col2 =
+    _infoRow('Review Status',   reviewStatusChipHtml || _fv(null)) +
     _infoRow('Medications',     _fv(medications)) +
     _infoRow('Allergies',       _fv(allergies)) +
+    _infoRow('Medical History', _fv(medicalHistory)) +
+    _infoRow('Peptide Use',     _fv(peptideUse)) +
+    _infoRow('Hormone Use',     _fv(hormoneUse)) +
     _infoRow('Protocol',        protocolName ? '<span style="color:var(--green);">' + escapeHtml(protocolName) + '</span>' : '<span style="color:rgba(255,255,255,0.22);">None assigned</span>') +
     _infoRow('Submitted',       _fv(submittedStr)) +
     _infoRow('Last Login',      _fv(lastSeenStr)) +

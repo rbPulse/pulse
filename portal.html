@@ -2017,6 +2017,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="filter-pill active" id="pflt-all"            onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-pending_review" onclick="filterPatients('pending_review',this)">Pending Review</div>
           <div class="filter-pill"        id="pflt-active"         onclick="filterPatients('active',this)">Active</div>
+          <div class="filter-pill"        id="pflt-awaiting_purchase" onclick="filterPatients('awaiting_purchase',this)">Awaiting Purchase</div>
           <div class="filter-pill"        id="pflt-pending"        onclick="filterPatients('pending',this)">Pending</div>
           <div class="filter-pill"        id="pflt-notrx"          onclick="filterPatients('notrx',this)">Not Prescribed</div>
           <div class="filter-pill"        id="pflt-seen"           onclick="filterPatients('seen',this)">Recently Seen</div>
@@ -4028,8 +4029,13 @@ function _loadClOverviewStats() {
       .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
     q2.then(function(r) { if (!r.error) document.getElementById('clStatWeek').textContent = r.count || 0; })
       .catch(function() { document.getElementById('clStatWeek').textContent = '0'; });
-    // Patient count = my assigned patients
-    document.getElementById('clStatPatients').textContent = patientIds.length;
+    // Active Patients count = prescribed + purchase completed
+    db.from('consultations').select('id', { count: 'exact', head: true })
+      .eq('assigned_clinician_id', currentUserId)
+      .eq('review_status', 'prescribed')
+      .eq('purchase_status', 'completed')
+      .then(function(r) { if (!r.error) document.getElementById('clStatPatients').textContent = r.count || 0; })
+      .catch(function() { document.getElementById('clStatPatients').textContent = '0'; });
     // Count unread messages from my patients only
     if (patientIds.length > 0) {
       db.from('messages').select('id', { count: 'exact', head: true })
@@ -5864,6 +5870,9 @@ function _normalisePatientRow(consultation, profile) {
   // Review status from the async review workflow
   var reviewStatus = consultation.review_status || null;
 
+  // Purchase status from the consultation
+  var purchaseStatus = consultation.purchase_status || null;
+
   return {
     id:            consultation.user_id,
     name:          name,
@@ -5871,6 +5880,7 @@ function _normalisePatientRow(consultation, profile) {
     goal:          goal,
     status:        status,
     review_status: reviewStatus,
+    purchase_status: purchaseStatus,
     streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
     memberSince:   memberSince,
     email:         d.email || (profile && profile.email) || '',
@@ -5888,7 +5898,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','pending_review','active','pending','notrx','seen'].forEach(function(f) {
+  ['all','pending_review','active','awaiting_purchase','pending','notrx','seen'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -5909,7 +5919,7 @@ function searchPatients(q) {
 
 // Patient journey status chip
 // Supports both legacy appointment-based flow and async review workflow
-function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven, reviewStatus) {
+function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven, reviewStatus, purchaseStatus) {
   // Async review workflow statuses take precedence when present
   if (reviewStatus === 'pending_review') {
     return '<span class="pat-status-badge" style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);">Pending Review</span>';
@@ -5920,7 +5930,10 @@ function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven,
   } else if (reviewStatus === 'live_consult_scheduled') {
     return '<span class="pat-status-badge" style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">Scheduled</span>';
   } else if (reviewStatus === 'prescribed') {
-    return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Prescribed</span>';
+    if (purchaseStatus === 'completed') {
+      return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Active</span>';
+    }
+    return '<span class="pat-status-badge" style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Prescribed · Awaiting Purchase</span>';
   } else if (reviewStatus === 'not_prescribed') {
     return '<span class="pat-status-badge" style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);">Not Prescribed</span>';
   } else if (reviewStatus === 'withdrawn') {
@@ -5962,8 +5975,10 @@ function renderPatientList(filter) {
   var patients = rows;
   // Pending Review = async review workflow, awaiting clinician review
   if (filter === 'pending_review') patients = rows.filter(function(p){ return p.review_status === 'pending_review'; });
-  // Active = prescribed (evaluation submitted with prescription=yes)
-  if (filter === 'active')   patients = rows.filter(function(p){ return p.prescriptionGiven === true; });
+  // Active = prescribed AND purchase completed
+  if (filter === 'active')   patients = rows.filter(function(p){ return (p.review_status === 'prescribed' && p.purchase_status === 'completed') || (p.prescriptionGiven === true && p.purchase_status === 'completed'); });
+  // Awaiting Purchase = prescribed but purchase not yet completed
+  if (filter === 'awaiting_purchase') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status !== 'completed'; });
   // Pending = no evaluation yet (excludes pending_review which has its own filter)
   if (filter === 'pending')  patients = rows.filter(function(p){ return (p.prescriptionGiven === null || p.prescriptionGiven === undefined) && p.review_status !== 'pending_review'; });
   // Not Prescribed = evaluation submitted, prescription = no
@@ -5999,7 +6014,7 @@ function renderPatientList(filter) {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
-            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven, p.review_status) +
+            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven, p.review_status, p.purchase_status) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
@@ -6201,7 +6216,12 @@ function buildPatientDetail(p) {
   } else if (reviewStatusLabel === 'live_consult_scheduled') {
     reviewStatusChipHtml = '<span style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);padding:2px 8px;border-radius:999px;font-size:11px;">Scheduled</span>';
   } else if (reviewStatusLabel === 'prescribed') {
-    reviewStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Prescribed</span>';
+    var _ps = c.purchase_status || p.purchase_status || null;
+    if (_ps === 'completed') {
+      reviewStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Active</span>';
+    } else {
+      reviewStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Prescribed · Awaiting Purchase</span>';
+    }
   } else if (reviewStatusLabel === 'not_prescribed') {
     reviewStatusChipHtml = '<span style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);padding:2px 8px;border-radius:999px;font-size:11px;">Not Prescribed</span>';
   } else if (reviewStatusLabel === 'withdrawn') {
@@ -6221,8 +6241,20 @@ function buildPatientDetail(p) {
     _infoRow('Primary Goal',    _fv(primaryGoal)) +
     _infoRow('Secondary Goals', _fv(secondaryGoalsStr));
 
+  // Purchase status chip for detail panel (only shown when prescribed)
+  var purchaseStatusChipHtml = '';
+  if (reviewStatusLabel === 'prescribed') {
+    var _pStat = c.purchase_status || p.purchase_status || null;
+    if (_pStat === 'completed') {
+      purchaseStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Completed</span>';
+    } else {
+      purchaseStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Pending</span>';
+    }
+  }
+
   var col2 =
     _infoRow('Review Status',   reviewStatusChipHtml || _fv(null)) +
+    (purchaseStatusChipHtml ? _infoRow('Purchase Status', purchaseStatusChipHtml) : '') +
     _infoRow('Medications',     _fv(medications)) +
     _infoRow('Allergies',       _fv(allergies)) +
     _infoRow('Medical History', _fv(medicalHistory)) +

@@ -73,7 +73,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .tab-subtitle{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;color:var(--grey2);}
 
 /* ── STAT CARDS ── */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:32px;}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;}
 .stat-card-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:8px;}
 .stat-card-value{font-size:28px;font-weight:500;letter-spacing:-0.02em;color:#fff;}
@@ -361,6 +361,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="stat-card-label">Messages</div>
             <div class="stat-card-value" id="statMessages">--</div>
           </div>
+          <div class="stat-card" style="border-color:rgba(255,100,100,0.2);">
+            <div class="stat-card-label" style="color:rgba(255,130,130,0.85);">Overdue Reviews</div>
+            <div class="stat-card-value" id="statOverdue" style="color:rgba(255,130,130,0.85);">--</div>
+            <div class="stat-card-sub">No clinician response in 24h+</div>
+          </div>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -369,6 +374,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
           </table>
+        </div>
+        <div id="overdueSection" style="display:none;margin-top:24px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,130,130,0.85);margin-bottom:12px;">&#9888; Overdue Reviews</div>
+          <div class="admin-table-wrap" style="border-color:rgba(255,100,100,0.15);">
+            <table class="admin-table">
+              <thead><tr><th>Patient</th><th>Assigned Clinician</th><th>Submitted</th><th>Hours Overdue</th></tr></thead>
+              <tbody id="overdueBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1804,6 +1818,65 @@ function renderAnalytics(doseLogs) {
   renderBarChart('chartDoseLogs', doseWeeks, 'green');
 }
 
+async function loadOverdueReviews() {
+  try {
+    var cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // Get pending consultations older than 24h
+    var r = await db.from('consultations')
+      .select('id, user_id, assigned_clinician_id, created_at')
+      .eq('review_status', 'pending_review')
+      .lt('created_at', cutoff);
+
+    if (!r.data || r.data.length === 0) {
+      document.getElementById('statOverdue').textContent = '0';
+      document.getElementById('overdueSection').style.display = 'none';
+      return;
+    }
+
+    // For each, check if clinician has sent any messages
+    var overdueList = [];
+    for (var i = 0; i < r.data.length; i++) {
+      var c = r.data[i];
+      var msgCheck = await db.from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('thread_id', c.user_id)
+        .eq('sender_role', 'clinician');
+
+      if (!msgCheck.count || msgCheck.count === 0) {
+        overdueList.push(c);
+      }
+    }
+
+    document.getElementById('statOverdue').textContent = overdueList.length;
+
+    if (overdueList.length === 0) {
+      document.getElementById('overdueSection').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('overdueSection').style.display = 'block';
+
+    // Resolve names from profileCache (already loaded)
+    var tbody = document.getElementById('overdueBody');
+    tbody.innerHTML = overdueList.map(function(c) {
+      var patientName = profileName(c.user_id);
+      var clinicianName = profileName(c.assigned_clinician_id);
+      var submitted = c.created_at ? new Date(c.created_at).toLocaleString() : '--';
+      var hoursAgo = Math.round((Date.now() - new Date(c.created_at).getTime()) / 3600000);
+      return '<tr>' +
+        '<td style="color:#fff;font-weight:400;">' + escHtml(patientName) + '</td>' +
+        '<td>' + escHtml(clinicianName) + '</td>' +
+        '<td>' + submitted + '</td>' +
+        '<td style="color:rgba(255,130,130,0.85);font-weight:500;">' + hoursAgo + 'h</td>' +
+        '</tr>';
+    }).join('');
+  } catch(e) {
+    console.warn('[Pulse] overdue reviews check failed:', e);
+    document.getElementById('statOverdue').textContent = '0';
+  }
+}
+
 // ── Update initAdmin to load all phases ──
 var _origInitAdmin = initAdmin;
 initAdmin = function(user, profile) {
@@ -1814,6 +1887,7 @@ initAdmin = function(user, profile) {
   cacheProfiles().then(function() {
     loadAppointments();
     loadMessages();
+    loadOverdueReviews();
   });
   loadAuditLogs();
   // Analytics loads after a short delay to let other data populate

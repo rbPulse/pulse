@@ -4278,6 +4278,18 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // Load inline messaging
     _loadAttentionCardMessages(consultId, userId);
 
+    // Populate action buttons
+    var actionsEl = document.getElementById('attn-actions-' + consultId);
+    if (actionsEl) {
+      actionsEl.innerHTML =
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+          '<button onclick="_attnPrescribe(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-weight:500;transition:opacity .2s;">Prescribe</button>' +
+          '<button onclick="_attnDecline(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:1px solid rgba(255,100,100,0.3);background:rgba(255,100,100,0.06);color:rgba(255,130,130,0.8);cursor:pointer;transition:opacity .2s;">Decline</button>' +
+          '<button onclick="_attnRequestLive(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:1px solid rgba(100,150,255,0.3);background:rgba(100,150,255,0.08);color:rgba(150,185,255,0.9);cursor:pointer;transition:opacity .2s;">Request Live Consult</button>' +
+        '</div>' +
+        '<div id="attn-action-area-' + consultId + '"></div>';
+    }
+
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
     bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
@@ -9290,11 +9302,16 @@ async function _submitEvaluation(apptId) {
       if (overlay) overlay.style.display = 'none';
       _clSessionApptId = null;
       if (isAsyncReview) {
-        // Refresh patient list and go to patients tab
         _activePatientReviewStatus = reviewStatusUpdate;
         _clPatientRows = null;
-        if (typeof initClPatients === 'function') initClPatients();
-        switchTab('cl-patients');
+        // Remove card from attention list if on overview
+        var card = document.querySelector('.cl-attn-card[data-consult-id="' + _activePatientConsultId + '"]');
+        if (card) { card.style.opacity = '0'; setTimeout(function() { card.remove(); }, 300); }
+        // Refresh overview sections
+        _loadClOverviewStats();
+        if (typeof loadRecentlyEvaluated === 'function') loadRecentlyEvaluated();
+        if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
+        if (typeof loadAttentionCards === 'function') loadAttentionCards();
       } else {
         if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'today');
         switchTab('cl-overview');
@@ -9305,6 +9322,78 @@ async function _submitEvaluation(apptId) {
     if (msg) { msg.textContent = e.message || 'Failed to submit. Please try again.'; msg.style.color = 'rgba(200,80,80,0.85)'; msg.style.display = 'inline'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Submit Evaluation'; }
   }
+}
+
+// ── Attention Card Action Handlers ──
+
+function _attnPrescribe(consultId, userId) {
+  _activePatientConsultId = consultId;
+  _activePatientUserId = userId;
+  _activePatientReviewStatus = 'pending_review';
+  _startAsyncEvaluation();
+}
+
+function _attnDecline(consultId, userId) {
+  var areaEl = document.getElementById('attn-action-area-' + consultId);
+  if (!areaEl) return;
+
+  areaEl.innerHTML =
+    '<div style="margin-top:16px;">' +
+      '<div style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,130,130,0.7);margin-bottom:8px;">Decline — Provide Reason</div>' +
+      '<textarea id="attn-decline-reason-' + consultId + '" placeholder="Explain why a prescription is not recommended..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#fff;outline:none;resize:vertical;min-height:60px;"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button onclick="_confirmAttnDecline(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,100,100,0.15);color:rgba(255,130,130,0.9);">Confirm Decline</button>' +
+        '<button onclick="document.getElementById(\'attn-action-area-' + consultId + '\').innerHTML=\'\';" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;">Cancel</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function _confirmAttnDecline(consultId, userId) {
+  var reasonEl = document.getElementById('attn-decline-reason-' + consultId);
+  var reason = reasonEl ? reasonEl.value.trim() : '';
+  if (!reason) {
+    reasonEl.style.borderColor = 'rgba(255,100,100,0.5)';
+    return;
+  }
+
+  try {
+    await db.from('consultations').update({
+      review_status: 'not_prescribed',
+      prescription_given: false,
+      no_prescription_reason: reason,
+      evaluation_date: new Date().toISOString()
+    }).eq('id', consultId);
+
+    // Notify patient
+    db.from('notifications').insert({
+      user_id: userId,
+      type: 'review_complete',
+      body: 'Your clinician has completed their review of your intake.',
+      read: false
+    }).then(function(){}).catch(function(){});
+
+    // Remove card from attention list
+    var card = document.querySelector('.cl-attn-card[data-consult-id="' + consultId + '"]');
+    if (card) {
+      card.style.opacity = '0.5';
+      card.style.transition = 'opacity 0.3s';
+      setTimeout(function() { card.remove(); }, 300);
+    }
+
+    // Refresh stats and recently evaluated
+    _loadClOverviewStats();
+    loadRecentlyEvaluated();
+
+  } catch(e) {
+    console.warn('[Pulse] decline failed:', e);
+    alert('Failed to decline. Please try again.');
+  }
+}
+
+function _attnRequestLive(consultId, userId) {
+  _activePatientConsultId = consultId;
+  _activePatientUserId = userId;
+  _requestLiveConsult();
 }
 
 // ── ASYNC REVIEW: Start evaluation without an appointment ──
@@ -9413,6 +9502,10 @@ async function _confirmLiveConsult() {
       _clPatientRows = null;
       initClPatients();
     }
+    // Refresh overview sections
+    _loadClOverviewStats();
+    if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
+    if (typeof loadAttentionCards === 'function') loadAttentionCards();
   } catch(e) {
     console.error('[Pulse] live consult request failed:', e);
     if (statusEl) { statusEl.textContent = e.message || 'Failed. Please try again.'; statusEl.style.color = 'rgba(200,80,80,0.8)'; statusEl.style.display = 'block'; }

@@ -3323,13 +3323,51 @@ function setSidebarIdentity(displayName, roleLabel, isClinicianRole) {
 function initPortal(user) {
   currentUserId    = user.id;
   currentUserEmail = user.email || null;
+
+  var role = resolveRole(user);
+  window._userRole = role;
+
+  // ── Purchase gate for members ──
+  // Clinicians and admins bypass; members must have a completed purchase.
+  // The loading screen stays visible until the check finishes (no UI flash).
+  if (!PREVIEW_MODE && role !== 'clinician' && role !== 'admin') {
+    db.from('profiles').select('role').eq('user_id', currentUserId).limit(1)
+      .then(function(pr) {
+        var profileRole = (pr.data && pr.data.length > 0) ? pr.data[0].role : null;
+        if (profileRole === 'clinician' || profileRole === 'admin' || profileRole === 'super_admin') {
+          // Profile says privileged — skip gate
+          _continuePortalInit(user, role);
+          return;
+        }
+        // Member — verify completed purchase
+        return db.from('consultations')
+          .select('purchase_status')
+          .eq('user_id', currentUserId)
+          .eq('purchase_status', 'completed')
+          .limit(1)
+          .then(function(cr) {
+            if (!cr.data || !cr.data.length) {
+              // No completed purchase — redirect to consultation flow
+              window.location.href = 'consultation.html';
+              return;
+            }
+            _continuePortalInit(user, role);
+          });
+      })
+      .catch(function() {
+        // Fail open so members aren't locked out by transient errors
+        _continuePortalInit(user, role);
+      });
+  } else {
+    _continuePortalInit(user, role);
+  }
+}
+
+function _continuePortalInit(user, role) {
   document.getElementById('portal-loading').style.display = 'none';
   document.getElementById('portal-nav').style.display = 'flex';
   document.getElementById('portal-app').style.display = 'block';
   document.getElementById('navEmail').textContent = user.email;
-
-  var role = resolveRole(user);
-  window._userRole = role;
 
   // Check if user is an admin — show admin dashboard link
   if (currentUserId && !PREVIEW_MODE) {

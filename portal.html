@@ -3774,6 +3774,7 @@ function initClinicianPortal(user, role, greeting) {
     loadAttentionCards();
     loadLiveConsultsSection();
     loadRecentlyEvaluated();
+    _startClOverviewPoll();
   }
 
   // Recent activity — load from DB when not preview
@@ -4100,6 +4101,8 @@ async function _loadClOverviewStats() {
 
 // ── Clinician Attention Cards ──
 async function loadAttentionCards() {
+  // Don't refresh if a card is expanded (user is interacting)
+  if (document.querySelector('.cl-attn-card.expanded')) return;
   var container = document.getElementById('clAttentionSection');
   if (!container || !currentUserId || PREVIEW_MODE) return;
 
@@ -7904,6 +7907,37 @@ function initResourcesTab() {
   if (contentEl) contentEl.innerHTML = html;
 }
 
+// ── Clinician Overview Polling (30s refresh) ──
+var _clOverviewPollTimer = null;
+
+function _startClOverviewPoll() {
+  _stopClOverviewPoll();
+  _clOverviewPollTimer = setInterval(function() {
+    _loadClOverviewStats();
+    loadAttentionCards();
+    loadLiveConsultsSection();
+    loadRecentlyEvaluated();
+  }, 30000);
+}
+
+function _stopClOverviewPoll() {
+  if (_clOverviewPollTimer) {
+    clearInterval(_clOverviewPollTimer);
+    _clOverviewPollTimer = null;
+  }
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    _stopClOverviewPoll();
+  } else if (window._userRole === 'clinician' || window._userRole === 'admin') {
+    var overviewTab = document.getElementById('tab-cl-overview');
+    if (overviewTab && overviewTab.classList.contains('active')) {
+      _startClOverviewPoll();
+    }
+  }
+});
+
 var CL_TABS = ['cl-overview','cl-schedule','cl-appointments','cl-patients','cl-messages','cl-settings'];
 var CONSUMER_TABS = ['overview','protocol','tracker','appointments','messages','resources','settings'];
 
@@ -7934,7 +7968,8 @@ function switchTab(name) {
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'requested'); }
   if (name === 'cl-patients')      { initClPatients(); }
-  if (name === 'cl-overview')       { loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); }
+  if (name === 'cl-overview')       { _startClOverviewPoll(); loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); }
+  else                              { _stopClOverviewPoll(); }
   if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
   var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');

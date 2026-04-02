@@ -1351,6 +1351,25 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .cl-two-col .p-card { padding: 16px 12px; }
 }
 
+/* ── Clinician Attention Cards ── */
+.cl-attention-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--grey2);margin-bottom:14px;margin-top:28px;}
+.cl-attention-empty{text-align:center;padding:32px 20px;color:var(--grey2);font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;}
+.cl-attn-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;transition:border-color .2s;cursor:pointer;overflow:hidden;}
+.cl-attn-card:hover{border-color:rgba(255,255,255,0.12);}
+.cl-attn-card.overdue{border-left:3px solid rgba(255,130,130,0.6);}
+.cl-attn-card-header{display:flex;align-items:center;gap:12px;padding:16px 20px;}
+.cl-attn-card-avatar{width:32px;height:32px;border-radius:50%;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.25);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--green);flex-shrink:0;text-transform:uppercase;}
+.cl-attn-card-info{flex:1;min-width:0;}
+.cl-attn-card-name{font-size:14px;font-weight:500;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:8px;}
+.cl-attn-card-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.04em;display:flex;align-items:center;gap:8px;}
+.cl-attn-card-msg{font-size:11px;color:var(--grey2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
+.cl-attn-card-status{flex-shrink:0;}
+.cl-attn-card-chevron{color:var(--grey2);font-size:14px;transition:transform .2s;flex-shrink:0;}
+.cl-attn-card.expanded .cl-attn-card-chevron{transform:rotate(90deg);}
+.cl-attn-card-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
+.cl-attn-card.expanded .cl-attn-card-body{display:block;padding-top:16px;}
+.cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+
 /* ── 32H: CLINICIAN SCHEDULE — AVAILABILITY EDITOR COMPACT ───────────────────
 */
 @media(max-width:480px) {
@@ -3727,6 +3746,7 @@ function initClinicianPortal(user, role, greeting) {
     // Show "—" while loading, then replace with real counts
     ['clStatPending','clStatInReview','clStatLiveConsults','clStatActive','clStatUnread'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
+    loadAttentionCards();
   }
 
   // Recent activity — load from DB when not preview
@@ -4033,6 +4053,123 @@ async function _loadClOverviewStats() {
     }
   } catch(e) {
     console.warn('[Pulse] overview stats failed:', e);
+  }
+}
+
+// ── Clinician Attention Cards ──
+async function loadAttentionCards() {
+  var container = document.getElementById('clAttentionSection');
+  if (!container || !currentUserId || PREVIEW_MODE) return;
+
+  try {
+    // Get consultations needing attention
+    var res = await db.from('consultations')
+      .select('id, user_id, review_status, data, created_at')
+      .eq('assigned_clinician_id', currentUserId)
+      .in('review_status', ['pending_review', 'in_review'])
+      .order('created_at', { ascending: true });
+
+    var consultations = res.data || [];
+
+    if (!consultations.length) {
+      container.innerHTML = '<div class="cl-attention-title">Needs Your Attention</div>' +
+        '<div class="cl-attention-empty">No patients awaiting review. You\'re all caught up!</div>';
+      return;
+    }
+
+    // Get patient profiles
+    var userIds = consultations.map(function(c) { return c.user_id; });
+    var profileRes = await db.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+    var profileMap = {};
+    (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
+
+    // Get last message + unread count for each thread
+    var msgRes = await db.from('messages')
+      .select('thread_id, sender_role, body, read, created_at')
+      .in('thread_id', userIds)
+      .order('created_at', { ascending: false });
+
+    var lastMsgMap = {};
+    var unreadMap = {};
+    (msgRes.data || []).forEach(function(m) {
+      if (!lastMsgMap[m.thread_id]) lastMsgMap[m.thread_id] = m;
+      if (m.sender_role === 'consumer' && !m.read) {
+        unreadMap[m.thread_id] = (unreadMap[m.thread_id] || 0) + 1;
+      }
+    });
+
+    // Sort: overdue (24h+) first, then by oldest submission
+    var now = Date.now();
+    consultations.sort(function(a, b) {
+      var aOverdue = (now - new Date(a.created_at).getTime()) >= 86400000;
+      var bOverdue = (now - new Date(b.created_at).getTime()) >= 86400000;
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
+    // Build HTML
+    var html = '<div class="cl-attention-title">Needs Your Attention</div>';
+
+    consultations.forEach(function(c) {
+      var profile = profileMap[c.user_id] || {};
+      var name = profile.display_name || profile.email || 'Unknown';
+      var initial = name.charAt(0).toUpperCase();
+      var lastMsg = lastMsgMap[c.user_id];
+      var unread = unreadMap[c.user_id] || 0;
+
+      // Time since submission
+      var submittedMs = new Date(c.created_at).getTime();
+      var hoursAgo = Math.floor((now - submittedMs) / 3600000);
+      var timeStr = hoursAgo < 1 ? 'Just now' : hoursAgo < 24 ? hoursAgo + 'h ago' : Math.floor(hoursAgo / 24) + 'd ago';
+      var isOverdue = hoursAgo >= 24;
+
+      // Status chip
+      var statusChip = c.review_status === 'in_review'
+        ? '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">In Review</span>'
+        : '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending Review</span>';
+
+      // Last message preview
+      var msgPreview = lastMsg ? lastMsg.body.slice(0, 50) + (lastMsg.body.length > 50 ? '\u2026' : '') : 'No messages yet';
+      var unreadDot = unread > 0 ? '<span class="cl-attn-unread-dot"></span>' : '';
+
+      html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '" onclick="toggleAttentionCard(this)">' +
+        '<div class="cl-attn-card-header">' +
+          '<div class="cl-attn-card-avatar">' + escapeHtml(initial) + '</div>' +
+          '<div class="cl-attn-card-info">' +
+            '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
+            '<div class="cl-attn-card-meta">' +
+              '<span>Submitted ' + timeStr + '</span>' +
+              (isOverdue ? '<span style="color:rgba(255,130,130,0.8);">\u26A0 Overdue</span>' : '') +
+              '<span class="cl-attn-card-msg">' + escapeHtml(msgPreview) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cl-attn-card-status">' + statusChip + '</div>' +
+          '<div class="cl-attn-card-chevron">\u203A</div>' +
+        '</div>' +
+        '<div class="cl-attn-card-body" id="attn-body-' + c.id + '">' +
+          '<!-- Expanded content loaded in Phase B -->' +
+          '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading intake details...</div>' +
+        '</div>' +
+      '</div>';
+    });
+
+    container.innerHTML = html;
+
+  } catch(e) {
+    console.warn('[Pulse] attention cards failed:', e);
+    container.innerHTML = '<div class="cl-attention-title">Needs Your Attention</div>' +
+      '<div class="cl-attention-empty">Unable to load. Please refresh.</div>';
+  }
+}
+
+function toggleAttentionCard(cardEl) {
+  var wasExpanded = cardEl.classList.contains('expanded');
+  // Collapse all cards
+  document.querySelectorAll('.cl-attn-card.expanded').forEach(function(c) { c.classList.remove('expanded'); });
+  // Toggle this one
+  if (!wasExpanded) {
+    cardEl.classList.add('expanded');
   }
 }
 
@@ -7343,6 +7480,7 @@ function switchTab(name) {
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
   if (name === 'cl-patients')      { initClPatients(); }
+  if (name === 'cl-overview')       { loadAttentionCards(); }
   if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
   var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');

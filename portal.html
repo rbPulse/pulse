@@ -1557,7 +1557,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="sidebar-item" id="nav-cl-schedule" onclick="switchTab('cl-schedule')">
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span class="sidebar-item-label">Schedule</span>
+          <span class="sidebar-item-label">Availability</span>
         </div>
       </div>
 
@@ -1576,7 +1576,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- Clinician tabs (shown when role=clinician|admin) -->
       <div class="pbb-clinician" id="pbbClinician" style="display:none;">
         <div class="pbb-item active" id="pbb-cl-overview"      onclick="switchTab('cl-overview')"><span class="pbb-icon">◎</span><span class="pbb-label">Overview</span></div>
-        <div class="pbb-item"        id="pbb-cl-schedule"      onclick="switchTab('cl-schedule')"><span class="pbb-icon">▦</span><span class="pbb-label">Schedule</span></div>
+        <div class="pbb-item"        id="pbb-cl-schedule"      onclick="switchTab('cl-schedule')"><span class="pbb-icon">▦</span><span class="pbb-label">Availability</span></div>
         <div class="pbb-item"        id="pbb-cl-patients"      onclick="switchTab('cl-patients')"><span class="pbb-icon">♟</span><span class="pbb-label">Patients</span></div>
         <div class="pbb-item"        id="pbb-cl-appointments"  onclick="switchTab('cl-appointments')"><span class="pbb-icon">⊕</span><span class="pbb-label">Consults</span></div>
         <div class="pbb-item"        id="pbb-cl-messages"      onclick="switchTab('cl-messages')"><span class="pbb-icon">✉</span><span class="pbb-label">Messages</span></div>
@@ -1937,29 +1937,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
       <!-- ── CLINICIAN SCHEDULE ── -->
       <div class="portal-tab" id="tab-cl-schedule">
-        <div class="tab-eyebrow">Schedule</div>
-        <div class="tab-title">Manage availability.</div>
+        <div class="tab-eyebrow">Availability</div>
+        <div class="tab-title">Set when patients can book live video consultations with you</div>
+
+        <div style="background:rgba(100,150,255,0.05);border:1px solid rgba(100,150,255,0.15);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;color:var(--grey);line-height:1.5;">
+          This availability is shown to patients only when you request a live video consultation. Patients cannot book appointments with you directly.
+        </div>
 
         <!-- Consult settings -->
         <div class="p-card">
           <div class="compounds-label">Consult Settings</div>
           <div class="settings-grid">
             <div class="settings-field">
-              <label class="settings-field-lbl">Default Duration</label>
+              <label class="settings-field-lbl">Live Consult Duration</label>
               <select class="book-select" id="clDuration" onchange="APPT_DURATION=parseInt(this.value);onDurationChange(this.value)">
                 <option value="20">20 minutes</option>
                 <option value="30" selected>30 minutes</option>
                 <option value="45">45 minutes</option>
                 <option value="60">60 minutes</option>
-              </select>
-            </div>
-            <div class="settings-field">
-              <label class="settings-field-lbl">Buffer Between Consults</label>
-              <select class="book-select" id="clBufferSelect" onchange="APPT_BUFFER=parseInt(this.value)">
-                <option value="0">No buffer</option>
-                <option value="10">10 minutes</option>
-                <option value="15" selected>15 minutes</option>
-                <option value="30">30 minutes</option>
               </select>
             </div>
           </div>
@@ -2338,7 +2333,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
     <div class="setup-card">
       <div class="setup-section-lbl">Availability</div>
-      <div style="font-size:12px;color:var(--grey2);margin-bottom:14px;">Days you see patients. Adjust hours in Schedule settings.</div>
+      <div style="font-size:12px;color:var(--grey2);margin-bottom:14px;">Days you see patients. Adjust hours in Availability settings.</div>
       <div class="setup-avail-row">
         <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-monday"    checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Mon</span></label>
         <label class="setup-day-toggle on"><input type="checkbox" id="setup-day-tuesday"   checked onchange="this.closest('.setup-day-toggle').classList.toggle('on',this.checked)"/><span class="setup-day-label">Tue</span></label>

@@ -4191,7 +4191,11 @@ async function loadAttentionCards() {
 function toggleAttentionCard(cardEl) {
   var wasExpanded = cardEl.classList.contains('expanded');
   // Collapse all cards
-  document.querySelectorAll('.cl-attn-card.expanded').forEach(function(c) { c.classList.remove('expanded'); });
+  document.querySelectorAll('.cl-attn-card.expanded').forEach(function(c) {
+    c.classList.remove('expanded');
+    var cId = c.dataset.consultId;
+    if (cId) _stopAttnMsgPoll(cId);
+  });
   if (!wasExpanded) {
     cardEl.classList.add('expanded');
     var body = cardEl.querySelector('.cl-attn-card-body');
@@ -4271,6 +4275,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
 
     bodyEl.innerHTML = html;
 
+    // Load inline messaging
+    _loadAttentionCardMessages(consultId, userId);
+
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
     bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
@@ -4282,6 +4289,145 @@ function _intakeField(label, value) {
     '<div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);">' + label + '</div>' +
     '<div style="font-size:12px;color:#fff;">' + escapeHtml(value) + '</div>' +
   '</div>';
+}
+
+/* ── Attention Card Inline Messaging (Phase B2) ── */
+
+var _attnMsgPollers = {}; // consultId -> intervalId
+
+async function _loadAttentionCardMessages(consultId, userId) {
+  var container = document.getElementById('attn-msg-' + consultId);
+  if (!container) return;
+
+  // Render messaging UI
+  container.innerHTML =
+    '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Messages</div>' +
+    '<div class="attn-msg-list" id="attn-msg-list-' + consultId + '" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;min-height:60px;">' +
+      '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">Loading messages...</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;">' +
+      '<textarea id="attn-msg-input-' + consultId + '" data-user-id="' + userId + '" placeholder="Type a message..." rows="1" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#fff;outline:none;resize:none;min-height:36px;max-height:80px;transition:border-color .2s;" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,80)+\'px\';" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendAttnMsg(\'' + consultId + '\');}"></textarea>' +
+      '<button onclick="_sendAttnMsg(\'' + consultId + '\')" style="background:var(--green);border:none;border-radius:8px;padding:8px 14px;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#000;font-weight:500;cursor:pointer;white-space:nowrap;">Send</button>' +
+    '</div>';
+
+  // Load messages
+  await _refreshAttnMsgs(consultId, userId);
+
+  // Start polling
+  if (_attnMsgPollers[consultId]) clearInterval(_attnMsgPollers[consultId]);
+  _attnMsgPollers[consultId] = setInterval(function() {
+    _refreshAttnMsgs(consultId, userId);
+  }, 10000);
+}
+
+async function _refreshAttnMsgs(consultId, userId) {
+  var listEl = document.getElementById('attn-msg-list-' + consultId);
+  if (!listEl) { _stopAttnMsgPoll(consultId); return; }
+
+  try {
+    var r = await db.from('messages')
+      .select('*')
+      .eq('thread_id', userId)
+      .order('created_at', { ascending: true });
+
+    var msgs = r.data || [];
+
+    if (!msgs.length) {
+      listEl.innerHTML = '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">No messages yet. Send a message to start the conversation.</div>';
+      return;
+    }
+
+    var wasAtBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 30;
+
+    listEl.innerHTML = msgs.map(function(m) {
+      var isClinician = m.sender_role === 'clinician';
+      var bgColor = isClinician ? 'rgba(58,122,92,0.12)' : 'rgba(255,255,255,0.05)';
+      var align = isClinician ? 'flex-end' : 'flex-start';
+      var borderRadius = isClinician ? '10px 10px 2px 10px' : '10px 10px 10px 2px';
+      var name = m.sender_name || m.sender_role;
+      var ago = _attnTimeAgo(m.created_at);
+      return '<div style="align-self:' + align + ';max-width:85%;padding:8px 12px;border-radius:' + borderRadius + ';background:' + bgColor + ';font-size:12px;color:' + (isClinician ? '#fff' : 'var(--grey)') + ';line-height:1.5;word-break:break-word;">' +
+        escapeHtml(m.body) +
+        '<div style="font-family:\'DM Mono\',monospace;font-size:7px;color:var(--grey2);margin-top:3px;letter-spacing:0.04em;">' + escapeHtml(name) + ' · ' + ago + '</div>' +
+      '</div>';
+    }).join('');
+
+    if (wasAtBottom) listEl.scrollTop = listEl.scrollHeight;
+
+    // Mark consumer messages as read
+    var unread = msgs.filter(function(m) { return m.sender_role === 'consumer' && !m.read; });
+    if (unread.length) {
+      var ids = unread.map(function(m) { return m.id; });
+      db.from('messages').update({ read: true }).in('id', ids).then(function(){});
+    }
+  } catch(e) {
+    console.warn('[Pulse] attn msg refresh failed:', e);
+  }
+}
+
+async function _sendAttnMsg(consultId) {
+  var input = document.getElementById('attn-msg-input-' + consultId);
+  if (!input) return;
+  var text = input.value.trim();
+  var userId = input.dataset.userId;
+  if (!text || !userId) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Get clinician display name
+  var clName = document.getElementById('sidebarName') ? document.getElementById('sidebarName').textContent : 'Clinician';
+
+  // Optimistic UI
+  var listEl = document.getElementById('attn-msg-list-' + consultId);
+  if (listEl) {
+    var emptyMsg = listEl.querySelector('div[style*="text-align:center"]');
+    if (emptyMsg) emptyMsg.remove();
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'align-self:flex-end;max-width:85%;padding:8px 12px;border-radius:10px 10px 2px 10px;background:rgba(58,122,92,0.12);font-size:12px;color:#fff;line-height:1.5;word-break:break-word;';
+    bubble.innerHTML = escapeHtml(text) + '<div style="font-family:\'DM Mono\',monospace;font-size:7px;color:var(--grey2);margin-top:3px;">You · just now</div>';
+    listEl.appendChild(bubble);
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  // Insert message
+  try {
+    await db.from('messages').insert({
+      thread_id: userId,
+      sender_id: currentUserId,
+      sender_role: 'clinician',
+      sender_name: clName,
+      body: text,
+      read: false
+    });
+    // Notify patient
+    db.from('notifications').insert({
+      user_id: userId,
+      type: 'new_message',
+      body: 'New message from your clinician.',
+      read: false
+    }).then(function(){}).catch(function(){});
+  } catch(e) {
+    console.warn('[Pulse] attn msg send failed:', e);
+  }
+}
+
+function _stopAttnMsgPoll(consultId) {
+  if (_attnMsgPollers[consultId]) {
+    clearInterval(_attnMsgPollers[consultId]);
+    delete _attnMsgPollers[consultId];
+  }
+}
+
+function _attnTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
 }
 
 async function loadLiveConsultsSection() {

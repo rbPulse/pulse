@@ -629,8 +629,59 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
     </div>
 
-    <!-- Booking placeholder - Phase 8 will fill this -->
-    <div id="reviewBooking" style="display:none;"></div>
+    <!-- Booking section for live consult requests -->
+    <div id="reviewBooking" style="display:none;margin-top:24px;">
+      <!-- Clinician message card -->
+      <div id="liveConsultCard" style="background:linear-gradient(135deg,rgba(100,150,255,0.08) 0%,rgba(100,150,255,0.03) 100%);border:1px solid rgba(100,150,255,0.25);border-radius:14px;padding:24px 28px;margin-bottom:24px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(100,150,255,0.5),transparent);"></div>
+        <div style="display:flex;align-items:flex-start;gap:16px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(100,150,255,0.12);border:1px solid rgba(100,150,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="color:rgba(150,185,255,0.9);font-size:16px;">&#x1F4F9;</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Live consultation requested</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;" id="liveConsultReason">Your clinician would like to schedule a live video consultation.</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:8px;">Select a date and time below to book your appointment.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar - reuse existing calendar structure -->
+      <div class="form-section">
+        <div class="form-section-label">Select a date</div>
+        <div class="cal-wrap">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="calPrev()">&#8249;</button>
+            <span class="cal-month" id="calMonthLabel2"></span>
+            <button class="cal-nav" onclick="calNext()">&#8250;</button>
+          </div>
+          <div class="cal-grid" id="calGrid2">
+            <div class="cal-day-label">Sun</div><div class="cal-day-label">Mon</div><div class="cal-day-label">Tue</div><div class="cal-day-label">Wed</div><div class="cal-day-label">Thu</div><div class="cal-day-label">Fri</div><div class="cal-day-label">Sat</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="slotsWrap2" style="display:none;">
+        <div class="form-section">
+          <div class="form-section-label">Available times</div>
+          <div class="slots-grid" id="slotsGrid2"></div>
+        </div>
+      </div>
+
+      <div id="bookingSummary2" style="display:none;margin-top:16px;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+          <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Appointment summary</div>
+          <div style="font-size:14px;color:#fff;" id="summDate2">--</div>
+          <div style="font-size:13px;color:var(--grey2);" id="summTime2">--</div>
+        </div>
+      </div>
+
+      <div class="field-error" id="step2-booking-error" style="margin-top:12px;text-align:center;"></div>
+
+      <div class="step-actions" style="margin-top:20px;">
+        <button class="btn-primary" onclick="submitReviewBooking()">Confirm Appointment <span>&#8594;</span></button>
+      </div>
+    </div>
 
     <!-- Withdraw button -->
     <div style="margin-top:32px;text-align:center;">
@@ -1550,8 +1601,8 @@ function buildCalendar(){
   document.getElementById('calNextBtn').style.opacity = calOffset >= TOTAL_WEEKS - 1 ? '0.3' : '1';
 }
 
-function calPrev(){ if(calOffset > 0){ calOffset--; buildCalendar(); } }
-function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; buildCalendar(); } }
+function calPrev(){ if(calOffset > 0){ calOffset--; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
+function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
 
 function buildSlots(day){
   var dow = day.getDay();
@@ -1597,6 +1648,307 @@ function updateBookingSummary(){
 }
 
 // submitStep3 for booking is now submitStep2 (defined above)
+
+// ══════════════════════════════════
+// REVIEW HUB: CONDITIONAL BOOKING
+// ══════════════════════════════════
+var _reviewBookingClinicianId = null;
+
+function initReviewBooking(clinicianId, liveConsultMessage) {
+  _reviewBookingClinicianId = clinicianId;
+  // Show the booking section
+  document.getElementById('reviewBooking').style.display = 'block';
+  // Set the clinician's message
+  if (liveConsultMessage) {
+    document.getElementById('liveConsultReason').textContent = liveConsultMessage;
+  }
+  // Load availability for ONLY the assigned clinician
+  _loadSingleClinicianAvailability(clinicianId);
+}
+
+async function _loadSingleClinicianAvailability(clinicianId) {
+  if (!window._sbClient || !clinicianId) return;
+  try {
+    // Get clinician availability
+    var availRes = await window._sbClient.from('availability')
+      .select('day_of_week, active, slot_duration_minutes')
+      .eq('clinician_id', clinicianId)
+      .eq('active', true);
+
+    // Get taken slots for this clinician (next 28 days)
+    var now = new Date();
+    var futureDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+    var takenRes = await window._sbClient.from('appointments')
+      .select('scheduled_at, duration_minutes')
+      .eq('clinician_id', clinicianId)
+      .gte('scheduled_at', now.toISOString())
+      .lte('scheduled_at', futureDate.toISOString())
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+
+    _reviewBookingAvail = {};
+    (availRes.data || []).forEach(function(a) {
+      _reviewBookingAvail[a.day_of_week] = { duration: a.slot_duration_minutes || 30 };
+    });
+
+    _reviewBookingTaken = (takenRes.data || []).map(function(a) {
+      return { scheduled_at: a.scheduled_at, duration: a.duration_minutes || 30 };
+    });
+
+    // Reset calendar state
+    calOffset = 0;
+    selectedDate = null;
+    selectedSlot = null;
+    buildReviewCalendar();
+  } catch(e) {
+    console.warn('[Pulse] failed to load clinician availability:', e);
+  }
+}
+
+var _reviewBookingAvail = {};
+var _reviewBookingTaken = [];
+
+function buildReviewCalendar() {
+  var grid = document.getElementById('calGrid2');
+  var label = document.getElementById('calMonthLabel2');
+  if (!grid || !label) return;
+
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var startOfWeek = new Date(today);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + calOffset * 7);
+
+  // Month label
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var midWeek = new Date(startOfWeek);
+  midWeek.setDate(midWeek.getDate() + 3);
+  label.textContent = months[midWeek.getMonth()] + ' ' + midWeek.getFullYear();
+
+  // Clear existing day cells (keep headers)
+  var headers = grid.querySelectorAll('.cal-day-label');
+  grid.innerHTML = '';
+  headers.forEach(function(h) { grid.appendChild(h); });
+
+  // Build 4 weeks
+  for (var w = 0; w < 4; w++) {
+    for (var d = 0; d < 7; d++) {
+      var day = new Date(startOfWeek);
+      day.setDate(day.getDate() + w * 7 + d);
+      var cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      cell.textContent = day.getDate();
+
+      var isPast = day < today;
+      var dow = day.getDay();
+      var hasAvail = !!_reviewBookingAvail[dow];
+
+      if (isPast || !hasAvail) {
+        cell.classList.add('disabled');
+      } else {
+        cell.dataset.date = day.toISOString();
+        cell.addEventListener('click', function() {
+          var prev = grid.querySelector('.cal-cell.selected');
+          if (prev) prev.classList.remove('selected');
+          this.classList.add('selected');
+          selectedDate = new Date(this.dataset.date);
+          selectedSlot = null;
+          buildReviewSlots(selectedDate);
+        });
+      }
+
+      if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
+        cell.classList.add('selected');
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function buildReviewSlots(day) {
+  var slotsWrap = document.getElementById('slotsWrap2');
+  var slotsGrid = document.getElementById('slotsGrid2');
+  if (!slotsWrap || !slotsGrid) return;
+
+  slotsWrap.style.display = 'block';
+  slotsGrid.innerHTML = '';
+
+  var dow = day.getDay();
+  var avail = _reviewBookingAvail[dow];
+  if (!avail) { slotsGrid.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No availability on this day.</div>'; return; }
+
+  var duration = avail.duration || 30;
+  var slots = [];
+
+  // Generate slots from 8 AM to 5 PM
+  for (var h = 8; h < 17; h++) {
+    for (var m = 0; m < 60; m += duration) {
+      var slotStart = new Date(day);
+      slotStart.setHours(h, m, 0, 0);
+
+      // Skip past slots
+      if (slotStart <= new Date()) continue;
+
+      // Check if slot conflicts with taken appointments
+      var taken = false;
+      _reviewBookingTaken.forEach(function(t) {
+        var tStart = new Date(t.scheduled_at);
+        var tEnd = new Date(tStart.getTime() + t.duration * 60000);
+        var sEnd = new Date(slotStart.getTime() + duration * 60000);
+        if (slotStart < tEnd && sEnd > tStart) taken = true;
+      });
+
+      if (!taken) {
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        var displayH = h % 12 || 12;
+        var displayM = m < 10 ? '0' + m : m;
+        var timeLabel = displayH + ':' + displayM + ' ' + ampm;
+        slots.push({ time: timeLabel, date: slotStart });
+      }
+    }
+  }
+
+  if (!slots.length) {
+    slotsGrid.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No available slots on this day.</div>';
+    return;
+  }
+
+  slots.forEach(function(s) {
+    var btn = document.createElement('div');
+    btn.className = 'slot-btn';
+    btn.textContent = s.time;
+    btn.dataset.time = s.time;
+    btn.addEventListener('click', function() {
+      var prev = slotsGrid.querySelector('.slot-btn.selected');
+      if (prev) prev.classList.remove('selected');
+      this.classList.add('selected');
+      selectedSlot = s.time;
+      selectedDate = s.date;
+      // Show summary
+      var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      document.getElementById('summDate2').textContent = DAYS[s.date.getDay()] + ', ' + MONS[s.date.getMonth()] + ' ' + s.date.getDate();
+      document.getElementById('summTime2').textContent = s.time + ' \u00b7 30 min consultation';
+      document.getElementById('bookingSummary2').style.display = 'block';
+    });
+    slotsGrid.appendChild(btn);
+  });
+}
+
+async function submitReviewBooking() {
+  var errEl = document.getElementById('step2-booking-error');
+  if (!selectedDate || !selectedSlot) {
+    if (errEl) { errEl.textContent = 'Please select a date and time.'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    var session = (await window._sbClient.auth.getSession()).data.session;
+    if (!session) return;
+
+    // Create appointment with the assigned clinician
+    var aInsert = await window._sbClient.from('appointments').insert({
+      consumer_id: session.user.id,
+      clinician_id: _reviewBookingClinicianId,
+      scheduled_at: selectedDate.toISOString(),
+      duration_minutes: 30,
+      status: 'pending'
+    });
+
+    if (aInsert.error) {
+      if (errEl) { errEl.textContent = 'Booking failed: ' + aInsert.error.message; errEl.style.display = 'block'; }
+      return;
+    }
+
+    _memberApptId = aInsert.data && aInsert.data[0] ? aInsert.data[0].id : null;
+
+    // Update consultation status
+    await window._sbClient.from('consultations').update({
+      review_status: 'live_consult_scheduled'
+    }).eq('id', _consultationId);
+
+    // Hide booking section, show waiting room elements
+    document.getElementById('reviewBooking').style.display = 'none';
+    document.getElementById('reviewStatusText').textContent = 'Live consultation scheduled';
+    document.querySelector('#reviewStatusCard span').textContent = '\uD83D\uDCC5';
+
+    // Show appointment details on the review hub
+    var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var dt = selectedDate;
+    var dateStr = DAYS[dt.getDay()] + ', ' + MONS[dt.getMonth()] + ' ' + dt.getDate();
+
+    // Add appointment info card
+    var infoCard = document.createElement('div');
+    infoCard.id = 'reviewApptInfo';
+    infoCard.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+    infoCard.innerHTML =
+      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
+      '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr + '</div>' +
+      '<div style="font-size:13px;color:var(--grey2);">' + selectedSlot + ' \u00b7 30 min consultation</div>' +
+      '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
+        '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
+        '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +
+      '</div>';
+
+    var msgSection = document.getElementById('reviewMessaging');
+    msgSection.parentNode.insertBefore(infoCard, msgSection);
+
+    // Start countdown
+    _startReviewCountdown(dt);
+
+  } catch(e) {
+    console.error('[Pulse] booking failed:', e);
+    if (errEl) { errEl.textContent = 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
+  }
+}
+
+function _startReviewCountdown(apptDate) {
+  var joinWrap = document.getElementById('reviewJoinWrap');
+  var joinBtn = document.getElementById('reviewJoinBtn');
+  var countdownEl = document.getElementById('reviewCountdown');
+  if (!joinWrap) return;
+
+  joinWrap.style.display = 'block';
+
+  var timer = setInterval(function() {
+    var now = Date.now();
+    var apptTime = apptDate.getTime();
+    var diff = apptTime - now;
+    var fiveMinBefore = apptTime - 5 * 60 * 1000;
+
+    if (now >= fiveMinBefore) {
+      // Enable join button
+      if (joinBtn) { joinBtn.disabled = false; joinBtn.style.opacity = '1'; }
+      if (countdownEl) countdownEl.textContent = 'Session is ready to join';
+      clearInterval(timer);
+      return;
+    }
+
+    // Show countdown
+    var hrs = Math.floor(diff / 3600000);
+    var mins = Math.floor((diff % 3600000) / 60000);
+    if (countdownEl) {
+      if (hrs > 0) countdownEl.textContent = 'Starts in ' + hrs + 'h ' + mins + 'm';
+      else countdownEl.textContent = 'Starts in ' + mins + ' minutes';
+    }
+  }, 10000);
+
+  // Run once immediately
+  var now = Date.now();
+  var diff = apptDate.getTime() - now;
+  if (now >= apptDate.getTime() - 5 * 60 * 1000) {
+    if (joinBtn) { joinBtn.disabled = false; joinBtn.style.opacity = '1'; }
+    if (countdownEl) countdownEl.textContent = 'Session is ready to join';
+  } else {
+    var hrs = Math.floor(diff / 3600000);
+    var mins = Math.floor((diff % 3600000) / 60000);
+    if (countdownEl) {
+      if (hrs > 0) countdownEl.textContent = 'Starts in ' + hrs + 'h ' + mins + 'm';
+      else countdownEl.textContent = 'Starts in ' + mins + ' minutes';
+    }
+  }
+}
 
 /// ── STEP 4: COUNTDOWN ──
 var countdownInterval = null;
@@ -2601,7 +2953,7 @@ window._sbClient = createClient(
 
     // Check for existing consultation (include review_status and assigned_clinician_id)
     var res = await window._sbClient.from('consultations')
-      .select('id, data, review_status, assigned_clinician_id, purchase_status, created_at')
+      .select('id, data, review_status, assigned_clinician_id, live_consult_message, purchase_status, created_at')
       .eq('user_id', session.user.id)
       .not('review_status', 'eq', 'withdrawn')
       .order('created_at', { ascending: false })
@@ -2648,22 +3000,69 @@ window._sbClient = createClient(
       }
 
       if (reviewStatus === 'live_consult_requested') {
-        // Phase 8: show step 2 with booking section visible
+        // Phase 8: show step 2 with booking calendar for assigned clinician
         await _populateReviewHub();
-        var bookingEl = document.getElementById('reviewBooking');
-        if (bookingEl) bookingEl.style.display = 'block';
         showStep(2);
         var _memberName2 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName2 || session.user.email.split('@')[0]);
+        initReviewBooking(consultation.assigned_clinician_id, consultation.live_consult_message);
         return;
       }
 
       if (reviewStatus === 'live_consult_scheduled') {
-        // Phase 9: show step 2 with countdown
+        // Phase 9: show step 2 with appointment info and countdown
         await _populateReviewHub();
         showStep(2);
         var _memberName3 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName3 || session.user.email.split('@')[0]);
+
+        // Update status display
+        document.getElementById('reviewStatusText').textContent = 'Live consultation scheduled';
+        var iconSpan3 = document.querySelector('#reviewStatusCard span');
+        if (iconSpan3) iconSpan3.textContent = '\uD83D\uDCC5';
+
+        // Load existing appointment and show countdown
+        var apptRes = await window._sbClient.from('appointments')
+          .select('id, scheduled_at, duration_minutes')
+          .eq('consumer_id', session.user.id)
+          .eq('clinician_id', consultation.assigned_clinician_id)
+          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+          .order('scheduled_at', { ascending: false })
+          .limit(1);
+
+        if (apptRes.data && apptRes.data.length > 0) {
+          var appt = apptRes.data[0];
+          _memberApptId = appt.id;
+          var apptDt = new Date(appt.scheduled_at);
+          var DAYS3 = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          var MONS3 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          var dateStr3 = DAYS3[apptDt.getDay()] + ', ' + MONS3[apptDt.getMonth()] + ' ' + apptDt.getDate();
+          var apptH = apptDt.getHours();
+          var apptM = apptDt.getMinutes();
+          var apptAmpm = apptH >= 12 ? 'PM' : 'AM';
+          var apptDisplayH = apptH % 12 || 12;
+          var apptDisplayM = apptM < 10 ? '0' + apptM : apptM;
+          var timeStr3 = apptDisplayH + ':' + apptDisplayM + ' ' + apptAmpm;
+
+          // Add appointment info card
+          var infoCard3 = document.createElement('div');
+          infoCard3.id = 'reviewApptInfo';
+          infoCard3.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+          infoCard3.innerHTML =
+            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
+            '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr3 + '</div>' +
+            '<div style="font-size:13px;color:var(--grey2);">' + timeStr3 + ' \u00b7 ' + (appt.duration_minutes || 30) + ' min consultation</div>' +
+            '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
+              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
+              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +
+            '</div>';
+
+          var msgSection3 = document.getElementById('reviewMessaging');
+          if (msgSection3) msgSection3.parentNode.insertBefore(infoCard3, msgSection3);
+
+          // Start countdown
+          _startReviewCountdown(apptDt);
+        }
         return;
       }
 

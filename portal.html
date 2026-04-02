@@ -1894,29 +1894,29 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="greeting-sub" id="clGreetSub">Here's what needs your attention.</div>
 
         <div class="cl-stat-grid">
-          <div class="cl-stat-card">
-            <div class="cl-stat-num" id="clStatPending">0</div>
-            <div class="cl-stat-label">Awaiting Review</div>
-          </div>
-          <div class="cl-stat-card">
-            <div class="cl-stat-num" id="clStatInReview">0</div>
-            <div class="cl-stat-label">In Review</div>
-          </div>
-          <div class="cl-stat-card">
-            <div class="cl-stat-num" id="clStatLiveConsults">0</div>
-            <div class="cl-stat-label">Live Consults</div>
-          </div>
-          <div class="cl-stat-card">
-            <div class="cl-stat-num" id="clStatActive">0</div>
-            <div class="cl-stat-label">Active Patients</div>
-          </div>
-          <div class="cl-stat-card">
+          <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-messages')">
             <div class="cl-stat-num" id="clStatUnread">0</div>
             <div class="cl-stat-label">Unread Messages</div>
           </div>
+          <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-patients'); setTimeout(function(){ var btn = document.querySelector('[data-filter=&quot;awaiting_review&quot;]'); if(btn) btn.click(); }, 200);">
+            <div class="cl-stat-num" id="clStatPending">0</div>
+            <div class="cl-stat-label">Awaiting Review</div>
+          </div>
+          <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-patients'); setTimeout(function(){ var btn = document.querySelector('[data-filter=&quot;in_review&quot;]'); if(btn) btn.click(); }, 200);">
+            <div class="cl-stat-num" id="clStatInReview">0</div>
+            <div class="cl-stat-label">In Review</div>
+          </div>
+          <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-appointments')">
+            <div class="cl-stat-num" id="clStatLiveConsults">0</div>
+            <div class="cl-stat-label">Live Consults This Week</div>
+          </div>
+          <div class="cl-stat-card" style="cursor:pointer;" onclick="document.getElementById('clAttentionSection').scrollIntoView({behavior:'smooth'});">
+            <div class="cl-stat-num" id="clStatPastDue">0</div>
+            <div class="cl-stat-label">Past Due</div>
+          </div>
         </div>
 
-        <!-- Needs Your Attention — Phase A2 -->
+        <!-- Awaiting Review — Phase A2 -->
         <div id="clAttentionSection"></div>
 
         <!-- Live Consults — Phase A3 -->
@@ -3762,14 +3762,14 @@ function initClinicianPortal(user, role, greeting) {
 
   // Stats — load real counts when not preview
   if (PREVIEW_MODE || !currentUserId) {
+    document.getElementById('clStatUnread').textContent        = m.stats.unread || 0;
     document.getElementById('clStatPending').textContent      = m.stats.pendingReviews || 0;
     document.getElementById('clStatInReview').textContent     = 0;
     document.getElementById('clStatLiveConsults').textContent = 0;
-    document.getElementById('clStatActive').textContent       = m.stats.patients || 0;
-    document.getElementById('clStatUnread').textContent       = m.stats.unread || 0;
+    document.getElementById('clStatPastDue').textContent      = 0;
   } else {
     // Show "—" while loading, then replace with real counts
-    ['clStatPending','clStatInReview','clStatLiveConsults','clStatActive','clStatUnread'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
+    ['clStatUnread','clStatPending','clStatInReview','clStatLiveConsults','clStatPastDue'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
     loadAttentionCards();
     loadLiveConsultsSection();
@@ -4048,11 +4048,22 @@ async function _loadClOverviewStats() {
       .eq('review_status', 'in_review');
     document.getElementById('clStatInReview').textContent = inReview.count || 0;
 
-    // Live consults (requested + scheduled)
-    var liveConsults = await db.from('consultations')
+    // Live consults this week (Mon-Sun)
+    var nowDate = new Date();
+    var dayOfWeek = nowDate.getDay(); // 0=Sun, 1=Mon...
+    var diffToMon = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+    var monday = new Date(nowDate);
+    monday.setDate(nowDate.getDate() + diffToMon);
+    monday.setHours(0, 0, 0, 0);
+    var sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    var liveConsults = await db.from('appointments')
       .select('id', { count: 'exact', head: true })
-      .eq('assigned_clinician_id', currentUserId)
-      .in('review_status', ['live_consult_requested', 'live_consult_scheduled']);
+      .eq('clinician_id', currentUserId)
+      .gte('scheduled_at', monday.toISOString())
+      .lte('scheduled_at', sunday.toISOString())
+      .neq('status', 'cancelled');
     document.getElementById('clStatLiveConsults').textContent = liveConsults.count || 0;
 
     // Update sidebar badges
@@ -4070,13 +4081,14 @@ async function _loadClOverviewStats() {
       liveBadge.style.display = liveCount > 0 ? '' : 'none';
     }
 
-    // Active patients (prescribed + purchased)
-    var active = await db.from('consultations')
+    // Past due: pending_review AND created_at older than 24 hours
+    var twentyFourHoursAgo = new Date(Date.now() - 86400000).toISOString();
+    var pastDue = await db.from('consultations')
       .select('id', { count: 'exact', head: true })
       .eq('assigned_clinician_id', currentUserId)
-      .eq('review_status', 'prescribed')
-      .eq('purchase_status', 'completed');
-    document.getElementById('clStatActive').textContent = active.count || 0;
+      .eq('review_status', 'pending_review')
+      .lt('created_at', twentyFourHoursAgo);
+    document.getElementById('clStatPastDue').textContent = pastDue.count || 0;
 
     // Unread messages — count messages where sender_role='consumer' and read=false
     // scoped to this clinician's patients
@@ -4117,14 +4129,14 @@ async function loadAttentionCards() {
     var consultations = res.data || [];
 
     if (!consultations.length) {
-      container.innerHTML = '<div class="cl-attention-title">Needs Your Attention</div>' +
+      container.innerHTML = '<div class="cl-attention-title">Awaiting Review</div>' +
         '<div class="cl-attention-empty">No patients awaiting review. You\'re all caught up!</div>';
       return;
     }
 
     // Get patient profiles
     var userIds = consultations.map(function(c) { return c.user_id; });
-    var profileRes = await db.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+    var profileRes = await db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds);
     var profileMap = {};
     (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
 
@@ -4154,11 +4166,11 @@ async function loadAttentionCards() {
     });
 
     // Build HTML
-    var html = '<div class="cl-attention-title">Needs Your Attention</div>';
+    var html = '<div class="cl-attention-title">Awaiting Review</div>';
 
     consultations.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || profile.email || 'Unknown';
+      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var lastMsg = lastMsgMap[c.user_id];
       var unread = unreadMap[c.user_id] || 0;
@@ -4178,8 +4190,8 @@ async function loadAttentionCards() {
       var msgPreview = lastMsg ? lastMsg.body.slice(0, 50) + (lastMsg.body.length > 50 ? '\u2026' : '') : 'No messages yet';
       var unreadDot = unread > 0 ? '<span class="cl-attn-unread-dot"></span>' : '';
 
-      html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '" onclick="toggleAttentionCard(this)">' +
-        '<div class="cl-attn-card-header">' +
+      html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
+        '<div class="cl-attn-card-header" onclick="toggleAttentionCard(this.parentElement)" style="cursor:pointer;">' +
           '<div class="cl-attn-card-avatar">' + escapeHtml(initial) + '</div>' +
           '<div class="cl-attn-card-info">' +
             '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
@@ -4192,7 +4204,7 @@ async function loadAttentionCards() {
           '<div class="cl-attn-card-status">' + statusChip + '</div>' +
           '<div class="cl-attn-card-chevron">\u203A</div>' +
         '</div>' +
-        '<div class="cl-attn-card-body" id="attn-body-' + c.id + '">' +
+        '<div class="cl-attn-card-body" id="attn-body-' + c.id + '" onclick="event.stopPropagation()">' +
           '<!-- Expanded content loaded in Phase B -->' +
           '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading intake details...</div>' +
         '</div>' +
@@ -4203,7 +4215,7 @@ async function loadAttentionCards() {
 
   } catch(e) {
     console.warn('[Pulse] attention cards failed:', e);
-    container.innerHTML = '<div class="cl-attention-title">Needs Your Attention</div>' +
+    container.innerHTML = '<div class="cl-attention-title">Awaiting Review</div>' +
       '<div class="cl-attention-empty">Unable to load. Please refresh.</div>';
   }
 }
@@ -4232,9 +4244,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data').eq('id', consultId).limit(1);
+    var res = await db.from('consultations').select('data, created_at').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
     var d = res.data[0].data || {};
+    var consultCreatedAt = res.data[0].created_at || null;
 
     // Build intake summary
     var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
@@ -4251,6 +4264,20 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           _intakeField('State', d.state || '—') +
           _intakeField('Height', d.height || (d.heightFt ? d.heightFt + '\'' + (d.heightIn || '0') + '"' : '—')) +
           _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '—') +
+        '</div>' +
+
+        // Address
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Address</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' +
+          escapeHtml(
+            (function() {
+              var parts = [];
+              if (d.street_address) parts.push(d.street_address);
+              if (d.apt_unit) parts.push('Apt ' + d.apt_unit);
+              if (d.city || d.state || d.zip_code) parts.push(((d.city || '') + (d.state ? ', ' + d.state : '') + (d.zip_code ? ' ' + d.zip_code : '')).trim());
+              return parts.join(', ') || 'Not provided';
+            })()
+          ) +
         '</div>' +
 
         // Goals
@@ -4280,7 +4307,19 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
 
         // Peptide Use
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Peptide / Hormone Use</div>' +
-        '<div style="font-size:12px;color:var(--grey);line-height:1.5;">' + escapeHtml(d.currentPeptides === 'yes' ? 'Yes — ' + (d.peptideDetailText || 'No details') : d.currentPeptides === 'no' ? 'No' : 'Not specified') + '</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.currentPeptides === 'yes' ? 'Yes — ' + (d.peptideDetailText || 'No details') : d.currentPeptides === 'no' ? 'No' : (d.peptide_history === 'yes' ? 'Yes — ' + (d.peptide_detail || 'No details') : d.peptide_history === 'no' ? 'No' : 'Not specified')) + '</div>' +
+
+        // Allergies
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Allergies</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.allergies || 'None reported') + '</div>' +
+
+        // Consent Signature
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Consent Signature</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.signature || d.sig || 'Not provided') + '</div>' +
+
+        // Submission Date
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Submitted</div>' +
+        '<div style="font-size:12px;color:var(--grey);line-height:1.5;">' + escapeHtml(d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : (consultCreatedAt ? new Date(consultCreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Unknown')) + '</div>' +
       '</div>' +
 
       // RIGHT COLUMN: Messaging placeholder (Phase B2)
@@ -4500,7 +4539,7 @@ async function loadLiveConsultsSection() {
 
     consults.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || profile.email || 'Unknown';
+      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var appt = apptMap[c.user_id];
 
@@ -4580,7 +4619,7 @@ async function loadRecentlyEvaluated() {
 
     consults.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || profile.email || 'Unknown';
+      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
       var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';

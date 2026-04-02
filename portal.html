@@ -8733,6 +8733,21 @@ async function _submitEvaluation(apptId) {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
 
+    // Notify member of review completion
+    var patientId = _activePatientUserId;
+    if (patientId) {
+      var notifBody = decision === 'yes'
+        ? 'Your clinician has reviewed your intake and prescribed a protocol.'
+        : 'Your clinician has completed their review of your intake.';
+      db.from('notifications').insert({
+        user_id: patientId,
+        type: 'review_complete',
+        body: notifBody,
+        read: false,
+        link: null
+      }).then(function(){}).catch(function(){});
+    }
+
     if (msg) { msg.textContent = 'Evaluation submitted successfully.'; msg.style.color = 'var(--green)'; msg.style.display = 'inline'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Submitted ✓'; }
 
@@ -8834,6 +8849,17 @@ async function _confirmLiveConsult() {
       body: "I'd like to schedule a live video consultation to discuss your intake further. " + customMessage,
       read: false
     });
+
+    // Notify member of live consult request
+    if (_activePatientUserId) {
+      db.from('notifications').insert({
+        user_id: _activePatientUserId,
+        type: 'live_consult_requested',
+        body: 'Your clinician has requested a live video consultation.',
+        read: false,
+        link: null
+      }).then(function(){}).catch(function(){});
+    }
 
     // Close modal
     var modal = document.getElementById('liveConsultModal');

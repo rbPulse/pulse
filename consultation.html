@@ -1916,6 +1916,17 @@ async function submitReviewBooking() {
       review_status: 'live_consult_scheduled'
     }).eq('id', _consultationId);
 
+    // Notify clinician of booking
+    if (_reviewBookingClinicianId) {
+      window._sbClient.from('notifications').insert({
+        user_id: _reviewBookingClinicianId,
+        type: 'live_consult_booked',
+        body: 'Your patient has booked a live consultation.',
+        read: false,
+        link: null
+      }).then(function(){}).catch(function(){});
+    }
+
     // Hide booking section, show waiting room elements
     document.getElementById('reviewBooking').style.display = 'none';
     document.getElementById('reviewStatusText').textContent = 'Live consultation scheduled';
@@ -2707,6 +2718,17 @@ async function saveFullIntake() {
       '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to review.</p>'
     );
   }
+
+  // Notify assigned clinician
+  if (assignedClinicianId) {
+    window._sbClient.from('notifications').insert({
+      user_id: assignedClinicianId,
+      type: 'new_intake',
+      body: 'New patient intake assigned to you for review.',
+      read: false,
+      link: null
+    }).then(function(){}).catch(function(){});
+  }
 }
 
 // ── Two-phase save: Phase 1 (booking) — basic profile + appointment (legacy, kept for Phase 8) ──
@@ -2977,6 +2999,22 @@ async function sendReviewMessage() {
     });
     if (r.error) console.warn('[Pulse] msg send error:', r.error);
   } catch(e) { console.warn('[Pulse] msg send failed:', e); }
+
+  // Notify clinician of new message
+  if (_consultationId) {
+    window._sbClient.from('consultations').select('assigned_clinician_id').eq('id', _consultationId).limit(1)
+      .then(function(r) {
+        if (r.data && r.data.length > 0 && r.data[0].assigned_clinician_id) {
+          window._sbClient.from('notifications').insert({
+            user_id: r.data[0].assigned_clinician_id,
+            type: 'new_message',
+            body: 'New message from a patient.',
+            read: false,
+            link: null
+          }).then(function(){}).catch(function(){});
+        }
+      });
+  }
 
   btn.disabled = false;
   input.focus();

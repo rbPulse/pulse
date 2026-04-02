@@ -1378,6 +1378,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-live-join{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:8px 18px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-weight:500;transition:opacity .2s;}
 .cl-live-join:hover{opacity:0.85;}
 .cl-live-join:disabled{opacity:0.35;cursor:not-allowed;}
+.cl-recent-section{margin-top:28px;}
+.cl-recent-toggle{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);background:none;border:none;cursor:pointer;padding:0;margin-left:12px;transition:color .2s;}
+.cl-recent-toggle:hover{color:#fff;}
+.cl-recent-list{margin-top:10px;}
+.cl-recent-row{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;}
+.cl-recent-name{font-size:13px;font-weight:400;color:#fff;flex:1;min-width:0;}
+.cl-recent-outcome{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;flex-shrink:0;}
+.cl-recent-outcome.prescribed{background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);}
+.cl-recent-outcome.not_prescribed{background:rgba(255,100,100,0.06);border:1px solid rgba(255,100,100,0.14);color:rgba(255,130,130,0.7);}
+.cl-recent-detail{font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.04em;flex-shrink:0;}
+.cl-recent-purchase{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:999px;flex-shrink:0;}
+.cl-recent-purchase.completed{background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);}
+.cl-recent-purchase.pending{background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);}
 
 /* ── 32H: CLINICIAN SCHEDULE — AVAILABILITY EDITOR COMPACT ───────────────────
 */
@@ -3757,6 +3770,7 @@ function initClinicianPortal(user, role, greeting) {
     _loadClOverviewStats();
     loadAttentionCards();
     loadLiveConsultsSection();
+    loadRecentlyEvaluated();
   }
 
   // Recent activity — load from DB when not preview
@@ -4267,6 +4281,78 @@ async function loadLiveConsultsSection() {
   } catch(e) {
     console.warn('[Pulse] live consults section failed:', e);
   }
+}
+
+async function loadRecentlyEvaluated() {
+  var container = document.getElementById('clRecentlyEvaluated');
+  if (!container || !currentUserId || PREVIEW_MODE) return;
+
+  try {
+    var res = await db.from('consultations')
+      .select('id, user_id, review_status, protocol_assigned, purchase_status, evaluation_date, updated_at')
+      .eq('assigned_clinician_id', currentUserId)
+      .in('review_status', ['prescribed', 'not_prescribed'])
+      .order('updated_at', { ascending: false })
+      .limit(10);
+
+    var consults = res.data || [];
+    if (!consults.length) {
+      container.innerHTML = '';
+      return;
+    }
+
+    var userIds = consults.map(function(c) { return c.user_id; });
+    var profileRes = await db.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+    var profileMap = {};
+    (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
+
+    var titleHtml = '<div class="cl-attention-title" style="display:flex;align-items:center;">' +
+      'Recently Evaluated (' + consults.length + ')' +
+      '<button class="cl-recent-toggle" onclick="toggleRecentlyEvaluated()">Show</button>' +
+      '</div>';
+
+    var listHtml = '<div class="cl-recent-list" id="clRecentList" style="display:none;">';
+
+    consults.forEach(function(c) {
+      var profile = profileMap[c.user_id] || {};
+      var name = profile.display_name || profile.email || 'Unknown';
+      var initial = name.charAt(0).toUpperCase();
+      var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
+      var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';
+      var protocol = c.protocol_assigned || '';
+      var evalDate = c.evaluation_date ? new Date(c.evaluation_date).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '--');
+
+      var purchaseHtml = '';
+      if (c.review_status === 'prescribed') {
+        var pClass = c.purchase_status === 'completed' ? 'completed' : 'pending';
+        var pLabel = c.purchase_status === 'completed' ? 'Active' : 'Awaiting Purchase';
+        purchaseHtml = '<span class="cl-recent-purchase ' + pClass + '">' + pLabel + '</span>';
+      }
+
+      listHtml += '<div class="cl-recent-row">' +
+        '<div class="cl-attn-card-avatar" style="width:28px;height:28px;font-size:10px;">' + escapeHtml(initial) + '</div>' +
+        '<div class="cl-recent-name">' + escapeHtml(name) + (protocol ? ' <span style="color:var(--grey2);font-size:11px;">· ' + escapeHtml(protocol) + '</span>' : '') + '</div>' +
+        '<span class="cl-recent-outcome ' + outcomeClass + '">' + outcomeLabel + '</span>' +
+        purchaseHtml +
+        '<span class="cl-recent-detail">' + evalDate + '</span>' +
+      '</div>';
+    });
+
+    listHtml += '</div>';
+    container.innerHTML = titleHtml + listHtml;
+
+  } catch(e) {
+    console.warn('[Pulse] recently evaluated failed:', e);
+  }
+}
+
+function toggleRecentlyEvaluated() {
+  var list = document.getElementById('clRecentList');
+  var btn = document.querySelector('.cl-recent-toggle');
+  if (!list) return;
+  var showing = list.style.display !== 'none';
+  list.style.display = showing ? 'none' : 'block';
+  if (btn) btn.textContent = showing ? 'Show' : 'Hide';
 }
 
 // Load patient IDs assigned to this clinician (via appointments table AND assigned consultations)
@@ -7576,7 +7662,7 @@ function switchTab(name) {
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'today'); }
   if (name === 'cl-patients')      { initClPatients(); }
-  if (name === 'cl-overview')       { loadAttentionCards(); loadLiveConsultsSection(); }
+  if (name === 'cl-overview')       { loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); }
   if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
   var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');

@@ -1893,7 +1893,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="greeting-line" id="clGreetLine">Good evening.</div>
         <div class="greeting-sub" id="clGreetSub">Here's what needs your attention.</div>
 
-        <div class="cl-stat-grid">
+        <div class="cl-stat-grid" style="grid-template-columns:repeat(2,1fr);">
           <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-messages')">
             <div class="cl-stat-num" id="clStatUnread">0</div>
             <div class="cl-stat-label">Unread Messages</div>
@@ -1901,14 +1901,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-patients'); setTimeout(function(){ var btn = document.getElementById('pflt-open'); if(btn) btn.click(); }, 200);">
             <div class="cl-stat-num" id="clStatPending">0</div>
             <div class="cl-stat-label">Open Reviews</div>
-          </div>
-          <div class="cl-stat-card" style="cursor:pointer;" onclick="switchTab('cl-appointments')">
-            <div class="cl-stat-num" id="clStatLiveConsults">0</div>
-            <div class="cl-stat-label">Live Consults This Week</div>
-          </div>
-          <div class="cl-stat-card" style="cursor:pointer;" onclick="document.getElementById('clAttentionSection').scrollIntoView({behavior:'smooth'});">
-            <div class="cl-stat-num" id="clStatPastDue">0</div>
-            <div class="cl-stat-label">Past Due</div>
+            <div id="clStatPastDue" style="display:none;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,100,100,0.85);margin-top:4px;letter-spacing:0.04em;"></div>
           </div>
         </div>
 
@@ -3759,11 +3752,9 @@ function initClinicianPortal(user, role, greeting) {
   if (PREVIEW_MODE || !currentUserId) {
     document.getElementById('clStatUnread').textContent        = m.stats.unread || 0;
     document.getElementById('clStatPending').textContent      = m.stats.pendingReviews || 0;
-    document.getElementById('clStatLiveConsults').textContent = 0;
-    document.getElementById('clStatPastDue').textContent      = 0;
   } else {
     // Show "—" while loading, then replace with real counts
-    ['clStatUnread','clStatPending','clStatLiveConsults','clStatPastDue'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
+    ['clStatUnread','clStatPending'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
     loadAttentionCards();
     loadLiveConsultsSection();
@@ -4029,26 +4020,6 @@ async function _loadClOverviewStats() {
       .not('review_status', 'in', '("prescribed","not_prescribed","withdrawn")');
     document.getElementById('clStatPending').textContent = openReviews.count || 0;
 
-    // Live consults this week (Mon-Sun)
-    var nowDate = new Date();
-    var dayOfWeek = nowDate.getDay(); // 0=Sun, 1=Mon...
-    var diffToMon = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
-    var monday = new Date(nowDate);
-    monday.setDate(nowDate.getDate() + diffToMon);
-    monday.setHours(0, 0, 0, 0);
-    var sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    var liveConsults = await db.from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .eq('clinician_id', currentUserId)
-      .gte('scheduled_at', monday.toISOString())
-      .lte('scheduled_at', sunday.toISOString())
-      .neq('status', 'cancelled');
-    document.getElementById('clStatLiveConsults').textContent = liveConsults.count || 0;
-
-    // Sidebar badges removed
-
     // Past due: open reviews older than 24 hours
     var twentyFourHoursAgo = new Date(Date.now() - 86400000).toISOString();
     var pastDue = await db.from('consultations')
@@ -4056,7 +4027,16 @@ async function _loadClOverviewStats() {
       .eq('assigned_clinician_id', currentUserId)
       .not('review_status', 'in', '("prescribed","not_prescribed","withdrawn")')
       .lt('created_at', twentyFourHoursAgo);
-    document.getElementById('clStatPastDue').textContent = pastDue.count || 0;
+    var pastDueCount = pastDue.count || 0;
+    var pastDueEl = document.getElementById('clStatPastDue');
+    if (pastDueEl) {
+      if (pastDueCount > 0) {
+        pastDueEl.textContent = pastDueCount + ' Past Due';
+        pastDueEl.style.display = 'block';
+      } else {
+        pastDueEl.style.display = 'none';
+      }
+    }
 
     // Unread messages — count messages where sender_role='consumer' and read=false
     // scoped to this clinician's patients
@@ -4098,9 +4078,10 @@ async function loadWeeklySchedule() {
     var res = await db.from('appointments')
       .select('id, consumer_id, scheduled_at, duration_minutes, status')
       .eq('clinician_id', currentUserId)
-      .gte('scheduled_at', monday.toISOString())
+      .gte('scheduled_at', new Date().toISOString())
       .lte('scheduled_at', sunday.toISOString())
       .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+      .neq('status', 'completed')
       .order('scheduled_at', { ascending: true });
 
     var appts = res.data || [];
@@ -4141,6 +4122,7 @@ async function loadWeeklySchedule() {
       html += '<div style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:' + (isToday ? 'var(--green)' : 'var(--grey2)') + ';margin-bottom:8px;">' + dayLabel + (isToday ? ' \u00B7 Today' : '') + '</div>';
 
       group.appts.forEach(function(a) {
+        if (new Date(a.scheduled_at).getTime() < Date.now()) return; // skip past
         var aDt = new Date(a.scheduled_at);
         var timeStr = aDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         var patientName = profileMap[a.consumer_id] || 'Unknown';
@@ -4148,13 +4130,10 @@ async function loadWeeklySchedule() {
         var fiveMinBefore = aDt.getTime() - 5 * 60 * 1000;
         var sixtyMinAfter = aDt.getTime() + 60 * 60 * 1000;
         var canJoin = nowMs >= fiveMinBefore && nowMs <= sixtyMinAfter;
-        var isPast = nowMs > sixtyMinAfter;
 
         var joinHtml = '';
         if (canJoin) {
           joinHtml = '<button onclick="event.stopPropagation();_joinClinicianSession(\'' + a.id + '\')" style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:6px 14px;border-radius:6px;border:none;background:var(--green);color:#000;font-weight:500;cursor:pointer;">Join</button>';
-        } else if (isPast) {
-          joinHtml = '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--grey2);">Completed</span>';
         } else {
           var diff = aDt.getTime() - nowMs;
           var hrs = Math.floor(diff / 3600000);
@@ -4252,8 +4231,7 @@ async function loadAttentionCards() {
       var timeStr = hoursAgo < 1 ? 'Just now' : hoursAgo < 24 ? hoursAgo + 'h ago' : Math.floor(hoursAgo / 24) + 'd ago';
       var isOverdue = hoursAgo >= 24;
 
-      // Status chip — simplified to "OPEN" for all cards in this section
-      var statusChip = '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);">Open</span>';
+      // Status chip removed from clinician view
 
       // Last message preview
       var msgPreview = lastMsg ? lastMsg.body.slice(0, 50) + (lastMsg.body.length > 50 ? '\u2026' : '') : 'No messages yet';
@@ -4270,7 +4248,7 @@ async function loadAttentionCards() {
               '<span class="cl-attn-card-msg">' + escapeHtml(msgPreview) + '</span>' +
             '</div>' +
           '</div>' +
-          '<div class="cl-attn-card-status">' + statusChip + '</div>' +
+          '
           '<div class="cl-attn-card-chevron">\u203A</div>' +
         '</div>' +
         '<div class="cl-attn-card-body" id="attn-body-' + c.id + '" onclick="event.stopPropagation()">' +
@@ -6669,7 +6647,6 @@ function renderPatientList(filter) {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
-            _patStatusChip(p.status, !!p.protocol, !!p._hasUpcomingAppt, p.prescriptionGiven, p.review_status, p.purchase_status) +
           '</div>' +
           '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
         '</div>' +
@@ -6750,7 +6727,7 @@ function buildPatientDetail(p) {
       '<div class="pdp-close-row">' +
         '<div>' +
           '<div class="pdp-title">' + escapeHtml(p.name) + '</div>' +
-          '<div class="pdp-subtitle">Member since ' + escapeHtml(memberSinceMock) + ' · ' + escapeHtml(p.status) + '</div>' +
+          '<div class="pdp-subtitle">Member since ' + escapeHtml(memberSinceMock) + '</div>' +
         '</div>' +
         '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
       '</div>' +
@@ -6860,23 +6837,7 @@ function buildPatientDetail(p) {
   var streakStr = streakVal ? streakVal + ' day' + (streakVal === 1 ? '' : 's') : '0 days';
 
   // ── Two-column info grid ──────────────────────────────────────────────────
-  // Review status chip for detail panel — simplified 3-state model
-  var reviewStatusChipHtml = '';
-  var _ps = c.purchase_status || p.purchase_status || null;
-  if (reviewStatusLabel === 'prescribed') {
-    if (_ps === 'completed') {
-      reviewStatusChipHtml = '<span style="background:rgba(40,180,99,0.1);border:1px solid rgba(40,180,99,0.22);color:rgba(40,180,99,0.9);padding:2px 8px;border-radius:999px;font-size:11px;">Active</span>';
-    } else {
-      reviewStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Prescribed</span>';
-    }
-  } else if (reviewStatusLabel === 'not_prescribed') {
-    reviewStatusChipHtml = '<span style="background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);padding:2px 8px;border-radius:999px;font-size:11px;">Not Prescribed</span>';
-  } else if (reviewStatusLabel === 'withdrawn') {
-    reviewStatusChipHtml = '<span style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);padding:2px 8px;border-radius:999px;font-size:11px;">Withdrawn</span>';
-  } else if (reviewStatusLabel) {
-    // Open — any undecided status
-    reviewStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Open</span>';
-  }
+  // Status chips removed from clinician view
 
   var col1 =
     _infoRow('Full Name',       '<span class="--em">' + fullName + '</span>') +
@@ -6891,20 +6852,10 @@ function buildPatientDetail(p) {
     _infoRow('Primary Goal',    _fv(primaryGoal)) +
     _infoRow('Secondary Goals', _fv(secondaryGoalsStr));
 
-  // Purchase status chip for detail panel (only shown when prescribed)
-  var purchaseStatusChipHtml = '';
-  if (reviewStatusLabel === 'prescribed') {
-    var _pStat = c.purchase_status || p.purchase_status || null;
-    if (_pStat === 'completed') {
-      purchaseStatusChipHtml = '<span style="background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);padding:2px 8px;border-radius:999px;font-size:11px;">Completed</span>';
-    } else {
-      purchaseStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Pending</span>';
-    }
-  }
+  // Purchase status chip removed from clinician view
 
   var col2 =
-    _infoRow('Review Status',   reviewStatusChipHtml || _fv(null)) +
-    (purchaseStatusChipHtml ? _infoRow('Purchase Status', purchaseStatusChipHtml) : '') +
+    _infoRow('Review Status',   _fv(reviewStatusLabel)) +
     _infoRow('Medications',     _fv(medications)) +
     _infoRow('Allergies',       _fv(allergies)) +
     _infoRow('Medical History', _fv(medicalHistory)) +
@@ -7450,7 +7401,7 @@ function _renderClThreadListFromCache() {
     var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
       '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
-      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + _threadReviewChip(t.reviewStatus) + '</div>' +
+      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
       '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
       '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
       '</div>';

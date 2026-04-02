@@ -119,7 +119,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 /* DISCLAIMER */
 .disclaimer-footer{text-align:center;padding:24px;font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.08em;line-height:1.8;max-width:640px;margin:0 auto;border-top:1px solid var(--border);}
 
-/* ── BOOKING (STEP 3) ── */
+/* ── BOOKING CALENDAR (used by reviewBooking in Step 2) ── */
 .clinician-card{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:28px;}
 .clinician-avatar{width:52px;height:52px;border-radius:50%;background:var(--card2);border:1.5px solid rgba(58,122,92,0.3);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .clinician-avatar svg{width:26px;height:26px;stroke:var(--green);fill:none;stroke-width:1.5;}
@@ -956,7 +956,7 @@ function startNewConsultation() {
   goToStep(1);
 }
 
-// ── Goal chip toggle (step 3 chips) ──
+// ── Goal chip toggle (intake form) ──
 function _initGoalChips() {
   document.querySelectorAll('.goal-chip').forEach(function(chip){
     chip.addEventListener('click', function(){
@@ -1253,11 +1253,6 @@ function showIneligible(){
   document.querySelectorAll('.progress-step,.progress-line').forEach(function(el){el.style.opacity='0.3';});
 }
 
-// ── Step 2 & 3: no longer used (consolidated into step 1) ──
-function submitStep2(){ /* no-op: booking removed */ }
-function submitStep3(){ /* no-op: merged into submitStep1 */ }
-function skipIntake(){ /* no-op: intake is now mandatory in step 1 */ }
-
 // ── withdrawConsultation: allow member to withdraw from Review Hub ──
 function withdrawConsultation() {
   if (!_consultationId) return;
@@ -1312,7 +1307,7 @@ function updateProgress(n){
   }
 }
 
-// ── STEP 3: CALENDAR ──
+// ── CALENDAR (used by reviewBooking in Step 2) ──
 var calOffset = 0; // weeks offset from today
 var selectedDate = null;
 var selectedSlot = null;
@@ -1695,8 +1690,6 @@ function updateBookingSummary(){
   gsap.fromTo('#bookingSummary',{opacity:0,y:8},{opacity:1,y:0,duration:0.3,ease:'power2.out'});
   document.getElementById('step2-error').style.display = 'none';
 }
-
-// submitStep3 for booking is now submitStep2 (defined above)
 
 // ══════════════════════════════════
 // REVIEW HUB: CONDITIONAL BOOKING
@@ -2729,170 +2722,6 @@ async function saveFullIntake() {
       link: null
     }).then(function(){}).catch(function(){});
   }
-}
-
-// ── Two-phase save: Phase 1 (booking) — basic profile + appointment (legacy, kept for Phase 8) ──
-async function saveConsultationPhase1() {
-  try {
-    var client = window._sbClient;
-    if (!client) return;
-    var session = (await client.auth.getSession()).data.session;
-    if (!session) return;
-
-    var basicData = {
-      first_name: (document.getElementById('firstName') || {}).value || null,
-      last_name: (document.getElementById('lastName') || {}).value || null,
-      email: (document.getElementById('intakeEmail') || {}).value || null,
-      phone_number: (document.getElementById('phoneNumber') || {}).value || null,
-      street_address: (document.getElementById('streetAddress') || {}).value || null,
-      apt_unit: (document.getElementById('aptUnit') || {}).value || null,
-      city: (document.getElementById('city') || {}).value || null,
-      state: (document.getElementById('state') || {}).value || null,
-      zip_code: (document.getElementById('zipCode') || {}).value || null,
-      booking_date: typeof selectedDate !== 'undefined' ? selectedDate : null,
-      booking_slot: typeof selectedSlot !== 'undefined' ? selectedSlot : null,
-      intake_completed: false,
-      reminder_24h_needed: true,
-      reminder_1h_needed: true,
-      submitted_at: new Date().toISOString()
-    };
-
-    // Insert consultation record with intake_completed: false
-    var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: basicData }).select('id').single();
-    if (cInsert.error) console.error('[Pulse] consultation insert failed:', cInsert.error.message);
-    else if (cInsert.data) _consultationId = cInsert.data.id;
-
-    // Upsert member profile with basic info
-    var fullName = ((basicData.first_name || '') + ' ' + (basicData.last_name || '')).trim();
-    var pUpsert = await client.from('profiles').upsert({
-      user_id:      session.user.id,
-      email:        basicData.email || session.user.email || null,
-      first_name:   basicData.first_name || null,
-      last_name:    basicData.last_name || null,
-      display_name: fullName || session.user.email.split('@')[0],
-      phone:        basicData.phone_number || null,
-      street:       basicData.street_address || null,
-      apt:          basicData.apt_unit || null,
-      city:         basicData.city || null,
-      state:        basicData.state || null,
-      zip:          basicData.zip_code || null,
-      last_seen:    new Date().toISOString(),
-      updated_at:   new Date().toISOString()
-    }, { onConflict: 'user_id' });
-    if (pUpsert.error) console.error('[Pulse] profile upsert failed:', pUpsert.error.message);
-
-    // Create appointment row
-    if (selectedDate && selectedSlot) {
-      var slotDt = null;
-      if (window._selectedSlotTs) {
-        slotDt = new Date(window._selectedSlotTs);
-      } else if (selectedDate instanceof Date) {
-        slotDt = new Date(selectedDate);
-        var _tp = to24h(selectedSlot).split(':');
-        slotDt.setHours(parseInt(_tp[0]), parseInt(_tp[1]), 0, 0);
-      }
-      if (slotDt && !isNaN(slotDt.getTime())) {
-        var assignedId = _useRealAvail ? _autoAssignClinician(slotDt) : null;
-        var aInsert = await client.from('appointments').insert({
-          consumer_id: session.user.id,
-          clinician_id: assignedId,
-          scheduled_at: slotDt.toISOString(),
-          duration_minutes: _slotDuration || 30,
-          status: 'pending'
-        }).select('id').single();
-        if (aInsert.error) console.error('[Pulse] appointment insert failed:', aInsert.error.message);
-        else if (aInsert.data) _memberApptId = aInsert.data.id;
-      }
-    }
-  } catch(e) { console.error('[Pulse] saveConsultationPhase1 error:', e); }
-}
-
-// ── Two-phase save: Phase 2 (intake) — full consultation data ──
-async function saveConsultationPhase2() {
-  try {
-    var client = window._sbClient;
-    if (!client) return;
-    var session = (await client.auth.getSession()).data.session;
-    if (!session) return;
-
-    var fullData = {
-      first_name: (document.getElementById('firstName') || {}).value || null,
-      last_name: (document.getElementById('lastName') || {}).value || null,
-      email: (document.getElementById('intakeEmail') || {}).value || null,
-      phone_number: (document.getElementById('phoneNumber') || {}).value || null,
-      street_address: (document.getElementById('streetAddress') || {}).value || null,
-      apt_unit: (document.getElementById('aptUnit') || {}).value || null,
-      city: (document.getElementById('city') || {}).value || null,
-      state: (document.getElementById('state') || {}).value || null,
-      zip_code: (document.getElementById('zipCode') || {}).value || null,
-      dob: (document.getElementById('dob') || {}).value || null,
-      sex: (document.getElementById('sex') || {}).value || null,
-      height: (function(){ var ft = (document.getElementById('heightFt')||{}).value; var inc = (document.getElementById('heightIn')||{}).value; return (ft && inc !== '') ? ft + "'" + inc + '"' : null; })(),
-      current_weight: (document.getElementById('weight') || {}).value || null,
-      goals: selectedGoals,
-      medications: (document.getElementById('medications') || {}).value || null,
-      peptide_history: (document.getElementById('currentPeptides') || {}).value || null,
-      peptide_detail: (document.getElementById('peptideDetailText') || {}).value || null,
-      medical_history: (function(){ var flags = []; document.querySelectorAll('input[name="medHistory"]:checked').forEach(function(c){ flags.push(c.id); }); return flags; })(),
-      consent_agreed: true,
-      signature: (document.getElementById('sigInput') || {}).value || null,
-      booking_date: typeof selectedDate !== 'undefined' ? selectedDate : null,
-      booking_slot: typeof selectedSlot !== 'undefined' ? selectedSlot : null,
-      intake_completed: true,
-      reminder_24h_needed: false,
-      reminder_1h_needed: false,
-      submitted_at: new Date().toISOString()
-    };
-
-    // Update existing consultation record OR insert if no ID
-    if (_consultationId) {
-      var cUpdate = await client.from('consultations').update({ data: fullData }).eq('id', _consultationId);
-      if (cUpdate.error) console.error('[Pulse] consultation update failed:', cUpdate.error.message);
-    } else {
-      var cInsert = await client.from('consultations').insert({ user_id: session.user.id, data: fullData }).select('id').single();
-      if (cInsert.error) console.error('[Pulse] consultation insert failed:', cInsert.error.message);
-      else if (cInsert.data) _consultationId = cInsert.data.id;
-    }
-
-    // Upsert profile with full medical data
-    var fullName = ((fullData.first_name || '') + ' ' + (fullData.last_name || '')).trim();
-    var pUpsert = await client.from('profiles').upsert({
-      user_id:      session.user.id,
-      email:        fullData.email || session.user.email || null,
-      first_name:   fullData.first_name || null,
-      last_name:    fullData.last_name || null,
-      display_name: fullName || session.user.email.split('@')[0],
-      phone:        fullData.phone_number || null,
-      street:       fullData.street_address || null,
-      apt:          fullData.apt_unit || null,
-      city:         fullData.city || null,
-      state:        fullData.state || null,
-      zip:          fullData.zip_code || null,
-      dob:          fullData.dob || null,
-      sex:          fullData.sex || null,
-      height:       fullData.height || null,
-      weight:       fullData.current_weight || null,
-      goals:        fullData.goals || null,
-      last_seen:    new Date().toISOString(),
-      updated_at:   new Date().toISOString()
-    }, { onConflict: 'user_id' });
-    if (pUpsert.error) console.error('[Pulse] profile upsert failed:', pUpsert.error.message);
-
-    // Notify clinician
-    if (CLINICIAN_EMAIL) {
-      var _patientName = (fullData.first_name || '') + (fullData.last_name ? ' ' + fullData.last_name : '') || 'Unknown';
-      var _submittedAt = fullData.submitted_at ? new Date(fullData.submitted_at).toLocaleString() : '—';
-      sendEmail(
-        client,
-        CLINICIAN_EMAIL,
-        'New intake received — ' + _patientName,
-        '<p>A new intake form has been submitted.</p>' +
-        '<p><strong>Patient:</strong> ' + _patientName + '</p>' +
-        '<p><strong>Submitted:</strong> ' + _submittedAt + '</p>' +
-        '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to review and assign a protocol.</p>'
-      );
-    }
-  } catch(e) { console.error('[Pulse] saveConsultationPhase2 error:', e); }
 }
 
 // ── Update reminder flags on consultation when intake is skipped ──

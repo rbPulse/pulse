@@ -1699,9 +1699,22 @@ function updateNavAuth(user) {
   if (!area) return;
   if (user) {
     if (getStartedBtn) getStartedBtn.style.display = 'none';
+    // Check role to determine portal link
+    var portalLink = 'portal.html';
+    if (window._sbClient && user.id) {
+      window._sbClient.from('profiles').select('role').eq('user_id', user.id).limit(1).then(function(pr) {
+        if (pr.data && pr.data.length > 0) {
+          var role = pr.data[0].role;
+          if (role === 'super_admin' || role === 'admin') {
+            var link = area.querySelector('.nav-auth-btn');
+            if (link) { link.href = 'admin.html'; link.textContent = 'Admin Portal'; }
+          }
+        }
+      }).catch(function(){});
+    }
     area.innerHTML =
       '<div class="nav-user-pill">' +
-        '<a href="portal.html" class="nav-auth-btn">My Portal</a>' +
+        '<a href="' + portalLink + '" class="nav-auth-btn">My Portal</a>' +
         '<button class="nav-signout" onclick="doSignOut()">Sign Out</button>' +
       '</div>';
   } else {

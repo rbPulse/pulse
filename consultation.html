@@ -2308,6 +2308,20 @@ window._sbClient = createClient(
     var session = (await window._sbClient.auth.getSession()).data.session;
     if (!session) return; // not logged in — let them fill out the form normally
 
+    // Redirect non-members away from consultation page
+    var roleCheck = await window._sbClient.from('profiles').select('role').eq('user_id', session.user.id).limit(1);
+    if (roleCheck.data && roleCheck.data.length > 0) {
+      var userRole = roleCheck.data[0].role;
+      if (userRole === 'super_admin' || userRole === 'admin') {
+        window.location.href = 'admin.html';
+        return;
+      }
+      if (userRole === 'clinician') {
+        window.location.href = 'portal.html';
+        return;
+      }
+    }
+
     // Check for existing consultation
     var res = await window._sbClient.from('consultations').select('id, data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var hasConsultation = res.data && res.data.length > 0;

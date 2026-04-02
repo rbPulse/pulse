@@ -274,8 +274,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 }
 /* ── CLINICIAN PORTAL ── */
 .nav-role-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.7);padding:3px 9px;border-radius:999px;}
-.cl-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+.cl-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;}
 .cl-stat-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.cl-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;cursor:pointer;transition:border-color 0.2s, background 0.2s;}
+.cl-stat-card:hover{border-color:rgba(255,255,255,0.1);background:var(--card2);}
 .cl-stat-num{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:#fff;line-height:1;margin-bottom:5px;}
 .cl-stat-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);}
 .cl-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
@@ -1534,13 +1536,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-cl-overview" onclick="switchTab('cl-overview')">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           <span class="sidebar-item-label">Overview</span>
-          <span id="cl-overview-badge" style="display:none;background:rgba(220,180,75,0.8);color:#000;font-size:9px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:16px;text-align:center;line-height:1.5;margin-left:auto;flex-shrink:0;"></span>
         </div>
         <div class="sidebar-section-label">Patients</div>
         <div class="sidebar-item" id="nav-cl-appointments" onclick="switchTab('cl-appointments')">
           <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           <span class="sidebar-item-label">Live Consults</span>
-          <span id="cl-live-badge" style="display:none;background:rgba(100,150,255,0.6);color:#fff;font-size:9px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:16px;text-align:center;line-height:1.5;margin-left:auto;flex-shrink:0;"></span>
         </div>
         <div class="sidebar-item" id="nav-cl-patients" onclick="switchTab('cl-patients')">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -4066,20 +4066,7 @@ async function _loadClOverviewStats() {
       .neq('status', 'cancelled');
     document.getElementById('clStatLiveConsults').textContent = liveConsults.count || 0;
 
-    // Update sidebar badges
-    var overviewBadge = document.getElementById('cl-overview-badge');
-    var totalAttention = (pending.count || 0) + (inReview.count || 0);
-    if (overviewBadge) {
-      overviewBadge.textContent = totalAttention;
-      overviewBadge.style.display = totalAttention > 0 ? '' : 'none';
-    }
-
-    var liveBadge = document.getElementById('cl-live-badge');
-    var liveCount = liveConsults.count || 0;
-    if (liveBadge) {
-      liveBadge.textContent = liveCount;
-      liveBadge.style.display = liveCount > 0 ? '' : 'none';
-    }
+    // Sidebar badges removed
 
     // Past due: pending_review AND created_at older than 24 hours
     var twentyFourHoursAgo = new Date(Date.now() - 86400000).toISOString();
@@ -4170,7 +4157,10 @@ async function loadAttentionCards() {
 
     consultations.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
+      var consultData = c.data || {};
+      var consultFullName = ((consultData.first_name || '') + ' ' + (consultData.last_name || '')).trim();
+      var profileFullName = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim();
+      var name = consultFullName || profileFullName || profile.display_name || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var lastMsg = lastMsgMap[c.user_id];
       var unread = unreadMap[c.user_id] || 0;
@@ -4249,57 +4239,65 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var d = res.data[0].data || {};
     var consultCreatedAt = res.data[0].created_at || null;
 
+    // Helper values for intake summary
+    var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || '—';
+    var heightStr = d.height || (d.heightFt ? d.heightFt + "'" + (d.heightIn || '0') + '"' : '—');
+    var addressParts = [d.street_address, d.apt_unit, d.city, d.state, d.zip_code].filter(Boolean);
+    var addressStr = addressParts.length ? addressParts.join(', ') : '—';
+    var submittedStr = d.submitted_at ? new Date(d.submitted_at).toLocaleString() : (consultCreatedAt ? new Date(consultCreatedAt).toLocaleString() : '—');
+    var peptideStr = d.currentPeptides === 'yes' ? 'Yes — ' + (d.peptideDetailText || d.peptide_detail || 'No details') : d.currentPeptides === 'no' ? 'No' : 'Not specified';
+
+    // Goals HTML
+    var goalsHtml = (d.goals && d.goals.length ? d.goals.map(function(g) {
+      return '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.08em;padding:3px 10px;border-radius:999px;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);text-transform:capitalize;">' + escapeHtml(g) + '</span>';
+    }).join('') : '<span style="color:var(--grey2);font-size:11px;">None selected</span>');
+
+    // Medical history HTML
+    var medHistoryHtml = (d.med_history && d.med_history.length
+      ? d.med_history.map(function(h) {
+          var isRisk = ['cancer_active','pregnancy','transplant'].indexOf(h) !== -1;
+          return '<span style="font-size:11px;display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:4px;' +
+            (isRisk ? 'background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.2);color:rgba(255,130,130,0.8);' : 'background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--grey);') +
+            '">' + escapeHtml(h.replace(/_/g, ' ')) + '</span>';
+        }).join('')
+      : '<span style="color:var(--grey2);font-size:11px;">None reported</span>');
+
     // Build intake summary
     var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
       // LEFT COLUMN: Intake data
       '<div>' +
-        // Patient info
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Patient Information</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">' +
-          _intakeField('Name', ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || '—') +
+        // Key demographics - 3 columns
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Demographics</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">' +
+          _intakeField('Name', patientName) +
+          _intakeField('Age', _calcAge(d.dob) + (d.dob ? ' (' + d.dob + ')' : '')) +
+          _intakeField('Sex', d.sex || '—') +
           _intakeField('Email', d.email || '—') +
           _intakeField('Phone', d.phone_number || '—') +
-          _intakeField('DOB', d.dob || '—') +
-          _intakeField('Sex', d.sex || '—') +
           _intakeField('State', d.state || '—') +
-          _intakeField('Height', d.height || (d.heightFt ? d.heightFt + '\'' + (d.heightIn || '0') + '"' : '—')) +
+        '</div>' +
+
+        // Physical - 2 columns
+        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Physical</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">' +
+          _intakeField('Height', heightStr) +
           _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '—') +
         '</div>' +
 
-        // Address
+        // Address - full width
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Address</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' +
-          escapeHtml(
-            (function() {
-              var parts = [];
-              if (d.street_address) parts.push(d.street_address);
-              if (d.apt_unit) parts.push('Apt ' + d.apt_unit);
-              if (d.city || d.state || d.zip_code) parts.push(((d.city || '') + (d.state ? ', ' + d.state : '') + (d.zip_code ? ' ' + d.zip_code : '')).trim());
-              return parts.join(', ') || 'Not provided';
-            })()
-          ) +
-        '</div>' +
+        '<div style="font-size:12px;color:#fff;margin-bottom:20px;">' + escapeHtml(addressStr) + '</div>' +
 
         // Goals
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Goals</div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">' +
-          (d.goals && d.goals.length ? d.goals.map(function(g) {
-            return '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.08em;padding:3px 10px;border-radius:999px;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);text-transform:capitalize;">' + escapeHtml(g) + '</span>';
-          }).join('') : '<span style="color:var(--grey2);font-size:11px;">None selected</span>') +
-        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;">' + goalsHtml + '</div>' +
+
+        // Divider
+        '<div style="height:1px;background:var(--border);margin-bottom:20px;"></div>' +
 
         // Medical History
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medical History</div>' +
-        '<div style="margin-bottom:16px;">' +
-          (d.med_history && d.med_history.length
-            ? d.med_history.map(function(h) {
-                var isRisk = ['cancer_active','pregnancy','transplant'].indexOf(h) !== -1;
-                return '<span style="font-size:11px;display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:4px;' +
-                  (isRisk ? 'background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.2);color:rgba(255,130,130,0.8);' : 'background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--grey);') +
-                  '">' + escapeHtml(h.replace(/_/g, ' ')) + '</span>';
-              }).join('')
-            : '<span style="color:var(--grey2);font-size:11px;">None reported</span>') +
-        '</div>' +
+        '<div style="margin-bottom:16px;">' + medHistoryHtml + '</div>' +
 
         // Medications
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medications</div>' +
@@ -4307,19 +4305,20 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
 
         // Peptide Use
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Peptide / Hormone Use</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.currentPeptides === 'yes' ? 'Yes — ' + (d.peptideDetailText || 'No details') : d.currentPeptides === 'no' ? 'No' : (d.peptide_history === 'yes' ? 'Yes — ' + (d.peptide_detail || 'No details') : d.peptide_history === 'no' ? 'No' : 'Not specified')) + '</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(peptideStr) + '</div>' +
 
         // Allergies
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Allergies</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.allergies || 'None reported') + '</div>' +
+        '<div style="font-size:12px;color:var(--grey);margin-bottom:20px;line-height:1.5;">' + escapeHtml(d.allergies || 'None reported') + '</div>' +
 
-        // Consent Signature
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Consent Signature</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.signature || d.sig || 'Not provided') + '</div>' +
+        // Divider
+        '<div style="height:1px;background:var(--border);margin-bottom:16px;"></div>' +
 
-        // Submission Date
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Submitted</div>' +
-        '<div style="font-size:12px;color:var(--grey);line-height:1.5;">' + escapeHtml(d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : (consultCreatedAt ? new Date(consultCreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Unknown')) + '</div>' +
+        // Footer - consent + submitted
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;opacity:0.6;">' +
+          _intakeField('Consent Signature', d.signature || d.sig || '—') +
+          _intakeField('Submitted', submittedStr) +
+        '</div>' +
       '</div>' +
 
       // RIGHT COLUMN: Messaging placeholder (Phase B2)
@@ -4353,6 +4352,16 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     console.warn('[Pulse] card body load failed:', e);
     bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
   }
+}
+
+function _calcAge(dobStr) {
+  if (!dobStr) return '--';
+  var dob = new Date(dobStr);
+  var today = new Date();
+  var age = today.getFullYear() - dob.getFullYear();
+  var m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
 }
 
 function _intakeField(label, value) {
@@ -4539,7 +4548,7 @@ async function loadLiveConsultsSection() {
 
     consults.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
+      var name = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.display_name || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var appt = apptMap[c.user_id];
 
@@ -4619,7 +4628,7 @@ async function loadRecentlyEvaluated() {
 
     consults.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
-      var name = profile.display_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.email || 'Unknown';
+      var name = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.display_name || profile.email || 'Unknown';
       var initial = name.charAt(0).toUpperCase();
       var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
       var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';

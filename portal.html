@@ -9325,6 +9325,13 @@ async function _submitEvaluation(apptId) {
 }
 
 // ── Attention Card Action Handlers ──
+// Verified flows (C1/C2/C3):
+//   Prescribe  → _attnPrescribe → _startAsyncEvaluation → _showEvaluationForm(null) overlay
+//                → _submitEvaluation removes card, refreshes overview, stays on overview tab
+//   Decline    → _attnDecline inline textarea → _confirmAttnDecline validates reason,
+//                sets not_prescribed, removes card, notifies patient, refreshes overview
+//   Live Consult → _attnRequestLive → _requestLiveConsult modal → _confirmLiveConsult
+//                  updates to live_consult_requested, refreshes attention + live consults sections
 
 function _attnPrescribe(consultId, userId) {
   _activePatientConsultId = consultId;
@@ -9380,9 +9387,10 @@ async function _confirmAttnDecline(consultId, userId) {
       setTimeout(function() { card.remove(); }, 300);
     }
 
-    // Refresh stats and recently evaluated
+    // Refresh stats and overview sections
     _loadClOverviewStats();
     loadRecentlyEvaluated();
+    if (typeof loadAttentionCards === 'function') loadAttentionCards();
 
   } catch(e) {
     console.warn('[Pulse] decline failed:', e);

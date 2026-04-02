@@ -339,26 +339,16 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
   <div class="progress-steps" id="progressSteps">
     <div class="progress-step active" data-step="1">
       <div class="progress-dot">1</div>
-      <div class="progress-label">Basic Info</div>
+      <div class="progress-label">Intake</div>
     </div>
     <div class="progress-line" id="line-1"></div>
     <div class="progress-step" data-step="2">
       <div class="progress-dot">2</div>
-      <div class="progress-label">Booking</div>
+      <div class="progress-label">Review</div>
     </div>
     <div class="progress-line" id="line-2"></div>
     <div class="progress-step" data-step="3">
       <div class="progress-dot">3</div>
-      <div class="progress-label">Intake</div>
-    </div>
-    <div class="progress-line" id="line-3"></div>
-    <div class="progress-step" data-step="4">
-      <div class="progress-dot">4</div>
-      <div class="progress-label">Consultation</div>
-    </div>
-    <div class="progress-line" id="line-4"></div>
-    <div class="progress-step" data-step="5">
-      <div class="progress-dot">5</div>
       <div class="progress-label">Summary</div>
     </div>
   </div>
@@ -389,11 +379,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     </div>
   </div>
 
-  <!-- STEP 1: BASIC INFO -->
+  <!-- STEP 1: CONSOLIDATED INTAKE -->
   <div class="step active" id="step-1">
-    <div class="step-eyebrow">Step 1 of 5</div>
-    <h1 class="step-title">Let's get started</h1>
-    <p class="step-sub">Just a few basics so we can set up your consultation.</p>
+    <div class="step-eyebrow">Step 1 of 3</div>
+    <h1 class="step-title">Medical intake</h1>
+    <p class="step-sub">Your responses are private and used only to prepare your clinician for your consultation. Complete all fields accurately.</p>
 
     <div class="form-section">
       <div class="form-section-label">Account</div>
@@ -456,84 +446,6 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <div class="field-error" id="err-zipCode">Required</div>
         </div>
         <div class="form-group"></div>
-      </div>
-    </div>
-
-    <div class="step-actions">
-      <button class="btn-primary" onclick="submitStep1()">Continue <span>→</span></button>
-    </div>
-
-    <div class="disclaimer-footer">
-      All information is transmitted securely and handled in accordance with HIPAA.
-    </div>
-  </div>
-
-  <!-- STEP 2: CLINICIAN BOOKING -->
-  <div class="step" id="step-2">
-    <div class="step-eyebrow">Step 2 of 5</div>
-    <h1 class="step-title">Book your consultation</h1>
-    <p class="step-sub">Select a date and time that works for you. All consultations are 20 minutes via secure video.</p>
-
-    <div class="clinician-card" style="display:none;"></div>
-
-    <div class="cal-header">
-      <div class="cal-month" id="calMonthLabel"></div>
-      <div class="cal-nav">
-        <button onclick="calPrev()" id="calPrevBtn">&#8249;</button>
-        <button onclick="calNext()" id="calNextBtn">&#8250;</button>
-      </div>
-    </div>
-
-    <div class="cal-grid" id="calGrid">
-      <div class="cal-day-label">Su</div>
-      <div class="cal-day-label">Mo</div>
-      <div class="cal-day-label">Tu</div>
-      <div class="cal-day-label">We</div>
-      <div class="cal-day-label">Th</div>
-      <div class="cal-day-label">Fr</div>
-      <div class="cal-day-label">Sa</div>
-    </div>
-
-    <div id="slotsWrap" style="display:none;">
-      <div class="slots-label" id="slotsLabel">Available times</div>
-      <div class="slots-grid" id="slotsGrid"></div>
-    </div>
-
-    <div class="booking-summary" id="bookingSummary">
-      <div class="booking-summary-label">Appointment confirmed</div>
-      <div class="booking-summary-row"><span>Date</span><span id="summDate"></span></div>
-      <div class="booking-summary-row"><span>Time</span><span id="summTime"></span></div>
-      <div class="booking-summary-row"><span>Format</span><span>Secure video, 20 min</span></div>
-    </div>
-
-    <div id="step2-error" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.08em;"></div>
-    <div class="step-actions">
-      <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
-      <button class="btn-primary" id="bookingContinueBtn" onclick="submitStep2()">Confirm booking <span>→</span></button>
-    </div>
-
-    <div class="disclaimer-footer">
-      Appointments are held on a secure, HIPAA-compliant video platform. You will receive a link via email 15 minutes before your session.
-    </div>
-  </div>
-
-  <!-- STEP 3: MEDICAL INTAKE + CONSENT -->
-  <div class="step" id="step-3">
-    <div class="step-eyebrow">Step 3 of 5</div>
-    <h1 class="step-title">Medical intake &amp; consent</h1>
-    <p class="step-sub">Help your clinician prepare by completing your medical profile.</p>
-
-    <!-- Post-booking prompt banner -->
-    <div id="intakePromptBanner" style="background:linear-gradient(135deg,rgba(58,122,92,0.15) 0%,rgba(58,122,92,0.06) 100%);border:1px solid rgba(58,122,92,0.35);border-radius:14px;padding:24px 28px;margin-bottom:32px;position:relative;overflow:hidden;box-shadow:0 0 30px rgba(58,122,92,0.08),inset 0 1px 0 rgba(255,255,255,0.04);">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(58,122,92,0.6),transparent);"></div>
-      <div style="display:flex;align-items:flex-start;gap:16px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:rgba(58,122,92,0.2);border:1px solid rgba(58,122,92,0.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(58,122,92,0.25);">
-          <span style="color:#3a7a5c;font-size:16px;">✓</span>
-        </div>
-        <div>
-          <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:-0.01em;">Your appointment is booked!</div>
-          <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;">Got <strong style="color:#fff;">1–2 minutes</strong>? Complete your medical intake below so your clinician can prepare for your session.</div>
-        </div>
       </div>
     </div>
 
@@ -630,6 +542,14 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <div class="consent-section-title">Peptide Therapy</div>
           <div class="consent-section-body">I understand that peptide therapy is an emerging field and that protocols may be adjusted based on my response. I agree to report any side effects promptly and to follow up as recommended by my clinician.</div>
         </div>
+        <div class="consent-section">
+          <div class="consent-section-title">Privacy &amp; Data Use</div>
+          <div class="consent-section-body">I understand that my personal and medical information will be handled in accordance with HIPAA and used solely for the purpose of clinical evaluation and treatment planning.</div>
+        </div>
+        <div class="consent-section">
+          <div class="consent-section-title">Async Review Process</div>
+          <div class="consent-section-body">I understand that my intake will be reviewed asynchronously by a licensed clinician. I may be contacted with follow-up questions before a treatment decision is made. This process does not guarantee a prescription.</div>
+        </div>
       </div>
       <div class="consent-check" id="consentCheckWrap">
         <input type="checkbox" id="consentCheck"/>
@@ -643,11 +563,9 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
     </div>
 
-    <div id="step3-error" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.08em;"></div>
+    <div id="step1-error" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.08em;"></div>
     <div class="step-actions">
-      <button class="btn-secondary" onclick="goToStep(2)">← Back</button>
-      <button class="btn-primary" onclick="submitStep3()">Submit intake <span>→</span></button>
-      <button class="btn-secondary" id="skipIntakeBtn" onclick="skipIntake()" style="margin-left:auto;font-size:10px;opacity:0.6;">Skip for now</button>
+      <button class="btn-primary" onclick="submitStep1()">Submit intake <span>→</span></button>
     </div>
 
     <div class="disclaimer-footer">
@@ -655,10 +573,43 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     </div>
   </div>
 
+  <!-- STEP 2: REVIEW IN PROGRESS -->
+  <div class="step" id="step-2">
+    <div class="step-eyebrow">Step 2 of 3</div>
+    <h1 class="step-title">Review in progress</h1>
+    <p class="step-sub">Your clinician is reviewing your intake. They'll reach out directly with any questions.</p>
+
+    <div id="reviewStatusCard" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(58,122,92,0.15);border:1px solid rgba(58,122,92,0.3);display:flex;align-items:center;justify-content:center;">
+          <span style="color:var(--green);font-size:14px;">&#8987;</span>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:500;color:#fff;" id="reviewStatusText">Under review</div>
+          <div style="font-size:12px;color:var(--grey2);">Submitted <span id="reviewSubmittedDate">--</span></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--grey2);line-height:1.6;">
+        <strong style="color:#fff;" id="reviewClinicianName">Your clinician</strong> is reviewing your medical intake. Most reviews are completed within 24 hours.
+      </div>
+    </div>
+
+    <!-- Messaging placeholder - Phase 4 will fill this -->
+    <div id="reviewMessaging"></div>
+
+    <!-- Booking placeholder - Phase 8 will fill this -->
+    <div id="reviewBooking" style="display:none;"></div>
+
+    <!-- Withdraw button -->
+    <div style="margin-top:32px;text-align:center;">
+      <button onclick="withdrawConsultation()" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);cursor:pointer;transition:color .2s;">Withdraw application</button>
+    </div>
+  </div>
+
   <!-- STEP 4: WAITING ROOM -->
   <div class="step" id="step-4">
     <div class="waiting-center">
-      <div class="step-eyebrow" style="text-align:center;">Step 4 of 5</div>
+      <div class="step-eyebrow" style="text-align:center;">Waiting room</div>
       <div style="height:28px;"></div>
       <div class="waiting-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -736,7 +687,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
   <!-- STEP 5: SUMMARY — State A (awaiting) / State B (protocol assigned) -->
   <div class="step" id="step-6">
-    <div class="step-eyebrow">Step 5 of 5</div>
+    <div class="step-eyebrow">Summary</div>
 
     <!-- STATE A: Awaiting clinician evaluation -->
     <div id="step6-awaiting">
@@ -981,121 +932,42 @@ function isAgeValid(dobVal){
 // Hard disqualifier IDs
 var disqualifiers = ['cancer_active','pregnancy','transplant'];
 
-// ── Step 1: validate basic info only ──
+// ── Step 1: validate ALL fields (consolidated intake) ──
 function submitStep1(){
   var valid = true;
   var firstErrEl = null;
 
-  var required = ['intakeEmail','intakePassword','firstName','lastName','phoneNumber','streetAddress','city','state','zipCode'];
+  // Basic info validation
+  var required = ['intakeEmail','firstName','lastName','phoneNumber','streetAddress','city','state','zipCode'];
+  // Only require password if not already logged in
+  var passGroup = document.getElementById('intakePassword') ? document.getElementById('intakePassword').closest('.form-group') : null;
+  var needsPassword = passGroup && passGroup.style.display !== 'none';
+  if(needsPassword) required.push('intakePassword');
+
   required.forEach(function(id){
     var el = document.getElementById(id);
     var err = document.getElementById('err-'+id);
-    if(!el.value.trim()){
-      el.classList.add('error'); if(err) err.classList.add('visible');
-      if(!firstErrEl) firstErrEl = el;
+    if(!el || !el.value.trim()){
+      if(el) el.classList.add('error'); if(err) err.classList.add('visible');
+      if(!firstErrEl && el) firstErrEl = el;
       valid = false;
     } else {
-      el.classList.remove('error'); if(err) err.classList.remove('visible');
+      if(el) el.classList.remove('error'); if(err) err.classList.remove('visible');
     }
   });
 
-  // Password validation
-  var passEl = document.getElementById('intakePassword');
-  var passErr = document.getElementById('err-intakePassword');
-  if(passEl.value.length < 6){
-    passEl.classList.add('error'); if(passErr) passErr.classList.add('visible');
-    if(!firstErrEl) firstErrEl = passEl;
-    valid = false;
-  } else {
-    passEl.classList.remove('error'); if(passErr) passErr.classList.remove('visible');
+  // Password length validation
+  if(needsPassword){
+    var passEl = document.getElementById('intakePassword');
+    var passErr = document.getElementById('err-intakePassword');
+    if(passEl && passEl.value.length < 6){
+      passEl.classList.add('error'); if(passErr) passErr.classList.add('visible');
+      if(!firstErrEl) firstErrEl = passEl;
+      valid = false;
+    } else if(passEl) {
+      passEl.classList.remove('error'); if(passErr) passErr.classList.remove('visible');
+    }
   }
-
-  if(!valid){
-    if(firstErrEl) firstErrEl.scrollIntoView({behavior:'smooth', block:'center'});
-    return;
-  }
-
-  // If not already logged in, create account
-  var email = document.getElementById('intakeEmail').value.trim();
-  var password = document.getElementById('intakePassword').value;
-  var btn = document.querySelector('#step-1 .btn-primary');
-  var origText = btn ? btn.innerHTML : '';
-
-  if(window._sbClient && !window._sessionUser){
-    if(btn){ btn.disabled = true; btn.innerHTML = 'Creating account…'; }
-    window._sbClient.auth.signUp({ email: email, password: password }).then(function(r){
-      if(r.error){
-        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-        // If user already exists, try signing in instead
-        if(r.error.message && r.error.message.indexOf('already') !== -1){
-          return window._sbClient.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
-            if(r2.error){
-              var errEl = document.getElementById('err-intakeEmail');
-              if(errEl){ errEl.textContent = r2.error.message; errEl.classList.add('visible'); }
-              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-              return;
-            }
-            window._sessionUser = r2.data.user || (r2.data.session ? r2.data.session.user : null);
-            if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-            _loadBookingAvailability();
-            goToStep(2);
-          });
-        }
-        var errEl = document.getElementById('err-intakeEmail');
-        if(errEl){ errEl.textContent = r.error.message; errEl.classList.add('visible'); }
-        return;
-      }
-      window._sessionUser = r.data.user || null;
-      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-      _loadBookingAvailability();
-      goToStep(2);
-    }).catch(function(e){
-      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-      var errEl = document.getElementById('err-intakeEmail');
-      if(errEl){ errEl.textContent = e.message || 'Something went wrong'; errEl.classList.add('visible'); }
-    });
-  } else {
-    // Already logged in
-    _loadBookingAvailability();
-    goToStep(2);
-  }
-}
-
-// ── Show ineligible screen ──
-function showIneligible(){
-  document.getElementById('step-3').style.display = 'none';
-  var scr = document.getElementById('ineligible-screen');
-  scr.style.display = 'block';
-  gsap.fromTo(scr, {opacity:0,y:20},{opacity:1,y:0,duration:0.45,ease:'power2.out'});
-  document.querySelectorAll('.progress-step,.progress-line').forEach(function(el){el.style.opacity='0.3';});
-}
-
-// ── Step 2: validate booking, save basic profile + appointment ──
-function submitStep2(){
-  var errEl = document.getElementById('step2-error');
-  if(!selectedDate){
-    errEl.textContent = 'Please select an available date.';
-    errEl.style.display = 'block';
-    shakeEl(errEl);
-    return;
-  }
-  if(!selectedSlot){
-    errEl.textContent = 'Please select an available time slot.';
-    errEl.style.display = 'block';
-    shakeEl(errEl);
-    return;
-  }
-  errEl.style.display = 'none';
-
-  // Save basic profile + appointment (phase 1 save)
-  saveConsultationPhase1();
-  goToStep(3);
-}
-
-// ── Step 3: validate medical intake + consent, save full data ──
-function submitStep3(){
-  var valid = true;
-  var firstErrEl = null;
 
   // DOB: required + 18+
   var dobEl = document.getElementById('dob');
@@ -1166,19 +1038,99 @@ function submitStep3(){
   var disq = disqualifiers.some(function(id){ var el = document.getElementById(id); return el && el.checked; });
   if(disq){ showIneligible(); return; }
 
-  // Save full consultation data (phase 2 save)
-  _intakeCompleted = true;
-  saveConsultationPhase2();
-  goToStep(4);
+  // Auth: create account or sign in, then save full intake
+  var email = document.getElementById('intakeEmail').value.trim();
+  var password = needsPassword ? document.getElementById('intakePassword').value : null;
+  var btn = document.querySelector('#step-1 .btn-primary');
+  var origText = btn ? btn.innerHTML : '';
+
+  if(window._sbClient && !window._sessionUser){
+    if(btn){ btn.disabled = true; btn.innerHTML = 'Creating account...'; }
+    window._sbClient.auth.signUp({ email: email, password: password }).then(function(r){
+      if(r.error){
+        // If user already exists, try signing in
+        if(r.error.message && r.error.message.indexOf('already') !== -1){
+          if(btn) btn.innerHTML = 'Signing in...';
+          return window._sbClient.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
+            if(r2.error){
+              var errEl = document.getElementById('err-intakeEmail');
+              if(errEl){ errEl.textContent = r2.error.message; errEl.classList.add('visible'); }
+              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+              return;
+            }
+            window._sessionUser = r2.data.user || (r2.data.session ? r2.data.session.user : null);
+            if(btn) btn.innerHTML = 'Saving intake...';
+            saveFullIntake().then(function(){
+              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+              goToStep(2);
+            }).catch(function(e){
+              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+              var step1Err = document.getElementById('step1-error');
+              if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
+            });
+          });
+        }
+        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+        var errEl = document.getElementById('err-intakeEmail');
+        if(errEl){ errEl.textContent = r.error.message; errEl.classList.add('visible'); }
+        return;
+      }
+      window._sessionUser = r.data.user || null;
+      if(btn) btn.innerHTML = 'Saving intake...';
+      saveFullIntake().then(function(){
+        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+        goToStep(2);
+      }).catch(function(e){
+        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+        var step1Err = document.getElementById('step1-error');
+        if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
+      });
+    }).catch(function(e){
+      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      var errEl = document.getElementById('err-intakeEmail');
+      if(errEl){ errEl.textContent = e.message || 'Something went wrong'; errEl.classList.add('visible'); }
+    });
+  } else {
+    // Already logged in — save directly
+    if(btn){ btn.disabled = true; btn.innerHTML = 'Saving intake...'; }
+    saveFullIntake().then(function(){
+      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      goToStep(2);
+    }).catch(function(e){
+      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
+      var step1Err = document.getElementById('step1-error');
+      if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
+    });
+  }
 }
 
-// ── Skip intake — go to waiting without completing medical info ──
-function skipIntake(){
-  _intakeCompleted = false;
-  _reminderFlags = { reminder_24h: true, reminder_1h: true };
-  // Update consultation record with reminder flags
-  _updateReminderFlags();
-  goToStep(4);
+// ── Show ineligible screen ──
+function showIneligible(){
+  document.getElementById('step-1').style.display = 'none';
+  var scr = document.getElementById('ineligible-screen');
+  scr.style.display = 'block';
+  gsap.fromTo(scr, {opacity:0,y:20},{opacity:1,y:0,duration:0.45,ease:'power2.out'});
+  document.querySelectorAll('.progress-step,.progress-line').forEach(function(el){el.style.opacity='0.3';});
+}
+
+// ── Step 2 & 3: no longer used (consolidated into step 1) ──
+function submitStep2(){ /* no-op: booking removed */ }
+function submitStep3(){ /* no-op: merged into submitStep1 */ }
+function skipIntake(){ /* no-op: intake is now mandatory in step 1 */ }
+
+// ── withdrawConsultation: allow member to withdraw from Review Hub ──
+function withdrawConsultation() {
+  if (!_consultationId) return;
+  if (!confirm('Are you sure you want to withdraw? Your clinician will be notified.')) return;
+  window._sbClient.from('consultations').update({ review_status: 'withdrawn' }).eq('id', _consultationId)
+    .then(function(r) {
+      if (r.error) { alert('Failed to withdraw. Please try again.'); return; }
+      document.getElementById('reviewStatusText').textContent = 'Withdrawn';
+      var iconSpan = document.querySelector('#reviewStatusCard span');
+      if (iconSpan) iconSpan.textContent = '\u2715';
+      var subEl = document.querySelector('#step-2 .step-sub');
+      if (subEl) subEl.textContent = 'Your consultation has been withdrawn.';
+    });
 }
 
 // ── Step navigation ──
@@ -1202,11 +1154,11 @@ function showStep(n){
 }
 
 function updateProgress(n){
-  // Map internal step numbers to progress bar positions (5 steps)
-  // step 1=1, 2=2, 3=3, 4=4, 5(session)=4, 6(summary)=5
+  // Map internal step numbers to 3-step progress bar
+  // step 1=1 (Intake), step 2=2 (Review), step 4/5=hidden, step 6=3 (Summary)
   var progressN = n;
-  if(n === 5) progressN = 4; // session is part of waiting step
-  if(n === 6) progressN = 5; // summary is step 5 in progress
+  if(n === 4 || n === 5) progressN = 2; // waiting/session hidden from stepper, keep on review
+  if(n === 6) progressN = 3; // summary
 
   document.querySelectorAll('.progress-step').forEach(function(s){
     var sn = parseInt(s.dataset.step);
@@ -1214,7 +1166,7 @@ function updateProgress(n){
     if(sn < progressN) s.classList.add('done');
     else if(sn === progressN) s.classList.add('active');
   });
-  for(var i=1;i<=4;i++){
+  for(var i=1;i<=2;i++){
     var line = document.getElementById('line-'+i);
     if(line) line.classList.toggle('done', i < progressN);
   }
@@ -1401,13 +1353,24 @@ function _generateRealSlots(day) {
   return slots;
 }
 
-// Auto-assign clinician: round-robin among eligible clinicians available at the chosen slot
+// Auto-assign clinician: round-robin among eligible clinicians
+// When called with slotDateTime: checks availability at that specific slot (Phase 8 booking mode)
+// When called with no arguments: async review mode — picks clinician with fewest pending reviews
 function _autoAssignClinician(slotDateTime) {
   // Re-read member state from form in case it was filled after page load
   if (!_memberState) {
     var stEl = document.getElementById('state');
     if (stEl && stEl.value) _memberState = stEl.value.trim().toUpperCase();
   }
+
+  // ── Async review mode (no date) ──
+  if (!slotDateTime) {
+    // Return null here; the async query-based assignment is done in saveFullIntake
+    // This branch is a signal to use the async path
+    return null;
+  }
+
+  // ── Date-based booking mode ──
   var dow = slotDateTime.getDay();
   var candidates = [];
 
@@ -1434,9 +1397,56 @@ function _autoAssignClinician(slotDateTime) {
   return candidates[0].id;
 }
 
+// ── Async clinician assignment: query DB for clinician with fewest pending reviews ──
+async function _autoAssignClinicianAsync(client, memberState) {
+  try {
+    if (!client) return null;
+    var ms = (memberState || '').toUpperCase().trim();
+
+    // Get all clinician profiles
+    var prRes = await client.from('profiles').select('user_id, display_name, cl_state').eq('role', 'clinician');
+    if (!prRes.data || prRes.data.length === 0) return null;
+
+    // Filter by member's state if known
+    var clinicians = prRes.data;
+    if (ms) {
+      var stateMatch = clinicians.filter(function(c) { return (c.cl_state || '').toUpperCase() === ms; });
+      if (stateMatch.length > 0) clinicians = stateMatch;
+    }
+
+    // Count pending reviews per clinician
+    var clIds = clinicians.map(function(c) { return c.user_id; });
+    var countRes = await client.from('consultations')
+      .select('assigned_clinician_id')
+      .in('assigned_clinician_id', clIds)
+      .in('review_status', ['pending_review', 'in_review']);
+
+    var counts = {};
+    clIds.forEach(function(id) { counts[id] = 0; });
+    if (countRes.data) {
+      countRes.data.forEach(function(r) {
+        if (r.assigned_clinician_id) counts[r.assigned_clinician_id] = (counts[r.assigned_clinician_id] || 0) + 1;
+      });
+    }
+
+    // Pick clinician with fewest pending reviews
+    var best = null; var bestCount = Infinity;
+    clinicians.forEach(function(cl) {
+      var c = counts[cl.user_id] || 0;
+      if (c < bestCount) { bestCount = c; best = cl; }
+    });
+
+    return best ? { id: best.user_id, display_name: best.display_name } : null;
+  } catch(e) {
+    console.warn('[Pulse] async clinician assignment failed:', e);
+    return null;
+  }
+}
+
 var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function buildCalendar(){
+  if (!document.getElementById('calGrid')) return; // calendar DOM removed in consolidated flow
   var today = new Date();
   today.setHours(0,0,0,0);
   var refDate = new Date(today);
@@ -2043,8 +2053,8 @@ async function _populateStep6() {
   }
 }
 
-// Init calendar on load
-buildCalendar();
+// Init calendar on load (only if calendar DOM exists — removed in consolidated flow)
+if (document.getElementById('calGrid')) buildCalendar();
 
 // Init first step
 gsap.to('#step-1', {opacity:1, y:0, duration:0.5, ease:'power2.out', delay:0.1});
@@ -2115,7 +2125,113 @@ function sendEmail(client, to, subject, body_html) {
   } catch(e) { /* non-fatal — email failure must never break the UI */ }
 }
 
-// ── Two-phase save: Phase 1 (booking) — basic profile + appointment ──
+// ── saveFullIntake: consolidated single-step save (replaces two-phase save) ──
+async function saveFullIntake() {
+  var client = window._sbClient;
+  if (!client) throw new Error('Client not initialized');
+  var session = (await client.auth.getSession()).data.session;
+  if (!session) throw new Error('Not authenticated');
+
+  var fullData = {
+    first_name: (document.getElementById('firstName') || {}).value || null,
+    last_name: (document.getElementById('lastName') || {}).value || null,
+    email: (document.getElementById('intakeEmail') || {}).value || null,
+    phone_number: (document.getElementById('phoneNumber') || {}).value || null,
+    street_address: (document.getElementById('streetAddress') || {}).value || null,
+    apt_unit: (document.getElementById('aptUnit') || {}).value || null,
+    city: (document.getElementById('city') || {}).value || null,
+    state: (document.getElementById('state') || {}).value || null,
+    zip_code: (document.getElementById('zipCode') || {}).value || null,
+    dob: (document.getElementById('dob') || {}).value || null,
+    sex: (document.getElementById('sex') || {}).value || null,
+    height: (function(){ var ft = (document.getElementById('heightFt')||{}).value; var inc = (document.getElementById('heightIn')||{}).value; return (ft && inc !== '') ? ft + "'" + inc + '"' : null; })(),
+    current_weight: (document.getElementById('weight') || {}).value || null,
+    goals: selectedGoals,
+    medications: (document.getElementById('medications') || {}).value || null,
+    peptide_history: (document.getElementById('currentPeptides') || {}).value || null,
+    peptide_detail: (document.getElementById('peptideDetailText') || {}).value || null,
+    medical_history: (function(){ var flags = []; document.querySelectorAll('input[name="medHistory"]:checked').forEach(function(c){ flags.push(c.id); }); return flags; })(),
+    consent_agreed: true,
+    signature: (document.getElementById('sigInput') || {}).value || null,
+    intake_completed: true,
+    submitted_at: new Date().toISOString()
+  };
+
+  // Auto-assign clinician (async review mode — no date)
+  var memberSt = (fullData.state || '').toUpperCase().trim();
+  _memberState = memberSt;
+  var assignedClinician = await _autoAssignClinicianAsync(client, memberSt);
+  var assignedClinicianId = assignedClinician ? assignedClinician.id : null;
+  _assignedClinicianId = assignedClinicianId;
+
+  // Insert consultation record
+  var cInsert = await client.from('consultations').insert({
+    user_id: session.user.id,
+    data: fullData,
+    review_status: 'pending_review',
+    intake_completed: true,
+    assigned_clinician_id: assignedClinicianId
+  }).select('id').single();
+  if (cInsert.error) {
+    console.error('[Pulse] consultation insert failed:', cInsert.error.message);
+    throw new Error('Failed to save consultation');
+  }
+  if (cInsert.data) _consultationId = cInsert.data.id;
+  _intakeCompleted = true;
+
+  // Upsert profile with all data
+  var fullName = ((fullData.first_name || '') + ' ' + (fullData.last_name || '')).trim();
+  var pUpsert = await client.from('profiles').upsert({
+    user_id:      session.user.id,
+    email:        fullData.email || session.user.email || null,
+    first_name:   fullData.first_name || null,
+    last_name:    fullData.last_name || null,
+    display_name: fullName || session.user.email.split('@')[0],
+    phone:        fullData.phone_number || null,
+    street:       fullData.street_address || null,
+    apt:          fullData.apt_unit || null,
+    city:         fullData.city || null,
+    state:        fullData.state || null,
+    zip:          fullData.zip_code || null,
+    dob:          fullData.dob || null,
+    sex:          fullData.sex || null,
+    height:       fullData.height || null,
+    weight:       fullData.current_weight || null,
+    goals:        fullData.goals || null,
+    last_seen:    new Date().toISOString(),
+    updated_at:   new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  if (pUpsert.error) console.error('[Pulse] profile upsert failed:', pUpsert.error.message);
+
+  // Populate Review Hub (step 2) with clinician info and submitted date
+  var submittedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  var reviewDateEl = document.getElementById('reviewSubmittedDate');
+  if (reviewDateEl) reviewDateEl.textContent = submittedDate;
+  if (assignedClinician && assignedClinician.display_name) {
+    var clNameEl = document.getElementById('reviewClinicianName');
+    if (clNameEl) clNameEl.textContent = assignedClinician.display_name;
+  }
+
+  // Notify clinician via email
+  if (assignedClinicianId) {
+    var _patientName = (fullData.first_name || '') + (fullData.last_name ? ' ' + fullData.last_name : '') || 'Unknown';
+    var _submittedAt = fullData.submitted_at ? new Date(fullData.submitted_at).toLocaleString() : '--';
+    // Try to get clinician email from profile
+    var clEmailRes = await client.from('profiles').select('email').eq('user_id', assignedClinicianId).limit(1);
+    var clEmail = (clEmailRes.data && clEmailRes.data.length > 0) ? clEmailRes.data[0].email : CLINICIAN_EMAIL;
+    sendEmail(
+      client,
+      clEmail || CLINICIAN_EMAIL,
+      'New intake received -- ' + _patientName,
+      '<p>A new intake form has been submitted and assigned to you for review.</p>' +
+      '<p><strong>Patient:</strong> ' + _patientName + '</p>' +
+      '<p><strong>Submitted:</strong> ' + _submittedAt + '</p>' +
+      '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to review.</p>'
+    );
+  }
+}
+
+// ── Two-phase save: Phase 1 (booking) — basic profile + appointment (legacy, kept for Phase 8) ──
 async function saveConsultationPhase1() {
   try {
     var client = window._sbClient;
@@ -2320,13 +2436,103 @@ window._sbClient = createClient(
       }
     }
 
-    // Check for existing consultation
-    var res = await window._sbClient.from('consultations').select('id, data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
+    // Check for existing consultation (include review_status and assigned_clinician_id)
+    var res = await window._sbClient.from('consultations')
+      .select('id, data, review_status, assigned_clinician_id, purchase_status, created_at')
+      .eq('user_id', session.user.id)
+      .not('review_status', 'eq', 'withdrawn')
+      .order('created_at', { ascending: false })
+      .limit(1);
     var hasConsultation = res.data && res.data.length > 0;
-    var consultationData = hasConsultation ? (res.data[0].data || {}) : {};
-    if (hasConsultation) _consultationId = res.data[0].id;
+    var consultation = hasConsultation ? res.data[0] : null;
+    var consultationData = hasConsultation ? (consultation.data || {}) : {};
+    var reviewStatus = hasConsultation ? (consultation.review_status || null) : null;
+    if (hasConsultation) _consultationId = consultation.id;
 
-    // Check for completed appointments first — go straight to summary (step 6 div)
+    // If completed purchase, redirect to portal
+    if (hasConsultation && consultation.purchase_status === 'completed') {
+      window.location.href = 'portal.html';
+      return;
+    }
+
+    // Route based on review_status
+    if (hasConsultation && reviewStatus) {
+      var step1El = document.getElementById('step-1');
+      if (step1El) step1El.style.display = 'none';
+
+      // Helper: populate Review Hub with clinician name and submitted date
+      async function _populateReviewHub() {
+        if (consultation.created_at) {
+          var subDate = new Date(consultation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          var rdEl = document.getElementById('reviewSubmittedDate');
+          if (rdEl) rdEl.textContent = subDate;
+        }
+        if (consultation.assigned_clinician_id) {
+          var clRes = await window._sbClient.from('profiles').select('display_name').eq('user_id', consultation.assigned_clinician_id).limit(1);
+          if (clRes.data && clRes.data.length > 0 && clRes.data[0].display_name) {
+            var cnEl = document.getElementById('reviewClinicianName');
+            if (cnEl) cnEl.textContent = clRes.data[0].display_name;
+          }
+        }
+      }
+
+      if (reviewStatus === 'pending_review' || reviewStatus === 'in_review') {
+        await _populateReviewHub();
+        showStep(2);
+        return;
+      }
+
+      if (reviewStatus === 'live_consult_requested') {
+        // Phase 8: show step 2 with booking section visible
+        await _populateReviewHub();
+        var bookingEl = document.getElementById('reviewBooking');
+        if (bookingEl) bookingEl.style.display = 'block';
+        showStep(2);
+        return;
+      }
+
+      if (reviewStatus === 'live_consult_scheduled') {
+        // Phase 9: show step 2 with countdown
+        await _populateReviewHub();
+        showStep(2);
+        return;
+      }
+
+      if (reviewStatus === 'prescribed') {
+        showStep(6);
+        _populateStep6();
+        return;
+      }
+
+      if (reviewStatus === 'not_prescribed') {
+        showStep(6);
+        _populateStep6();
+        return;
+      }
+
+      if (reviewStatus === 'withdrawn') {
+        await _populateReviewHub();
+        document.getElementById('reviewStatusText').textContent = 'Withdrawn';
+        var iconSpan = document.querySelector('#reviewStatusCard span');
+        if (iconSpan) iconSpan.textContent = '\u2715';
+        var subEl = document.querySelector('#step-2 .step-sub');
+        if (subEl) subEl.textContent = 'Your consultation has been withdrawn.';
+        showStep(2);
+        return;
+      }
+    }
+
+    // Also check for withdrawn consultations separately (user may have only withdrawn ones)
+    if (!hasConsultation) {
+      var wRes = await window._sbClient.from('consultations')
+        .select('id, review_status')
+        .eq('user_id', session.user.id)
+        .eq('review_status', 'withdrawn')
+        .limit(1);
+      // Withdrawn consultations exist but no active ones — let them start fresh (step 1)
+    }
+
+    // Check for completed appointments (legacy path — supports old consultations without review_status)
     var completedRes = await window._sbClient.from('appointments')
       .select('id, clinician_id')
       .eq('consumer_id', session.user.id)
@@ -2342,7 +2548,7 @@ window._sbClient = createClient(
       return;
     }
 
-    // Check for pending/confirmed appointments
+    // Check for pending/confirmed appointments (legacy path)
     var apptRes = await window._sbClient.from('appointments')
       .select('id, scheduled_at, duration_minutes, status, clinician_id')
       .eq('consumer_id', session.user.id)
@@ -2386,35 +2592,19 @@ window._sbClient = createClient(
       var step1 = document.getElementById('step-1');
       if (step1) step1.style.display = 'none';
 
-      // Route: if appointment exists but intake NOT completed, go to step 3 (intake)
-      if (hasConsultation && consultationData.intake_completed === false) {
-        _intakeCompleted = false;
-        // Pre-fill basic info fields from saved data
-        if (consultationData.first_name) (document.getElementById('firstName') || {}).value = consultationData.first_name;
-        if (consultationData.last_name) (document.getElementById('lastName') || {}).value = consultationData.last_name;
-        if (consultationData.email) (document.getElementById('intakeEmail') || {}).value = consultationData.email;
-        if (consultationData.phone_number) (document.getElementById('phoneNumber') || {}).value = consultationData.phone_number;
-        if (consultationData.street_address) (document.getElementById('streetAddress') || {}).value = consultationData.street_address;
-        if (consultationData.apt_unit) (document.getElementById('aptUnit') || {}).value = consultationData.apt_unit;
-        if (consultationData.city) (document.getElementById('city') || {}).value = consultationData.city;
-        if (consultationData.state) (document.getElementById('state') || {}).value = consultationData.state;
-        if (consultationData.zip_code) (document.getElementById('zipCode') || {}).value = consultationData.zip_code;
-        showStep(3);
-        return;
-      }
-
       // Intake completed or no consultation data — go to waiting
       showStep(4);
       startCountdown();
       return;
     }
 
-    // Has consultation but no pending appointment — go to portal
-    if (hasConsultation) {
+    // Has consultation but no review_status and no appointment — redirect to portal
+    if (hasConsultation && !reviewStatus) {
       window.location.href = 'portal.html';
       return;
     }
 
+    // No consultation — show step 1 (intake form)
     // Pre-fill email field from session and mark as logged in
     if (session.user && session.user.email) {
       window._sessionUser = session.user;
@@ -2425,9 +2615,6 @@ window._sbClient = createClient(
       var passLabel = passField ? passField.closest('.form-group') : null;
       if (passLabel) passLabel.style.display = 'none';
     }
-
-    // Load real clinician availability for booking calendar
-    _loadBookingAvailability();
 
     // Show welcome banner if arriving from sign-up (?new=1)
     if (new URLSearchParams(window.location.search).get('new') === '1') {

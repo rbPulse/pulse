@@ -7251,6 +7251,13 @@ function _buildClThreadCache(rows) {
           if (_clPatientRows[pi].id === tid) { patientEmail = _clPatientRows[pi].email || null; break; }
         }
       }
+      // Look up review_status from patient rows cache
+      var patientReviewStatus = null;
+      if (_clPatientRows) {
+        for (var ri = 0; ri < _clPatientRows.length; ri++) {
+          if (_clPatientRows[ri].id === tid) { patientReviewStatus = _clPatientRows[ri].review_status || null; break; }
+        }
+      }
       seen[tid] = {
         threadId: tid,
         patientLabel: patientLabel,
@@ -7259,6 +7266,7 @@ function _buildClThreadCache(rows) {
         latestTime: row.created_at,
         preview: row.body,
         email: patientEmail,
+        reviewStatus: patientReviewStatus,
         messages: []
       };
     } else if (row.sender_role === 'consumer' && row.sender_name && seen[tid].patientLabel === tid.slice(0, 8).toUpperCase()) {
@@ -7279,6 +7287,21 @@ function _buildClThreadCache(rows) {
     if (seen[tid]) seen[tid].messages.push(row);
   });
   _clThreadCache = seen;
+}
+
+function _threadReviewChip(rs) {
+  if (!rs) return '';
+  var style = 'font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.1em;padding:1px 6px;border-radius:999px;margin-left:6px;';
+  var label, colors;
+  if (rs === 'pending_review')           { label = 'PENDING';    colors = 'background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);'; }
+  else if (rs === 'in_review')           { label = 'IN REVIEW';  colors = 'background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);'; }
+  else if (rs === 'live_consult_requested') { label = 'CONSULT REQ'; colors = 'background:rgba(140,100,220,0.1);border:1px solid rgba(140,100,220,0.22);color:rgba(170,140,230,0.85);'; }
+  else if (rs === 'live_consult_scheduled') { label = 'SCHEDULED'; colors = 'background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);'; }
+  else if (rs === 'prescribed')          { label = 'PRESCRIBED'; colors = 'background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);'; }
+  else if (rs === 'not_prescribed')      { label = 'NOT RX';     colors = 'background:rgba(200,80,80,0.08);border:1px solid rgba(200,80,80,0.2);color:rgba(200,80,80,0.75);'; }
+  else if (rs === 'withdrawn')           { label = 'WITHDRAWN';  colors = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);'; }
+  else return '';
+  return '<span style="' + style + colors + '">' + label + '</span>';
 }
 
 function _renderClThreadListFromCache() {
@@ -7306,7 +7329,7 @@ function _renderClThreadListFromCache() {
     var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
       '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
-      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
+      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + _threadReviewChip(t.reviewStatus) + '</div>' +
       '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
       '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
       '</div>';

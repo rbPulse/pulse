@@ -1534,11 +1534,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-cl-overview" onclick="switchTab('cl-overview')">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           <span class="sidebar-item-label">Overview</span>
+          <span id="cl-overview-badge" style="display:none;background:rgba(220,180,75,0.8);color:#000;font-size:9px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:16px;text-align:center;line-height:1.5;margin-left:auto;flex-shrink:0;"></span>
         </div>
         <div class="sidebar-section-label">Patients</div>
         <div class="sidebar-item" id="nav-cl-appointments" onclick="switchTab('cl-appointments')">
           <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           <span class="sidebar-item-label">Live Consults</span>
+          <span id="cl-live-badge" style="display:none;background:rgba(100,150,255,0.6);color:#fff;font-size:9px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:16px;text-align:center;line-height:1.5;margin-left:auto;flex-shrink:0;"></span>
         </div>
         <div class="sidebar-item" id="nav-cl-patients" onclick="switchTab('cl-patients')">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -4051,6 +4053,21 @@ async function _loadClOverviewStats() {
       .eq('assigned_clinician_id', currentUserId)
       .in('review_status', ['live_consult_requested', 'live_consult_scheduled']);
     document.getElementById('clStatLiveConsults').textContent = liveConsults.count || 0;
+
+    // Update sidebar badges
+    var overviewBadge = document.getElementById('cl-overview-badge');
+    var totalAttention = (pending.count || 0) + (inReview.count || 0);
+    if (overviewBadge) {
+      overviewBadge.textContent = totalAttention;
+      overviewBadge.style.display = totalAttention > 0 ? '' : 'none';
+    }
+
+    var liveBadge = document.getElementById('cl-live-badge');
+    var liveCount = liveConsults.count || 0;
+    if (liveBadge) {
+      liveBadge.textContent = liveCount;
+      liveBadge.style.display = liveCount > 0 ? '' : 'none';
+    }
 
     // Active patients (prescribed + purchased)
     var active = await db.from('consultations')

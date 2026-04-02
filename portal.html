@@ -1894,7 +1894,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="cl-stat-grid">
           <div class="cl-stat-card">
             <div class="cl-stat-num" id="clStatPending">0</div>
-            <div class="cl-stat-label">Pending Reviews</div>
+            <div class="cl-stat-label">Awaiting Review</div>
           </div>
           <div class="cl-stat-card">
             <div class="cl-stat-num" id="clStatInReview">0</div>
@@ -4148,7 +4148,7 @@ async function loadAttentionCards() {
       // Status chip
       var statusChip = c.review_status === 'in_review'
         ? '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">In Review</span>'
-        : '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Pending Review</span>';
+        : '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);">Awaiting Review</span>';
 
       // Last message preview
       var msgPreview = lastMsg ? lastMsg.body.slice(0, 50) + (lastMsg.body.length > 50 ? '\u2026' : '') : 'No messages yet';
@@ -6449,7 +6449,7 @@ function searchPatients(q) {
 function _patStatusChip(status, hasProtocol, hasUpcomingAppt, prescriptionGiven, reviewStatus, purchaseStatus) {
   // Async review workflow statuses take precedence when present
   if (reviewStatus === 'pending_review') {
-    return '<span class="pat-status-badge" style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);">Pending Review</span>';
+    return '<span class="pat-status-badge" style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);">Awaiting Review</span>';
   } else if (reviewStatus === 'in_review') {
     return '<span class="pat-status-badge" style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);">In Review</span>';
   } else if (reviewStatus === 'live_consult_requested') {
@@ -6733,7 +6733,7 @@ function buildPatientDetail(p) {
   // Review status chip for detail panel
   var reviewStatusChipHtml = '';
   if (reviewStatusLabel === 'pending_review') {
-    reviewStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Pending Review</span>';
+    reviewStatusChipHtml = '<span style="background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);padding:2px 8px;border-radius:999px;font-size:11px;">Awaiting Review</span>';
   } else if (reviewStatusLabel === 'in_review') {
     reviewStatusChipHtml = '<span style="background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);padding:2px 8px;border-radius:999px;font-size:11px;">In Review</span>';
   } else if (reviewStatusLabel === 'live_consult_requested') {
@@ -9665,7 +9665,7 @@ function _showClSessionError(msg) {
       - Blocked Times: add/remove blocks with day, label, start/end
 
   [ ] 22. CLINICIAN PATIENTS
-      - Filter pills: All, Active, Pending, Recently Seen, Needs Follow-up, Unread
+      - Filter pills: All, Awaiting Review, In Review, Live Consult, Active, Awaiting Purchase, Not Prescribed, Withdrawn
       - Search input filters by name or protocol
       - Patient row click → detail panel slides in (full-screen on mobile)
       - Detail shows: info grid, protocol, compounds, dose summary, appt history

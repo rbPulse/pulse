@@ -1905,7 +1905,34 @@ initAdmin = function(user, profile) {
   loadAuditLogs();
   // Analytics loads after a short delay to let other data populate
   setTimeout(loadAnalytics, 1500);
+  // Start auto-refresh polling
+  _startAdminPoll();
 };
+
+// ── Admin auto-refresh polling (30s) ──
+var _adminPollTimer = null;
+
+function _startAdminPoll() {
+  if (_adminPollTimer) clearInterval(_adminPollTimer);
+  _adminPollTimer = setInterval(function() {
+    loadOverviewStats();
+    loadRecentUsers();
+    loadUsers();
+    loadRoles();
+    loadConsultations();
+    loadAppointments();
+    // Don't reload messages/audit every 30s — too heavy
+  }, 30000);
+}
+
+// Pause polling when tab is hidden, resume when visible
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    if (_adminPollTimer) { clearInterval(_adminPollTimer); _adminPollTimer = null; }
+  } else {
+    _startAdminPoll();
+  }
+});
 </script>
 </body>
 </html>

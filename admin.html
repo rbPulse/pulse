@@ -811,7 +811,7 @@ function loadOverviewStats() {
 
 // ── Load recent users ──
 function loadRecentUsers() {
-  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role, created_at')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, role, admin_role, created_at')
     .order('created_at', { ascending: false }).limit(10)
     .then(function(r) {
       var tbody = document.getElementById('recentUsersBody');
@@ -821,7 +821,7 @@ function loadRecentUsers() {
       }
       tbody.innerHTML = r.data.map(function(u) {
         var role = u.role || 'member';
-        var name = u.display_name || u.email || 'Unknown';
+        var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
         var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
         return '<tr>' +
           '<td style="color:#fff;font-weight:400;">' + escHtml(name) + '</td>' +

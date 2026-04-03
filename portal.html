@@ -4288,10 +4288,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data, created_at').eq('id', consultId).limit(1);
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
     var d = res.data[0].data || {};
     var consultCreatedAt = res.data[0].created_at || null;
+    var riskStatus = res.data[0].risk_status || null;
+    var riskReasons = res.data[0].risk_flag_reasons || [];
 
     // Helper values for intake summary
     var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || '—';
@@ -4320,6 +4322,20 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
       // LEFT COLUMN: Intake data
       '<div>' +
+        // Risk banner
+        (riskStatus && riskStatus !== 'low_risk' ? (function() {
+          var bannerColor = riskStatus === 'consult_recommended' ? 'rgba(255,100,100,' : 'rgba(220,180,75,';
+          var bannerLabel = riskStatus === 'consult_recommended' ? 'CONSULT RECOMMENDED' : 'MODERATE RISK';
+          var bannerIcon = riskStatus === 'consult_recommended' ? '\u26A0' : '\u25CF';
+          var reasonsHtml = riskReasons.map(function(r) { return '<li style="margin-bottom:2px;">' + escapeHtml(r) + '</li>'; }).join('');
+          return '<div style="background:' + bannerColor + '0.06);border:1px solid ' + bannerColor + '0.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (reasonsHtml ? '8px' : '0') + ';">' +
+              '<span style="font-size:14px;">' + bannerIcon + '</span>' +
+              '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:' + bannerColor + '0.9);font-weight:500;">' + bannerLabel + '</span>' +
+            '</div>' +
+            (reasonsHtml ? '<ul style="list-style:none;padding:0;margin:0;font-size:12px;color:' + bannerColor + '0.75);line-height:1.6;">' + reasonsHtml + '</ul>' : '') +
+          '</div>';
+        })() : (riskStatus === 'low_risk' ? '<div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;"><span style="color:rgba(58,122,92,0.7);font-size:12px;">\u2713</span><span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(58,122,92,0.6);">LOW RISK</span></div>' : '')) +
         // Key demographics - 3 columns
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Demographics</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">' +
@@ -9398,6 +9414,9 @@ async function _submitEvaluation(apptId) {
       if (isAsyncReview) {
         consultUpdate.review_status = reviewStatusUpdate;
         consultUpdate.assigned_clinician_id = currentUserId;
+        consultUpdate.clinician_decision = decision === 'yes' ? 'approved' : 'declined';
+        consultUpdate.clinician_notes = notes.trim() || null;
+        consultUpdate.consult_required = false;
       }
       await db.from('consultations').update(consultUpdate).eq('id', cId);
     }
@@ -9507,7 +9526,10 @@ async function _confirmAttnDecline(consultId, userId) {
       review_status: 'not_prescribed',
       prescription_given: false,
       no_prescription_reason: reason,
-      evaluation_date: new Date().toISOString()
+      evaluation_date: new Date().toISOString(),
+      clinician_decision: 'declined',
+      clinician_notes: reason,
+      consult_required: false
     }).eq('id', consultId);
 
     // Notify patient
@@ -9604,7 +9626,10 @@ async function _confirmLiveConsult() {
     await db.from('consultations').update({
       review_status: 'live_consult_requested',
       live_consult_message: customMessage,
-      assigned_clinician_id: currentUserId
+      assigned_clinician_id: currentUserId,
+      clinician_decision: 'live_consult_required',
+      clinician_notes: customMessage,
+      consult_required: true
     }).eq('id', _activePatientConsultId);
 
     // Send message to patient

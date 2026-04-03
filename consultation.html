@@ -2608,6 +2608,63 @@ function sendEmail(client, to, subject, body_html) {
 }
 
 // ── saveFullIntake: consolidated single-step save (replaces two-phase save) ──
+// ══════════════════════════════════
+// RISK EVALUATION
+// ══════════════════════════════════
+function evaluateIntakeRisk(data) {
+  var reasons = [];
+  var score = 0;
+
+  // Medical history flags
+  var medHistory = data.medical_history || [];
+  if (medHistory.indexOf('cancer_history') !== -1) { reasons.push('History of cancer'); score += 2; }
+  if (medHistory.indexOf('cardio') !== -1) { reasons.push('Active cardiovascular disease'); score += 2; }
+  if (medHistory.indexOf('diabetes') !== -1) { reasons.push('Diabetes (Type 1 or 2)'); score += 1; }
+  if (medHistory.indexOf('autoimmune') !== -1) { reasons.push('Autoimmune condition'); score += 1; }
+  if (medHistory.indexOf('hormone_sensitive') !== -1) { reasons.push('Hormone-sensitive condition'); score += 1; }
+
+  // Multiple conditions
+  if (medHistory.length >= 3) { reasons.push('Multiple medical conditions (' + medHistory.length + ')'); score += 2; }
+
+  // Current peptide/hormone use
+  if (data.peptide_history === 'yes') { reasons.push('Currently using peptides or hormones'); score += 1; }
+
+  // Age check
+  if (data.dob) {
+    var dob = new Date(data.dob);
+    var today = new Date();
+    var age = today.getFullYear() - dob.getFullYear();
+    var m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    if (age >= 65) { reasons.push('Age 65+'); score += 1; }
+    if (age < 21) { reasons.push('Age under 21'); score += 1; }
+  }
+
+  // BMI check
+  if (data.current_weight && data.height) {
+    var heightStr = data.height || '';
+    var ftMatch = heightStr.match(/(\d+)'/);
+    var inMatch = heightStr.match(/'(\d+)"/);
+    if (ftMatch) {
+      var inches = parseInt(ftMatch[1]) * 12 + (inMatch ? parseInt(inMatch[1]) : 0);
+      if (inches > 0) {
+        var weight = parseFloat(data.current_weight);
+        var bmi = (weight / (inches * inches)) * 703;
+        if (bmi >= 40) { reasons.push('BMI 40+ (Class III obesity)'); score += 2; }
+        else if (bmi >= 35) { reasons.push('BMI 35+ (Class II obesity)'); score += 1; }
+        else if (bmi < 16) { reasons.push('BMI under 16 (severely underweight)'); score += 2; }
+      }
+    }
+  }
+
+  // Determine status
+  var status = 'low_risk';
+  if (score >= 4) status = 'consult_recommended';
+  else if (score >= 2) status = 'moderate_risk';
+
+  return { status: status, reasons: reasons };
+}
+
 async function saveFullIntake() {
   var client = window._sbClient;
   if (!client) throw new Error('Client not initialized');
@@ -2646,13 +2703,18 @@ async function saveFullIntake() {
   var assignedClinicianId = assignedClinician ? assignedClinician.id : null;
   _assignedClinicianId = assignedClinicianId;
 
+  // Evaluate intake risk
+  var riskResult = evaluateIntakeRisk(fullData);
+
   // Insert consultation record
   var cInsert = await client.from('consultations').insert({
     user_id: session.user.id,
     data: fullData,
     review_status: 'pending_review',
     intake_completed: true,
-    assigned_clinician_id: assignedClinicianId
+    assigned_clinician_id: assignedClinicianId,
+    risk_status: riskResult.status,
+    risk_flag_reasons: riskResult.reasons
   }).select('id').single();
   if (cInsert.error) {
     console.error('[Pulse] consultation insert failed:', cInsert.error.message);

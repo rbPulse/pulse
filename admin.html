@@ -1091,13 +1091,12 @@ function renderUsersTable(users) {
 var allRoleUsers = [];
 
 function loadRoles() {
-  db.from('profiles').select('user_id, email, first_name, last_name, display_name, admin_role')
+  db.from('profiles').select('user_id, email, first_name, last_name, display_name, role, admin_role')
     .order('created_at', { ascending: false })
     .then(function(r) {
       allRoleUsers = r.data || [];
-      // Update subtitle based on permission level
       if (currentAdminRole !== 'super_admin') {
-        document.getElementById('rolesSubtitle').textContent = 'View user roles (only Super Admins can assign admin/super_admin)';
+        document.getElementById('rolesSubtitle').textContent = 'View user roles (only Super Admins can assign admin roles)';
       }
       filterRoles();
     });
@@ -1130,26 +1129,30 @@ function renderRolesTable(users) {
 
   tbody.innerHTML = users.map(function(u) {
     var role = u.role || 'member';
-    var name = u.display_name || u.email || 'Unknown';
+    var adminType = u.admin_role || '';
+    var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
     var isSelf = u.user_id === currentUserId;
 
-    // Determine if this user's role can be changed
-    var canChange = false;
-    if (isSelf) {
-      canChange = false; // Can't change own role
-    } else if (isSuperAdmin) {
-      canChange = true; // Super admin can change anyone
-    } else {
-      // Regular admin can only assign member/clinician
-      canChange = (role === 'member' || role === 'clinician');
-    }
+    var canChange = !isSelf && (isSuperAdmin || role === 'member' || role === 'clinician');
 
-    var selectHtml = '<select class="role-select" data-uid="' + u.user_id + '" data-current="' + role + '" onchange="onRoleChange(this)"' + (!canChange ? ' disabled' : '') + '>' +
+    // Role select (member/clinician/admin)
+    var selectHtml = '<select class="role-select" data-uid="' + u.user_id + '" data-current-role="' + role + '" data-current-admin="' + adminType + '" onchange="onRoleChange(this)"' + (!canChange ? ' disabled' : '') + '>' +
       '<option value="member"' + (role === 'member' ? ' selected' : '') + '>Member</option>' +
       '<option value="clinician"' + (role === 'clinician' ? ' selected' : '') + '>Clinician</option>' +
       '<option value="admin"' + (role === 'admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Admin</option>' +
-      '<option value="super_admin"' + (role === 'super_admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Super Admin</option>' +
       '</select>';
+
+    // Admin type select (only visible when role is admin)
+    var adminSelectHtml = '';
+    if (role === 'admin' && isSuperAdmin && !isSelf) {
+      adminSelectHtml = ' <select class="role-select" data-uid="' + u.user_id + '" data-admin-type="true" onchange="onAdminTypeChange(this)" style="margin-left:6px;">' +
+        '<option value="super_admin"' + (adminType === 'super_admin' ? ' selected' : '') + '>Super Admin</option>' +
+        '</select>';
+    }
+
+    // Display role label
+    var roleLabel = role;
+    if (role === 'admin' && adminType) roleLabel = adminType.replace('_', ' ');
 
     var note = '';
     if (isSelf) note = '<span style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--grey2);margin-left:6px;">(you)</span>';
@@ -1157,34 +1160,33 @@ function renderRolesTable(users) {
     return '<tr>' +
       '<td style="color:#fff;font-weight:400;">' + escHtml(name) + note + '</td>' +
       '<td>' + escHtml(u.email || '--') + '</td>' +
-      '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
-      '<td>' + selectHtml + '</td>' +
+      '<td><span class="role-pill ' + role + '">' + roleLabel + '</span></td>' +
+      '<td>' + selectHtml + adminSelectHtml + '</td>' +
       '</tr>';
   }).join('');
 }
 
 function onRoleChange(selectEl) {
   var uid = selectEl.getAttribute('data-uid');
-  var currentRole = selectEl.getAttribute('data-current');
+  var currentRole = selectEl.getAttribute('data-current-role');
   var newRole = selectEl.value;
 
   if (newRole === currentRole) return;
 
   var user = allRoleUsers.find(function(u) { return u.user_id === uid; });
-  var userName = user ? (user.display_name || user.email) : uid;
+  var userName = user ? (user.display_name || ((user.first_name || '') + ' ' + (user.last_name || '')).trim() || user.email) : uid;
 
-  var isElevating = (newRole === 'admin' || newRole === 'super_admin');
+  var isElevating = (newRole === 'admin');
   var btnClass = isElevating ? 'danger' : 'confirm';
-  var btnText = isElevating ? 'Grant Access' : 'Update Role';
+  var btnText = isElevating ? 'Grant Admin Access' : 'Update Role';
 
   showModal(
     'Change Role',
-    'Change ' + userName + ' from ' + currentRole.replace('_', ' ') + ' to ' + newRole.replace('_', ' ') + '?',
+    'Change ' + userName + ' from ' + currentRole + ' to ' + newRole + '?',
     btnText,
     btnClass,
     function() {
-      // Update both role and admin_role columns
-      var adminRoleValue = (newRole === 'admin' || newRole === 'super_admin') ? newRole : null;
+      var adminRoleValue = (newRole === 'admin') ? 'super_admin' : null; // default admin type
 
       db.from('profiles').update({ role: newRole, admin_role: adminRoleValue }).eq('user_id', uid)
         .then(function(r) {
@@ -1193,14 +1195,12 @@ function onRoleChange(selectEl) {
             selectEl.value = currentRole;
             return;
           }
-          showToast('Role updated to ' + newRole.replace('_', ' '), 'success');
-          selectEl.setAttribute('data-current', newRole);
+          showToast('Role updated to ' + newRole, 'success');
           // Update local data
           var u = allRoleUsers.find(function(x) { return x.user_id === uid; });
-          if (u) u.admin_role = adminRoleValue;
+          if (u) { u.role = newRole; u.admin_role = adminRoleValue; }
           var u2 = allUsers.find(function(x) { return x.user_id === uid; });
-          if (u2) u2.admin_role = adminRoleValue;
-          // Re-render both tables
+          if (u2) { u2.role = newRole; u2.admin_role = adminRoleValue; }
           filterRoles();
           filterUsers();
           loadRecentUsers();
@@ -1209,8 +1209,21 @@ function onRoleChange(selectEl) {
     }
   );
 
-  // Reset select to current value until confirmed
   selectEl.value = currentRole;
+}
+
+function onAdminTypeChange(selectEl) {
+  var uid = selectEl.getAttribute('data-uid');
+  var newAdminType = selectEl.value;
+
+  db.from('profiles').update({ admin_role: newAdminType }).eq('user_id', uid)
+    .then(function(r) {
+      if (r.error) { showToast('Failed: ' + r.error.message, 'error'); return; }
+      showToast('Admin type updated', 'success');
+      var u = allRoleUsers.find(function(x) { return x.user_id === uid; });
+      if (u) u.admin_role = newAdminType;
+      filterRoles();
+    });
 }
 
 // ══════════════════════════════════

@@ -308,11 +308,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="sidebar-item" id="nav-consultations" onclick="switchTab('consultations')">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span class="sidebar-item-label">Consultations</span>
+          <span class="sidebar-item-label">Patients</span>
         </div>
         <div class="sidebar-item" id="nav-appointments" onclick="switchTab('appointments')">
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span class="sidebar-item-label">Appointments</span>
+          <span class="sidebar-item-label">Live Consults</span>
         </div>
         <div class="sidebar-item" id="nav-messages" onclick="switchTab('messages')">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -350,11 +350,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="stat-card-value" id="statUsers">--</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Consultations</div>
+            <div class="stat-card-label">Patients</div>
             <div class="stat-card-value" id="statConsultations">--</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Appointments</div>
+            <div class="stat-card-label">Live Consults</div>
             <div class="stat-card-value" id="statAppointments">--</div>
           </div>
           <div class="stat-card">
@@ -457,8 +457,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- CONSULTATIONS TAB -->
       <div class="admin-tab" id="tab-consultations">
         <div class="tab-header">
-          <div class="tab-title">Consultations</div>
-          <div class="tab-subtitle">View and manage all consultations</div>
+          <div class="tab-title">Patients</div>
+          <div class="tab-subtitle">View and manage all patient intakes</div>
         </div>
         <div class="stat-grid" id="consultationStats">
           <div class="stat-card">
@@ -532,8 +532,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- APPOINTMENTS TAB -->
       <div class="admin-tab" id="tab-appointments">
         <div class="tab-header">
-          <div class="tab-title">Appointments</div>
-          <div class="tab-subtitle">View all appointments across clinicians</div>
+          <div class="tab-title">Live Consults</div>
+          <div class="tab-subtitle">View all live video consultations across clinicians</div>
         </div>
         <div class="stat-grid" id="apptStats">
           <div class="stat-card">
@@ -699,7 +699,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
           <!-- Appointments by status -->
           <div class="chart-card">
-            <div class="chart-card-title">Appointments by Status</div>
+            <div class="chart-card-title">Live Consults by Status</div>
             <div id="chartApptStatus"></div>
           </div>
 
@@ -1294,14 +1294,14 @@ function filterConsultations() {
     return true;
   });
 
-  document.getElementById('consultCount').textContent = filtered.length + ' of ' + allConsultations.length + ' consultations';
+  document.getElementById('consultCount').textContent = filtered.length + ' of ' + allConsultations.length + ' patients';
   renderConsultTable(filtered);
 }
 
 function renderConsultTable(consultations) {
   var tbody = document.getElementById('consultBody');
   if (!consultations.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No consultations match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No patients match your filters.</td></tr>';
     return;
   }
   tbody.innerHTML = consultations.map(function(c) {
@@ -1483,7 +1483,7 @@ function filterAppointments() {
     return true;
   });
 
-  document.getElementById('apptCount').textContent = filtered.length + ' of ' + allAppointments.length + ' appointments';
+  document.getElementById('apptCount').textContent = filtered.length + ' of ' + allAppointments.length + ' live consults';
   renderApptTable(filtered);
 }
 
@@ -1503,7 +1503,7 @@ function apptStatusLabel(s) {
 function renderApptTable(appts) {
   var tbody = document.getElementById('apptBody');
   if (!appts.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No appointments match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No live consults match your filters.</td></tr>';
     return;
   }
   tbody.innerHTML = appts.map(function(a) {

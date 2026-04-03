@@ -3402,7 +3402,7 @@ function _continuePortalInit(user, role) {
     var since = new Date(user.created_at);
     document.getElementById('memberSince').textContent = 'Member since ' + since.toLocaleDateString('en-US', {month:'long', year:'numeric'});
     // Derive an initial display name from user_metadata or email prefix
-    var consumerName = (user.user_metadata && user.user_metadata.first_name) ? user.user_metadata.first_name : user.email.split('@')[0];
+    var consumerName = (user.user_metadata && user.user_metadata.first_name) ? user.user_metadata.first_name : (user.user_metadata && user.user_metadata.name) || user.email;
     _memberDisplayName = consumerName;
     setSidebarIdentity(consumerName, 'Member', false);
 
@@ -3416,20 +3416,20 @@ function _continuePortalInit(user, role) {
       return;
     }
 
-    // Upsert profile row; use the resolved display_name from profiles if available
+    // Upsert profile row; do NOT overwrite display_name if one already exists
     var profilePayload = {
       user_id:      user.id,
       email:        user.email,
-      display_name: consumerName,
       last_seen:    new Date().toISOString()
     };
-    db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' })
-      .select('display_name, subscription_status, notify_messages, current_streak')
+    db.from('profiles').upsert(profilePayload, { onConflict: 'user_id', ignoreDuplicates: false })
+      .select('display_name, first_name, last_name, subscription_status, notify_messages, current_streak')
       .then(function(pr) {
         if (!pr.error && pr.data && pr.data.length > 0) {
           var row = pr.data[0];
-          if (row.display_name) {
-            _memberDisplayName = row.display_name;
+          var resolvedName = row.display_name || ((row.first_name || '') + ' ' + (row.last_name || '')).trim() || null;
+          if (resolvedName) {
+            _memberDisplayName = resolvedName;
             setSidebarIdentity(_memberDisplayName, 'Member', false);
             // Also refresh settings field with the DB-resolved name
             var snEl = document.getElementById('settingsDisplayName');
@@ -3692,7 +3692,7 @@ function initClinicianPortal(user, role, greeting) {
   // Ensure clinician has a profile row (may not exist if setup was done before this fix)
   if (currentUserId && !PREVIEW_MODE) {
     var meta = user.user_metadata || {};
-    var clName = meta.cl_name || user.email.split('@')[0];
+    var clName = meta.cl_name || meta.name || user.email;
     var clParts = clName.split(' ');
     var clFirst = clParts[0] || '';
     var clLast = clParts.slice(1).join(' ') || '';
@@ -3731,7 +3731,7 @@ function initClinicianPortal(user, role, greeting) {
   // Populate from mock (replace fetch calls here when backend is ready)
   var m = MOCK_CLINICIAN;
   var meta = user.user_metadata || {};
-  var name = PREVIEW_MODE ? m.name : (meta.cl_name || meta.name || user.email.split('@')[0]);
+  var name = PREVIEW_MODE ? m.name : (meta.cl_name || meta.name || user.email);
   var nameParts = name.split(' ');
   var displayName = 'Dr. ' + (nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0]);
 
@@ -4582,7 +4582,7 @@ async function loadLiveConsultsSection() {
 
     // Get patient names
     var userIds = consults.map(function(c) { return c.user_id; });
-    var profileRes = await db.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+    var profileRes = await db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds);
     var profileMap = {};
     (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
 
@@ -4669,7 +4669,7 @@ async function loadRecentlyEvaluated() {
     }
 
     var userIds = consults.map(function(c) { return c.user_id; });
-    var profileRes = await db.from('profiles').select('user_id, display_name, email').in('user_id', userIds);
+    var profileRes = await db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds);
     var profileMap = {};
     (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
 
@@ -4761,7 +4761,7 @@ function _loadClRecentActivity(el) {
       showInlineEmpty(el, 'No recent activity.', 'Activity from your patients will appear here.', { icon: 'clipboard' });
       return;
     }
-    db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name)')
+    db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name, first_name, last_name, email)')
       .in('user_id', patientIds)
       .order('logged_at', { ascending: false }).limit(5)
       .then(function(r) {
@@ -4770,7 +4770,8 @@ function _loadClRecentActivity(el) {
           return;
         }
         el.innerHTML = r.data.map(function(d) {
-          var name = (d.profiles && d.profiles.display_name) || d.user_id.slice(0,8).toUpperCase();
+          var prof = d.profiles || {};
+          var name = prof.display_name || ((prof.first_name || '') + ' ' + (prof.last_name || '')).trim() || prof.email || d.user_id.slice(0,8).toUpperCase();
           var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
           var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
         return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(name) + '</strong> Logged a dose</span><span class="activity-time-text">' + timeLabel + '</span></div>';
@@ -4979,10 +4980,10 @@ function _loadClOverviewDayAppts(dateStr) {
     // Resolve display names from profiles if possible
     var consumerIds = cached.map(function(a) { return a.consumer_id; }).filter(Boolean);
     if (consumerIds.length > 0) {
-      db.from('profiles').select('user_id, display_name').in('user_id', consumerIds)
+      db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', consumerIds)
         .then(function(pr) {
           var nameMap = {};
-          (pr.data || []).forEach(function(p) { nameMap[p.user_id] = p.display_name; });
+          (pr.data || []).forEach(function(p) { nameMap[p.user_id] = p.display_name || ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.email || null; });
           var rows = cached.map(function(a) {
             var adt = new Date(a.scheduled_at);
             var dn = nameMap[a.consumer_id] || (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
@@ -5204,10 +5205,13 @@ function _loadClApptsQuery(filter) {
       var cIds = appts.map(function(a){ return a.consumer_id; }).filter(Boolean);
       var uniqueIds = []; var seen = {};
       cIds.forEach(function(id){ if (!seen[id]){ seen[id]=true; uniqueIds.push(id); }});
-      db.from('profiles').select('user_id, display_name').in('user_id', uniqueIds)
+      db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', uniqueIds)
         .then(function(pr) {
           var nameMap = {};
-          (pr.data || []).forEach(function(p){ if (p.display_name) nameMap[p.user_id] = p.display_name; });
+          (pr.data || []).forEach(function(p){
+            var resolved = p.display_name || ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.email || null;
+            if (resolved) nameMap[p.user_id] = resolved;
+          });
           var rows = appts.map(function(a) {
             var dt = new Date(a.scheduled_at);
             var now = new Date();
@@ -5259,15 +5263,18 @@ function _applyClApptFilter(rows, filter) {
       return st === 'live_consult_requested';
     });
   } else if (filter === 'scheduled') {
-    // Patient has booked — appointment exists with pending/confirmed status
+    // Patient has booked — appointment exists with pending/confirmed status AND is in the future
     filtered = rows.filter(function(a) {
       var st = a._rawStatus || a.status;
-      return st === 'pending' || st === 'confirmed';
+      var isFuture = a.scheduledAt ? a.scheduledAt > new Date() : false;
+      return (st === 'pending' || st === 'confirmed') && isFuture;
     });
   } else if (filter === 'completed') {
+    // Completed status OR past appointments (regardless of status)
     filtered = rows.filter(function(a) {
       var st = a._rawStatus || a.status;
-      return st === 'completed';
+      var isPast = a.scheduledAt ? a.scheduledAt <= new Date() : false;
+      return st === 'completed' || (isPast && st !== 'live_consult_requested' && st !== 'cancelled' && st !== 'cancelled_by_member' && st !== 'cancelled_by_clinician');
     });
     // Show most-recent first
     filtered = filtered.slice().sort(function(a,b){ return b.scheduledAt - a.scheduledAt; });
@@ -5448,10 +5455,11 @@ function buildApptDetail(a, role) {
       (!isActiveAppt ? '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType2 + '\',true)">Book Again</button>' : '');
   }
 
+  var statusBadgeHtml = role === 'clinician' ? '' : '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>';
   return '<div class="adp-header">' +
     '<div><div class="adp-name">' + name + '</div><div class="adp-meta">' + escapeHtml(a.type || 'Appointment') + ' · ' + escapeHtml(timeStr) + ' · ' + escapeHtml(a.dur || '') + '</div></div>' +
     '<div style="display:flex;align-items:center;gap:8px;">' +
-      '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
+      statusBadgeHtml +
       '<button class="adp-close" onclick="this.closest(\'.appt-detail-panel\').remove()">×</button>' +
     '</div></div>' +
     bodyHtml +
@@ -5632,7 +5640,6 @@ function renderApptList(elId, appts, role) {
           '<div class="appt-type-text">' + escapeHtml(timeLabel) + '</div>' +
         '</div>' +
         '<span class="appt-dur-text" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.06em;color:rgba(255,255,255,0.35);white-space:nowrap;flex-shrink:0;">' + escapeHtml(a.dur || '') + '</span>' +
-        '<span class="appt-badge ' + escapeAttr(a.status) + '">' + escapeHtml(a.status) + '</span>' +
         joinBtnHtml +
       '</div>';
     wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,.appt-detail-panel,textarea,button,input,select,a')) return; toggleApptDetail(a, role || 'clinician', wrapper); };
@@ -6247,7 +6254,7 @@ function populatePortal(user, consultation, greeting) {
   }
 
   // Prefer the _memberDisplayName already resolved from profiles; fall back to consultation first_name or email prefix
-  var displayName = _memberDisplayName || firstName || user.email.split('@')[0];
+  var displayName = _memberDisplayName || firstName || user.email;
 
   // Update sidebar identity with real name if available (profiles takes priority)
   if (_memberDisplayName) {
@@ -6427,7 +6434,7 @@ function initClPatients() {
       // Step 2: fetch profiles for all those user_ids
       var ids = unique.map(function(c){ return c.user_id; });
       db.from('profiles')
-        .select('user_id, display_name, current_streak, subscription_status, notify_messages')
+        .select('user_id, display_name, first_name, last_name, email, current_streak, subscription_status, notify_messages')
         .in('user_id', ids)
         .then(function(pr) {
           if (pr.error) throw pr.error;
@@ -6490,8 +6497,9 @@ function _normalisePatientRow(consultation, profile) {
   var d = consultation.data || {};
   var name = (profile && profile.display_name)
     ? profile.display_name
-    : (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
-    || consultation.user_id.slice(0, 8).toUpperCase();
+    : (profile && (profile.first_name || profile.last_name) ? ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() : null)
+    || (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
+    || (profile && profile.email) || consultation.user_id.slice(0, 8).toUpperCase();
 
   // Protocol: only show if explicitly assigned by a clinician
   var protocolName = consultation.protocol_assigned || d.assigned_protocol || null;
@@ -7289,7 +7297,26 @@ function _loadClThreadList() {
       .then(function(res) {
         if (res.error) throw res.error;
         _buildClThreadCache(res.data || []);
-        _renderClThreadListFromCache();
+        // Resolve patient display names from profiles for all threads
+        var threadIds = Object.keys(_clThreadCache);
+        if (threadIds.length > 0) {
+          db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', threadIds)
+            .then(function(pr) {
+              if (!pr.error && pr.data) {
+                pr.data.forEach(function(p) {
+                  var resolved = p.display_name || ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.email || null;
+                  if (resolved && _clThreadCache[p.user_id]) {
+                    _clThreadCache[p.user_id].patientLabel = resolved;
+                    _clThreadCache[p.user_id].initials = resolved.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || _clThreadCache[p.user_id].initials;
+                  }
+                });
+              }
+              _renderClThreadListFromCache();
+            })
+            .catch(function() { _renderClThreadListFromCache(); });
+        } else {
+          _renderClThreadListFromCache();
+        }
       })
       .catch(function(err) {
         console.warn('[Pulse] messages table unavailable for clinician:', err && err.message);

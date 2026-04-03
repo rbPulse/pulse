@@ -4368,105 +4368,130 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         }).join('')
       : '<span style="color:var(--grey2);font-size:11px;">None reported</span>');
 
-    // Build intake summary
-    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
-      // LEFT COLUMN: Intake data
+    // Age string for decision bar
+    var ageStr = _calcAge(d.dob) + (d.dob ? ' (' + d.dob + ')' : '');
+
+    // Risk banner HTML
+    var riskBannerHtml = '';
+    if (riskStatus === 'high_risk') {
+      riskBannerHtml = '<div style="background:rgba(255,100,100,0.06);border:1px solid rgba(255,100,100,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:13px;">\u26A0</span><span style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,130,130,0.9);font-weight:500;">HIGH RISK</span></div>' +
+        '<ul style="list-style:none;padding:0;margin:0 0 8px;font-size:12px;color:rgba(255,130,130,0.75);line-height:1.8;">' + riskReasons.map(function(r) { return '<li>\u2022 ' + escapeHtml(r) + '</li>'; }).join('') + '</ul>' +
+        '<div style="font-size:11px;color:rgba(255,130,130,0.5);font-style:italic;">Live consult recommended based on flagged items</div>' +
+      '</div>';
+    } else if (riskStatus === 'moderate_risk') {
+      riskBannerHtml = '<div style="background:rgba(220,180,75,0.05);border:1px solid rgba(220,180,75,0.18);border-radius:10px;padding:14px 18px;margin-bottom:20px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:11px;color:rgba(220,180,75,0.7);">\u25CF</span><span style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(220,180,75,0.8);font-weight:500;">MODERATE RISK</span></div>' +
+        '<ul style="list-style:none;padding:0;margin:0 0 8px;font-size:12px;color:rgba(220,180,75,0.65);line-height:1.8;">' + riskReasons.map(function(r) { return '<li>\u2022 ' + escapeHtml(r) + '</li>'; }).join('') + '</ul>' +
+        '<div style="font-size:11px;color:rgba(220,180,75,0.45);font-style:italic;">Review flagged items before proceeding</div>' +
+      '</div>';
+    } else if (riskStatus === 'low_risk') {
+      riskBannerHtml = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;"><span style="color:rgba(58,122,92,0.7);font-size:12px;">\u2713</span><span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(58,122,92,0.6);">LOW RISK</span><span style="font-size:11px;color:var(--grey2);margin-left:8px;font-style:italic;">No concerns flagged \u2014 proceed at your discretion</span></div>';
+    }
+
+    // Medical considerations HTML — only meaningful items
+    var medConsiderations = [];
+    medHistoryArr.forEach(function(h) {
+      var isRisk = ['cancer_history','cancer_active','cardio','diabetes','autoimmune','hormone_sensitive','pregnancy','transplant'].indexOf(h) !== -1;
+      var label = h.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      medConsiderations.push('<div style="display:flex;align-items:center;gap:8px;padding:6px 0;' + (isRisk ? 'color:rgba(255,130,130,0.85);' : 'color:var(--grey);') + '">' +
+        '<span style="font-size:10px;">' + (isRisk ? '\u26A0' : '\u2022') + '</span>' +
+        '<span style="font-size:13px;">' + escapeHtml(label) + '</span>' +
+      '</div>');
+    });
+    if (d.medications && d.medications.toLowerCase() !== 'none' && d.medications.trim()) {
+      medConsiderations.push('<div style="padding:6px 0;"><span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.15em;color:var(--grey2);text-transform:uppercase;">Medications:</span> <span style="font-size:13px;color:var(--grey);">' + escapeHtml(d.medications) + '</span></div>');
+    }
+    var peptideVal = d.peptide_history || d.currentPeptides;
+    if (peptideVal === 'yes') {
+      var peptideDetail = d.peptide_detail || d.peptideDetailText || 'Details not provided';
+      medConsiderations.push('<div style="padding:6px 0;"><span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.15em;color:var(--grey2);text-transform:uppercase;">Peptide/Hormone Use:</span> <span style="font-size:13px;color:rgba(220,180,75,0.8);">' + escapeHtml(peptideDetail) + '</span></div>');
+    }
+    var medicalConsiderationsHtml = medConsiderations.length
+      ? medConsiderations.join('')
+      : '<div style="font-size:12px;color:var(--grey2);">No medical considerations flagged.</div>';
+
+    // Action buttons — risk-aware primary
+    var prescribeBtnStyle, declineBtnStyle, consultBtnStyle;
+    if (riskStatus === 'high_risk') {
+      consultBtnStyle = 'padding:14px 28px;border-radius:8px;border:none;cursor:pointer;background:rgba(100,150,255,0.2);color:rgba(150,185,255,0.95);font-weight:500;font-size:11px;';
+      prescribeBtnStyle = 'padding:10px 20px;border-radius:8px;border:1px solid rgba(58,122,92,0.3);background:transparent;color:var(--green);cursor:pointer;font-size:10px;';
+      declineBtnStyle = 'padding:10px 20px;border-radius:8px;border:1px solid rgba(255,100,100,0.2);background:transparent;color:rgba(255,130,130,0.6);cursor:pointer;font-size:10px;';
+    } else {
+      prescribeBtnStyle = 'padding:14px 28px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-weight:500;font-size:11px;';
+      declineBtnStyle = 'padding:10px 20px;border-radius:8px;border:1px solid rgba(255,100,100,0.2);background:transparent;color:rgba(255,130,130,0.6);cursor:pointer;font-size:10px;';
+      consultBtnStyle = 'padding:10px 20px;border-radius:8px;border:1px solid rgba(100,150,255,0.25);background:transparent;color:rgba(150,185,255,0.7);cursor:pointer;font-size:10px;';
+    }
+    var actionButtonsHtml = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+      '<button onclick="_attnPrescribe(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;letter-spacing:0.12em;text-transform:uppercase;transition:opacity .2s;' + prescribeBtnStyle + '">Prescribe</button>' +
+      '<button onclick="_attnDecline(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;letter-spacing:0.12em;text-transform:uppercase;transition:opacity .2s;' + declineBtnStyle + '">Decline</button>' +
+      '<button onclick="_attnRequestLive(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;letter-spacing:0.12em;text-transform:uppercase;transition:opacity .2s;' + consultBtnStyle + '">Request Live Consult</button>' +
+    '</div>';
+
+    // Build restructured card HTML
+    var html = '<div style="display:grid;grid-template-columns:1fr 340px;gap:24px;">' +
+      // LEFT COLUMN
       '<div>' +
+        // Section 1: Decision bar
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">' +
+          '<div>' +
+            '<div style="font-size:16px;font-weight:500;color:#fff;">' + escapeHtml(patientName) + ' <span style="color:var(--grey2);font-weight:300;font-size:14px;">\u00B7 ' + ageStr + ' \u00B7 ' + escapeHtml(d.sex || '\u2014') + ' \u00B7 ' + escapeHtml(d.state || '\u2014') + '</span></div>' +
+          '</div>' +
+        '</div>' +
+
         // Risk banner
-        (riskStatus && riskStatus !== 'low_risk' ? (function() {
-          var bannerColor = riskStatus === 'high_risk' ? 'rgba(255,100,100,' : 'rgba(220,180,75,';
-          var bannerLabel = riskStatus === 'high_risk' ? 'HIGH RISK' : 'MODERATE RISK';
-          var bannerIcon = riskStatus === 'high_risk' ? '\u26A0' : '\u25CF';
-          var reasonsHtml = riskReasons.map(function(r) { return '<li style="margin-bottom:2px;">' + escapeHtml(r) + '</li>'; }).join('');
-          return '<div style="background:' + bannerColor + '0.06);border:1px solid ' + bannerColor + '0.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;">' +
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (reasonsHtml ? '8px' : '0') + ';">' +
-              '<span style="font-size:14px;">' + bannerIcon + '</span>' +
-              '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:' + bannerColor + '0.9);font-weight:500;">' + bannerLabel + '</span>' +
+        riskBannerHtml +
+
+        // Section 2: Goals
+        '<div style="margin-bottom:20px;">' +
+          '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:8px;">Goals</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + goalsHtml + '</div>' +
+        '</div>' +
+
+        // Section 3: Medical Considerations
+        '<div style="margin-bottom:20px;">' +
+          '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:8px;">Medical Considerations</div>' +
+          medicalConsiderationsHtml +
+        '</div>' +
+
+        // Section 4: Action buttons (risk-aware)
+        '<div style="margin-bottom:16px;">' +
+          actionButtonsHtml +
+        '</div>' +
+        '<div id="attn-action-area-' + consultId + '"></div>' +
+
+        // Section 5: Collapsible full details
+        '<div>' +
+          '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'View Full Details \u203A\':\'Hide Details \u2039\'" style="background:none;border:none;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);cursor:pointer;padding:0;transition:color .2s;">View Full Details \u203A</button>' +
+          '<div style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+              _intakeField('Email', d.email || '\u2014') +
+              _intakeField('Phone', d.phone_number || '\u2014') +
+              _intakeField('State', d.state || '\u2014') +
+              _intakeField('Height', heightStr) +
+              _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '\u2014') +
+              _intakeField('Allergies', d.allergies || 'None reported') +
             '</div>' +
-            (reasonsHtml ? '<ul style="list-style:none;padding:0;margin:0;font-size:12px;color:' + bannerColor + '0.75);line-height:1.6;">' + reasonsHtml + '</ul>' : '') +
-          '</div>';
-        })() : (riskStatus === 'low_risk' ? '<div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;"><span style="color:rgba(58,122,92,0.7);font-size:12px;">\u2713</span><span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(58,122,92,0.6);">LOW RISK</span></div>' : '')) +
-        // Key demographics - 3 columns
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Demographics</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">' +
-          _intakeField('Name', patientName) +
-          _intakeField('Age', _calcAge(d.dob) + (d.dob ? ' (' + d.dob + ')' : '')) +
-          _intakeField('Sex', d.sex || '—') +
-          _intakeField('Email', d.email || '—') +
-          _intakeField('Phone', d.phone_number || '—') +
-          _intakeField('State', d.state || '—') +
-        '</div>' +
-
-        // Physical - 2 columns
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Physical</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">' +
-          _intakeField('Height', heightStr) +
-          _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '—') +
-        '</div>' +
-
-        // Address - full width
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Address</div>' +
-        '<div style="font-size:12px;color:#fff;margin-bottom:20px;">' + escapeHtml(addressStr) + '</div>' +
-
-        // Goals
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Goals</div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;">' + goalsHtml + '</div>' +
-
-        // Divider
-        '<div style="height:1px;background:var(--border);margin-bottom:20px;"></div>' +
-
-        // Medical History
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medical History</div>' +
-        '<div style="margin-bottom:16px;">' + medHistoryHtml + '</div>' +
-
-        // Medications
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Medications</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(d.medications || 'None reported') + '</div>' +
-
-        // Peptide Use
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Peptide / Hormone Use</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:16px;line-height:1.5;">' + escapeHtml(peptideStr) + '</div>' +
-
-        // Allergies
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px;">Allergies</div>' +
-        '<div style="font-size:12px;color:var(--grey);margin-bottom:20px;line-height:1.5;">' + escapeHtml(d.allergies || 'None reported') + '</div>' +
-
-        // Divider
-        '<div style="height:1px;background:var(--border);margin-bottom:16px;"></div>' +
-
-        // Footer - consent + submitted
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;opacity:0.6;">' +
-          _intakeField('Consent Signature', d.signature || d.sig || '—') +
-          _intakeField('Submitted', submittedStr) +
+            '<div style="margin-top:8px;">' + _intakeField('Address', addressStr) + '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;opacity:0.5;">' +
+              _intakeField('Consent Signature', d.signature || d.sig || '\u2014') +
+              _intakeField('Submitted', submittedStr) +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
 
-      // RIGHT COLUMN: Messaging placeholder (Phase B2)
+      // RIGHT COLUMN: Messaging
       '<div id="attn-msg-' + consultId + '">' +
         '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Messages</div>' +
-        '<div style="color:var(--grey2);font-size:11px;">Messaging will appear here.</div>' +
+        '<div style="color:var(--grey2);font-size:11px;">Loading...</div>' +
       '</div>' +
-    '</div>' +
-
-    // ACTION BUTTONS (Phase B3 placeholder)
-    '<div id="attn-actions-' + consultId + '" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);"></div>';
+    '</div>';
 
     bodyEl.innerHTML = html;
 
     // Load inline messaging
     _loadAttentionCardMessages(consultId, userId);
-
-    // Populate action buttons
-    var actionsEl = document.getElementById('attn-actions-' + consultId);
-    if (actionsEl) {
-      actionsEl.innerHTML =
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-          '<button onclick="_attnPrescribe(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:none;cursor:pointer;background:var(--green);color:#000;font-weight:500;transition:opacity .2s;">Prescribe</button>' +
-          '<button onclick="_attnDecline(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:1px solid rgba(255,100,100,0.3);background:rgba(255,100,100,0.06);color:rgba(255,130,130,0.8);cursor:pointer;transition:opacity .2s;">Decline</button>' +
-          '<button onclick="_attnRequestLive(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:12px 24px;border-radius:8px;border:1px solid rgba(100,150,255,0.3);background:rgba(100,150,255,0.08);color:rgba(150,185,255,0.9);cursor:pointer;transition:opacity .2s;">Request Live Consult</button>' +
-        '</div>' +
-        '<div id="attn-action-area-' + consultId + '"></div>';
-    }
 
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);

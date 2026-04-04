@@ -1371,9 +1371,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-body{display:none;padding:0;border-top:1px solid var(--border);}
 .cl-attn-card.expanded .cl-attn-card-body{display:block;}
 /* ── Clinician Review Workspace ── */
-.crw{display:grid;grid-template-columns:720px 360px;gap:40px;max-width:1160px;margin:0 auto;font-family:'Inter',sans-serif;position:relative;}
+.crw{display:grid;grid-template-columns:720px 360px;gap:0;max-width:1160px;margin:0 auto;font-family:'Inter',sans-serif;position:relative;}
 .crw-left{padding:32px;background:#0B0B0C;position:relative;}
-.crw-right{display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;height:100%;}
+.crw-right{display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;max-height:600px;position:sticky;top:0;align-self:start;}
 .crw-name{font-size:28px;font-weight:600;color:#FFFFFF;line-height:1.2;margin-bottom:8px;}
 .crw-meta{font-size:13px;font-weight:500;color:#A1A1AA;line-height:1.5;}
 .crw-meta-sep{margin:0 8px;color:#71717A;}
@@ -1405,13 +1405,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .crw-btn-red{background:transparent;border:1px solid rgba(239,68,68,0.3);color:#EF4444;}
 .crw-btn-blu{background:transparent;border:1px solid rgba(59,130,246,0.3);color:#3B82F6;}
 .crw-msg-hdr{padding:16px 20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#71717A;border-bottom:1px solid #1F1F23;}
-.crw-msg-list{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:20px;min-height:160px;}
+.crw-msg-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:160px;}
 .crw-msg-empty{text-align:center;padding:48px 20px;color:#71717A;font-size:13px;font-weight:500;line-height:1.5;}
 .crw-msg-block{max-width:75%;}
 .crw-msg-block.from-patient{align-self:flex-start;}
 .crw-msg-block.from-clinician{align-self:flex-end;}
-.crw-msg-sender{font-size:13px;font-weight:600;color:#FFFFFF;margin-bottom:4px;}
-.crw-msg-time{font-size:11px;font-weight:500;color:#71717A;margin-bottom:8px;}
+.crw-msg-sender{font-size:11px;font-weight:600;color:#A1A1AA;display:inline;}
+.crw-msg-time{font-size:11px;font-weight:500;color:#71717A;display:inline;margin-left:8px;}
+.crw-msg-meta-row{margin-bottom:4px;}
 .crw-msg-body{padding:12px;border-radius:8px;font-size:13px;font-weight:400;color:#FFFFFF;line-height:1.5;word-break:break-word;}
 .crw-msg-block.from-patient .crw-msg-body{background:#1F1F23;}
 .crw-msg-block.from-clinician .crw-msg-body{background:rgba(34,197,94,0.15);}
@@ -4577,8 +4578,7 @@ async function _refreshAttnMsgs(consultId, userId) {
       var name = m.sender_name || (isClinician ? 'Clinician' : 'Patient');
       var ago = _attnTimeAgo(m.created_at);
       return '<div class="crw-msg-block ' + cls + '">' +
-        '<div class="crw-msg-sender">' + escapeHtml(name) + '</div>' +
-        '<div class="crw-msg-time">' + ago + '</div>' +
+        '<div class="crw-msg-meta-row"><span class="crw-msg-sender">' + escapeHtml(name) + '</span><span class="crw-msg-time">' + ago + '</span></div>' +
         '<div class="crw-msg-body">' + escapeHtml(m.body) + '</div>' +
       '</div>';
     }).join('');
@@ -4616,7 +4616,7 @@ async function _sendAttnMsg(consultId) {
     if (emptyMsg) emptyMsg.remove();
     var block = document.createElement('div');
     block.className = 'crw-msg-block from-clinician';
-    block.innerHTML = '<div class="crw-msg-sender">You</div><div class="crw-msg-time">just now</div><div class="crw-msg-body">' + escapeHtml(text) + '</div>';
+    block.innerHTML = '<div class="crw-msg-meta-row"><span class="crw-msg-sender">You</span><span class="crw-msg-time">just now</span></div><div class="crw-msg-body">' + escapeHtml(text) + '</div>';
     listEl.appendChild(block);
     listEl.scrollTop = listEl.scrollHeight;
   }

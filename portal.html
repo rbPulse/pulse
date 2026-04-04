@@ -1368,8 +1368,61 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-status{flex-shrink:0;}
 .cl-attn-card-chevron{color:var(--grey2);font-size:14px;transition:transform .2s;flex-shrink:0;}
 .cl-attn-card.expanded .cl-attn-card-chevron{transform:rotate(90deg);}
-.cl-attn-card-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
-.cl-attn-card.expanded .cl-attn-card-body{display:block;padding-top:16px;}
+.cl-attn-card-body{display:none;padding:0;border-top:1px solid var(--border);}
+.cl-attn-card.expanded .cl-attn-card-body{display:block;}
+/* ── Clinician Review Workspace ── */
+.crw{display:grid;grid-template-columns:1fr 380px;gap:0;min-height:420px;}
+.crw-left{padding:32px 36px 28px;border-right:1px solid rgba(255,255,255,0.04);}
+.crw-right{display:flex;flex-direction:column;background:rgba(255,255,255,0.012);}
+.crw-name{font-size:22px;font-weight:600;color:#fff;letter-spacing:-0.02em;line-height:1.2;margin-bottom:6px;}
+.crw-meta{font-size:12px;color:rgba(255,255,255,0.35);line-height:1.5;display:flex;flex-wrap:wrap;gap:4px 0;}
+.crw-meta span{white-space:nowrap;}
+.crw-sep{margin:0 6px;opacity:0.25;}
+.crw-overdue{color:rgba(255,130,130,0.8);font-weight:500;}
+.crw-risk{border-radius:10px;padding:16px 20px;margin:24px 0;}
+.crw-risk-high{background:rgba(255,100,100,0.04);border:1px solid rgba(255,100,100,0.12);}
+.crw-risk-mod{background:rgba(220,180,75,0.03);border:1px solid rgba(220,180,75,0.1);}
+.crw-risk-low{background:rgba(58,122,92,0.03);border:1px solid rgba(58,122,92,0.1);}
+.crw-risk-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-weight:500;margin-bottom:4px;}
+.crw-risk-list{font-size:12px;line-height:2;margin:8px 0 0;padding:0;list-style:none;}
+.crw-risk-list li::before{content:'\2022  ';opacity:0.4;}
+.crw-risk-note{font-size:11px;font-style:italic;margin-top:8px;opacity:0.45;}
+.crw-sect{margin-bottom:28px;}
+.crw-sect-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(255,255,255,0.22);margin-bottom:14px;}
+.crw-goal{display:inline-flex;padding:7px 18px;border-radius:8px;background:rgba(58,122,92,0.07);border:1px solid rgba(58,122,92,0.16);color:rgba(58,122,92,0.9);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:capitalize;margin:0 8px 8px 0;}
+.crw-clin-row{display:flex;align-items:flex-start;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.025);}
+.crw-clin-row:last-child{border-bottom:none;}
+.crw-clin-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.22);min-width:150px;padding-top:3px;flex-shrink:0;}
+.crw-clin-val{font-size:13px;color:rgba(255,255,255,0.65);line-height:1.55;}
+.crw-clin-flag{color:rgba(255,130,130,0.85);}
+.crw-clin-flag::before{content:'\26A0  ';font-size:10px;}
+.crw-detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.crw-detail-lbl{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.18);margin-bottom:4px;}
+.crw-detail-val{font-size:12px;color:rgba(255,255,255,0.5);}
+.crw-actions{display:flex;gap:12px;align-items:center;padding-top:24px;border-top:1px solid rgba(255,255,255,0.04);margin-top:28px;}
+.crw-btn{font-family:'DM Mono',monospace;letter-spacing:0.12em;text-transform:uppercase;border-radius:8px;border:none;cursor:pointer;transition:all .15s;}
+.crw-btn:hover{opacity:0.85;transform:translateY(-1px);}
+.crw-btn-p{padding:14px 30px;font-size:11px;font-weight:500;}
+.crw-btn-s{padding:10px 22px;font-size:10px;}
+.crw-btn-grn{background:var(--green);color:#000;}
+.crw-btn-grn-o{background:transparent;border:1px solid rgba(58,122,92,0.25);color:rgba(58,122,92,0.85);}
+.crw-btn-red{background:transparent;border:1px solid rgba(255,100,100,0.15);color:rgba(255,130,130,0.6);}
+.crw-btn-blu{background:transparent;border:1px solid rgba(100,150,255,0.15);color:rgba(150,185,255,0.6);}
+.crw-btn-blu-s{background:rgba(100,150,255,0.1);border:1px solid rgba(100,150,255,0.2);color:rgba(150,185,255,0.9);}
+.crw-msg-hdr{padding:20px 24px 16px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(255,255,255,0.22);border-bottom:1px solid rgba(255,255,255,0.04);}
+.crw-msg-list{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;max-height:400px;min-height:140px;}
+.crw-msg-empty{text-align:center;padding:48px 20px;color:rgba(255,255,255,0.2);font-size:12px;line-height:1.7;}
+.crw-msg-bbl{max-width:82%;padding:11px 16px;border-radius:14px;font-size:13px;line-height:1.6;word-break:break-word;}
+.crw-msg-bbl.from-patient{background:rgba(255,255,255,0.035);color:rgba(255,255,255,0.6);align-self:flex-start;border-bottom-left-radius:4px;}
+.crw-msg-bbl.from-clinician{background:rgba(58,122,92,0.08);color:rgba(255,255,255,0.8);align-self:flex-end;border-bottom-right-radius:4px;}
+.crw-msg-ts{font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,0.15);margin-top:5px;letter-spacing:0.03em;}
+.crw-msg-comp{display:flex;gap:10px;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.01);}
+.crw-msg-in{flex:1;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:11px 18px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;resize:none;min-height:42px;max-height:100px;transition:border-color .2s;}
+.crw-msg-in::placeholder{color:rgba(255,255,255,0.12);}
+.crw-msg-in:focus{border-color:rgba(255,255,255,0.1);}
+.crw-msg-btn{background:var(--green);border:none;border-radius:12px;padding:11px 20px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#000;font-weight:500;cursor:pointer;transition:opacity .15s;white-space:nowrap;align-self:flex-end;}
+.crw-msg-btn:hover{opacity:0.85;}
+@media(max-width:1100px){.crw{grid-template-columns:1fr;}.crw-left{border-right:none;border-bottom:1px solid rgba(255,255,255,0.04);}.crw-detail-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:900px){.cl-attn-card-body > div:first-child{grid-template-columns:1fr !important;}}
 .cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .cl-live-section{margin-top:28px;}
@@ -4428,70 +4481,102 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       '<button onclick="_attnRequestLive(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'DM Mono\',monospace;letter-spacing:0.12em;text-transform:uppercase;transition:opacity .2s;' + consultBtnStyle + '">Request Live Consult</button>' +
     '</div>';
 
-    // Build restructured card HTML
-    var html = '<div style="display:grid;grid-template-columns:1fr 340px;gap:24px;">' +
-      // LEFT COLUMN
-      '<div>' +
-        // Section 1: Decision bar
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">' +
-          '<div>' +
-            '<div style="font-size:16px;font-weight:500;color:#fff;">' + escapeHtml(patientName) + ' <span style="color:var(--grey2);font-weight:300;font-size:14px;">\u00B7 ' + ageStr + ' \u00B7 ' + escapeHtml(d.sex || '\u2014') + ' \u00B7 ' + escapeHtml(d.state || '\u2014') + '</span></div>' +
+    // ── Overdue check ──
+    var submittedTime = d.submitted_at ? new Date(d.submitted_at).getTime() : (consultCreatedAt ? new Date(consultCreatedAt).getTime() : 0);
+    var isOverdue = submittedTime && (Date.now() - submittedTime > 24 * 60 * 60 * 1000);
+    var diffH = submittedTime ? Math.floor((Date.now() - submittedTime) / 3600000) : 0;
+    var submittedRel = diffH < 1 ? 'just now' : diffH < 24 ? diffH + 'h ago' : Math.floor(diffH / 24) + 'd ago';
+
+    // ── Risk block ──
+    var riskHtml = '';
+    if (riskStatus === 'high_risk') {
+      riskHtml = '<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:rgba(255,130,130,0.9);">High Risk</div>' +
+        '<ul class="crw-risk-list" style="color:rgba(255,130,130,0.65);">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul>' +
+        '<div class="crw-risk-note" style="color:rgba(255,130,130,0.35);">System recommendation: live consult recommended</div></div>';
+    } else if (riskStatus === 'moderate_risk') {
+      riskHtml = '<div class="crw-risk crw-risk-mod"><div class="crw-risk-title" style="color:rgba(220,180,75,0.85);">Moderate Risk</div>' +
+        '<ul class="crw-risk-list" style="color:rgba(220,180,75,0.55);">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul>' +
+        '<div class="crw-risk-note" style="color:rgba(220,180,75,0.3);">System recommendation: review flagged items before proceeding</div></div>';
+    } else {
+      riskHtml = '<div class="crw-risk crw-risk-low"><div class="crw-risk-title" style="color:rgba(58,122,92,0.8);">Low Risk</div>' +
+        '<div class="crw-risk-note" style="color:rgba(58,122,92,0.45);margin-top:0;">No concerns flagged \u2014 proceed at your discretion</div></div>';
+    }
+
+    // ── Goals ──
+    var goalsArr = d.goals || [];
+    var goalsHtml2 = goalsArr.length ? goalsArr.map(function(g){return '<span class="crw-goal">'+escapeHtml(g)+'</span>';}).join('') : '<span style="font-size:12px;color:rgba(255,255,255,0.25);">No goals specified</span>';
+
+    // ── Clinical summary ──
+    var clinHtml = '';
+    var mhDisplay = medHistoryArr.length ? medHistoryArr.map(function(h){
+      var risk = ['cancer_history','cancer_active','cardio','diabetes','autoimmune','hormone_sensitive'].indexOf(h) !== -1;
+      var lbl = h.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
+      return risk ? '<span class="crw-clin-flag">'+escapeHtml(lbl)+'</span>' : escapeHtml(lbl);
+    }).join(', ') : 'None reported';
+    clinHtml += '<div class="crw-clin-row"><div class="crw-clin-lbl">Medical History</div><div class="crw-clin-val">'+mhDisplay+'</div></div>';
+    clinHtml += '<div class="crw-clin-row"><div class="crw-clin-lbl">Medications</div><div class="crw-clin-val">'+escapeHtml(d.medications||'None reported')+'</div></div>';
+    clinHtml += '<div class="crw-clin-row"><div class="crw-clin-lbl">Allergies</div><div class="crw-clin-val">'+escapeHtml(d.allergies||'None reported')+'</div></div>';
+    var pepVal = d.peptide_history||d.currentPeptides||'';
+    var pepStr2 = pepVal==='yes'?'Yes \u2014 '+(d.peptide_detail||d.peptideDetailText||'Details not provided'):pepVal==='no'?'No':'Not specified';
+    clinHtml += '<div class="crw-clin-row"><div class="crw-clin-lbl">Peptide / Hormone Use</div><div class="crw-clin-val">'+escapeHtml(pepStr2)+'</div></div>';
+
+    // ── Action buttons ──
+    var pCls, dCls, cCls;
+    if (riskStatus==='high_risk') { cCls='crw-btn crw-btn-p crw-btn-blu-s'; pCls='crw-btn crw-btn-s crw-btn-grn-o'; dCls='crw-btn crw-btn-s crw-btn-red'; }
+    else { pCls='crw-btn crw-btn-p crw-btn-grn'; dCls='crw-btn crw-btn-s crw-btn-red'; cCls='crw-btn crw-btn-s crw-btn-blu'; }
+
+    // ── Detail field helper ──
+    function _df(l,v){return '<div><div class="crw-detail-lbl">'+l+'</div><div class="crw-detail-val">'+escapeHtml(v)+'</div></div>';}
+
+    // ── Build HTML ──
+    var html = '<div class="crw">' +
+      '<div class="crw-left">' +
+        '<div class="crw-name">'+escapeHtml(patientName)+'</div>' +
+        '<div class="crw-meta">' +
+          '<span>'+_calcAge(d.dob)+' yrs</span><span class="crw-sep">\u00B7</span>' +
+          '<span>'+escapeHtml(d.dob||'\u2014')+'</span><span class="crw-sep">\u00B7</span>' +
+          '<span>'+escapeHtml(d.sex||'\u2014')+'</span><span class="crw-sep">\u00B7</span>' +
+          '<span>'+escapeHtml(d.state||'\u2014')+'</span><span class="crw-sep">\u00B7</span>' +
+          '<span>Submitted '+submittedRel+'</span>' +
+          (isOverdue?'<span class="crw-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'') +
+        '</div>' +
+        riskHtml +
+        '<div class="crw-sect"><div class="crw-sect-title">Goals</div><div>'+goalsHtml2+'</div></div>' +
+        '<div class="crw-sect"><div class="crw-sect-title">Clinical Summary</div>'+clinHtml+'</div>' +
+        '<div class="crw-sect"><div class="crw-sect-title">Patient Details</div>' +
+          '<div class="crw-detail-grid">' +
+            _df('Email',d.email||'\u2014') + _df('Phone',d.phone_number||'\u2014') + _df('State',d.state||'\u2014') +
+            _df('Height',heightStr) + _df('Weight',d.current_weight?d.current_weight+' lbs':'\u2014') + _df('Address',addressStr) +
+          '</div>' +
+          '<div class="crw-detail-grid" style="margin-top:14px;opacity:0.5;">' +
+            _df('Consent',d.signature||d.sig||'\u2014') + _df('Submitted',submittedStr) +
           '</div>' +
         '</div>' +
-
-        // Risk banner
-        riskBannerHtml +
-
-        // Section 2: Goals
-        '<div style="margin-bottom:20px;">' +
-          '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:8px;">Goals</div>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + goalsHtml + '</div>' +
+        '<div class="crw-actions">' +
+          '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>' +
+          '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>' +
+          '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>' +
         '</div>' +
-
-        // Section 3: Medical Considerations
-        '<div style="margin-bottom:20px;">' +
-          '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:8px;">Medical Considerations</div>' +
-          medicalConsiderationsHtml +
-        '</div>' +
-
-        // Section 4: Action buttons (risk-aware)
-        '<div style="margin-bottom:16px;">' +
-          actionButtonsHtml +
-        '</div>' +
-        '<div id="attn-action-area-' + consultId + '"></div>' +
-
-        // Section 5: Collapsible full details
-        '<div>' +
-          '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'View Full Details \u203A\':\'Hide Details \u2039\'" style="background:none;border:none;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);cursor:pointer;padding:0;transition:color .2s;">View Full Details \u203A</button>' +
-          '<div style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
-              _intakeField('Email', d.email || '\u2014') +
-              _intakeField('Phone', d.phone_number || '\u2014') +
-              _intakeField('State', d.state || '\u2014') +
-              _intakeField('Height', heightStr) +
-              _intakeField('Weight', d.current_weight ? d.current_weight + ' lbs' : '\u2014') +
-              _intakeField('Allergies', d.allergies || 'None reported') +
-            '</div>' +
-            '<div style="margin-top:8px;">' + _intakeField('Address', addressStr) + '</div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;opacity:0.5;">' +
-              _intakeField('Consent Signature', d.signature || d.sig || '\u2014') +
-              _intakeField('Submitted', submittedStr) +
-            '</div>' +
-          '</div>' +
-        '</div>' +
+        '<div id="attn-action-area-'+consultId+'"></div>' +
       '</div>' +
-
-      // RIGHT COLUMN: Messaging
-      '<div id="attn-msg-' + consultId + '">' +
-        '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;">Messages</div>' +
-        '<div style="color:var(--grey2);font-size:11px;">Loading...</div>' +
+      '<div class="crw-right" id="attn-msg-'+consultId+'">' +
+        '<div class="crw-msg-hdr">Patient Messages</div>' +
+        '<div class="crw-msg-list" id="attn-msg-list-'+consultId+'">' +
+          '<div class="crw-msg-empty">No messages yet.<br>Send a message to start the conversation.</div>' +
+        '</div>' +
+        '<div class="crw-msg-comp">' +
+          '<textarea class="crw-msg-in" id="attn-msg-input-'+consultId+'" data-user-id="'+userId+'" placeholder="Type a message..." rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendAttnMsg(\''+consultId+'\');}" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,100)+\'px\';"></textarea>' +
+          '<button class="crw-msg-btn" onclick="_sendAttnMsg(\''+consultId+'\')">Send</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
     bodyEl.innerHTML = html;
 
-    // Load inline messaging
-    _loadAttentionCardMessages(consultId, userId);
+    // Load messages (UI structure already in template)
+    _refreshAttnMsgs(consultId, userId);
+    if (_attnMsgPollers[consultId]) clearInterval(_attnMsgPollers[consultId]);
+    _attnMsgPollers[consultId] = setInterval(function(){ _refreshAttnMsgs(consultId, userId); }, 10000);
 
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
@@ -4558,7 +4643,7 @@ async function _refreshAttnMsgs(consultId, userId) {
     var msgs = r.data || [];
 
     if (!msgs.length) {
-      listEl.innerHTML = '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">No messages yet. Send a message to start the conversation.</div>';
+      listEl.innerHTML = '<div class="crw-msg-empty">No messages yet.<br>Send a message to start the conversation.</div>';
       return;
     }
 
@@ -4566,14 +4651,12 @@ async function _refreshAttnMsgs(consultId, userId) {
 
     listEl.innerHTML = msgs.map(function(m) {
       var isClinician = m.sender_role === 'clinician';
-      var bgColor = isClinician ? 'rgba(58,122,92,0.12)' : 'rgba(255,255,255,0.05)';
-      var align = isClinician ? 'flex-end' : 'flex-start';
-      var borderRadius = isClinician ? '10px 10px 2px 10px' : '10px 10px 10px 2px';
+      var cls = isClinician ? 'from-clinician' : 'from-patient';
       var name = m.sender_name || m.sender_role;
       var ago = _attnTimeAgo(m.created_at);
-      return '<div style="align-self:' + align + ';max-width:85%;padding:8px 12px;border-radius:' + borderRadius + ';background:' + bgColor + ';font-size:12px;color:' + (isClinician ? '#fff' : 'var(--grey)') + ';line-height:1.5;word-break:break-word;">' +
+      return '<div class="crw-msg-bbl ' + cls + '">' +
         escapeHtml(m.body) +
-        '<div style="font-family:\'DM Mono\',monospace;font-size:7px;color:var(--grey2);margin-top:3px;letter-spacing:0.04em;">' + escapeHtml(name) + ' · ' + ago + '</div>' +
+        '<div class="crw-msg-ts">' + escapeHtml(name) + ' \u00B7 ' + ago + '</div>' +
       '</div>';
     }).join('');
 
@@ -4606,11 +4689,11 @@ async function _sendAttnMsg(consultId) {
   // Optimistic UI
   var listEl = document.getElementById('attn-msg-list-' + consultId);
   if (listEl) {
-    var emptyMsg = listEl.querySelector('div[style*="text-align:center"]');
+    var emptyMsg = listEl.querySelector('.crw-msg-empty');
     if (emptyMsg) emptyMsg.remove();
     var bubble = document.createElement('div');
-    bubble.style.cssText = 'align-self:flex-end;max-width:85%;padding:8px 12px;border-radius:10px 10px 2px 10px;background:rgba(58,122,92,0.12);font-size:12px;color:#fff;line-height:1.5;word-break:break-word;';
-    bubble.innerHTML = escapeHtml(text) + '<div style="font-family:\'DM Mono\',monospace;font-size:7px;color:var(--grey2);margin-top:3px;">You · just now</div>';
+    bubble.className = 'crw-msg-bbl from-clinician';
+    bubble.innerHTML = escapeHtml(text) + '<div class="crw-msg-ts">You \u00B7 just now</div>';
     listEl.appendChild(bubble);
     listEl.scrollTop = listEl.scrollHeight;
   }

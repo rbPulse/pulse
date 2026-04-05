@@ -1362,8 +1362,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-header{display:flex;align-items:center;gap:12px;padding:16px 20px;}
 .cl-attn-card-avatar{width:32px;height:32px;border-radius:50%;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.25);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--green);flex-shrink:0;text-transform:uppercase;}
 .cl-attn-card-info{flex:1;min-width:0;}
-.cl-attn-card-name{font-size:14px;font-weight:500;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:8px;}
-.cl-attn-card-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.04em;display:flex;align-items:center;gap:8px;}
+.cl-attn-card-name{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#FFFFFF;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.cl-attn-card-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;display:flex;align-items:center;gap:8px;}
 .cl-attn-card-msg{font-size:11px;color:var(--grey2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
 .cl-attn-card-status{flex-shrink:0;}
 .cl-attn-card-chevron{color:var(--grey2);font-size:14px;transition:transform .2s;flex-shrink:0;}
@@ -4288,9 +4288,13 @@ async function loadAttentionCards() {
 
       // Status chip removed from clinician view
 
-      // Last message preview
-      var msgPreview = lastMsg ? lastMsg.body.slice(0, 50) + (lastMsg.body.length > 50 ? '\u2026' : '') : 'No messages yet';
       var unreadDot = unread > 0 ? '<span class="cl-attn-unread-dot"></span>' : '';
+
+      // Header metadata — match expanded card format
+      var cd = consultData;
+      var headerAge = '';
+      if (cd.dob) { var dob = new Date(cd.dob); var today = new Date(); headerAge = (today.getFullYear() - dob.getFullYear()) + ' yrs'; }
+      var headerParts = [headerAge, cd.sex || '', cd.state || ''].filter(Boolean).join(' \u00B7 ');
 
       html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
         '<div class="cl-attn-card-header" onclick="toggleAttentionCard(this.parentElement)" style="cursor:pointer;">' +
@@ -4298,9 +4302,9 @@ async function loadAttentionCards() {
           '<div class="cl-attn-card-info">' +
             '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
             '<div class="cl-attn-card-meta">' +
+              (headerParts ? '<span>' + escapeHtml(headerParts) + '</span>' : '') +
               '<span>Submitted ' + timeStr + '</span>' +
-              (isOverdue ? '<span style="color:rgba(255,130,130,0.8);">\u26A0 Overdue</span>' : '') +
-              '<span class="cl-attn-card-msg">' + escapeHtml(msgPreview) + '</span>' +
+              (isOverdue ? '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>' : '') +
             '</div>' +
           '</div>' +
           '<div class="cl-attn-card-chevron">\u203A</div>' +

@@ -4223,7 +4223,7 @@ async function loadAttentionCards() {
   try {
     // Get all open consultations (any status that isn't decided or withdrawn)
     var res = await db.from('consultations')
-      .select('id, user_id, review_status, data, created_at')
+      .select('id, user_id, review_status, risk_status, data, created_at')
       .eq('assigned_clinician_id', currentUserId)
       .not('review_status', 'in', '("prescribed","not_prescribed","withdrawn")')
       .order('created_at', { ascending: true });
@@ -4294,7 +4294,14 @@ async function loadAttentionCards() {
       var cd = consultData;
       var headerAge = '';
       if (cd.dob) { var dob = new Date(cd.dob); var today = new Date(); headerAge = (today.getFullYear() - dob.getFullYear()) + ' yrs'; }
-      var headerParts = [headerAge, cd.sex || '', cd.state || ''].filter(Boolean).join(' \u00B7 ');
+      var headerParts = [headerAge, cd.sex || ''].filter(Boolean).join(' \u00B7 ');
+
+      // Risk label for header
+      var riskLabel = '';
+      var rs = c.risk_status || '';
+      if (rs === 'high_risk') riskLabel = '<span style="color:#EF4444;font-weight:600;">High Risk</span>';
+      else if (rs === 'moderate_risk') riskLabel = '<span style="color:#EAB308;font-weight:600;">Moderate Risk</span>';
+      else if (rs === 'low_risk') riskLabel = '<span style="color:#22C55E;font-weight:500;">Low Risk</span>';
 
       html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
         '<div class="cl-attn-card-header" onclick="toggleAttentionCard(this.parentElement)" style="cursor:pointer;">' +
@@ -4305,6 +4312,7 @@ async function loadAttentionCards() {
               (headerParts ? '<span>' + escapeHtml(headerParts) + '</span>' : '') +
               '<span>Submitted ' + timeStr + '</span>' +
               (isOverdue ? '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>' : '') +
+              (riskLabel ? riskLabel : '') +
             '</div>' +
           '</div>' +
           '<div class="cl-attn-card-chevron">\u203A</div>' +

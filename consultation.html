@@ -386,7 +386,12 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
   .quiz-wrap{padding:20px 16px;}
   .quiz-question{font-size:24px;}
   .quiz-input-row{grid-template-columns:1fr;}
-  .quiz-card{padding:16px 18px;}
+  .quiz-card{padding:16px 18px;min-height:48px;}
+  .quiz-hero-title{font-size:28px;}
+  .quiz-btn{font-size:14px;padding:18px;}
+  #quizSummary .quiz-input-row,
+  #quizSummary div[style*="grid-template-columns:1fr 1fr 1fr"]{grid-template-columns:1fr !important;}
+  #quizSummary div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
 }
 </style>
 </head>
@@ -1082,102 +1087,61 @@ function startNewConsultation() {
   _consultationId = null;
   selectedDate = null;
   selectedSlot = null;
-  // Reset form fields
+  // Reset quiz state
+  _quizStep = 1;
+  _quizData = {
+    goals: [], peptide_history: null, peptide_detail: null,
+    dob: null, sex: null, height: null, heightFt: null, heightIn: null,
+    current_weight: null, medical_history: [], medications: null, allergies: null,
+    email: null, password: null, first_name: null, last_name: null,
+    phone_number: null, street_address: null, apt_unit: null, city: null,
+    state: null, zip_code: null, signature: null, consent_agreed: false, submitted_at: null
+  };
+  // Reset quiz form fields
   document.querySelectorAll('#step-1 input, #step-1 select, #step-1 textarea').forEach(function(el) {
     if (el.type === 'checkbox') el.checked = false;
     else el.value = '';
   });
-  document.querySelectorAll('.goal-chip').forEach(function(c) { c.classList.remove('selected'); });
+  document.querySelectorAll('.quiz-card').forEach(function(c) { c.classList.remove('selected'); });
+  var noneBtn = document.getElementById('quizMedNone');
+  if (noneBtn) noneBtn.classList.remove('active');
+  // Reset quiz steps: show step 1, hide others
+  document.querySelectorAll('.quiz-step').forEach(function(s) { s.classList.remove('active'); });
+  var qs1 = document.getElementById('qs-1');
+  if (qs1) qs1.classList.add('active');
+  updateQuizProgress();
   // Re-fill email from session if available
   if (window._sessionUser && window._sessionUser.email) {
-    var emailField = document.getElementById('intakeEmail');
+    var emailField = document.getElementById('quizEmail');
     if (emailField) emailField.value = window._sessionUser.email;
     // Hide password field since already logged in
-    var passField = document.getElementById('intakePassword');
-    var passLabel = passField ? passField.closest('.form-group') : null;
-    if (passLabel) passLabel.style.display = 'none';
+    var quizPassGroup = document.getElementById('quizPasswordGroup');
+    if (quizPassGroup) quizPassGroup.style.display = 'none';
   }
   // Pre-fill basic info from previous consultation data
   var cd = window._lastConsultationData || {};
-  if (cd.first_name) { var fn = document.getElementById('firstName'); if (fn) fn.value = cd.first_name; }
-  if (cd.last_name) { var ln = document.getElementById('lastName'); if (ln) ln.value = cd.last_name; }
-  if (cd.phone) { var ph = document.getElementById('intakePhone'); if (ph) ph.value = cd.phone; }
-  if (cd.address) { var addr = document.getElementById('intakeAddress'); if (addr) addr.value = cd.address; }
-  if (cd.city) { var ct = document.getElementById('intakeCity'); if (ct) ct.value = cd.city; }
-  if (cd.state) { var st = document.getElementById('intakeState'); if (st) st.value = cd.state; }
-  if (cd.zip) { var zp = document.getElementById('intakeZip'); if (zp) zp.value = cd.zip; }
-  if (cd.dob) { var db = document.getElementById('intakeDob'); if (db) db.value = cd.dob; }
+  if (cd.first_name) { var fn = document.getElementById('quizFirstName'); if (fn) fn.value = cd.first_name; }
+  if (cd.last_name) { var ln = document.getElementById('quizLastName'); if (ln) ln.value = cd.last_name; }
+  if (cd.phone_number) { var ph = document.getElementById('quizPhone'); if (ph) ph.value = cd.phone_number; }
+  if (cd.street_address) { var addr = document.getElementById('quizStreet'); if (addr) addr.value = cd.street_address; }
+  if (cd.city) { var ct = document.getElementById('quizCity'); if (ct) ct.value = cd.city; }
+  if (cd.state) { var st = document.getElementById('quizState'); if (st) st.value = cd.state; }
+  if (cd.zip_code) { var zp = document.getElementById('quizZip'); if (zp) zp.value = cd.zip_code; }
+  if (cd.dob) { var db = document.getElementById('quizDob'); if (db) db.value = cd.dob; }
   // Show step 1
   var step1El = document.getElementById('step-1');
   if (step1El) step1El.style.display = '';
   goToStep(1);
 }
 
-// ── Goal chip toggle (intake form) ──
-function _initGoalChips() {
-  document.querySelectorAll('.goal-chip').forEach(function(chip){
-    chip.addEventListener('click', function(){
-      var g = this.dataset.goal;
-      if(this.classList.contains('selected')){
-        this.classList.remove('selected');
-        selectedGoals = selectedGoals.filter(function(x){return x!==g;});
-      } else {
-        this.classList.add('selected');
-        selectedGoals.push(g);
-      }
-      var errEl = document.getElementById('err-goals');
-      if(errEl) errEl.classList.remove('visible');
-    });
-  });
-}
+// ── Goal chip toggle (legacy — no longer used; goals handled by quiz cards) ──
+function _initGoalChips() { /* no-op: goals are handled by quiz card selection */ }
 
-// ── Auto-clear errors on input/change ──
-['firstName','lastName','intakeEmail','phoneNumber','streetAddress','city','state','zipCode','dob','sex'].forEach(function(id){
-  var el = document.getElementById(id);
-  if(!el) return;
-  el.addEventListener('input', function(){ clearFieldError(id); });
-  el.addEventListener('change', function(){ clearFieldError(id); });
-});
+// ── Auto-clear errors on input/change (legacy old form IDs removed; quiz handles its own validation) ──
 
 function _initStep3Listeners() {
-  var sigEl = document.getElementById('sigInput');
-  if(sigEl) sigEl.addEventListener('input', function(){
-    this.classList.remove('error');
-    var errSig = document.getElementById('err-sig');
-    if(errSig) errSig.classList.remove('visible');
-  });
-
-  // Peptide detail toggle
-  var pepSel = document.getElementById('currentPeptides');
-  if(pepSel) pepSel.addEventListener('change', function(){
-    var det = document.getElementById('peptideDetail');
-    if(det) det.style.display = this.value === 'yes' ? 'block' : 'none';
-  });
-
-  // Hard disqualifier flags
-  var disqualifiers = ['cancer_active','pregnancy','transplant'];
-  disqualifiers.forEach(function(id){
-    var el = document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('change', function(){
-      var hyphenId = id.replace(/_/g,'-');
-      var wrap = document.getElementById('chk-'+hyphenId);
-      if(wrap) wrap.classList.toggle('flagged', this.checked);
-    });
-  });
-
-  // Consent toggle
-  var consentCb = document.getElementById('consentCheck');
-  var consentWrap = document.getElementById('consentCheckWrap');
-  if(consentCb) consentCb.addEventListener('change', function(){
-    if(consentWrap) consentWrap.classList.toggle('error-field', !this.checked);
-  });
-  if(consentWrap) consentWrap.addEventListener('click', function(e){
-    if(e.target === document.getElementById('consentCheck')) return;
-    var cb = document.getElementById('consentCheck');
-    cb.checked = !cb.checked;
-    cb.dispatchEvent(new Event('change'));
-  });
+  /* Legacy listeners for old form elements (sigInput, currentPeptides, consentCheck, etc.)
+     removed — the quiz flow handles its own validation and consent via quizConsent / quizSignature. */
 }
 
 // Deferred init — elements exist after DOM parsed
@@ -1670,186 +1634,8 @@ async function submitQuizStep5(){
   quizGoTo(6);
 }
 
-// ── Step 1: validate ALL fields (consolidated intake) ──
-// Override submitStep1 to be a no-op (quiz handles its own flow)
-function submitStep1(){
-  var valid = true;
-  var firstErrEl = null;
-
-  // Basic info validation
-  var required = ['intakeEmail','firstName','lastName','phoneNumber','streetAddress','city','state','zipCode'];
-  // Only require password if not already logged in
-  var passGroup = document.getElementById('intakePassword') ? document.getElementById('intakePassword').closest('.form-group') : null;
-  var needsPassword = passGroup && passGroup.style.display !== 'none';
-  if(needsPassword) required.push('intakePassword');
-
-  required.forEach(function(id){
-    var el = document.getElementById(id);
-    var err = document.getElementById('err-'+id);
-    if(!el || !el.value.trim()){
-      if(el) el.classList.add('error'); if(err) err.classList.add('visible');
-      if(!firstErrEl && el) firstErrEl = el;
-      valid = false;
-    } else {
-      if(el) el.classList.remove('error'); if(err) err.classList.remove('visible');
-    }
-  });
-
-  // Password length validation
-  if(needsPassword){
-    var passEl = document.getElementById('intakePassword');
-    var passErr = document.getElementById('err-intakePassword');
-    if(passEl && passEl.value.length < 6){
-      passEl.classList.add('error'); if(passErr) passErr.classList.add('visible');
-      if(!firstErrEl) firstErrEl = passEl;
-      valid = false;
-    } else if(passEl) {
-      passEl.classList.remove('error'); if(passErr) passErr.classList.remove('visible');
-    }
-  }
-
-  // DOB: required + 18+
-  var dobEl = document.getElementById('dob');
-  var dobErr = document.getElementById('err-dob');
-  if(!dobEl.value){
-    dobEl.classList.add('error'); dobErr.textContent = 'Required'; dobErr.classList.add('visible');
-    if(!firstErrEl) firstErrEl = dobEl;
-    valid = false;
-  } else if(!isAgeValid(dobEl.value)){
-    dobEl.classList.add('error'); dobErr.textContent = 'Must be 18 or older'; dobErr.classList.add('visible');
-    if(!firstErrEl) firstErrEl = dobEl;
-    valid = false;
-  } else {
-    dobEl.classList.remove('error'); dobErr.classList.remove('visible');
-  }
-
-  // Sex
-  var sexEl = document.getElementById('sex');
-  var sexErr = document.getElementById('err-sex');
-  if(!sexEl.value){
-    sexEl.classList.add('error'); if(sexErr) sexErr.classList.add('visible');
-    if(!firstErrEl) firstErrEl = sexEl;
-    valid = false;
-  } else {
-    sexEl.classList.remove('error'); if(sexErr) sexErr.classList.remove('visible');
-  }
-
-  // Goals
-  if(selectedGoals.length === 0){
-    var goalsErr = document.getElementById('err-goals');
-    if(goalsErr) goalsErr.classList.add('visible');
-    if(!firstErrEl) firstErrEl = document.getElementById('goalChips');
-    valid = false;
-  } else {
-    var ge = document.getElementById('err-goals');
-    if(ge) ge.classList.remove('visible');
-  }
-
-  // Consent checkbox
-  var cb = document.getElementById('consentCheck');
-  var wrap = document.getElementById('consentCheckWrap');
-  if(!cb.checked){
-    wrap.classList.add('error-field');
-    shakeEl(wrap);
-    if(!firstErrEl) firstErrEl = wrap;
-    valid = false;
-  } else {
-    wrap.classList.remove('error-field');
-  }
-
-  // Signature
-  var sig = document.getElementById('sigInput');
-  var errSig = document.getElementById('err-sig');
-  if(!sig.value.trim()){
-    sig.classList.add('error'); errSig.classList.add('visible');
-    if(!firstErrEl) firstErrEl = sig;
-    valid = false;
-  } else {
-    sig.classList.remove('error'); errSig.classList.remove('visible');
-  }
-
-  if(!valid){
-    if(firstErrEl) firstErrEl.scrollIntoView({behavior:'smooth', block:'center'});
-    return;
-  }
-
-  // Check disqualifiers
-  var disq = disqualifiers.some(function(id){ var el = document.getElementById(id); return el && el.checked; });
-  if(disq){ showIneligible(); return; }
-
-  // Auth: create account or sign in, then save full intake
-  var email = document.getElementById('intakeEmail').value.trim();
-  var password = needsPassword ? document.getElementById('intakePassword').value : null;
-  var btn = document.querySelector('#step-1 .btn-primary');
-  var origText = btn ? btn.innerHTML : '';
-
-  if(window._sbClient && !window._sessionUser){
-    if(btn){ btn.disabled = true; btn.innerHTML = 'Creating account...'; }
-    window._sbClient.auth.signUp({ email: email, password: password }).then(function(r){
-      if(r.error){
-        // If user already exists, try signing in
-        if(r.error.message && r.error.message.indexOf('already') !== -1){
-          if(btn) btn.innerHTML = 'Signing in...';
-          return window._sbClient.auth.signInWithPassword({ email: email, password: password }).then(function(r2){
-            if(r2.error){
-              var errEl = document.getElementById('err-intakeEmail');
-              if(errEl){ errEl.textContent = r2.error.message; errEl.classList.add('visible'); }
-              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-              return;
-            }
-            window._sessionUser = r2.data.user || (r2.data.session ? r2.data.session.user : null);
-            if(btn) btn.innerHTML = 'Saving intake...';
-            saveFullIntake().then(function(){
-              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-              var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
-              var _u = r2.data.user || (r2.data.session ? r2.data.session.user : null);
-              if(_u) initReviewMessaging(_u.id, _fn.trim() || _u.email.split('@')[0]);
-              goToStep(2);
-            }).catch(function(e){
-              if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-              var step1Err = document.getElementById('step1-error');
-              if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
-            });
-          });
-        }
-        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-        var errEl = document.getElementById('err-intakeEmail');
-        if(errEl){ errEl.textContent = r.error.message; errEl.classList.add('visible'); }
-        return;
-      }
-      window._sessionUser = r.data.user || null;
-      if(btn) btn.innerHTML = 'Saving intake...';
-      saveFullIntake().then(function(){
-        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-        var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
-        var _u = r.data.user;
-        if(_u) initReviewMessaging(_u.id, _fn.trim() || _u.email.split('@')[0]);
-        goToStep(2);
-      }).catch(function(e){
-        if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-        var step1Err = document.getElementById('step1-error');
-        if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
-      });
-    }).catch(function(e){
-      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-      var errEl = document.getElementById('err-intakeEmail');
-      if(errEl){ errEl.textContent = e.message || 'Something went wrong'; errEl.classList.add('visible'); }
-    });
-  } else {
-    // Already logged in — save directly
-    if(btn){ btn.disabled = true; btn.innerHTML = 'Saving intake...'; }
-    saveFullIntake().then(function(){
-      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-      var _fn = ((document.getElementById('firstName')||{}).value||'') + ' ' + ((document.getElementById('lastName')||{}).value||'');
-      if(window._sessionUser) initReviewMessaging(window._sessionUser.id, _fn.trim() || (window._sessionUser.email||'').split('@')[0]);
-      goToStep(2);
-    }).catch(function(e){
-      if(btn){ btn.disabled = false; btn.innerHTML = origText; }
-      var step1Err = document.getElementById('step1-error');
-      if(step1Err){ step1Err.textContent = e.message || 'Failed to save. Please try again.'; step1Err.style.display = 'block'; }
-    });
-  }
-}
+// ── Step 1: handled entirely by quiz flow ──
+function submitStep1(){ /* handled by quiz */ }
 
 // ── Show ineligible screen ──
 function showIneligible(){
@@ -1962,10 +1748,9 @@ async function _loadBookingAvailability() {
     if (cRes.data && cRes.data.length > 0 && cRes.data[0].data) {
       _memberState = cRes.data[0].data.state || null;
     }
-    // Also check the state field on the current form (step 1)
-    if (!_memberState) {
-      var stEl = document.getElementById('state');
-      if (stEl && stEl.value) _memberState = stEl.value.trim().toUpperCase();
+    // Also check the state field from quiz data
+    if (!_memberState && _quizData && _quizData.state) {
+      _memberState = _quizData.state.toUpperCase().trim();
     }
 
     // Get all clinician IDs from availability table
@@ -2104,15 +1889,14 @@ function _generateRealSlots(day) {
 // When called with slotDateTime: checks availability at that specific slot (Phase 8 booking mode)
 // When called with no arguments: async review mode — picks clinician with fewest pending reviews
 function _autoAssignClinician(slotDateTime) {
-  // Re-read member state from form in case it was filled after page load
-  if (!_memberState) {
-    var stEl = document.getElementById('state');
-    if (stEl && stEl.value) _memberState = stEl.value.trim().toUpperCase();
+  // Re-read member state from quiz data in case it was filled after page load
+  if (!_memberState && _quizData && _quizData.state) {
+    _memberState = _quizData.state.toUpperCase().trim();
   }
 
   // ── Async review mode (no date) ──
   if (!slotDateTime) {
-    // Return null here; the async query-based assignment is done in saveFullIntake
+    // Return null here; the async query-based assignment is done in submitQuiz
     // This branch is a signal to use the async path
     return null;
   }
@@ -2891,8 +2675,9 @@ var PROTOCOL_MAP = {
 };
 
 function getProtocolForPatient(){
-  if(selectedGoals.length > 0){
-    return PROTOCOL_MAP[selectedGoals[0]] || PROTOCOL_MAP.recovery;
+  var goals = (_quizData && _quizData.goals && _quizData.goals.length > 0) ? _quizData.goals : selectedGoals;
+  if(goals.length > 0){
+    return PROTOCOL_MAP[goals[0]] || PROTOCOL_MAP.recovery;
   }
   return PROTOCOL_MAP.recovery;
 }
@@ -2918,36 +2703,36 @@ function revealProtocol(){
 }
 
 function populateSessionChart(){
-  var goalLabels = selectedGoals.map(function(g){
+  var goals = (_quizData && _quizData.goals && _quizData.goals.length > 0) ? _quizData.goals : selectedGoals;
+  var goalLabels = goals.map(function(g){
     return g.charAt(0).toUpperCase()+g.slice(1);
   });
   var goalsEl = document.getElementById('chartGoals');
   if(goalsEl) goalsEl.textContent = goalLabels.join(', ') || '--';
 
-  // Medical history flags
+  // Medical history flags from quiz data
   var histEl = document.getElementById('chartHistory');
   if(histEl){
-    var flags = [];
-    var checks = document.querySelectorAll('input[name="medHistory"]:checked');
-    checks.forEach(function(c){
-      var lbl = document.querySelector('label[for="'+c.id+'"]');
-      if(lbl){
+    var medHistory = (_quizData && _quizData.medical_history) ? _quizData.medical_history : [];
+    if(medHistory.length > 0){
+      histEl.innerHTML = '';
+      medHistory.forEach(function(h){
         var span = document.createElement('span');
-        span.className = c.classList.contains('disq') ? 'chart-flag' : 'chart-tag';
-        span.textContent = lbl.textContent.trim();
+        var isDisq = ['cancer_active','pregnancy','transplant'].indexOf(h) !== -1;
+        span.className = isDisq ? 'chart-flag' : 'chart-tag';
+        span.textContent = h.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
         histEl.appendChild(span);
-      }
-    });
-    if(!checks.length) histEl.textContent = 'None reported';
+      });
+    } else {
+      histEl.textContent = 'None reported';
+    }
   }
 
   var peptEl = document.getElementById('chartPeptides');
-  var peptSel = document.getElementById('currentPeptides');
-  if(peptEl && peptSel) peptEl.textContent = peptSel.value === 'yes' ? 'Yes — see intake' : 'No';
+  if(peptEl) peptEl.textContent = (_quizData && _quizData.peptide_history === 'yes') ? 'Yes — see intake' : 'No';
 
   var medsEl = document.getElementById('chartMeds');
-  var medsVal = document.getElementById('medications');
-  if(medsEl && medsVal) medsEl.textContent = medsVal.value.trim() || 'None reported';
+  if(medsEl) medsEl.textContent = (_quizData && _quizData.medications) ? _quizData.medications : 'None reported';
 }
 
 // Chat
@@ -3808,17 +3593,7 @@ window._sbClient = createClient(
       return;
     }
 
-    // No consultation — show step 1 (intake form)
-    // Pre-fill email field from session and mark as logged in
-    if (session.user && session.user.email) {
-      var emailField = document.getElementById('intakeEmail');
-      if (emailField) emailField.value = session.user.email;
-      // Hide password field if already logged in
-      var passField = document.getElementById('intakePassword');
-      var passLabel = passField ? passField.closest('.form-group') : null;
-      if (passLabel) passLabel.style.display = 'none';
-    }
-
+    // No consultation — show step 1 (quiz)
     // Pre-fill quiz fields if logged in
     if (session.user) {
       window._sessionUser = session.user;

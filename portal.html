@@ -6446,6 +6446,17 @@ function populatePortal(user, consultation, greeting) {
     // Store member's state for clinician state-matching in booking
     if (d.state) window._memberState = d.state.toUpperCase().trim();
 
+    console.log('[Pulse] populatePortal data:', JSON.stringify({
+      purchase_status: d.purchase_status,
+      activated_protocols: d.activated_protocols,
+      activated_protocol_names: d.activated_protocol_names,
+      assigned_protocol: d.assigned_protocol,
+      protocol_assigned: consultation.protocol_assigned,
+      prescription_given: d.prescription_given,
+      prescribed_protocols: d.prescribed_protocols,
+      has_evaluations: !!(d.evaluations && d.evaluations.length)
+    }));
+
     // Use activated protocols (what member selected) over prescribed protocols
     var activatedProtocols = d.activated_protocols || {};
     var activatedNamesStr = d.activated_protocol_names || null;

@@ -4485,9 +4485,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<div class="crw-section-title">Clinical Summary</div>'+
           clinHtml+
         '</div>'+
-        '<div class="crw-section" id="attn-notes-section-'+consultId+'" style="display:none;">'+
+        '<div class="crw-section" id="attn-notes-section-'+consultId+'">'+
           '<div class="crw-section-title">Session Notes</div>'+
-          '<div id="attn-notes-'+consultId+'" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"></div>'+
+          '<div id="attn-notes-'+consultId+'" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"><span style="color:rgba(255,255,255,0.22);">No notes yet</span></div>'+
         '</div>'+
         '<div class="crw-actions">'+
           '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
@@ -7169,9 +7169,9 @@ function buildPatientDetail(p) {
             '</div>'
           : '') +
 
-        '<div class="crw-section" id="pdp-notes-section-' + escapeAttr(p.id) + '" style="display:none;">' +
+        '<div class="crw-section" id="pdp-notes-section-' + escapeAttr(p.id) + '">' +
           '<div class="crw-section-title">Session Notes</div>' +
-          '<div id="pdp-notes-' + escapeAttr(p.id) + '" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"></div>' +
+          '<div id="pdp-notes-' + escapeAttr(p.id) + '" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"><span style="color:rgba(255,255,255,0.22);">No notes yet</span></div>' +
         '</div>' +
 
       '</div>' +
@@ -7461,10 +7461,8 @@ async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
       .not('notes', 'is', null)
       .order('scheduled_at', { ascending: false })
       .limit(1);
+    var contentEl = document.getElementById(contentElId);
     if (res.data && res.data.length > 0 && res.data[0].notes && res.data[0].notes.trim()) {
-      var sectionEl = document.getElementById(sectionElId);
-      var contentEl = document.getElementById(contentElId);
-      if (sectionEl) sectionEl.style.display = '';
       if (contentEl) contentEl.textContent = res.data[0].notes;
     }
   } catch(e) { /* silent */ }

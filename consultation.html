@@ -619,7 +619,73 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
           <button class="quiz-btn quiz-btn-primary" onclick="submitQuizStep4()" style="margin-top:24px;">Next &#8594;</button>
         </div>
-        <div class="quiz-step" id="qs-5" data-step="5"></div>
+        <div class="quiz-step" id="qs-5" data-step="5">
+          <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
+          <div class="quiz-question">Let's set up your account.</div>
+          <div class="quiz-subtitle">Your information is encrypted and never shared.</div>
+
+          <div class="quiz-input-row">
+            <div class="quiz-input-group">
+              <label class="quiz-label">First Name</label>
+              <input type="text" class="quiz-input" id="quizFirstName" placeholder="First name" autocomplete="given-name"/>
+            </div>
+            <div class="quiz-input-group">
+              <label class="quiz-label">Last Name</label>
+              <input type="text" class="quiz-input" id="quizLastName" placeholder="Last name" autocomplete="family-name"/>
+            </div>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Email</label>
+            <input type="email" class="quiz-input" id="quizEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/>
+            <div class="quiz-error" id="quizEmailError">Required</div>
+          </div>
+
+          <div class="quiz-input-group" id="quizPasswordGroup">
+            <label class="quiz-label">Password</label>
+            <input type="password" class="quiz-input" id="quizPassword" placeholder="Min 6 characters" autocomplete="new-password"/>
+            <div class="quiz-error" id="quizPasswordError">Min 6 characters</div>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Phone</label>
+            <input type="tel" class="quiz-input" id="quizPhone" placeholder="(555) 555-5555" inputmode="tel" autocomplete="tel"/>
+          </div>
+
+          <div class="quiz-divider"></div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Street Address</label>
+            <input type="text" class="quiz-input" id="quizStreet" placeholder="123 Main St" autocomplete="street-address"/>
+          </div>
+
+          <div class="quiz-input-row">
+            <div class="quiz-input-group">
+              <label class="quiz-label">City</label>
+              <input type="text" class="quiz-input" id="quizCity" placeholder="City" autocomplete="address-level2"/>
+            </div>
+            <div class="quiz-input-group">
+              <label class="quiz-label">State</label>
+              <input type="text" class="quiz-input" id="quizState" placeholder="NY" maxlength="2" style="text-transform:uppercase;" autocomplete="address-level1"/>
+            </div>
+          </div>
+
+          <div class="quiz-input-row">
+            <div class="quiz-input-group">
+              <label class="quiz-label">ZIP Code</label>
+              <input type="text" class="quiz-input" id="quizZip" placeholder="10001" maxlength="10" inputmode="numeric" autocomplete="postal-code"/>
+            </div>
+            <div class="quiz-input-group">
+              <label class="quiz-label">Apt / Suite <span style="opacity:0.4;font-size:8px;">(optional)</span></label>
+              <input type="text" class="quiz-input" id="quizApt" placeholder="Apt 4B"/>
+            </div>
+          </div>
+
+          <div class="quiz-secure">&#128274; Private &amp; secure. HIPAA compliant.</div>
+
+          <button class="quiz-btn quiz-btn-primary" id="quizStep5Next" onclick="submitQuizStep5()" style="margin-top:24px;">Next &#8594;</button>
+          <div class="quiz-error" id="quizStep5Error" style="text-align:center;margin-top:8px;"></div>
+        </div>
         <div class="quiz-step" id="qs-6" data-step="6"></div>
 
       </div>
@@ -1275,6 +1341,117 @@ function submitQuizStep4(){
   _quizData.allergies = (document.getElementById('quizAllergies') || {}).value || null;
 
   quizGoTo(5);
+}
+
+async function submitQuizStep5(){
+  // Validate required fields
+  var fields = {
+    quizFirstName: 'First name',
+    quizLastName: 'Last name',
+    quizEmail: 'Email',
+    quizPhone: 'Phone',
+    quizStreet: 'Street address',
+    quizCity: 'City',
+    quizState: 'State',
+    quizZip: 'ZIP code'
+  };
+
+  var valid = true;
+  var firstErr = null;
+  Object.keys(fields).forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el || !el.value.trim()){
+      el.style.borderColor = 'rgba(239,68,68,0.5)';
+      valid = false;
+      if(!firstErr) firstErr = el;
+    } else {
+      el.style.borderColor = '';
+    }
+  });
+
+  // Check password if not already logged in
+  var passEl = document.getElementById('quizPassword');
+  if(!window._sessionUser && passEl){
+    if(!passEl.value || passEl.value.length < 6){
+      passEl.style.borderColor = 'rgba(239,68,68,0.5)';
+      var passErr = document.getElementById('quizPasswordError');
+      if(passErr) passErr.style.display = 'block';
+      valid = false;
+      if(!firstErr) firstErr = passEl;
+    } else {
+      passEl.style.borderColor = '';
+      var passErr2 = document.getElementById('quizPasswordError');
+      if(passErr2) passErr2.style.display = 'none';
+    }
+  }
+
+  // Email validation
+  var emailEl = document.getElementById('quizEmail');
+  if(emailEl && emailEl.value && !emailEl.value.includes('@')){
+    emailEl.style.borderColor = 'rgba(239,68,68,0.5)';
+    var emailErr = document.getElementById('quizEmailError');
+    if(emailErr){ emailErr.textContent = 'Enter a valid email'; emailErr.style.display = 'block'; }
+    valid = false;
+    if(!firstErr) firstErr = emailEl;
+  }
+
+  if(!valid){
+    if(firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  // Store data
+  _quizData.first_name = document.getElementById('quizFirstName').value.trim();
+  _quizData.last_name = document.getElementById('quizLastName').value.trim();
+  _quizData.email = document.getElementById('quizEmail').value.trim();
+  _quizData.phone_number = document.getElementById('quizPhone').value.trim();
+  _quizData.street_address = document.getElementById('quizStreet').value.trim();
+  _quizData.apt_unit = (document.getElementById('quizApt') || {}).value || null;
+  _quizData.city = document.getElementById('quizCity').value.trim();
+  _quizData.state = document.getElementById('quizState').value.trim().toUpperCase();
+  _quizData.zip_code = document.getElementById('quizZip').value.trim();
+
+  // Create account if not logged in
+  var btn = document.getElementById('quizStep5Next');
+  var errEl = document.getElementById('quizStep5Error');
+
+  if(!window._sessionUser && window._sbClient){
+    var email = _quizData.email;
+    var password = document.getElementById('quizPassword').value;
+
+    if(btn){ btn.disabled = true; btn.textContent = 'Creating account...'; }
+
+    try {
+      var r = await window._sbClient.auth.signUp({ email: email, password: password });
+      if(r.error){
+        // Try signing in if account exists
+        if(r.error.message && r.error.message.indexOf('already') !== -1){
+          var r2 = await window._sbClient.auth.signInWithPassword({ email: email, password: password });
+          if(r2.error){
+            if(errEl){ errEl.textContent = r2.error.message; errEl.style.display = 'block'; }
+            if(btn){ btn.disabled = false; btn.textContent = 'Next \u2192'; }
+            return;
+          }
+          window._sessionUser = r2.data.user || (r2.data.session ? r2.data.session.user : null);
+        } else {
+          if(errEl){ errEl.textContent = r.error.message; errEl.style.display = 'block'; }
+          if(btn){ btn.disabled = false; btn.textContent = 'Next \u2192'; }
+          return;
+        }
+      } else {
+        window._sessionUser = r.data.user || null;
+      }
+    } catch(e){
+      if(errEl){ errEl.textContent = e.message || 'Something went wrong'; errEl.style.display = 'block'; }
+      if(btn){ btn.disabled = false; btn.textContent = 'Next \u2192'; }
+      return;
+    }
+  }
+
+  if(btn){ btn.disabled = false; btn.textContent = 'Next \u2192'; }
+  if(errEl) errEl.style.display = 'none';
+
+  quizGoTo(6);
 }
 
 // ── Step 1: validate ALL fields (consolidated intake) ──
@@ -3424,6 +3601,15 @@ window._sbClient = createClient(
       var passField = document.getElementById('intakePassword');
       var passLabel = passField ? passField.closest('.form-group') : null;
       if (passLabel) passLabel.style.display = 'none';
+    }
+
+    // Pre-fill quiz fields if logged in
+    if (session.user) {
+      window._sessionUser = session.user;
+      var quizEmail = document.getElementById('quizEmail');
+      if (quizEmail) quizEmail.value = session.user.email || '';
+      var quizPassGroup = document.getElementById('quizPasswordGroup');
+      if (quizPassGroup) quizPassGroup.style.display = 'none';
     }
 
     // Show welcome banner if arriving from sign-up (?new=1)

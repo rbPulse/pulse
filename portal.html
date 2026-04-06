@@ -9786,6 +9786,15 @@ function _showEvaluationForm(apptId) {
         }
       })
       .catch(function(e) { console.warn('[Pulse] eval form load failed (async):', e); });
+    // Load latest appointment notes for this patient (from prior live consult)
+    db.from('appointments').select('notes').eq('consumer_id', _activePatientUserId)
+      .not('notes', 'is', null).order('scheduled_at', { ascending: false }).limit(1)
+      .then(function(r) {
+        if (r.data && r.data.length > 0 && r.data[0].notes && r.data[0].notes.trim()) {
+          var notesEl = document.getElementById('evalNotes');
+          if (notesEl && !notesEl.value) notesEl.value = r.data[0].notes;
+        }
+      }).catch(function(){});
   } else if (apptId) {
     // Appointment-based mode: load from appointment record
     db.from('appointments').select('consumer_id, notes, scheduled_at').eq('id', apptId).limit(1)

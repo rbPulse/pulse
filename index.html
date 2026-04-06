@@ -573,18 +573,20 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .testimonial-attribution{flex-direction:column;align-items:center;text-align:center;gap:12px;}
 }
 
-/* ── Option A: Light cream sections ── */
-#peptides{background:var(--cream);}
-#reviews{background:var(--cream);}
-#faq{background:var(--cream2);}
+/* ── Alternating section backgrounds ── */
+/* Dark sections: consistency, pods, reviews */
+/* Light sections: how, testimonial, faq */
+#how{background:var(--cream) !important;}
+#testimonial{background:var(--cream);}
+#reviews{background:var(--bg) !important;}
+#faq{background:var(--cream);}
 #problem{background:var(--sage-dark);}
-#testimonial{background:var(--sage-dark);}
 
 /* Light section text overrides */
-#peptides,#reviews,#faq{color:var(--dark-text);}
-#peptides .section-h,#reviews .section-h,#faq .section-h{color:var(--dark-text);}
-#peptides .section-sub,#reviews .section-sub{color:var(--mid-text);}
-#peptides .eyebrow,#reviews .eyebrow,#faq .eyebrow{color:var(--green);}
+#peptides,#how,#testimonial,#faq{color:var(--dark-text);}
+#peptides .section-h,#how .section-h,#testimonial .section-h,#faq .section-h{color:var(--dark-text);}
+#peptides .section-sub,#how .section-sub{color:var(--mid-text);}
+#peptides .eyebrow,#how .eyebrow,#testimonial .eyebrow,#faq .eyebrow{color:var(--green);}
 
 
 /* Peptides — audience cards on cream, fix invisible text */
@@ -594,12 +596,14 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 #peptides .audience-body{color:var(--mid-text);}
 #peptides .audience-q{color:var(--mid-text);border-left-color:rgba(58,122,92,0.35);}
 
-/* Reviews section — cards on cream */
-#reviews .review-card{background:#fff;border:1px solid rgba(0,0,0,0.07);box-shadow:0 2px 12px rgba(0,0,0,0.05);}
-#reviews .review-body{color:var(--mid-text);}
-#reviews .review-name{color:var(--dark-text);}
-#reviews .review-author{border-top-color:rgba(0,0,0,0.07);}
-#reviews .reviews-header .section-h{color:var(--dark-text);}
+/* Reviews section — dark background */
+#reviews .review-card{background:var(--card);border:1px solid rgba(255,255,255,0.04);box-shadow:none;}
+#reviews .review-body{color:var(--grey);}
+#reviews .review-name{color:var(--white);}
+#reviews .review-author{border-top-color:rgba(255,255,255,0.06);}
+#reviews .reviews-header .section-h{color:var(--white);}
+#reviews .eyebrow{color:var(--green);}
+#reviews .section-sub{color:var(--grey);}
 
 /* FAQ section — items on cream */
 #faq details.faq-item{background:#fff;border-left-color:transparent;box-shadow:0 1px 6px rgba(0,0,0,0.04);}
@@ -617,9 +621,24 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 #problem .pain-item{background:rgba(255,255,255,0.02);border-left-color:rgba(255,80,80,0.25);}
 #problem .pain-item.pulse-item{border-left-color:rgba(58,122,92,0.4);}
 
-/* Testimonial — dark sage */
+/* Testimonial — light cream */
 #testimonial .testimonial-mark{color:var(--green);}
 #testimonial .testimonial-divider{background:var(--green);}
+#testimonial .testimonial-heading{color:var(--dark-text);}
+#testimonial .testimonial-quote{color:var(--dark-text);}
+#testimonial .testimonial-name{color:var(--dark-text);}
+#testimonial .testimonial-title{color:var(--mid-text);}
+
+/* How It Works — light cream overrides */
+#how .how-act-title{color:var(--dark-text);}
+#how .how-act-body{color:var(--mid-text);}
+#how .how-act-num{color:var(--mid-text);}
+#how .how-act.active .how-act-num{color:var(--green);}
+#how .how-act-dot{background:var(--cream);border-color:rgba(0,0,0,0.15);}
+#how .how-act-dot::after{background:rgba(0,0,0,0.2);}
+#how .how-act.active .how-act-dot{border-color:var(--green);}
+#how .how-act.active .how-act-dot::after{background:var(--green);}
+#how .how-acts::before{background:rgba(0,0,0,0.08);}
 
 /* ── WAITLIST legibility ── */
 #waitlist .waitlist-title{text-shadow:0 2px 20px rgba(0,0,0,0.8),0 1px 4px rgba(0,0,0,0.9);}
@@ -866,26 +885,6 @@ document.addEventListener('DOMContentLoaded',function(){
     <span class="marquee-item"><span class="marquee-dot"></span>100% entirely online</span>
   </div>
 </div>
-<!-- MD TESTIMONIAL -->
-<section id="testimonial">
-  <div class="testimonial-inner">
-    <h2 class="testimonial-heading">Trusted by leading medical experts.</h2>
-    <span class="testimonial-mark">&ldquo;</span>
-    <p class="testimonial-quote">My patients ask about peptides constantly, and the research backs them up. The problem has never been the science. It&rsquo;s been sourcing quality compounds, getting the dosing right, and actually staying on a protocol long enough to see results. Pulse solves all three. It&rsquo;s the first system I&rsquo;d recommend by name.</p>
-    <div class="testimonial-divider"></div>
-    <div class="testimonial-attribution">
-      <img src="dr-elguizaoui.jpg" alt="Sameh Elguizaoui, M.D." class="testimonial-photo" style="width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(58,122,92,0.35);flex-shrink:0;"/>
-      <div>
-        <a href="https://newyorkorthopedics.com/our-doctors/sameh-elguizaoui-m-d/" target="_blank" rel="noopener" class="testimonial-name-link"><div class="testimonial-name">Sameh Elguizaoui, M.D.</div></a>
-        <div class="testimonial-title">Board-Certified Orthopedic Surgeon<br/>Sports Medicine Specialist<br/>Lenox Hill Hospital &middot; Mount Sinai &middot; New York</div>
-      </div>
-    </div>
-  </div>
-  <div style="text-align:center;margin-top:24px;">
-    <a href="science.html" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;padding:8px 20px;border-radius:999px;background:var(--green);color:#000;text-decoration:none;display:inline-block;width:fit-content;font-weight:600;transition:opacity .2s;">Why Peptides</a>
-  </div>
-</section>
-
 <!-- DESIGNED FOR CONSISTENCY -->
 <style>
 #consistency{background:var(--bg);padding:80px 48px;}
@@ -1085,6 +1084,26 @@ document.addEventListener('DOMContentLoaded',function(){
       <a href="consultation.html" class="protocol-finder-banner-btn">Book Your Consultation</a>
     </div>
     <p class="disclaimer">These statements have not been evaluated by the FDA. All protocols require physician authorisation through Pulse's MSO/PC model. Not intended to diagnose, treat, cure, or prevent any disease.</p>
+  </div>
+</section>
+
+<!-- MD TESTIMONIAL -->
+<section id="testimonial">
+  <div class="testimonial-inner">
+    <h2 class="testimonial-heading">Trusted by leading medical experts.</h2>
+    <span class="testimonial-mark">&ldquo;</span>
+    <p class="testimonial-quote">My patients ask about peptides constantly, and the research backs them up. The problem has never been the science. It&rsquo;s been sourcing quality compounds, getting the dosing right, and actually staying on a protocol long enough to see results. Pulse solves all three. It&rsquo;s the first system I&rsquo;d recommend by name.</p>
+    <div class="testimonial-divider"></div>
+    <div class="testimonial-attribution">
+      <img src="dr-elguizaoui.jpg" alt="Sameh Elguizaoui, M.D." class="testimonial-photo" style="width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(58,122,92,0.35);flex-shrink:0;"/>
+      <div>
+        <a href="https://newyorkorthopedics.com/our-doctors/sameh-elguizaoui-m-d/" target="_blank" rel="noopener" class="testimonial-name-link"><div class="testimonial-name">Sameh Elguizaoui, M.D.</div></a>
+        <div class="testimonial-title">Board-Certified Orthopedic Surgeon<br/>Sports Medicine Specialist<br/>Lenox Hill Hospital &middot; Mount Sinai &middot; New York</div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:24px;">
+    <a href="science.html" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;padding:8px 20px;border-radius:999px;background:var(--green);color:#000;text-decoration:none;display:inline-block;width:fit-content;font-weight:600;transition:opacity .2s;">Why Peptides</a>
   </div>
 </section>
 

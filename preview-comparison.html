@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulse — Comparison Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#050505;
+  --green:#3a7a5c;
+  --green-dim:rgba(58,122,92,0.1);
+  --white:#f4f4f4;
+  --grey:rgba(255,255,255,0.65);
+  --grey2:rgba(255,255,255,0.42);
+}
+body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px 24px;}
+
+.compare-wrap{
+  max-width:1100px;
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:48px;
+  align-items:start;
+}
+
+/* ── Left: Comparison graphic ── */
+.compare-card{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,0.06);
+}
+
+/* Column headers */
+.compare-col-header{
+  padding:24px 28px 20px;
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  text-align:center;
+}
+.compare-col-header.pulse{
+  background:rgba(58,122,92,0.08);
+  color:var(--green);
+  border-bottom:1px solid rgba(58,122,92,0.15);
+}
+.compare-col-header.others{
+  background:rgba(255,255,255,0.02);
+  color:rgba(255,255,255,0.3);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+/* Cells */
+.compare-cell{
+  padding:20px 24px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:10px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.compare-cell.pulse{
+  background:rgba(58,122,92,0.04);
+  border-bottom-color:rgba(58,122,92,0.08);
+}
+.compare-cell.others{
+  background:transparent;
+}
+
+/* Check / X icons */
+.compare-icon{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+.compare-icon.check{
+  background:rgba(58,122,92,0.15);
+  border:1px solid rgba(58,122,92,0.3);
+}
+.compare-icon.check svg{stroke:var(--green);width:12px;height:12px;}
+.compare-icon.x{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+}
+.compare-icon.x svg{stroke:rgba(255,255,255,0.25);width:10px;height:10px;}
+
+/* Cell text */
+.compare-text{
+  font-size:14px;
+  line-height:1.55;
+  font-weight:400;
+}
+.compare-cell.pulse .compare-text{
+  color:#fff;
+  font-weight:500;
+}
+.compare-cell.others .compare-text{
+  color:rgba(255,255,255,0.35);
+  font-style:italic;
+}
+
+/* Last row: no border */
+.compare-cell:last-of-type,
+.compare-card > .compare-cell:nth-last-child(-n+2){
+  border-bottom:none;
+}
+
+/* ── Right: pen image (taller) ── */
+.compare-img{
+  width:100%;
+  border-radius:16px;
+  display:block;
+  object-fit:cover;
+}
+
+/* ── CTA below the card ── */
+.compare-cta{
+  margin-top:28px;
+  display:inline-block;
+  font-family:'DM Mono',monospace;
+  font-size:12px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  background:var(--green);
+  color:#000;
+  padding:14px 32px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:600;
+  transition:opacity .2s;
+}
+.compare-cta:hover{opacity:0.85;}
+
+@media(max-width:768px){
+  .compare-wrap{grid-template-columns:1fr;gap:32px;}
+}
+</style>
+</head>
+<body>
+
+<div class="compare-wrap">
+
+  <!-- Left: Comparison card -->
+  <div>
+    <div class="compare-card">
+
+      <!-- Headers -->
+      <div class="compare-col-header pulse">Pulse</div>
+      <div class="compare-col-header others">Others</div>
+
+      <!-- 1. Delivery -->
+      <div class="compare-cell pulse">
+        <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="compare-text">Auto-injector pen. Controlled, repeatable, simple delivery.</div>
+      </div>
+      <div class="compare-cell others">
+        <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+        <div class="compare-text">Syringes, vials, and manual injection every time.</div>
+      </div>
+
+      <!-- 2. Preparation -->
+      <div class="compare-cell pulse">
+        <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="compare-text">Pre-filled pods. No mixing, measuring, or prep.</div>
+      </div>
+      <div class="compare-cell others">
+        <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+        <div class="compare-text">Reconstitute, measure, and draw up each dose yourself.</div>
+      </div>
+
+      <!-- 3. Clinical oversight -->
+      <div class="compare-cell pulse">
+        <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="compare-text">Clinically prescribed and monitored by our medical specialists.</div>
+      </div>
+      <div class="compare-cell others">
+        <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+        <div class="compare-text">No follow-up after your prescription ships. Hard to get a hold of.</div>
+      </div>
+
+      <!-- 4. Personalization -->
+      <div class="compare-cell pulse">
+        <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="compare-text">Protocol matched to your body, goals, and health profile.</div>
+      </div>
+      <div class="compare-cell others">
+        <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+        <div class="compare-text">Same dose for everyone. Generic, one-size-fits-all protocols.</div>
+      </div>
+
+      <!-- 5. Dosing adjustments -->
+      <div class="compare-cell pulse">
+        <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="compare-text">Dosing personalized and titrated by your clinician to minimize side effects.</div>
+      </div>
+      <div class="compare-cell others">
+        <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+        <div class="compare-text">Side effects dealt with retroactively, not proactively.</div>
+      </div>
+
+    </div>
+
+    <a href="consultation.html" class="compare-cta">Get Started</a>
+  </div>
+
+  <!-- Right: pen image -->
+  <div>
+    <img src="pen.png" alt="Pulse auto-injector pen" class="compare-img" style="min-height:580px;">
+  </div>
+
+</div>
+
+</body>
+</html>

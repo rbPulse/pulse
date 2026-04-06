@@ -493,19 +493,19 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         <div class="quiz-step" id="qs-2" data-step="2">
           <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
           <div class="quiz-question">Have you used peptides or hormones before?</div>
-          <div class="quiz-subtitle">This helps your clinician understand your experience level and tailor your protocol.</div>
+          <div class="quiz-subtitle">This helps your clinician tailor the right starting protocol for you.</div>
           <div id="quizPeptideCards">
             <div class="quiz-card" data-value="no" onclick="selectPeptideAndAdvance(this)">
               <div class="quiz-card-title">No, I'm new to this</div>
-              <div class="quiz-card-sub">First time exploring peptides.</div>
+              <div class="quiz-card-sub">First time exploring peptide therapy.</div>
             </div>
             <div class="quiz-card" data-value="yes_peptides" onclick="selectPeptideAndAdvance(this)">
               <div class="quiz-card-title">Yes — I've used peptides</div>
-              <div class="quiz-card-sub">BPC-157, TB-500, GH secretagogues, etc.</div>
+              <div class="quiz-card-sub">BPC-157, TB-500, CJC/Ipamorelin, or similar.</div>
             </div>
             <div class="quiz-card" data-value="yes_hormones" onclick="selectPeptideAndAdvance(this)">
               <div class="quiz-card-title">Yes — I've used hormone therapy</div>
-              <div class="quiz-card-sub">TRT, HGH, or other hormones.</div>
+              <div class="quiz-card-sub">TRT, HGH, or other hormone treatments.</div>
             </div>
             <div class="quiz-card" data-value="yes_both" onclick="selectPeptideAndAdvance(this)">
               <div class="quiz-card-title">Yes — both peptides and hormones</div>
@@ -517,17 +517,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         <!-- Step 3: Body + Demographics -->
         <div class="quiz-step" id="qs-3" data-step="3">
           <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
-          <div class="quiz-question">Tell us about yourself.</div>
-          <div class="quiz-subtitle">Your clinician uses this to calculate the safest, most effective protocol for you.</div>
+          <div class="quiz-question">Your dose depends on your body.</div>
+          <div class="quiz-subtitle">These help your clinician calculate the safest, most effective dose.</div>
 
           <div class="quiz-input-group">
-            <label class="quiz-label">Date of birth</label>
-            <input type="date" class="quiz-input" id="quizDob" onchange="validateQuizStep3()"/>
+            <label class="quiz-label">Date of Birth</label>
+            <input type="date" class="quiz-input" id="quizDob" onchange="checkQuizStep3()"/>
+            <div class="quiz-error" id="quizDobError">Required</div>
           </div>
 
           <div class="quiz-input-group">
-            <label class="quiz-label">Biological sex</label>
-            <select class="quiz-select" id="quizSex" onchange="validateQuizStep3()">
+            <label class="quiz-label">Biological Sex</label>
+            <select class="quiz-select" id="quizSex" onchange="checkQuizStep3()">
               <option value="">Select</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
@@ -537,14 +538,14 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <div class="quiz-input-group">
             <label class="quiz-label">Height</label>
             <div class="quiz-input-row">
-              <select class="quiz-select" id="quizHeightFt" onchange="validateQuizStep3()">
+              <select class="quiz-select" id="quizHeightFt" onchange="checkQuizStep3()">
                 <option value="">Feet</option>
                 <option value="4">4 ft</option>
                 <option value="5">5 ft</option>
                 <option value="6">6 ft</option>
                 <option value="7">7 ft</option>
               </select>
-              <select class="quiz-select" id="quizHeightIn" onchange="validateQuizStep3()">
+              <select class="quiz-select" id="quizHeightIn" onchange="checkQuizStep3()">
                 <option value="">Inches</option>
                 <option value="0">0 in</option>
                 <option value="1">1 in</option>
@@ -564,10 +565,10 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
           <div class="quiz-input-group">
             <label class="quiz-label">Weight</label>
-            <input type="number" class="quiz-input" id="quizWeight" placeholder="Weight (lbs)" inputmode="numeric" onchange="validateQuizStep3()"/>
+            <input type="number" class="quiz-input" id="quizWeight" placeholder="Weight (lbs)" inputmode="numeric" onchange="checkQuizStep3()"/>
           </div>
 
-          <div class="quiz-secure">&#128274; Private &amp; secure</div>
+          <div class="quiz-secure">&#128274; Private &amp; secure.</div>
 
           <button class="quiz-btn quiz-btn-primary" id="quizStep3Next" disabled onclick="submitQuizStep3()">Next &#8594;</button>
         </div>
@@ -1155,31 +1156,37 @@ function selectPeptideAndAdvance(cardEl) {
     _quizData.peptide_detail = null;
   } else {
     _quizData.peptide_history = 'yes';
-    _quizData.peptide_detail = value;
+    _quizData.peptide_detail = value.replace('yes_', '');
   }
 
   // Auto-advance after brief delay
   setTimeout(function() { quizGoTo(3); }, 300);
 }
 
-function validateQuizStep3() {
+function checkQuizStep3() {
   var dob = document.getElementById('quizDob').value;
   var sex = document.getElementById('quizSex').value;
   var ft = document.getElementById('quizHeightFt').value;
-  var inches = document.getElementById('quizHeightIn').value;
+  var inc = document.getElementById('quizHeightIn').value;
   var weight = document.getElementById('quizWeight').value;
 
-  var valid = dob && sex && ft && inches !== '' && weight;
+  var valid = dob && sex && ft && inc !== '' && weight;
   document.getElementById('quizStep3Next').disabled = !valid;
 }
 
 function submitQuizStep3() {
-  _quizData.dob = document.getElementById('quizDob').value;
-  _quizData.sex = document.getElementById('quizSex').value;
-  _quizData.heightFt = document.getElementById('quizHeightFt').value;
-  _quizData.heightIn = document.getElementById('quizHeightIn').value;
-  _quizData.height = _quizData.heightFt + "'" + _quizData.heightIn + '"';
-  _quizData.current_weight = document.getElementById('quizWeight').value;
+  var dob = document.getElementById('quizDob').value;
+  var sex = document.getElementById('quizSex').value;
+  var ft = document.getElementById('quizHeightFt').value;
+  var inc = document.getElementById('quizHeightIn').value;
+  var weight = document.getElementById('quizWeight').value;
+
+  _quizData.dob = dob;
+  _quizData.sex = sex;
+  _quizData.heightFt = ft;
+  _quizData.heightIn = inc;
+  _quizData.height = ft + "'" + inc + '"';
+  _quizData.current_weight = weight;
 
   quizGoTo(4);
 }

@@ -2362,7 +2362,7 @@ async function submitReviewBooking() {
       scheduled_at: selectedDate.toISOString(),
       duration_minutes: 30,
       status: 'pending'
-    });
+    }).select('id');
 
     if (aInsert.error) {
       if (errEl) { errEl.textContent = 'Booking failed: ' + aInsert.error.message; errEl.style.display = 'block'; }
@@ -2609,6 +2609,18 @@ async function _joinDailySession() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) throw new Error('Not authenticated');
 
+    // If appointment ID is missing, try to load it from DB
+    if (!_memberApptId) {
+      var apptLookup = await client.from('appointments')
+        .select('id')
+        .eq('consumer_id', session.user.id)
+        .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
+        .order('scheduled_at', { ascending: false })
+        .limit(1);
+      if (apptLookup.data && apptLookup.data.length > 0) {
+        _memberApptId = apptLookup.data[0].id;
+      }
+    }
     if (!_memberApptId) throw new Error('No appointment found');
 
     // Call the Edge Function — pass anon key as Authorization for gateway,

@@ -1733,6 +1733,7 @@ var calOffset = 0; // weeks offset from today
 var selectedDate = null;
 var selectedSlot = null;
 var TOTAL_WEEKS = 4;
+var MAX_MONTHS_AHEAD = 2; // for review booking calendar
 
 // ── Real clinician availability (loaded from DB) ──
 // _eligibleClinicians: array of { id, cl_state, display_name }
@@ -2064,8 +2065,17 @@ function buildCalendar(){
   document.getElementById('calNextBtn').style.opacity = calOffset >= TOTAL_WEEKS - 1 ? '0.3' : '1';
 }
 
-function calPrev(){ if(calOffset > 0){ calOffset--; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
-function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
+function calPrev(){
+  if(calOffset > 0){ calOffset--;
+    if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar();
+  }
+}
+function calNext(){
+  var max = _reviewBookingClinicianId ? MAX_MONTHS_AHEAD : TOTAL_WEEKS-1;
+  if(calOffset < max){ calOffset++;
+    if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar();
+  }
+}
 
 function buildSlots(day){
   var dow = day.getDay();
@@ -2193,53 +2203,63 @@ function buildReviewCalendar() {
 
   var today = new Date();
   today.setHours(0,0,0,0);
-  var startOfWeek = new Date(today);
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + calOffset * 7);
 
-  // Month label
+  // Month-based navigation: calOffset = number of months forward from current month
+  var viewMonth = new Date(today.getFullYear(), today.getMonth() + calOffset, 1);
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var midWeek = new Date(startOfWeek);
-  midWeek.setDate(midWeek.getDate() + 3);
-  label.textContent = months[midWeek.getMonth()] + ' ' + midWeek.getFullYear();
+  label.textContent = months[viewMonth.getMonth()] + ' ' + viewMonth.getFullYear();
 
   // Clear existing day cells (keep headers)
   var headers = grid.querySelectorAll('.cal-day-label');
   grid.innerHTML = '';
   headers.forEach(function(h) { grid.appendChild(h); });
 
-  // Build 4 weeks
-  for (var w = 0; w < 4; w++) {
-    for (var d = 0; d < 7; d++) {
-      var day = new Date(startOfWeek);
-      day.setDate(day.getDate() + w * 7 + d);
-      var cell = document.createElement('div');
-      cell.className = 'cal-cell';
-      cell.textContent = day.getDate();
+  // Leading empty cells for days before the 1st
+  var firstDow = viewMonth.getDay();
+  for (var e = 0; e < firstDow; e++) {
+    var empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
 
-      var isPast = day < today;
-      var dow = day.getDay();
-      var hasAvail = !!_reviewBookingAvail[dow];
+  // Days in this month
+  var daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+  for (var d = 1; d <= daysInMonth; d++) {
+    var day = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d);
+    var cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
 
-      if (isPast || !hasAvail) {
-        cell.classList.add('disabled');
-      } else {
-        cell.dataset.date = day.toISOString();
-        cell.addEventListener('click', function() {
-          var prev = grid.querySelector('.cal-cell.selected');
-          if (prev) prev.classList.remove('selected');
-          this.classList.add('selected');
-          selectedDate = new Date(this.dataset.date);
-          selectedSlot = null;
-          buildReviewSlots(selectedDate);
-        });
-      }
+    var isPast = day < today;
+    var dow = day.getDay();
+    var hasAvail = !!_reviewBookingAvail[dow];
 
-      if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
-        cell.classList.add('selected');
-      }
-
-      grid.appendChild(cell);
+    if (day.toDateString() === today.toDateString()) {
+      cell.classList.add('today');
     }
+
+    if (isPast) {
+      cell.classList.add('past');
+    } else if (!hasAvail) {
+      // No availability on this day — leave as default dim style
+    } else {
+      cell.classList.add('has-slots');
+      cell.dataset.date = day.toISOString();
+      cell.addEventListener('click', function() {
+        var prev = grid.querySelector('.cal-day.selected');
+        if (prev) prev.classList.remove('selected');
+        this.classList.add('selected');
+        selectedDate = new Date(this.dataset.date);
+        selectedSlot = null;
+        buildReviewSlots(selectedDate);
+      });
+    }
+
+    if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
+      cell.classList.add('selected');
+    }
+
+    grid.appendChild(cell);
   }
 }
 

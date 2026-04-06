@@ -6471,6 +6471,14 @@ function populatePortal(user, consultation, greeting) {
 
     var purchaseDone = d.purchase_status === 'completed';
 
+    // If purchased but assignedProtoStr is missing, try to derive from prescribed_protocols or evaluations
+    if (purchaseDone && !assignedProtoStr) {
+      var _protoKeys = Object.keys(prescribedProtocols).filter(function(k){ return prescribedProtocols[k]; });
+      if (_protoKeys.length > 0) {
+        assignedProtoStr = _protoKeys.map(function(k){ return k.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }).join(', ');
+      }
+    }
+
     if (purchaseDone && assignedProtoStr && assignedProtoStr !== 'no prescription') {
       // Protocol activated — resolve for display
       var firstProtoKey = assignedProtoStr.split(',')[0].trim().toLowerCase().replace(/\s+/g, '_');
@@ -6497,9 +6505,13 @@ function populatePortal(user, consultation, greeting) {
       window._protoFreq = _le.frequency || consultation.frequency || d.frequency || null;
       window._protoTiming = _le.timing || consultation.timing || d.timing || null;
       window._protoDuration = _le.duration || consultation.duration || d.duration || null;
-    } else if (assignedProtoStr === 'no prescription' || rxGiven === false) {
+    } else if (assignedProtoStr === 'no prescription' || (!purchaseDone && rxGiven === false)) {
       hasPendingReview = false;
       proto = null;
+    } else if (purchaseDone) {
+      // Purchase done but couldn't resolve protocol — show active with generic name
+      proto = { name: 'Your Protocol', category: 'Active', compounds: [] };
+      window._allProtoNames = ['Your Protocol'];
     } else {
       hasPendingReview = true;
     }

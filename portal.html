@@ -3410,14 +3410,16 @@ function initPortal(user) {
         if (role === 'clinician' || role === 'admin' || role === 'super_admin') {
           _continuePortalInit(user, role);
         } else {
-          // Member — verify completed purchase
+          // Member — verify completed purchase (check both column and JSONB data field)
           db.from('consultations')
-            .select('purchase_status')
+            .select('purchase_status, data')
             .eq('user_id', currentUserId)
-            .eq('purchase_status', 'completed')
+            .order('created_at', { ascending: false })
             .limit(1)
             .then(function(cr) {
-              if (!cr.data || !cr.data.length) {
+              var c = (cr.data && cr.data.length > 0) ? cr.data[0] : null;
+              var purchased = c && (c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed'));
+              if (!purchased) {
                 window.location.href = 'consultation.html';
                 return;
               }

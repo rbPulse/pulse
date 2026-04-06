@@ -4485,6 +4485,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<div class="crw-section-title">Clinical Summary</div>'+
           clinHtml+
         '</div>'+
+        '<div class="crw-section" id="attn-notes-section-'+consultId+'" style="display:none;">'+
+          '<div class="crw-section-title">Session Notes</div>'+
+          '<div id="attn-notes-'+consultId+'" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"></div>'+
+        '</div>'+
         '<div class="crw-actions">'+
           '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
           '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
@@ -4522,6 +4526,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     _refreshAttnMsgs(consultId,userId);
     if(_attnMsgPollers[consultId])clearInterval(_attnMsgPollers[consultId]);
     _attnMsgPollers[consultId]=setInterval(function(){_refreshAttnMsgs(consultId,userId);},10000);
+
+    // Load session notes from latest appointment
+    _loadPatientNotes(userId, 'attn-notes-section-'+consultId, 'attn-notes-'+consultId);
 
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
@@ -6885,6 +6892,7 @@ function togglePatientDetail(patient, rowWrapper) {
   // Load inline messages for the crw messaging pane
   if (!patient._mock && patient.id) {
     _loadPdpMessages(patient.id);
+    _loadPatientNotes(patient.id, 'pdp-notes-section-' + patient.id, 'pdp-notes-' + patient.id);
   }
 }
 
@@ -7160,6 +7168,11 @@ function buildPatientDetail(p) {
               '<div class="crw-val" style="color:var(--green);">' + escapeHtml(protocolName) + '</div>' +
             '</div>'
           : '') +
+
+        '<div class="crw-section" id="pdp-notes-section-' + escapeAttr(p.id) + '" style="display:none;">' +
+          '<div class="crw-section-title">Session Notes</div>' +
+          '<div id="pdp-notes-' + escapeAttr(p.id) + '" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"></div>' +
+        '</div>' +
 
       '</div>' +
       '<div class="crw-right">' +
@@ -7437,6 +7450,24 @@ function _saveAssignedProtocol(patientId) {
       console.warn('[Pulse] assign protocol failed:', err && err.message);
       if (saveStatusEl) saveStatusEl.textContent = 'Error: ' + (err && err.message ? err.message : 'could not save');
     });
+}
+
+// ── Load session notes from latest appointment for a patient ──
+async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
+  try {
+    var res = await db.from('appointments')
+      .select('notes')
+      .eq('consumer_id', patientUserId)
+      .not('notes', 'is', null)
+      .order('scheduled_at', { ascending: false })
+      .limit(1);
+    if (res.data && res.data.length > 0 && res.data[0].notes && res.data[0].notes.trim()) {
+      var sectionEl = document.getElementById(sectionElId);
+      var contentEl = document.getElementById(contentElId);
+      if (sectionEl) sectionEl.style.display = '';
+      if (contentEl) contentEl.textContent = res.data[0].notes;
+    }
+  } catch(e) { /* silent */ }
 }
 
 // ── Patient Detail Panel Inline Messaging ──

@@ -4451,11 +4451,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var goalsText = goalsArr.length?goalsArr.map(function(g){return g.charAt(0).toUpperCase()+g.slice(1);}).join(', '):'No goals specified';
 
     // Clinical summary
-    var mhDisplay = medHistoryArr.length?medHistoryArr.map(function(h){
-      var risk=['cancer_history','cancer_active','cardio','diabetes','autoimmune','hormone_sensitive'].indexOf(h)!==-1;
-      var lbl=h.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
-      return risk?'<span class="crw-clin-flag">'+escapeHtml(lbl)+'</span>':escapeHtml(lbl);
-    }).join(', '):'None reported';
+    var mhDisplay = _buildMedHistoryDisplay(medHistoryArr);
 
     var clinHtml='<div class="crw-clin-row"><div class="crw-clin-lbl">Medical History</div><div class="crw-clin-val">'+mhDisplay+'</div></div>'+
       '<div class="crw-clin-row"><div class="crw-clin-lbl">Medications</div><div class="crw-clin-val">'+escapeHtml(d.medications||'None')+'</div></div>'+
@@ -5499,18 +5495,9 @@ function _renderApptPatientDetail(patient, appt, panel) {
     (canCancel ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '');
 
   // Build medical history
-  var mhArr = [];
-  var mhRaw = d.medical_history || d.health_conditions || '';
-  if (mhRaw) {
-    if (Array.isArray(mhRaw)) mhArr = mhRaw;
-    else if (typeof mhRaw === 'string') mhArr = mhRaw.split(',').map(function(s){return s.trim();});
-  }
-  var mhDisplay = mhArr.length > 0
-    ? mhArr.map(function(m){
-        var flagged = /cancer|cardio|diabetes|autoimmune|hormone/i.test(m);
-        return flagged ? '<span class="crw-clin-flag">' + escapeHtml(m) + '</span>' : escapeHtml(m);
-      }).join(', ')
-    : 'None reported';
+  var mhArr = d.medical_history || d.health_conditions || [];
+  if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
+  var mhDisplay = _buildMedHistoryDisplay(mhArr);
 
   var goalsText = patient.goal || d.primary_goal || '—';
   var ageStr = d.dob ? String(_calcAge(d.dob)) : '—';
@@ -7097,12 +7084,7 @@ function buildPatientDetail(p) {
     if (Array.isArray(medicalHistory)) mhArr = medicalHistory;
     else if (typeof medicalHistory === 'string') mhArr = medicalHistory.split(',').map(function(s){return s.trim();});
   }
-  var mhDisplay = mhArr.length > 0
-    ? mhArr.map(function(m){
-        var flagged = /cancer|cardio|diabetes|autoimmune|hormone/i.test(m);
-        return flagged ? '<span class="crw-clin-flag">' + escapeHtml(m) + '</span>' : escapeHtml(m);
-      }).join(', ')
-    : 'None reported';
+  var mhDisplay = _buildMedHistoryDisplay(mhArr);
 
   var goalsText = primaryGoal || '—';
   if (secondaryGoalsStr) goalsText += ', ' + secondaryGoalsStr;
@@ -8785,6 +8767,32 @@ function _calcAge(dob) {
   return age;
 }
 
+// ── Medical history ID → full label mapping ──
+var MED_HISTORY_LABELS = {
+  diabetes: 'Diabetes (Type 1 or 2)',
+  cardio: 'Cardiovascular disease',
+  autoimmune: 'Autoimmune condition',
+  hormone_sensitive: 'Hormone-sensitive condition',
+  cancer_history: 'History of cancer',
+  cancer_active: 'Active cancer',
+  pregnancy: 'Pregnant or breastfeeding',
+  transplant: 'Organ transplant recipient'
+};
+var MED_HISTORY_HIGH_RISK = ['cancer_history','cancer_active','cardio','diabetes','autoimmune','hormone_sensitive','pregnancy','transplant'];
+
+function _medHistoryLabel(id) {
+  return MED_HISTORY_LABELS[id] || id.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+}
+
+function _buildMedHistoryDisplay(arr) {
+  if (!arr || !arr.length) return 'None reported';
+  return arr.map(function(h) {
+    var label = _medHistoryLabel(h);
+    var isRisk = MED_HISTORY_HIGH_RISK.indexOf(h) !== -1;
+    return isRisk ? '<span class="crw-clin-flag">' + escapeHtml(label) + '</span>' : escapeHtml(label);
+  }).join(', ');
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)
@@ -9489,23 +9497,35 @@ async function _loadSessionPatientCard(apptId) {
     if (secondaryGoals.length > 0) goalsText += ', ' + (Array.isArray(secondaryGoals) ? secondaryGoals.join(', ') : secondaryGoals);
 
     // Medical history
-    var mhRaw = d.medical_history || d.health_conditions || '';
-    var mhArr = [];
-    if (mhRaw) {
-      if (Array.isArray(mhRaw)) mhArr = mhRaw;
-      else if (typeof mhRaw === 'string') mhArr = mhRaw.split(',').map(function(s){return s.trim();});
+    var mhArr = d.medical_history || d.health_conditions || [];
+    if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
+    var mhDisplay = _buildMedHistoryDisplay(mhArr);
+
+    // Risk assessment
+    var riskStatus = consultation.risk_status || '';
+    var riskReasons = consultation.risk_flag_reasons || [];
+    if (!riskStatus && d) {
+      var riskEval = _evaluateRiskFallback(d);
+      riskStatus = riskEval.status;
+      riskReasons = riskEval.reasons;
     }
-    var mhDisplay = mhArr.length > 0
-      ? mhArr.map(function(m){
-          var flagged = /cancer|cardio|diabetes|autoimmune|hormone/i.test(m);
-          return flagged ? '<span style="color:#EF4444;">\u26A0 ' + escapeHtml(m) + '</span>' : escapeHtml(m);
-        }).join(', ')
-      : 'None reported';
+    var riskHtml = '';
+    if (riskStatus === 'high_risk') {
+      riskHtml = '<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div>' +
+        '<ul class="crw-risk-list" style="color:#EF4444;">' + riskReasons.map(function(r){return '<li>' + escapeHtml(r) + '</li>';}).join('') + '</ul></div>';
+    } else if (riskStatus === 'moderate_risk') {
+      riskHtml = '<div class="crw-risk crw-risk-mod"><div class="crw-risk-title" style="color:#EAB308;">MODERATE RISK</div>' +
+        '<ul class="crw-risk-list" style="color:rgba(234,179,8,0.8);">' + riskReasons.map(function(r){return '<li>' + escapeHtml(r) + '</li>';}).join('') + '</ul></div>';
+    } else {
+      riskHtml = '<div class="crw-risk crw-risk-low"><div class="crw-risk-title" style="color:#22C55E;">LOW RISK</div>' +
+        '<div class="crw-risk-body">No concerns flagged</div></div>';
+    }
 
     var html =
       '<div style="padding:20px 24px;">' +
         '<div style="font-size:20px;font-weight:600;color:#fff;margin-bottom:4px;">' + escapeHtml(fullName) + '</div>' +
         '<div style="font-size:13px;color:#A1A1AA;">' + escapeHtml(ageStr) + ' \u00B7 ' + escapeHtml(sex) + ' \u00B7 ' + escapeHtml(state) + '</div>' +
+        riskHtml +
       '</div>' +
 
       '<div style="padding:0 24px 20px;">' +

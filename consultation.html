@@ -3082,28 +3082,34 @@ async function _activateAndGoToPortal() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) { window.location.href = 'portal.html'; return; }
 
-    // Mark purchase as completed (bypass checkout for now)
-    // Update both the column (if it exists) and the JSONB data field
-    if (_consultationId) {
-      var cRes = await client.from('consultations').select('data').eq('id', _consultationId).limit(1);
+    // Collect only the checked/selected protocols
+    var selectedProtocols = {};
+    var selectedNames = [];
+    document.querySelectorAll('input[name="selectedProtocols"]:checked').forEach(function(cb) {
+      selectedProtocols[cb.value] = true;
+      var name = cb.value.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+      selectedNames.push(name);
+    });
+
+    // Update consultation with purchase status and activated protocols
+    var consultId = _consultationId;
+    if (!consultId) {
+      var cLookup = await client.from('consultations').select('id').eq('user_id', session.user.id)
+        .order('created_at', { ascending: false }).limit(1);
+      if (cLookup.data && cLookup.data.length > 0) consultId = cLookup.data[0].id;
+    }
+
+    if (consultId) {
+      var cRes = await client.from('consultations').select('data').eq('id', consultId).limit(1);
       var existingData = (cRes.data && cRes.data.length > 0) ? (cRes.data[0].data || {}) : {};
       existingData.purchase_status = 'completed';
+      existingData.activated_protocols = selectedProtocols;
+      existingData.activated_protocol_names = selectedNames.join(', ');
       await client.from('consultations').update({
         data: existingData,
-        purchase_status: 'completed'
-      }).eq('id', _consultationId);
-    } else {
-      // Fallback: find consultation by user_id
-      var cRes2 = await client.from('consultations').select('id, data').eq('user_id', session.user.id)
-        .order('created_at', { ascending: false }).limit(1);
-      if (cRes2.data && cRes2.data.length > 0) {
-        var cData = cRes2.data[0].data || {};
-        cData.purchase_status = 'completed';
-        await client.from('consultations').update({
-          data: cData,
-          purchase_status: 'completed'
-        }).eq('id', cRes2.data[0].id);
-      }
+        purchase_status: 'completed',
+        protocol_assigned: selectedNames.join(', ')
+      }).eq('id', consultId);
     }
 
     window.location.href = 'portal.html';

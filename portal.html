@@ -1669,11 +1669,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="ov-stat-sub" id="ovStatProtocolSub">Not started</div>
           </div>
           <div class="ov-stat">
-            <div class="ov-stat-label">Compounds</div>
-            <div class="ov-stat-val" id="statCompounds">—</div>
-            <div class="ov-stat-sub" id="statCycle">—</div>
-          </div>
-          <div class="ov-stat">
             <div class="ov-stat-label">Next Dose</div>
             <div class="ov-stat-val" id="ovNextDose">—</div>
             <div class="ov-stat-sub" id="ovNextDoseSub">Not scheduled</div>
@@ -3518,7 +3513,7 @@ function _continuePortalInit(user, role) {
 
     // Show skeleton loading state on overview stat cards while consultation query runs
     (function() {
-      var skelIds = ['statCategory','statCompounds','ovNextDose','statStreak'];
+      var skelIds = ['statCategory','ovNextDose','statStreak'];
       skelIds.forEach(function(id) {
         var el = document.getElementById(id);
         if (el) {
@@ -6451,60 +6446,49 @@ function populatePortal(user, consultation, greeting) {
     // Store member's state for clinician state-matching in booking
     if (d.state) window._memberState = d.state.toUpperCase().trim();
 
-    // Check if prescription was given
+    // Use activated protocols (what member selected) over prescribed protocols
+    var activatedProtocols = d.activated_protocols || {};
+    var activatedNamesStr = d.activated_protocol_names || null;
     var rxGiven = d.prescription_given || consultation.prescription_given;
-    var assignedProtoStr = d.assigned_protocol || consultation.protocol_assigned || consultation.protocol || null;
-    var prescribedProtocols = d.prescribed_protocols || consultation.prescribed_protocols || {};
+    var assignedProtoStr = activatedNamesStr || d.assigned_protocol || consultation.protocol_assigned || consultation.protocol || null;
+    var prescribedProtocols = activatedProtocols;
+
+    // Fall back to prescribed_protocols if no activated set
+    var hasActivated = Object.keys(activatedProtocols).some(function(k){ return activatedProtocols[k]; });
+    if (!hasActivated) {
+      prescribedProtocols = d.prescribed_protocols || consultation.prescribed_protocols || {};
+    }
 
     // Also check evaluations array
     if ((!rxGiven && !assignedProtoStr) && d.evaluations && d.evaluations.length > 0) {
       var latestEval = d.evaluations[d.evaluations.length - 1];
       if (latestEval.prescription_given) {
         rxGiven = true;
-        assignedProtoStr = assignedProtoStr || Object.keys(latestEval.prescribed_protocols || {}).filter(function(k){ return latestEval.prescribed_protocols[k]; }).join(', ');
         prescribedProtocols = latestEval.prescribed_protocols || prescribedProtocols;
+        assignedProtoStr = assignedProtoStr || Object.keys(prescribedProtocols).filter(function(k){ return prescribedProtocols[k]; }).map(function(k){ return k.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }).join(', ');
       }
     }
 
-    if (rxGiven && assignedProtoStr && assignedProtoStr !== 'no prescription') {
-      // Protocol has been prescribed — resolve the first protocol for display
+    var purchaseDone = d.purchase_status === 'completed';
+
+    if (purchaseDone && assignedProtoStr && assignedProtoStr !== 'no prescription') {
+      // Protocol activated — resolve for display
       var firstProtoKey = assignedProtoStr.split(',')[0].trim().toLowerCase().replace(/\s+/g, '_');
-      proto = PROTOCOL_MAP[firstProtoKey] || null;
+      proto = PROTOCOL_MAP[firstProtoKey] || { name: assignedProtoStr, category: 'Active', compounds: [] };
 
-      // Build a combined proto object if not in PROTOCOL_MAP
-      if (!proto) {
-        proto = { name: assignedProtoStr, category: 'Prescribed', compounds: [], note: '' };
-      }
-
-      // Collect all prescribed protocol names and compounds
-      var allCompounds = [];
+      // Collect activated protocol names
       var allProtoNames = [];
       var allProtoKeys = ['sleep','repair','growth','endurance','shred','vitality','vitality_stack','recovery_stack','performance_stack','optimize_stack'];
       allProtoKeys.forEach(function(k) {
         if (prescribedProtocols[k]) {
-          var pMap = PROTOCOL_MAP[k];
-          var displayName = k.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-          allProtoNames.push(displayName);
-          if (pMap && pMap.compounds) allCompounds = allCompounds.concat(pMap.compounds);
+          allProtoNames.push(k.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }));
         }
       });
-      // Fallback if prescribedProtocols is empty — parse from string
       if (allProtoNames.length === 0 && assignedProtoStr) {
-        assignedProtoStr.split(',').forEach(function(p) {
-          var k = p.trim().toLowerCase().replace(/\s+/g, '_');
-          var pMap = PROTOCOL_MAP[k];
-          allProtoNames.push(p.trim());
-          if (pMap && pMap.compounds) allCompounds = allCompounds.concat(pMap.compounds);
-        });
+        assignedProtoStr.split(',').forEach(function(p) { allProtoNames.push(p.trim()); });
       }
-      // Deduplicate compounds
-      var seen = {};
-      allCompounds = allCompounds.filter(function(c) { if (seen[c]) return false; seen[c] = true; return true; });
-
-      // Store for use throughout the portal
       window._userProto = firstProtoKey;
       window._allProtoNames = allProtoNames;
-      window._allCompounds = allCompounds;
 
       // Dosing details from evaluation
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
@@ -6514,11 +6498,9 @@ function populatePortal(user, consultation, greeting) {
       window._protoTiming = _le.timing || consultation.timing || d.timing || null;
       window._protoDuration = _le.duration || consultation.duration || d.duration || null;
     } else if (assignedProtoStr === 'no prescription' || rxGiven === false) {
-      // Not prescribed — show appropriate state
       hasPendingReview = false;
       proto = null;
     } else {
-      // No protocol assigned yet — pending review
       hasPendingReview = true;
     }
   }
@@ -6550,49 +6532,32 @@ function populatePortal(user, consultation, greeting) {
     pill.textContent = 'Protocol Active';
     pill.className = 'status-pill active';
 
+    // Hide subscription banner — member has purchased
+    var subBanner = document.getElementById('subStatusBanner');
+    if (subBanner) subBanner.style.display = 'none';
+
     // Hide action card — protocol is ready, no CTA needed
     var actionCard = document.getElementById('actionCard');
     if (actionCard) actionCard.style.display = 'none';
 
-    // Overview stat cards — Protocol card: show protocol name(s)
+    // Overview stat cards — Protocol card: show activated protocol name(s)
     var catEl = document.getElementById('statCategory');
     if (catEl) catEl.textContent = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
     var ovSubEl = document.getElementById('ovStatProtocolSub');
-    if (ovSubEl) ovSubEl.textContent = (window._protoFreq || '') + (window._protoDuration ? ' · ' + window._protoDuration : '');
+    var subParts = [window._protoFreq, window._protoTiming, window._protoDuration].filter(Boolean);
+    if (ovSubEl) ovSubEl.textContent = subParts.length > 0 ? subParts.join(' · ') : 'Active';
 
-    // Compounds card: show compound names
-    var _displayCompounds = (window._allCompounds && window._allCompounds.length > 0) ? window._allCompounds : proto.compounds;
-    var compEl = document.getElementById('statCompounds');
-    if (compEl) compEl.textContent = _displayCompounds.length;
-    var cycleEl = document.getElementById('statCycle');
-    if (cycleEl) cycleEl.textContent = _displayCompounds.join(' · ');
-
-    // Next Dose card: "Today ✓" if already logged today, else "Tomorrow"
+    // Next Dose card: "Today" if not yet logged, "Today ✓" if logged
     var todayStr = localDateStr(new Date());
     var loggedToday = loggedDates.indexOf(todayStr) !== -1;
     var nextDoseEl = document.getElementById('ovNextDose');
-    if (nextDoseEl) nextDoseEl.textContent = loggedToday ? 'Today ✓' : 'Tomorrow';
+    if (nextDoseEl) nextDoseEl.textContent = loggedToday ? 'Today \u2713' : 'Today';
     var nextDoseSubEl = document.getElementById('ovNextDoseSub');
-    if (nextDoseSubEl) nextDoseSubEl.textContent = loggedToday ? 'Dose logged' : 'Next scheduled dose';
-
-    // Day Streak — rendered by renderCalendar() after loadDoseLogs(); no override needed here
+    if (nextDoseSubEl) nextDoseSubEl.textContent = loggedToday ? 'Dose logged' : 'Log your dose';
 
     // Legacy quick stats (hidden but keep for JS compat)
-    document.getElementById('quickStats').style.display = 'none';
-
-    // Protocol detail card below stat grid (inject once)
-    if (!document.getElementById('ovProtoDetailCard')) {
-      var overviewTab = document.getElementById('tab-overview');
-      var detailCard = document.createElement('div');
-      detailCard.id = 'ovProtoDetailCard';
-      detailCard.className = 'action-card';
-      detailCard.style.cssText = 'background:var(--card2);border-color:rgba(58,122,92,0.18);';
-      detailCard.innerHTML =
-        '<div class="action-card-title" style="font-size:16px;">' + escapeHtml(proto.name) + '</div>' +
-        '<div class="action-card-proto" style="margin-bottom:14px;">' + escapeHtml(proto.note) + '</div>' +
-        '<button class="btn-ghost" style="font-size:9px;" onclick="switchTab(\'protocol\')">View Full Protocol →</button>';
-      overviewTab.appendChild(detailCard);
-    }
+    var qs = document.getElementById('quickStats');
+    if (qs) qs.style.display = 'none';
 
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
@@ -6622,14 +6587,12 @@ function populatePortal(user, consultation, greeting) {
     pill2.className = 'status-pill waitlist';
 
     // Stat cards show "Pending"
-    ['statCategory','statCompounds','ovNextDose','statStreak'].forEach(function(id) {
+    ['statCategory','ovNextDose','statStreak'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.textContent = 'Pending';
     });
     var ovSubEl2 = document.getElementById('ovStatProtocolSub');
     if (ovSubEl2) ovSubEl2.textContent = 'Awaiting review';
-    var cycleEl2 = document.getElementById('statCycle');
-    if (cycleEl2) cycleEl2.textContent = '—';
     var nextDoseSubEl2 = document.getElementById('ovNextDoseSub');
     if (nextDoseSubEl2) nextDoseSubEl2.textContent = 'Not yet assigned';
     var ovStreakSubEl2 = document.getElementById('ovStreakSub');

@@ -334,6 +334,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .review-msg-send:hover{opacity:0.85;}
 .review-msg-send:disabled{opacity:0.35;cursor:not-allowed;}
 
+/* ── Live Consult CTA Card ── */
+.live-consult-cta{background:linear-gradient(135deg,rgba(100,150,255,0.10) 0%,rgba(100,150,255,0.04) 100%);border:1px solid rgba(100,150,255,0.25);border-radius:14px;padding:24px 28px;margin-top:4px;margin-bottom:24px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .25s,box-shadow .25s;}
+.live-consult-cta:hover{border-color:rgba(100,150,255,0.45);box-shadow:0 0 24px rgba(100,150,255,0.08);}
+.live-consult-cta::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(100,150,255,0.5),transparent);}
+.live-consult-cta-inner{display:flex;align-items:center;gap:16px;}
+.live-consult-cta-icon{width:42px;height:42px;border-radius:50%;background:rgba(100,150,255,0.12);border:1px solid rgba(100,150,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+.live-consult-cta-body{flex:1;min-width:0;}
+.live-consult-cta-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:4px;}
+.live-consult-cta-sub{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;}
+.live-consult-cta-btn{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(100,150,255,0.15);border:1px solid rgba(100,150,255,0.3);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,210,255,0.95);font-weight:500;transition:background .2s,border-color .2s;}
+.live-consult-cta:hover .live-consult-cta-btn{background:rgba(100,150,255,0.22);border-color:rgba(100,150,255,0.5);}
+
 @media(max-width:400px){
   .progress-dot{width:18px;height:18px;font-size:7px;}
   .progress-line{margin:0 1px;margin-bottom:10px;}
@@ -787,6 +799,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
         <div class="review-msg-input-wrap">
           <textarea class="review-msg-input" id="reviewMsgInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReviewMessage();}"></textarea>
           <button class="review-msg-send" id="reviewMsgSend" onclick="sendReviewMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Consult CTA (shown when clinician requests a live consult) -->
+    <div id="liveConsultCta" class="live-consult-cta" style="display:none;" onclick="revealReviewBooking()">
+      <div class="live-consult-cta-inner">
+        <div class="live-consult-cta-icon">&#x1F4F9;</div>
+        <div class="live-consult-cta-body">
+          <div class="live-consult-cta-title">Live consultation requested</div>
+          <div class="live-consult-cta-sub" id="liveConsultCtaReason">Your clinician would like to schedule a live video consultation to discuss your intake.</div>
+          <div class="live-consult-cta-btn">Book consultation <span>&#8594;</span></div>
         </div>
       </div>
     </div>
@@ -2093,14 +2117,32 @@ var _reviewBookingClinicianId = null;
 
 function initReviewBooking(clinicianId, liveConsultMessage) {
   _reviewBookingClinicianId = clinicianId;
-  // Show the booking section
-  document.getElementById('reviewBooking').style.display = 'block';
-  // Set the clinician's message
+  // Show the CTA card (not the full booking section yet)
+  var ctaEl = document.getElementById('liveConsultCta');
+  if (ctaEl) ctaEl.style.display = 'block';
+  // Set the clinician's message on both CTA and booking card
   if (liveConsultMessage) {
+    var ctaReason = document.getElementById('liveConsultCtaReason');
+    if (ctaReason) ctaReason.textContent = liveConsultMessage;
     document.getElementById('liveConsultReason').textContent = liveConsultMessage;
   }
-  // Load availability for ONLY the assigned clinician
+  // Preload availability in the background so calendar is ready when revealed
   _loadSingleClinicianAvailability(clinicianId);
+}
+
+function revealReviewBooking() {
+  // Hide the CTA card
+  var ctaEl = document.getElementById('liveConsultCta');
+  if (ctaEl) ctaEl.style.display = 'none';
+  // Show the booking section
+  var bookingEl = document.getElementById('reviewBooking');
+  if (bookingEl) {
+    bookingEl.style.display = 'block';
+    // Smooth scroll to booking section
+    setTimeout(function() {
+      bookingEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
 }
 
 async function _loadSingleClinicianAvailability(clinicianId) {
@@ -3421,8 +3463,14 @@ window._sbClient = createClient(
       }
 
       if (reviewStatus === 'live_consult_requested') {
-        // Phase 8: show step 2 with booking calendar for assigned clinician
+        // Phase 8: show step 2 with CTA card prompting member to book live consult
         await _populateReviewHub();
+        // Update status card to reflect live consult request
+        document.getElementById('reviewStatusText').textContent = 'Live consultation requested';
+        var iconSpanLC = document.querySelector('#reviewStatusCard span');
+        if (iconSpanLC) iconSpanLC.textContent = '\uD83D\uDCF9';
+        var stepSubLC = document.querySelector('#step-2 .step-sub');
+        if (stepSubLC) stepSubLC.textContent = 'Your clinician has requested a live video consultation. Book a time that works for you.';
         showStep(2);
         var _memberName2 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName2 || session.user.email.split('@')[0]);

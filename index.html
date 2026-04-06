@@ -200,14 +200,14 @@ section{position:relative;padding:120px 48px;}
 .cmp-no{color:rgba(255,90,90,0.8);}
 .cmp-mid{color:rgba(255,200,60,0.85);}
 /* HOW IT WORKS */
-#how{background:var(--cream) !important;padding-top:72px;padding-bottom:80px;}
-.how-inner{max-width:1200px;margin:0 auto;}
+#how{background:var(--cream) !important;padding-top:72px;padding-bottom:80px;position:relative;overflow:hidden;}
+.how-inner{max-width:1200px;margin:0 auto;position:relative;min-height:760px;}
 .how-header{text-align:left;margin-bottom:40px;}
-/* 2-col: content left, image right */
-.how-layout{display:grid;grid-template-columns:1fr auto;gap:48px;align-items:center;}
-.how-scene-img{max-width:460px;border-radius:24px;overflow:hidden;}
-.how-scene-img img{width:100%;height:auto;display:block;}
-.how-left-content{}
+/* Image: absolute, independent of layout */
+.how-scene-img{position:absolute;right:0;top:80px;width:560px;z-index:1;}
+.how-scene-img img{width:100%;height:auto;display:block;object-fit:contain;object-position:center;border-radius:24px;}
+/* Left content: above image */
+.how-left-content{position:relative;z-index:2;max-width:640px;}
 /* 2x2 card grid */
 .how-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-auto-rows:1fr;}
 .how-card{background:rgba(255,255,255,0.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;}
@@ -434,9 +434,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
 
   /* How It Works */
-  .how-layout{grid-template-columns:1fr;gap:24px;}
-  .how-scene-img{max-width:100%;order:-1;}
-  .how-left-content{}
+  .how-inner{min-height:auto;}
+  .how-scene-img{position:relative;right:auto;top:auto;width:100%;margin-bottom:24px;}
+  .how-left-content{max-width:100%;}
   .how-cards{grid-template-columns:1fr;gap:12px;}
   .how-header{text-align:center;}
   .step-title{font-size:18px;}
@@ -530,8 +530,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .stat-num{font-size:20px;}
 
   /* How It Works: single column */
-  .how-layout{grid-template-columns:1fr;}
-  .how-scene-img{max-width:100%;order:-1;}
+  .how-scene-img{position:relative;right:auto;top:auto;width:100%;margin-bottom:20px;}
+  .how-left-content{max-width:100%;}
 
   /* Pods */
   .kit-carousel-nav{grid-template-columns:repeat(3,1fr);gap:6px;}
@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <!-- HOW IT WORKS -->
 <section id="how">
   <div class="how-inner">
-    <div class="how-layout">
+    <div class="how-scene-img"><img src="system (2).png" alt="Getting started with Pulse"/></div>
     <div class="how-left-content">
       <div class="how-header">
         <h2 class="section-h reveal" style="margin-bottom:0;">Get started in minutes.</h2>
@@ -1041,7 +1041,6 @@ document.addEventListener('DOMContentLoaded',function(){
           </div>
         </div>
       </div>
-      <div class="how-scene-img"><img src="system (2).png" alt="Getting started with Pulse"/></div>
     </div>
   </div>
 </section>

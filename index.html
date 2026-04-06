@@ -1215,25 +1215,44 @@ document.addEventListener('DOMContentLoaded',function(){
 </section>
 <script>
 (function(){
+  var CARD_W = window.innerWidth <= 768 ? 276 : 336; // card width + gap
+
   document.querySelectorAll('.reviews-marquee-wrap').forEach(function(wrap, idx){
     var marquee = wrap.querySelector('.reviews-marquee');
     if(!marquee) return;
 
-    var speed = (idx === 0) ? -0.5 : 0.5; // row 1 left, row 2 right
+    var speed = (idx === 0) ? -0.4 : 0.4;
     var pos = (speed > 0) ? -(marquee.scrollWidth / 2) : 0;
     var halfWidth = marquee.scrollWidth / 2;
     var paused = false;
     var dragging = false;
+    var snapping = false;
     var startX = 0;
+    var startTime = 0;
     var dragStartPos = 0;
+    var snapTarget = 0;
     var resumeTimer = null;
 
+    function wrapPos() {
+      if (pos <= -halfWidth) pos += halfWidth;
+      if (pos >= 0) pos -= halfWidth;
+    }
+
     function tick() {
-      if (!paused && !dragging) {
+      if (snapping) {
+        var diff = snapTarget - pos;
+        if (Math.abs(diff) < 0.5) {
+          pos = snapTarget;
+          snapping = false;
+          // Resume auto-scroll after snap settles
+          resumeTimer = setTimeout(function(){ paused = false; }, 2000);
+        } else {
+          pos += diff * 0.12; // smooth ease
+        }
+        wrapPos();
+      } else if (!paused && !dragging) {
         pos += speed;
-        // Loop: wrap around at half-width
-        if (speed < 0 && pos <= -halfWidth) pos += halfWidth;
-        if (speed > 0 && pos >= 0) pos -= halfWidth;
+        wrapPos();
       }
       marquee.style.transform = 'translateX(' + pos + 'px)';
       requestAnimationFrame(tick);
@@ -1241,13 +1260,16 @@ document.addEventListener('DOMContentLoaded',function(){
     requestAnimationFrame(tick);
 
     // Desktop: hover pause
-    wrap.addEventListener('mouseenter', function(){ paused = true; });
+    wrap.addEventListener('mouseenter', function(){ paused = true; snapping = false; });
     wrap.addEventListener('mouseleave', function(){ paused = false; });
 
-    // Touch: drag to scrub
+    // Touch: swipe with snap
     wrap.addEventListener('touchstart', function(e){
       dragging = true;
+      paused = true;
+      snapping = false;
       startX = e.touches[0].clientX;
+      startTime = Date.now();
       dragStartPos = pos;
       if (resumeTimer) clearTimeout(resumeTimer);
     }, {passive: true});
@@ -1256,14 +1278,27 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!dragging) return;
       var dx = e.touches[0].clientX - startX;
       pos = dragStartPos + dx;
-      // Keep in bounds
-      if (pos > 0) pos = 0;
-      if (pos < -halfWidth) pos = -halfWidth;
     }, {passive: true});
 
-    wrap.addEventListener('touchend', function(){
+    wrap.addEventListener('touchend', function(e){
+      if (!dragging) return;
       dragging = false;
-      resumeTimer = setTimeout(function(){ /* auto-scroll resumes naturally */ }, 0);
+      var dx = pos - dragStartPos;
+      var dt = Date.now() - startTime;
+      var velocity = dx / (dt || 1); // px per ms
+
+      // Determine snap: if fast swipe, go 1+ cards in that direction
+      var cardShift = 0;
+      if (Math.abs(velocity) > 0.3) {
+        cardShift = velocity > 0 ? Math.ceil(Math.abs(velocity) * 2) : -Math.ceil(Math.abs(velocity) * 2);
+      } else if (Math.abs(dx) > CARD_W * 0.3) {
+        cardShift = dx > 0 ? 1 : -1;
+      }
+
+      // Snap to nearest card boundary + shift
+      var nearest = Math.round(dragStartPos / CARD_W) * CARD_W;
+      snapTarget = nearest + (cardShift * CARD_W);
+      snapping = true;
     });
   });
 })();

@@ -201,17 +201,18 @@ section{position:relative;padding:120px 48px;}
 .cmp-mid{color:rgba(255,200,60,0.85);}
 /* HOW IT WORKS */
 #how{background:var(--cream) !important;padding-top:72px;padding-bottom:80px;}
-.how-inner{max-width:1100px;margin:0 auto;}
+.how-inner{max-width:1100px;margin:0 auto;position:relative;}
 .how-header{text-align:left;margin-bottom:40px;}
-/* HOW IT WORKS — 2-col layout */
-.how-layout{display:grid;grid-template-columns:55% 45%;gap:32px;align-items:start;}
-.how-image-col{display:flex;align-items:stretch;}
-.how-image-wrap{border-radius:20px;overflow:hidden;width:100%;position:relative;}
-.how-image-wrap img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;min-height:480px;}
-.how-image-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.12),transparent 40%);pointer-events:none;}
-/* 2x2 card grid */
+/* HOW IT WORKS — overlapping layout */
+.how-layout{position:relative;min-height:580px;}
+.how-image-col{position:absolute;top:0;right:0;width:55%;height:100%;}
+.how-image-wrap{border-radius:20px;overflow:hidden;width:100%;height:100%;position:relative;}
+.how-image-wrap img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;}
+.how-image-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,var(--cream) 0%,rgba(240,237,232,0.85) 35%,transparent 65%);pointer-events:none;}
+/* 2x2 card grid — sits on top of image */
+.how-left{position:relative;z-index:2;width:60%;padding-top:8px;}
 .how-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.how-card{background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:22px 20px;}
+.how-card{background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:22px 20px;}
 .how-card-icon{width:36px;height:36px;border-radius:50%;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
 .how-card-icon svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:1.8;}
 .how-card-title{font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;color:var(--dark-text);margin-bottom:6px;line-height:1.3;}
@@ -434,8 +435,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .cmp-table thead th.col-label,.cmp-table tbody td.col-label{display:none;}
 
   /* How It Works */
-  .how-layout{grid-template-columns:1fr;gap:24px;}
-  .how-image-col{order:-1;}
+  .how-layout{min-height:auto;}
+  .how-image-col{position:relative;width:100%;height:300px;border-radius:16px;overflow:hidden;margin-bottom:20px;}
+  .how-image-wrap::after{background:linear-gradient(to top,var(--cream) 0%,transparent 50%);}
+  .how-left{width:100%;padding-top:0;}
   .how-cards{grid-template-columns:1fr;gap:12px;}
   .how-header{text-align:center;}
   .step-title{font-size:18px;}
@@ -529,9 +532,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .stat-num{font-size:20px;}
 
   /* How It Works: single column */
-  .how-layout{grid-template-columns:1fr;gap:20px;}
-  .how-image-col{order:-1;}
-  .how-image-wrap img{min-height:280px;}
+  .how-image-col{height:250px;}
 
   /* Pods */
   .kit-carousel-nav{grid-template-columns:repeat(3,1fr);gap:6px;}
@@ -1005,7 +1006,12 @@ document.addEventListener('DOMContentLoaded',function(){
 <section id="how">
   <div class="how-inner">
     <div class="how-layout">
-      <div>
+      <div class="how-image-col">
+        <div class="how-image-wrap">
+          <img src="system (2).png" alt="Getting started with Pulse"/>
+        </div>
+      </div>
+      <div class="how-left">
         <div class="how-header">
           <h2 class="section-h reveal" style="margin-bottom:0;">Get started in minutes.</h2>
           <h2 class="section-h reveal" style="margin-top:4px;"><em>We build your protocol from there.</em></h2>
@@ -1031,11 +1037,6 @@ document.addEventListener('DOMContentLoaded',function(){
             <div class="how-card-title">We adjust as you go</div>
             <div class="how-card-text">Your protocol evolves based on how you respond.</div>
           </div>
-        </div>
-      </div>
-      <div class="how-image-col">
-        <div class="how-image-wrap">
-          <img src="system (2).png" alt="Getting started with Pulse"/>
         </div>
       </div>
     </div>

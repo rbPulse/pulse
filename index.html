@@ -315,11 +315,22 @@ section{position:relative;padding:120px 48px;}
 .success-msg-title{font-size:clamp(22px,3vw,32px);font-weight:600;color:#fff;margin-bottom:10px;}
 .success-msg-sub{font-size:14px;color:var(--grey);line-height:1.7;}
 /* REVIEWS */
-#reviews{background:var(--cream);}
+#reviews{background:var(--cream);overflow:hidden;}
 .reviews-inner{max-width:1100px;margin:0 auto;}
-.reviews-header{text-align:center;margin-bottom:56px;}
-.reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
-.review-card{background:var(--card);padding:32px 28px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.04);}
+.reviews-header{text-align:center;margin-bottom:48px;}
+
+/* Marquee rows */
+.reviews-marquee{display:flex;gap:16px;width:max-content;will-change:transform;}
+.reviews-marquee-wrap{overflow:hidden;margin-bottom:16px;}
+.reviews-marquee.scroll-left{animation:marquee-left 40s linear infinite;}
+.reviews-marquee.scroll-right{animation:marquee-right 40s linear infinite;}
+.reviews-marquee-wrap:hover .reviews-marquee,
+.reviews-marquee-wrap.paused .reviews-marquee{animation-play-state:paused;}
+
+@keyframes marquee-left{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+@keyframes marquee-right{0%{transform:translateX(-50%);}100%{transform:translateX(0);}}
+
+.review-card{background:var(--card);padding:24px 22px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.04);width:320px;flex-shrink:0;border-radius:12px;}
 .review-stars{display:flex;gap:4px;margin-bottom:16px;}
 .review-star{color:var(--green);font-size:13px;}
 .review-body{font-size:13px;font-weight:300;color:var(--grey);line-height:1.75;flex:1;margin-bottom:24px;}
@@ -470,7 +481,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .btn-outline-ritual{width:100%;text-align:center;display:block;min-height:48px;line-height:48px;padding:0 24px;}
   .bento-grid{grid-template-columns:1fr;}
   /* Reviews */
-  .reviews-grid{grid-template-columns:1fr;}
+  .review-card{width:260px;padding:20px 18px;}
+  .reviews-marquee.scroll-left{animation-duration:30s;}
+  .reviews-marquee.scroll-right{animation-duration:30s;}
   .review-card{padding:24px 20px;}
   .testimonial-inner{padding:0 8px;}
   .testimonial-photo{width:52px;height:52px;}
@@ -1169,68 +1182,81 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="eyebrow reveal">Early Access Members</div>
       <h2 class="section-h reveal">Real protocols.<br/><em>Real results.</em></h2>
     </div>
-    <div class="reviews-grid">
-      <div class="review-card reveal">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"Wasn't sure what to expect. Three months in and I'm leaner than I've been in a long time without changing much in the gym. The shots take 30 seconds. That's genuinely the reason I stuck with it."</div>
-        <div class="review-author">
-          <div class="review-name">Jake M., 34</div>
-          <div class="review-meta">Growth Protocol · Month 3</div>
-        </div>
+  </div>
+
+  <!-- Row 1: scrolls left -->
+  <div class="reviews-marquee-wrap" ontouchstart="this.classList.toggle('paused')">
+    <div class="reviews-marquee scroll-left">
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"Wasn't sure what to expect. Three months in and I'm leaner than I've been in a long time without changing much in the gym. The shots take 30 seconds."</div>
+        <div class="review-author"><div class="review-name">Jake M., 34</div><div class="review-meta">Growth Protocol · Month 3</div></div>
       </div>
-      <div class="review-card reveal d1">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"My knees have bothered me for years. Six weeks in and I'm getting through workouts without the soreness I used to just accept as normal. I was also way more nervous about the needle than I needed to be."</div>
-        <div class="review-author">
-          <div class="review-name">Sarah K., 41</div>
-          <div class="review-meta">Recovery Pod · Month 2</div>
-        </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"My knees have bothered me for years. Six weeks in and I'm getting through workouts without the soreness I used to just accept as normal."</div>
+        <div class="review-author"><div class="review-name">Sarah K., 41</div><div class="review-meta">Recovery Pod · Month 2</div></div>
       </div>
-      <div class="review-card reveal d2">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"I've tried a lot of things. This is the first where I noticed a real difference within a few weeks. Weights went up, I'm recovering faster. Hard to argue with that."</div>
-        <div class="review-author">
-          <div class="review-name">Marcus T., 29</div>
-          <div class="review-meta">Performance · Month 2</div>
-        </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've tried a lot of things. This is the first where I noticed a real difference within a few weeks. Weights went up, I'm recovering faster."</div>
+        <div class="review-author"><div class="review-name">Marcus T., 29</div><div class="review-meta">Performance · Month 2</div></div>
       </div>
-      <div class="review-card reveal">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"I've had bad sleep for years. Two weeks in I started actually waking up rested. Sounds small until you haven't had it in a decade. Everything else got better after that."</div>
-        <div class="review-author">
-          <div class="review-name">Dana R., 47</div>
-          <div class="review-meta">Sleep &amp; Recovery Pod · Month 3</div>
-        </div>
+      <!-- Duplicate set for seamless loop -->
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"Wasn't sure what to expect. Three months in and I'm leaner than I've been in a long time without changing much in the gym. The shots take 30 seconds."</div>
+        <div class="review-author"><div class="review-name">Jake M., 34</div><div class="review-meta">Growth Protocol · Month 3</div></div>
       </div>
-      <div class="review-card reveal d1">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"I'd gone through a clinic before. It took weeks, cost twice as much, and I still had to figure out the protocol myself. This just showed up ready to go. Much easier."</div>
-        <div class="review-author">
-          <div class="review-name">Chris W., 38</div>
-          <div class="review-meta">Body Composition Pod · Month 1</div>
-        </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"My knees have bothered me for years. Six weeks in and I'm getting through workouts without the soreness I used to just accept as normal."</div>
+        <div class="review-author"><div class="review-name">Sarah K., 41</div><div class="review-meta">Recovery Pod · Month 2</div></div>
       </div>
-      <div class="review-card reveal d2">
-        <div class="review-stars">
-          <span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>
-        </div>
-        <div class="review-body">"I've never actually finished a 90-day protocol before. I always fall off. Something about having everything pre-dosed and ready made it easy to just keep going. At 90 days I felt genuinely different."</div>
-        <div class="review-author">
-          <div class="review-name">Alison F., 36</div>
-          <div class="review-meta">Growth + Sleep Stack · Month 3</div>
-        </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've tried a lot of things. This is the first where I noticed a real difference within a few weeks. Weights went up, I'm recovering faster."</div>
+        <div class="review-author"><div class="review-name">Marcus T., 29</div><div class="review-meta">Performance · Month 2</div></div>
       </div>
     </div>
+  </div>
+
+  <!-- Row 2: scrolls right -->
+  <div class="reviews-marquee-wrap" ontouchstart="this.classList.toggle('paused')">
+    <div class="reviews-marquee scroll-right">
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've had bad sleep for years. Two weeks in I started actually waking up rested. Sounds small until you haven't had it in a decade."</div>
+        <div class="review-author"><div class="review-name">Dana R., 47</div><div class="review-meta">Sleep &amp; Recovery Pod · Month 3</div></div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I'd gone through a clinic before. It took weeks, cost twice as much, and I still had to figure out the protocol myself. This just showed up ready to go."</div>
+        <div class="review-author"><div class="review-name">Chris W., 38</div><div class="review-meta">Body Composition Pod · Month 1</div></div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've never actually finished a 90-day protocol before. Something about having everything pre-dosed and ready made it easy to just keep going."</div>
+        <div class="review-author"><div class="review-name">Alison F., 36</div><div class="review-meta">Growth + Sleep Stack · Month 3</div></div>
+      </div>
+      <!-- Duplicate set for seamless loop -->
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've had bad sleep for years. Two weeks in I started actually waking up rested. Sounds small until you haven't had it in a decade."</div>
+        <div class="review-author"><div class="review-name">Dana R., 47</div><div class="review-meta">Sleep &amp; Recovery Pod · Month 3</div></div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I'd gone through a clinic before. It took weeks, cost twice as much, and I still had to figure out the protocol myself. This just showed up ready to go."</div>
+        <div class="review-author"><div class="review-name">Chris W., 38</div><div class="review-meta">Body Composition Pod · Month 1</div></div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+        <div class="review-body">"I've never actually finished a 90-day protocol before. Something about having everything pre-dosed and ready made it easy to just keep going."</div>
+        <div class="review-author"><div class="review-name">Alison F., 36</div><div class="review-meta">Growth + Sleep Stack · Month 3</div></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- MD TESTIMONIAL -->

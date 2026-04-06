@@ -9716,9 +9716,8 @@ function _showEvaluationForm(apptId) {
         '</div>' +
         '<div class="settings-grid" style="margin-bottom:12px;">' +
           '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalFrequency" class="settings-input" type="text" placeholder="e.g. 2x daily" oninput="_evalCheckSubmit()"/></div>' +
-          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, Before Bed" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, 30 min before meals" oninput="_evalCheckSubmit()"/></div>' +
         '</div>' +
-        '<div style="margin-bottom:12px;"><label style="' + _lbl + '">Timing Instructions <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTimingInstructions" class="settings-input" type="text" placeholder="e.g. 30 min before meals" oninput="_evalCheckSubmit()"/></div>' +
         '<div class="settings-grid" style="margin-bottom:12px;">' +
           '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalDuration" class="settings-input" type="text" placeholder="e.g. 8 weeks" oninput="_evalCheckSubmit()"/></div>' +
           '<div class="settings-field"><label style="' + _lbl + '">Protocol Version <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalProtoVersion" class="settings-input" type="number" min="1" max="999" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/></div>' +
@@ -9818,10 +9817,9 @@ function _evalCheckSubmit() {
     var doseUnit = (document.getElementById('evalDoseUnit') || {}).value || '';
     var freq = (document.getElementById('evalFrequency') || {}).value || '';
     var timing = (document.getElementById('evalTiming') || {}).value || '';
-    var timingInst = (document.getElementById('evalTimingInstructions') || {}).value || '';
     var dur = (document.getElementById('evalDuration') || {}).value || '';
     var protoVer = (document.getElementById('evalProtoVersion') || {}).value || '';
-    valid = anyProto && doseAmt && doseUnit && freq && timing && timingInst.trim() && dur.trim() && protoVer;
+    valid = anyProto && doseAmt && doseUnit && freq && timing && dur.trim() && protoVer;
   }
 
   btn.disabled = !valid;
@@ -9885,7 +9883,7 @@ async function _submitEvaluation(apptId) {
       evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
       evalData.frequency = (document.getElementById('evalFrequency') || {}).value || '';
       evalData.timing = (document.getElementById('evalTiming') || {}).value || '';
-      evalData.timing_instructions = (document.getElementById('evalTimingInstructions') || {}).value || '';
+      evalData.timing_instructions = evalData.timing; // unified into single timing field
       evalData.duration = (document.getElementById('evalDuration') || {}).value || '';
       evalData.other_notes = (document.getElementById('evalOtherNotes') || {}).value || '';
       evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';

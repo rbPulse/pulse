@@ -1025,7 +1025,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <div id="step6ProtocolCards"></div>
 
       <div style="margin-top:32px;text-align:center;">
-        <a href="checkout.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;">Let's Go. I'm Ready</a>
+        <button class="btn-primary" style="padding:16px 48px;font-size:13px;" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
       </div>
     </div>
 
@@ -3072,6 +3072,25 @@ async function _populateStep6() {
     }
   } catch(e) {
     console.warn('[Pulse] step6 populate failed:', e);
+  }
+}
+
+async function _activateAndGoToPortal() {
+  try {
+    var client = window._sbClient;
+    if (!client) { window.location.href = 'portal.html'; return; }
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) { window.location.href = 'portal.html'; return; }
+
+    // Mark purchase as completed (bypass checkout for now)
+    if (_consultationId) {
+      await client.from('consultations').update({ purchase_status: 'completed' }).eq('id', _consultationId);
+    }
+
+    window.location.href = 'portal.html';
+  } catch(e) {
+    console.warn('[Pulse] activate failed:', e);
+    window.location.href = 'portal.html';
   }
 }
 

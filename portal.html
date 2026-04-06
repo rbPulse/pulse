@@ -3547,7 +3547,8 @@ function _continuePortalInit(user, role) {
             });
         }
         // Purchase completed — stay on portal, skip all redirect checks
-        if (c.purchase_status === 'completed') {
+        var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
+        if (_purchaseDone) {
           populatePortal(user, c, greeting);
           return;
         }
@@ -3564,7 +3565,7 @@ function _continuePortalInit(user, role) {
               console.log('[Pulse] appointment status:', apptStatus);
               var d = c.data || {};
               var hasProtocol = d.assigned_protocol || c.protocol_assigned;
-              var purchaseComplete = c.purchase_status === 'completed';
+              var purchaseComplete = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
 
               // Purchase completed — stay on the portal
               if (purchaseComplete) {

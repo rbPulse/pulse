@@ -3083,8 +3083,27 @@ async function _activateAndGoToPortal() {
     if (!session) { window.location.href = 'portal.html'; return; }
 
     // Mark purchase as completed (bypass checkout for now)
+    // Update both the column (if it exists) and the JSONB data field
     if (_consultationId) {
-      await client.from('consultations').update({ purchase_status: 'completed' }).eq('id', _consultationId);
+      var cRes = await client.from('consultations').select('data').eq('id', _consultationId).limit(1);
+      var existingData = (cRes.data && cRes.data.length > 0) ? (cRes.data[0].data || {}) : {};
+      existingData.purchase_status = 'completed';
+      await client.from('consultations').update({
+        data: existingData,
+        purchase_status: 'completed'
+      }).eq('id', _consultationId);
+    } else {
+      // Fallback: find consultation by user_id
+      var cRes2 = await client.from('consultations').select('id, data').eq('user_id', session.user.id)
+        .order('created_at', { ascending: false }).limit(1);
+      if (cRes2.data && cRes2.data.length > 0) {
+        var cData = cRes2.data[0].data || {};
+        cData.purchase_status = 'completed';
+        await client.from('consultations').update({
+          data: cData,
+          purchase_status: 'completed'
+        }).eq('id', cRes2.data[0].id);
+      }
     }
 
     window.location.href = 'portal.html';
@@ -3542,7 +3561,8 @@ window._sbClient = createClient(
     if (hasConsultation) _consultationId = consultation.id;
 
     // If completed purchase, redirect to portal
-    if (hasConsultation && consultation.purchase_status === 'completed') {
+    var _purchaseComplete = (hasConsultation && (consultation.purchase_status === 'completed' || (consultation.data && consultation.data.purchase_status === 'completed')));
+    if (_purchaseComplete) {
       window.location.href = 'portal.html';
       return;
     }

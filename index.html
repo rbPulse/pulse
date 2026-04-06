@@ -200,17 +200,17 @@ section{position:relative;padding:120px 48px;}
 .cmp-no{color:rgba(255,90,90,0.8);}
 .cmp-mid{color:rgba(255,200,60,0.85);}
 /* HOW IT WORKS */
-#how{background:var(--cream) !important;padding-top:72px;padding-bottom:80px;overflow:hidden;}
+#how{background:var(--cream) !important;padding-top:72px;padding-bottom:0;overflow:hidden;}
 .how-inner{max-width:1100px;margin:0 auto;position:relative;}
 .how-header{text-align:left;margin-bottom:40px;}
-/* HOW IT WORKS — overlapping layout */
-.how-layout{position:relative;min-height:620px;}
-.how-image-col{position:absolute;top:0;right:0;width:58%;bottom:-40px;}
-.how-image-wrap{border-radius:20px;overflow:hidden;width:100%;height:100%;position:relative;}
-.how-image-wrap img{width:100%;height:100%;object-fit:cover;object-position:70% center;display:block;}
-.how-image-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,var(--cream) 0%,var(--cream) 10%,rgba(240,237,232,0.9) 25%,transparent 42%);pointer-events:none;}
-/* 2x2 card grid — sits on top of image */
-.how-left{position:relative;z-index:2;width:52%;padding-top:8px;}
+/* HOW IT WORKS — image as background block */
+.how-layout{position:relative;}
+.how-image-col{margin-top:40px;margin-left:auto;width:100%;border-radius:20px;overflow:hidden;position:relative;}
+.how-image-wrap{width:100%;position:relative;}
+.how-image-wrap img{width:100%;height:auto;display:block;border-radius:20px;}
+.how-image-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,var(--cream) 0%,rgba(240,237,232,0.95) 30%,rgba(240,237,232,0.6) 45%,transparent 55%);pointer-events:none;border-radius:20px;}
+/* 2x2 card grid — overlaid on the image */
+.how-left{position:absolute;top:0;left:0;z-index:2;width:55%;padding:40px 0;}
 .how-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-auto-rows:1fr;}
 .how-card{background:rgba(255,255,255,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:28px 24px;}
 .how-card-icon{width:44px;height:44px;border-radius:50%;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
@@ -1005,6 +1005,10 @@ document.addEventListener('DOMContentLoaded',function(){
 <!-- HOW IT WORKS -->
 <section id="how">
   <div class="how-inner">
+    <div class="how-header">
+      <h2 class="section-h reveal" style="margin-bottom:0;">Get started in minutes.</h2>
+      <h2 class="section-h reveal" style="margin-top:4px;"><em>We build your protocol from there.</em></h2>
+    </div>
     <div class="how-layout">
       <div class="how-image-col">
         <div class="how-image-wrap">
@@ -1012,10 +1016,6 @@ document.addEventListener('DOMContentLoaded',function(){
         </div>
       </div>
       <div class="how-left">
-        <div class="how-header">
-          <h2 class="section-h reveal" style="margin-bottom:0;">Get started in minutes.</h2>
-          <h2 class="section-h reveal" style="margin-top:4px;"><em>We build your protocol from there.</em></h2>
-        </div>
         <div class="how-cards">
           <div class="how-card reveal">
             <div class="how-card-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>

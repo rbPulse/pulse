@@ -322,16 +322,7 @@ section{position:relative;padding:120px 48px;}
 /* Marquee rows */
 .reviews-marquee{display:flex;gap:16px;width:max-content;will-change:transform;}
 .reviews-marquee-wrap{overflow:hidden;margin-bottom:16px;}
-.reviews-marquee.scroll-left{animation:marquee-left 40s linear infinite;}
-.reviews-marquee.scroll-right{animation:marquee-right 40s linear infinite;}
-.reviews-marquee-wrap:hover .reviews-marquee{animation-play-state:paused;}
-
-@media(max-width:768px){
-  .reviews-marquee-wrap:hover .reviews-marquee{animation-play-state:running;}
-}
-
-@keyframes marquee-left{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-@keyframes marquee-right{0%{transform:translateX(-50%);}100%{transform:translateX(0);}}
+/* Animation driven by JS */
 
 .review-card{background:var(--card);padding:24px 22px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.04);width:320px;flex-shrink:0;border-radius:12px;}
 .review-stars{display:flex;gap:4px;margin-bottom:16px;}
@@ -1190,7 +1181,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   <!-- Row 1: scrolls left -->
   <div class="reviews-marquee-wrap">
-    <div class="reviews-marquee scroll-left">
+    <div class="reviews-marquee">
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"Wasn't sure what to expect. Three months in and I'm leaner than I've been in a long time without changing much in the gym. The shots take 30 seconds."</div><div class="review-author"><div class="review-name">Jake M., 34</div><div class="review-meta">Growth Protocol · Month 3</div></div></div>
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"My knees have bothered me for years. Six weeks in and I'm getting through workouts without the soreness I used to just accept as normal."</div><div class="review-author"><div class="review-name">Sarah K., 41</div><div class="review-meta">Recovery Pod · Month 2</div></div></div>
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"I've tried a lot of things. This is the first where I noticed a real difference within a few weeks. Weights went up, I'm recovering faster."</div><div class="review-author"><div class="review-name">Marcus T., 29</div><div class="review-meta">Performance · Month 2</div></div></div>
@@ -1207,7 +1198,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   <!-- Row 2: scrolls right -->
   <div class="reviews-marquee-wrap">
-    <div class="reviews-marquee scroll-right">
+    <div class="reviews-marquee">
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"I've had bad sleep for years. Two weeks in I started actually waking up rested. Sounds small until you haven't had it in a decade."</div><div class="review-author"><div class="review-name">Dana R., 47</div><div class="review-meta">Sleep &amp; Recovery Pod · Month 3</div></div></div>
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"I'd gone through a clinic before. It took weeks, cost twice as much, and I still had to figure out the protocol myself. This just showed up ready to go."</div><div class="review-author"><div class="review-name">Chris W., 38</div><div class="review-meta">Body Composition Pod · Month 1</div></div></div>
       <div class="review-card"><div class="review-stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div><div class="review-body">"I've never actually finished a 90-day protocol before. Something about having everything pre-dosed and ready made it easy to just keep going."</div><div class="review-author"><div class="review-name">Alison F., 36</div><div class="review-meta">Growth + Sleep Stack · Month 3</div></div></div>
@@ -1224,40 +1215,55 @@ document.addEventListener('DOMContentLoaded',function(){
 </section>
 <script>
 (function(){
-  document.querySelectorAll('.reviews-marquee-wrap').forEach(function(wrap){
+  document.querySelectorAll('.reviews-marquee-wrap').forEach(function(wrap, idx){
     var marquee = wrap.querySelector('.reviews-marquee');
     if(!marquee) return;
-    var startX=0, scrollLeft=0, dragging=false, resumeTimer=null;
 
-    function getTranslateX(){
-      var st = getComputedStyle(marquee);
-      var m = new DOMMatrix(st.transform);
-      return m.m41;
+    var speed = (idx === 0) ? -0.5 : 0.5; // row 1 left, row 2 right
+    var pos = (speed > 0) ? -(marquee.scrollWidth / 2) : 0;
+    var halfWidth = marquee.scrollWidth / 2;
+    var paused = false;
+    var dragging = false;
+    var startX = 0;
+    var dragStartPos = 0;
+    var resumeTimer = null;
+
+    function tick() {
+      if (!paused && !dragging) {
+        pos += speed;
+        // Loop: wrap around at half-width
+        if (speed < 0 && pos <= -halfWidth) pos += halfWidth;
+        if (speed > 0 && pos >= 0) pos -= halfWidth;
+      }
+      marquee.style.transform = 'translateX(' + pos + 'px)';
+      requestAnimationFrame(tick);
     }
+    requestAnimationFrame(tick);
 
-    wrap.addEventListener('touchstart',function(e){
-      dragging=true;
-      startX=e.touches[0].clientX;
-      scrollLeft=getTranslateX();
-      marquee.style.animationPlayState='paused';
-      marquee.style.transform='translateX('+scrollLeft+'px)';
-      if(resumeTimer) clearTimeout(resumeTimer);
-    },{passive:true});
+    // Desktop: hover pause
+    wrap.addEventListener('mouseenter', function(){ paused = true; });
+    wrap.addEventListener('mouseleave', function(){ paused = false; });
 
-    wrap.addEventListener('touchmove',function(e){
-      if(!dragging) return;
-      var x=e.touches[0].clientX;
-      var dx=x-startX;
-      marquee.style.transform='translateX('+(scrollLeft+dx)+'px)';
-    },{passive:true});
+    // Touch: drag to scrub
+    wrap.addEventListener('touchstart', function(e){
+      dragging = true;
+      startX = e.touches[0].clientX;
+      dragStartPos = pos;
+      if (resumeTimer) clearTimeout(resumeTimer);
+    }, {passive: true});
 
-    wrap.addEventListener('touchend',function(){
-      if(!dragging) return;
-      dragging=false;
-      resumeTimer=setTimeout(function(){
-        marquee.style.transform='';
-        marquee.style.animationPlayState='';
-      },2000);
+    wrap.addEventListener('touchmove', function(e){
+      if (!dragging) return;
+      var dx = e.touches[0].clientX - startX;
+      pos = dragStartPos + dx;
+      // Keep in bounds
+      if (pos > 0) pos = 0;
+      if (pos < -halfWidth) pos = -halfWidth;
+    }, {passive: true});
+
+    wrap.addEventListener('touchend', function(){
+      dragging = false;
+      resumeTimer = setTimeout(function(){ /* auto-scroll resumes naturally */ }, 0);
     });
   });
 })();

@@ -903,15 +903,11 @@ document.addEventListener('DOMContentLoaded',function(){
   .consistency-img-col{order:-1;}
   .consistency-img-placeholder{max-width:100%;}
 }
-/* Comparison table row hover (applied via JS to 3-cell groups) */
-.pulse-compare-grid > div.pulse-row-hover{background:rgba(255,255,255,0.025);}
+/* Comparison row hover */
+.pulse-cmp-row:hover{background:rgba(255,255,255,0.02);}
 @media(max-width:640px){
-  .pulse-compare-grid{grid-template-columns:1fr !important;}
-  .pulse-compare-grid > div{text-align:left !important;justify-content:flex-start !important;padding-left:0 !important;padding-right:0 !important;}
-  .pulse-compare-label-col{padding-bottom:4px !important;border-top:1px solid rgba(255,255,255,0.06) !important;padding-top:24px !important;}
-  .pulse-compare-others,.pulse-compare-pulse{padding-top:4px !important;padding-bottom:4px !important;border:none !important;}
-  .pulse-compare-pulse{padding-bottom:24px !important;}
-  .pulse-compare-header{display:none;}
+  .pulse-cmp-row{flex-direction:column !important;align-items:flex-start !important;gap:12px;}
+  .pulse-cmp-row > div{width:100% !important;}
 }
 </style>
 <section id="consistency">
@@ -920,52 +916,38 @@ document.addEventListener('DOMContentLoaded',function(){
     <h2 class="section-h" style="margin-top:8px;white-space:nowrap;"><em>We made it simple.</em></h2>
   </div>
 
-  <!-- Comparison table -->
-  <div style="max-width:1140px;margin:56px auto 0;padding:0 24px;">
-    <div class="pulse-compare-grid" style="display:grid;grid-template-columns:140px 1fr 1fr;gap:0;">
+  <!-- Comparison -->
+  <div style="max-width:1100px;margin:0 auto;padding:56px 24px 0;">
 
-      <!-- Header row -->
-      <div class="pulse-compare-header"></div>
-      <div class="pulse-compare-header" style="padding:0 0 24px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.28);">With others</div>
-      <div class="pulse-compare-header" style="padding:0 0 24px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--green);">With Pulse</div>
-
-      <!-- Row 1: Preparation -->
-      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;transition:background .25s;">
-        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Preparation</span>
-      </div>
-      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Manual mixing and prep each time</div>
-      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Ready to use</div>
-
-      <!-- Row 2: Dosing -->
-      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;transition:background .25s;">
-        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Dosing</span>
-      </div>
-      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Manual measuring and self-injection</div>
-      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Pre-set, automated, ready to go</div>
-
-      <!-- Row 3: Experience -->
-      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;transition:background .25s;">
-        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Experience</span>
-      </div>
-      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Easy to second-guess on your own</div>
-      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Clear and consistent every time</div>
-
+    <!-- Header -->
+    <div style="display:flex;align-items:center;padding:0 0 20px;">
+      <div style="width:180px;flex-shrink:0;"></div>
+      <div style="width:40%;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.4);">With others</div>
+      <div style="width:40%;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green);">With Pulse</div>
     </div>
+
+    <!-- Row 1 -->
+    <div class="pulse-cmp-row" style="display:flex;align-items:center;padding:28px 0;border-bottom:1px solid rgba(255,255,255,0.08);transition:background .2s;">
+      <div style="width:180px;flex-shrink:0;font-family:'DM Sans',sans-serif;font-size:14px;color:rgba(255,255,255,0.5);">Preparation</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.35);">Manual mixing every time</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:#fff;font-weight:500;">Ready to use</div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="pulse-cmp-row" style="display:flex;align-items:center;padding:28px 0;border-bottom:1px solid rgba(255,255,255,0.08);transition:background .2s;">
+      <div style="width:180px;flex-shrink:0;font-family:'DM Sans',sans-serif;font-size:14px;color:rgba(255,255,255,0.5);">Dosing</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.35);">Measure and inject yourself</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:#fff;font-weight:500;">Pre-set and ready</div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="pulse-cmp-row" style="display:flex;align-items:center;padding:28px 0;border-bottom:1px solid rgba(255,255,255,0.08);transition:background .2s;">
+      <div style="width:180px;flex-shrink:0;font-family:'DM Sans',sans-serif;font-size:14px;color:rgba(255,255,255,0.5);">Experience</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.35);">Easy to second-guess</div>
+      <div style="width:40%;font-family:'DM Sans',sans-serif;font-size:16px;color:#fff;font-weight:500;">Consistent every time</div>
+    </div>
+
   </div>
-  <script>
-  (function(){
-    var g=document.querySelector('.pulse-compare-grid');if(!g)return;
-    var cells=Array.from(g.children).filter(function(c){return !c.classList.contains('pulse-compare-header');});
-    for(var i=0;i<cells.length;i+=3){
-      (function(a,b,c){
-        [a,b,c].forEach(function(el){
-          el.addEventListener('mouseenter',function(){a.classList.add('pulse-row-hover');b.classList.add('pulse-row-hover');c.classList.add('pulse-row-hover');});
-          el.addEventListener('mouseleave',function(){a.classList.remove('pulse-row-hover');b.classList.remove('pulse-row-hover');c.classList.remove('pulse-row-hover');});
-        });
-      })(cells[i],cells[i+1],cells[i+2]);
-    }
-  })();
-  </script>
 
   <div class="consistency-inner" style="margin-top:48px;">
     <div class="consistency-content">

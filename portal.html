@@ -4400,7 +4400,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons').eq('id', consultId).limit(1);
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
     var d = res.data[0].data || {};
     var consultCreatedAt = res.data[0].created_at || null;
@@ -4459,6 +4459,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       '<div class="crw-clin-row"><div class="crw-clin-lbl">Peptide / Hormone Use</div><div class="crw-clin-val">'+escapeHtml(pepStr)+'</div></div>';
 
     // Buttons
+    var consultReviewStatus = res.data[0].review_status || 'pending_review';
     var pCls='crw-btn crw-btn-grn',dCls='crw-btn crw-btn-red',cCls='crw-btn crw-btn-blu';
 
     // Detail field
@@ -4495,7 +4496,17 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         '<div class="crw-actions">'+
           '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
           '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
-          '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>'+
+          (function(){
+            if (consultReviewStatus === 'live_consult_requested') {
+              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
+            } else if (consultReviewStatus === 'live_consult_scheduled') {
+              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
+            } else if (consultReviewStatus === 'in_review') {
+              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.45);cursor:default;opacity:0.8;">Consult Completed</span>';
+            } else {
+              return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
+            }
+          })()+
         '</div>'+
         '<div id="attn-action-area-'+consultId+'"></div>'+
       '</div>'+

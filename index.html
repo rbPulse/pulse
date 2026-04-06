@@ -903,6 +903,16 @@ document.addEventListener('DOMContentLoaded',function(){
   .consistency-img-col{order:-1;}
   .consistency-img-placeholder{max-width:100%;}
 }
+/* Comparison table row hover (applied via JS to 3-cell groups) */
+.pulse-compare-grid > div.pulse-row-hover{background:rgba(255,255,255,0.025);}
+@media(max-width:640px){
+  .pulse-compare-grid{grid-template-columns:1fr !important;}
+  .pulse-compare-grid > div{text-align:left !important;justify-content:flex-start !important;padding-left:0 !important;padding-right:0 !important;}
+  .pulse-compare-label-col{padding-bottom:4px !important;border-top:1px solid rgba(255,255,255,0.06) !important;padding-top:24px !important;}
+  .pulse-compare-others,.pulse-compare-pulse{padding-top:4px !important;padding-bottom:4px !important;border:none !important;}
+  .pulse-compare-pulse{padding-bottom:24px !important;}
+  .pulse-compare-header{display:none;}
+}
 </style>
 <section id="consistency">
   <div style="max-width:100%;margin:0 auto;padding:0 48px;text-align:center;">
@@ -911,49 +921,51 @@ document.addEventListener('DOMContentLoaded',function(){
   </div>
 
   <!-- Comparison table -->
-  <div style="max-width:720px;margin:40px auto 0;padding:0 24px;">
-    <table style="width:100%;border-collapse:separate;border-spacing:0;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);font-family:'DM Sans',sans-serif;">
-      <thead>
-        <tr>
-          <td style="padding:14px 20px;background:transparent;border-bottom:1px solid rgba(255,255,255,0.06);"></td>
-          <td style="padding:14px 20px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.35);">With Others</td>
-          <td style="padding:14px 20px;background:rgba(58,122,92,0.08);border-bottom:1px solid rgba(58,122,92,0.2);text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--green);">With Pulse</td>
-        </tr>
-      </thead>
-      <tbody style="font-size:13px;line-height:1.5;">
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);">Delivery</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.04);">Syringes &amp; vials</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);border-bottom:1px solid rgba(58,122,92,0.1);">Auto-injector pen</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);">Prep</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.04);">Mix, measure, reconstitute</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);border-bottom:1px solid rgba(58,122,92,0.1);">Click and go</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);">Dosing</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.04);">Guesswork &amp; math</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);border-bottom:1px solid rgba(58,122,92,0.1);">Pre-dosed pods</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);">Oversight</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.04);">You're on your own</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);border-bottom:1px solid rgba(58,122,92,0.1);">Clinician-guided</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);">Source</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.04);">Gray market or DIY</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);border-bottom:1px solid rgba(58,122,92,0.1);">503B pharmacy</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 20px;color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;">Tracking</td>
-          <td style="padding:12px 20px;text-align:center;color:rgba(255,255,255,0.35);">Spreadsheets or nothing</td>
-          <td style="padding:12px 20px;text-align:center;color:#fff;font-weight:500;background:rgba(58,122,92,0.04);">Built-in dose tracker</td>
-        </tr>
-      </tbody>
-    </table>
+  <div style="max-width:1140px;margin:56px auto 0;padding:0 24px;">
+    <div class="pulse-compare-grid" style="display:grid;grid-template-columns:140px 1fr 1fr;gap:0;">
+
+      <!-- Header row -->
+      <div class="pulse-compare-header"></div>
+      <div class="pulse-compare-header" style="padding:0 0 24px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.28);">With others</div>
+      <div class="pulse-compare-header" style="padding:0 0 24px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--green);">With Pulse</div>
+
+      <!-- Row 1: Preparation -->
+      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;transition:background .25s;">
+        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Preparation</span>
+      </div>
+      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Manual mixing and prep each time</div>
+      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Ready to use</div>
+
+      <!-- Row 2: Dosing -->
+      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;transition:background .25s;">
+        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Dosing</span>
+      </div>
+      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Manual measuring and self-injection</div>
+      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Pre-set, automated, ready to go</div>
+
+      <!-- Row 3: Experience -->
+      <div class="pulse-compare-label-col" style="padding:36px 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;transition:background .25s;">
+        <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);">Experience</span>
+      </div>
+      <div class="pulse-compare-others" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:16px;color:rgba(255,255,255,0.30);font-weight:400;line-height:1.5;transition:background .25s;">Easy to second-guess on your own</div>
+      <div class="pulse-compare-pulse" style="padding:36px 20px;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'DM Sans',sans-serif;font-size:17px;color:#fff;font-weight:500;line-height:1.5;transition:background .25s;">Clear and consistent every time</div>
+
+    </div>
   </div>
+  <script>
+  (function(){
+    var g=document.querySelector('.pulse-compare-grid');if(!g)return;
+    var cells=Array.from(g.children).filter(function(c){return !c.classList.contains('pulse-compare-header');});
+    for(var i=0;i<cells.length;i+=3){
+      (function(a,b,c){
+        [a,b,c].forEach(function(el){
+          el.addEventListener('mouseenter',function(){a.classList.add('pulse-row-hover');b.classList.add('pulse-row-hover');c.classList.add('pulse-row-hover');});
+          el.addEventListener('mouseleave',function(){a.classList.remove('pulse-row-hover');b.classList.remove('pulse-row-hover');c.classList.remove('pulse-row-hover');});
+        });
+      })(cells[i],cells[i+1],cells[i+2]);
+    }
+  })();
+  </script>
 
   <div class="consistency-inner" style="margin-top:48px;">
     <div class="consistency-content">

@@ -489,9 +489,88 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <div style="text-align:center;margin-top:32px;font-size:13px;color:rgba(255,255,255,0.3);">Already a member? <a href="#" onclick="event.preventDefault();openAuthModal('signin');" style="color:var(--green);text-decoration:none;">Sign In</a></div>
         </div>
 
-        <!-- Placeholder steps 2-6 (built in later phases) -->
-        <div class="quiz-step" id="qs-2" data-step="2"></div>
-        <div class="quiz-step" id="qs-3" data-step="3"></div>
+        <!-- Step 2: Peptide Experience -->
+        <div class="quiz-step" id="qs-2" data-step="2">
+          <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
+          <div class="quiz-question">Have you used peptides or hormones before?</div>
+          <div class="quiz-subtitle">This helps your clinician understand your experience level and tailor your protocol.</div>
+          <div id="quizPeptideCards">
+            <div class="quiz-card" data-value="no" onclick="selectPeptideAndAdvance(this)">
+              <div class="quiz-card-title">No, I'm new to this</div>
+              <div class="quiz-card-sub">First time exploring peptides.</div>
+            </div>
+            <div class="quiz-card" data-value="yes_peptides" onclick="selectPeptideAndAdvance(this)">
+              <div class="quiz-card-title">Yes — I've used peptides</div>
+              <div class="quiz-card-sub">BPC-157, TB-500, GH secretagogues, etc.</div>
+            </div>
+            <div class="quiz-card" data-value="yes_hormones" onclick="selectPeptideAndAdvance(this)">
+              <div class="quiz-card-title">Yes — I've used hormone therapy</div>
+              <div class="quiz-card-sub">TRT, HGH, or other hormones.</div>
+            </div>
+            <div class="quiz-card" data-value="yes_both" onclick="selectPeptideAndAdvance(this)">
+              <div class="quiz-card-title">Yes — both peptides and hormones</div>
+              <div class="quiz-card-sub">Experienced with multiple protocols.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Body + Demographics -->
+        <div class="quiz-step" id="qs-3" data-step="3">
+          <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
+          <div class="quiz-question">Tell us about yourself.</div>
+          <div class="quiz-subtitle">Your clinician uses this to calculate the safest, most effective protocol for you.</div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Date of birth</label>
+            <input type="date" class="quiz-input" id="quizDob" onchange="validateQuizStep3()"/>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Biological sex</label>
+            <select class="quiz-select" id="quizSex" onchange="validateQuizStep3()">
+              <option value="">Select</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Height</label>
+            <div class="quiz-input-row">
+              <select class="quiz-select" id="quizHeightFt" onchange="validateQuizStep3()">
+                <option value="">Feet</option>
+                <option value="4">4 ft</option>
+                <option value="5">5 ft</option>
+                <option value="6">6 ft</option>
+                <option value="7">7 ft</option>
+              </select>
+              <select class="quiz-select" id="quizHeightIn" onchange="validateQuizStep3()">
+                <option value="">Inches</option>
+                <option value="0">0 in</option>
+                <option value="1">1 in</option>
+                <option value="2">2 in</option>
+                <option value="3">3 in</option>
+                <option value="4">4 in</option>
+                <option value="5">5 in</option>
+                <option value="6">6 in</option>
+                <option value="7">7 in</option>
+                <option value="8">8 in</option>
+                <option value="9">9 in</option>
+                <option value="10">10 in</option>
+                <option value="11">11 in</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Weight</label>
+            <input type="number" class="quiz-input" id="quizWeight" placeholder="Weight (lbs)" inputmode="numeric" onchange="validateQuizStep3()"/>
+          </div>
+
+          <div class="quiz-secure">&#128274; Private &amp; secure</div>
+
+          <button class="quiz-btn quiz-btn-primary" id="quizStep3Next" disabled onclick="submitQuizStep3()">Next &#8594;</button>
+        </div>
         <div class="quiz-step" id="qs-4" data-step="4"></div>
         <div class="quiz-step" id="qs-5" data-step="5"></div>
         <div class="quiz-step" id="qs-6" data-step="6"></div>
@@ -1063,6 +1142,46 @@ function selectGoalAndAdvance(cardEl) {
   // Enable/disable next button based on selection
   var nextBtn = document.getElementById('quizGoalNext');
   if (nextBtn) nextBtn.disabled = _quizData.goals.length === 0;
+}
+
+function selectPeptideAndAdvance(cardEl) {
+  // Single select — deselect others
+  document.querySelectorAll('#quizPeptideCards .quiz-card').forEach(function(c) { c.classList.remove('selected'); });
+  cardEl.classList.add('selected');
+
+  var value = cardEl.dataset.value;
+  if (value === 'no') {
+    _quizData.peptide_history = 'no';
+    _quizData.peptide_detail = null;
+  } else {
+    _quizData.peptide_history = 'yes';
+    _quizData.peptide_detail = value;
+  }
+
+  // Auto-advance after brief delay
+  setTimeout(function() { quizGoTo(3); }, 300);
+}
+
+function validateQuizStep3() {
+  var dob = document.getElementById('quizDob').value;
+  var sex = document.getElementById('quizSex').value;
+  var ft = document.getElementById('quizHeightFt').value;
+  var inches = document.getElementById('quizHeightIn').value;
+  var weight = document.getElementById('quizWeight').value;
+
+  var valid = dob && sex && ft && inches !== '' && weight;
+  document.getElementById('quizStep3Next').disabled = !valid;
+}
+
+function submitQuizStep3() {
+  _quizData.dob = document.getElementById('quizDob').value;
+  _quizData.sex = document.getElementById('quizSex').value;
+  _quizData.heightFt = document.getElementById('quizHeightFt').value;
+  _quizData.heightIn = document.getElementById('quizHeightIn').value;
+  _quizData.height = _quizData.heightFt + "'" + _quizData.heightIn + '"';
+  _quizData.current_weight = document.getElementById('quizWeight').value;
+
+  quizGoTo(4);
 }
 
 // ── Step 1: validate ALL fields (consolidated intake) ──

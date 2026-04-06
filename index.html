@@ -1240,15 +1240,11 @@ document.addEventListener('DOMContentLoaded',function(){
 
     function tick() {
       if (snapping) {
-        var diff = snapTarget - pos;
-        if (Math.abs(diff) < 0.5) {
-          pos = snapTarget;
-          snapping = false;
-          // Resume auto-scroll after snap settles
-          resumeTimer = setTimeout(function(){ paused = false; }, 2000);
-        } else {
-          pos += diff * 0.12; // smooth ease
-        }
+        // Instant snap, then hold
+        pos = snapTarget;
+        snapping = false;
+        wrapPos();
+        resumeTimer = setTimeout(function(){ paused = false; }, 3000);
         wrapPos();
       } else if (!paused && !dragging) {
         pos += speed;
@@ -1287,18 +1283,21 @@ document.addEventListener('DOMContentLoaded',function(){
       var dt = Date.now() - startTime;
       var velocity = dx / (dt || 1); // px per ms
 
-      // Determine snap: if fast swipe, go 1+ cards in that direction
+      // Determine snap: swipe = 1 card, fast swipe = 2 cards max
       var cardShift = 0;
-      if (Math.abs(velocity) > 0.3) {
-        cardShift = velocity > 0 ? Math.ceil(Math.abs(velocity) * 2) : -Math.ceil(Math.abs(velocity) * 2);
-      } else if (Math.abs(dx) > CARD_W * 0.3) {
+      if (Math.abs(velocity) > 0.5) {
+        cardShift = velocity > 0 ? 2 : -2;
+      } else if (Math.abs(velocity) > 0.15 || Math.abs(dx) > CARD_W * 0.25) {
         cardShift = dx > 0 ? 1 : -1;
       }
 
       // Snap to nearest card boundary + shift
       var nearest = Math.round(dragStartPos / CARD_W) * CARD_W;
       snapTarget = nearest + (cardShift * CARD_W);
+
+      // Animate to snap target
       snapping = true;
+      paused = true;
     });
   });
 })();

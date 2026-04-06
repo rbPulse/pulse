@@ -3546,6 +3546,11 @@ function _continuePortalInit(user, role) {
               window.location.href = 'consultation.html?new=1';
             });
         }
+        // Purchase completed — stay on portal, skip all redirect checks
+        if (c.purchase_status === 'completed') {
+          populatePortal(user, c, greeting);
+          return;
+        }
         // Check for active/completed appointments that need the consultation flow
         console.log('[Pulse] checking appointments for redirect...');
         db.from('appointments').select('id, status').eq('consumer_id', user.id)
@@ -3559,6 +3564,13 @@ function _continuePortalInit(user, role) {
               console.log('[Pulse] appointment status:', apptStatus);
               var d = c.data || {};
               var hasProtocol = d.assigned_protocol || c.protocol_assigned;
+              var purchaseComplete = c.purchase_status === 'completed';
+
+              // Purchase completed — stay on the portal
+              if (purchaseComplete) {
+                populatePortal(user, c, greeting);
+                return;
+              }
               // Completed appointment — send to Step 6 (summary/evaluation results)
               if (apptStatus === 'completed') {
                 window.location.href = 'consultation.html';

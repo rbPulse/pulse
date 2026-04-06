@@ -9359,17 +9359,26 @@ function _joinClinicianSession(apptId) {
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
           '<span style="font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:0.28em;color:#fff;text-transform:uppercase;">Pulse Session</span>' +
+          '<span id="sessionPatientName" style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;margin-left:8px;"></span>' +
         '</div>' +
-        '<button onclick="_leaveClinicianSession()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);color:rgba(220,90,90,0.85);padding:7px 16px;border-radius:999px;cursor:pointer;">End Session</button>' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<button id="sessionTogglePanel" onclick="_toggleSessionPanel()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--grey);padding:7px 16px;border-radius:999px;cursor:pointer;transition:border-color .2s;">Patient Info</button>' +
+          '<button onclick="_leaveClinicianSession()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);color:rgba(220,90,90,0.85);padding:7px 16px;border-radius:999px;cursor:pointer;">End Session</button>' +
+        '</div>' +
       '</div>' +
-      '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">' +
-        '<div id="dailySessionContainer" style="flex:1;overflow:hidden;min-height:300px;"></div>' +
-        '<div style="border-top:1px solid var(--border);padding:14px 24px;flex-shrink:0;">' +
-          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-            '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--green);">Session Notes</span>' +
-            '<span id="sessionNotesSaved" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>' +
+      '<div style="flex:1;display:flex;overflow:hidden;">' +
+        '<div style="flex:1;display:flex;flex-direction:column;min-width:0;">' +
+          '<div id="dailySessionContainer" style="flex:1;overflow:hidden;min-height:300px;"></div>' +
+        '</div>' +
+        '<div id="sessionSidePanel" style="width:400px;display:none;flex-shrink:0;border-left:1px solid var(--border);background:#0B0B0C;overflow-y:auto;flex-direction:column;">' +
+          '<div style="padding:20px 24px;border-bottom:1px solid var(--border);">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+              '<span style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--green);">Session Notes</span>' +
+              '<span id="sessionNotesSaved" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>' +
+            '</div>' +
+            '<textarea id="sessionLiveNotes" placeholder="Take notes during the session..." style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:none;height:120px;outline:none;line-height:1.6;transition:border-color .2s;"></textarea>' +
           '</div>' +
-          '<textarea id="sessionLiveNotes" placeholder="Take notes during the session..." style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:none;height:80px;outline:none;line-height:1.6;transition:border-color .2s;"></textarea>' +
+          '<div id="sessionPatientCard" style="padding:0;"></div>' +
         '</div>' +
       '</div>' +
       '<div id="dailySessionStatus" style="text-align:center;padding:20px;color:var(--grey);font-size:13px;">Connecting…</div>';
@@ -9378,6 +9387,11 @@ function _joinClinicianSession(apptId) {
     overlay.style.display = 'flex';
     var c = document.getElementById('dailySessionContainer'); if (c) c.innerHTML = '';
     var s = document.getElementById('dailySessionStatus'); if (s) { s.style.display = 'block'; s.textContent = 'Connecting…'; }
+    // Reset side panel content
+    var pc = document.getElementById('sessionPatientCard'); if (pc) pc.innerHTML = '';
+    var nn = document.getElementById('sessionPatientName'); if (nn) nn.textContent = '';
+    _sessionPanelOpen = false;
+    var sp = document.getElementById('sessionSidePanel'); if (sp) sp.style.display = 'none';
   }
 
   db.auth.getSession().then(function(r) {
@@ -9412,6 +9426,11 @@ function _joinClinicianSession(apptId) {
 
       // Start auto-saving session notes every 10 seconds
       _startSessionNotesAutoSave(apptId);
+
+      // Load patient detail card in side panel
+      _loadSessionPatientCard(apptId);
+      // Auto-open the panel so clinician sees patient info immediately
+      if (!_sessionPanelOpen) _toggleSessionPanel();
     })
     .catch(function(err) { _showClSessionError(err.message || 'Network error'); });
   });
@@ -9420,6 +9439,108 @@ function _joinClinicianSession(apptId) {
 var _clSessionApptId = null; // tracks the appointment being video-called
 var _sessionNotesTimer = null;
 var _sessionNotesLastSaved = '';
+var _sessionPanelOpen = false;
+
+function _toggleSessionPanel() {
+  var panel = document.getElementById('sessionSidePanel');
+  var btn = document.getElementById('sessionTogglePanel');
+  if (!panel) return;
+  _sessionPanelOpen = !_sessionPanelOpen;
+  panel.style.display = _sessionPanelOpen ? 'flex' : 'none';
+  if (btn) {
+    btn.style.borderColor = _sessionPanelOpen ? 'rgba(58,122,92,0.5)' : 'var(--border)';
+    btn.style.color = _sessionPanelOpen ? 'var(--green)' : 'var(--grey)';
+  }
+}
+
+async function _loadSessionPatientCard(apptId) {
+  var cardEl = document.getElementById('sessionPatientCard');
+  var nameEl = document.getElementById('sessionPatientName');
+  if (!cardEl) return;
+  cardEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--grey2);font-size:12px;">Loading patient info...</div>';
+
+  try {
+    // Get patient ID from appointment
+    var apptRes = await db.from('appointments').select('consumer_id').eq('id', apptId).limit(1);
+    if (!apptRes.data || !apptRes.data.length) return;
+    var consumerId = apptRes.data[0].consumer_id;
+
+    // Get consultation + profile
+    var cRes = await db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
+    var pRes = await db.from('profiles').select('*').eq('user_id', consumerId).limit(1);
+
+    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : { user_id: consumerId, data: {} };
+    var profile = (pRes.data && pRes.data.length > 0) ? pRes.data[0] : {};
+    var d = consultation.data || {};
+
+    var fullName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() ||
+                   ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() ||
+                   profile.display_name || profile.email || 'Unknown';
+    if (nameEl) nameEl.textContent = '\u00B7 ' + fullName;
+
+    var ageStr = d.dob ? String(_calcAge(d.dob)) + ' yrs' : '—';
+    var sex = d.sex || '—';
+    var state = d.state || '—';
+
+    // Goals
+    var primaryGoal = consultation.primary_goal || d.primary_goal || (d.goals && d.goals.length > 0 ? d.goals[0] : null) || '—';
+    var secondaryGoals = consultation.secondary_goals || d.secondary_goals || (d.goals && d.goals.length > 1 ? d.goals.slice(1) : []) || [];
+    var goalsText = primaryGoal;
+    if (secondaryGoals.length > 0) goalsText += ', ' + (Array.isArray(secondaryGoals) ? secondaryGoals.join(', ') : secondaryGoals);
+
+    // Medical history
+    var mhRaw = d.medical_history || d.health_conditions || '';
+    var mhArr = [];
+    if (mhRaw) {
+      if (Array.isArray(mhRaw)) mhArr = mhRaw;
+      else if (typeof mhRaw === 'string') mhArr = mhRaw.split(',').map(function(s){return s.trim();});
+    }
+    var mhDisplay = mhArr.length > 0
+      ? mhArr.map(function(m){
+          var flagged = /cancer|cardio|diabetes|autoimmune|hormone/i.test(m);
+          return flagged ? '<span style="color:#EF4444;">\u26A0 ' + escapeHtml(m) + '</span>' : escapeHtml(m);
+        }).join(', ')
+      : 'None reported';
+
+    var html =
+      '<div style="padding:20px 24px;">' +
+        '<div style="font-size:20px;font-weight:600;color:#fff;margin-bottom:4px;">' + escapeHtml(fullName) + '</div>' +
+        '<div style="font-size:13px;color:#A1A1AA;">' + escapeHtml(ageStr) + ' \u00B7 ' + escapeHtml(sex) + ' \u00B7 ' + escapeHtml(state) + '</div>' +
+      '</div>' +
+
+      '<div style="padding:0 24px 20px;">' +
+        '<div class="crw-section">' +
+          '<div class="crw-section-title">Goals</div>' +
+          '<div style="font-size:14px;color:#fff;line-height:1.5;">' + escapeHtml(goalsText) + '</div>' +
+        '</div>' +
+
+        '<div class="crw-section">' +
+          '<div class="crw-section-title">Clinical Summary</div>' +
+          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Medical History</div><div class="crw-clin-val" style="font-size:13px;">' + mhDisplay + '</div></div>' +
+          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Medications</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.medications || 'None') + '</div></div>' +
+          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Allergies</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.allergies || 'None reported') + '</div></div>' +
+          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Peptide Use</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.peptide_use || d.prior_peptide_use || 'None') + '</div></div>' +
+        '</div>' +
+
+        '<div class="crw-section">' +
+          '<div class="crw-section-title">Patient Details</div>' +
+          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">' +
+            '<div><div class="crw-det-lbl">Email</div><div class="crw-det-val" style="font-size:12px;word-break:break-all;">' + escapeHtml(profile.email || d.email || '—') + '</div></div>' +
+            '<div><div class="crw-det-lbl">Phone</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.phone_number || d.phone || '—') + '</div></div>' +
+          '</div>' +
+          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:12px;">' +
+            '<div><div class="crw-det-lbl">Height</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.height || '—') + '</div></div>' +
+            '<div><div class="crw-det-lbl">Weight</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.current_weight ? d.current_weight + ' lbs' : '—') + '</div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    cardEl.innerHTML = html;
+  } catch(e) {
+    console.warn('[Pulse] session patient card load failed:', e);
+    cardEl.innerHTML = '<div style="padding:20px;color:rgba(200,80,80,0.7);font-size:12px;">Failed to load patient info.</div>';
+  }
+}
 
 function _startSessionNotesAutoSave(apptId) {
   if (_sessionNotesTimer) clearInterval(_sessionNotesTimer);

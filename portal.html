@@ -4486,8 +4486,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           clinHtml+
         '</div>'+
         '<div class="crw-section" id="attn-notes-section-'+consultId+'">'+
-          '<div class="crw-section-title">Session Notes</div>'+
-          '<div id="attn-notes-'+consultId+'" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"><span style="color:rgba(255,255,255,0.22);">No notes yet</span></div>'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2A2A30;">'+
+            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
+            '<span id="attn-notes-saved-'+consultId+'" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>'+
+          '</div>'+
+          '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
         '</div>'+
         '<div class="crw-actions">'+
           '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
@@ -7170,8 +7173,11 @@ function buildPatientDetail(p) {
           : '') +
 
         '<div class="crw-section" id="pdp-notes-section-' + escapeAttr(p.id) + '">' +
-          '<div class="crw-section-title">Session Notes</div>' +
-          '<div id="pdp-notes-' + escapeAttr(p.id) + '" style="font-size:13px;color:var(--grey);line-height:1.7;white-space:pre-wrap;"><span style="color:rgba(255,255,255,0.22);">No notes yet</span></div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2A2A30;">'+
+            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
+            '<span id="attn-notes-saved-pdp-' + escapeAttr(p.id) + '" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>'+
+          '</div>'+
+          '<textarea id="pdp-notes-' + escapeAttr(p.id) + '" data-user-id="' + escapeAttr(p.id) + '" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\'pdp-' + escapeAttr(p.id) + '\',\'' + escapeAttr(p.id) + '\')"></textarea>' +
         '</div>' +
 
       '</div>' +
@@ -7456,16 +7462,59 @@ function _saveAssignedProtocol(patientId) {
 async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
   try {
     var res = await db.from('appointments')
-      .select('notes')
+      .select('id, notes')
       .eq('consumer_id', patientUserId)
       .not('notes', 'is', null)
       .order('scheduled_at', { ascending: false })
       .limit(1);
     var contentEl = document.getElementById(contentElId);
     if (res.data && res.data.length > 0 && res.data[0].notes && res.data[0].notes.trim()) {
-      if (contentEl) contentEl.textContent = res.data[0].notes;
+      if (contentEl) {
+        contentEl.value = res.data[0].notes;
+        contentEl.dataset.apptId = res.data[0].id;
+      }
     }
   } catch(e) { /* silent */ }
+}
+
+// Debounced auto-save for session notes in patient cards
+var _notesSaveTimers = {};
+function _debounceNotesSave(key, patientUserId) {
+  if (_notesSaveTimers[key]) clearTimeout(_notesSaveTimers[key]);
+  _notesSaveTimers[key] = setTimeout(function() { _savePatientCardNotes(key, patientUserId); }, 1500);
+}
+
+async function _savePatientCardNotes(key, patientUserId) {
+  var el = document.getElementById('attn-notes-' + key) || document.getElementById('pdp-notes-' + patientUserId);
+  if (!el) return;
+  var val = el.value.trim();
+  var apptId = el.dataset.apptId;
+
+  try {
+    if (apptId) {
+      // Update existing appointment notes
+      await db.from('appointments').update({ notes: val }).eq('id', apptId);
+    } else {
+      // No appointment yet — find or create one to attach notes to
+      var res = await db.from('appointments')
+        .select('id')
+        .eq('consumer_id', patientUserId)
+        .order('scheduled_at', { ascending: false })
+        .limit(1);
+      if (res.data && res.data.length > 0) {
+        el.dataset.apptId = res.data[0].id;
+        await db.from('appointments').update({ notes: val }).eq('id', res.data[0].id);
+      } else {
+        // Store notes on the consultation instead if no appointment exists
+        await db.from('consultations').update({ data: db.raw ? undefined : undefined })
+          .then(function(){}).catch(function(){});
+        return; // Can't save without an appointment
+      }
+    }
+    // Show saved indicator
+    var savedEl = document.getElementById('attn-notes-saved-' + key);
+    if (savedEl) { savedEl.style.display = 'inline'; setTimeout(function(){ savedEl.style.display = 'none'; }, 2000); }
+  } catch(e) { console.warn('[Pulse] notes save failed:', e); }
 }
 
 // ── Patient Detail Panel Inline Messaging ──

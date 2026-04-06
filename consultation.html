@@ -945,7 +945,17 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <button class="btn-primary" onclick="_joinDailySession()">Retry</button>
     </div>
 
-    <!-- Post-call: shown after leaving -->
+    <!-- Disconnected state: shown when member leaves/disconnects (can rejoin) -->
+    <div id="sessionDisconnected" style="display:none;text-align:center;padding:48px 24px;">
+      <div style="width:48px;height:48px;border:2px solid rgba(255,180,60,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <span style="font-size:20px;">&#x1F50C;</span>
+      </div>
+      <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Disconnected</div>
+      <div style="font-size:13px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto 20px;">Your session is still active. You can rejoin at any time until your clinician ends the consultation.</div>
+      <button class="btn-primary" onclick="_rejoinDailySession()">Rejoin Session</button>
+    </div>
+
+    <!-- Post-call: shown after clinician ends the session -->
     <div id="sessionEnded" style="display:none;text-align:center;padding:48px 24px;">
       <div style="width:48px;height:48px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Your consultation is complete</div>
@@ -2640,19 +2650,13 @@ async function _joinDailySession() {
     // Handle call events
     _dailyCallFrame.on('left-meeting', function() {
       _cleanupDaily();
-      // Mark appointment as completed
-      if (_memberApptId && client) {
-        client.from('appointments').update({ status: 'completed' }).eq('id', _memberApptId)
-          .then(function(){}).catch(function(){});
-      }
-      // Update consultation review_status to in_review
-      if (_consultationId && client) {
-        client.from('consultations').update({ review_status: 'in_review' }).eq('id', _consultationId)
-          .then(function(){}).catch(function(){});
-      }
-      // Show post-call state
+      // Don't mark appointment completed — only the clinician can end the session.
+      // Show disconnected state with rejoin option.
       if (container) container.style.display = 'none';
-      if (endedEl) endedEl.style.display = 'block';
+      var disconnectedEl = document.getElementById('sessionDisconnected');
+      if (disconnectedEl) disconnectedEl.style.display = 'block';
+      // Start polling to detect if clinician ended the session
+      _startSessionEndPoll();
     });
 
     _dailyCallFrame.on('error', function(e) {
@@ -2688,6 +2692,37 @@ function _cleanupDaily() {
   }
   var container = document.getElementById('dailyContainer');
   if (container) container.innerHTML = '';
+}
+
+// Rejoin after disconnect — re-enters the Daily room
+function _rejoinDailySession() {
+  var disconnectedEl = document.getElementById('sessionDisconnected');
+  if (disconnectedEl) disconnectedEl.style.display = 'none';
+  _stopSessionEndPoll();
+  _joinDailySession();
+}
+
+// Poll appointment status to detect when clinician ends the session
+var _sessionEndPollTimer = null;
+function _startSessionEndPoll() {
+  _stopSessionEndPoll();
+  _sessionEndPollTimer = setInterval(async function() {
+    if (!_memberApptId || !window._sbClient) return;
+    try {
+      var r = await window._sbClient.from('appointments').select('status').eq('id', _memberApptId).limit(1);
+      if (r.data && r.data.length > 0 && r.data[0].status === 'completed') {
+        _stopSessionEndPoll();
+        // Clinician ended the session — show completed state
+        var disconnectedEl = document.getElementById('sessionDisconnected');
+        if (disconnectedEl) disconnectedEl.style.display = 'none';
+        var endedEl = document.getElementById('sessionEnded');
+        if (endedEl) endedEl.style.display = 'block';
+      }
+    } catch(e) {}
+  }, 5000); // check every 5 seconds
+}
+function _stopSessionEndPoll() {
+  if (_sessionEndPollTimer) { clearInterval(_sessionEndPollTimer); _sessionEndPollTimer = null; }
 }
 
 function _returnToReviewAfterSession() {
@@ -3512,10 +3547,10 @@ window._sbClient = createClient(
 
         // Load existing appointment and show countdown
         var apptRes = await window._sbClient.from('appointments')
-          .select('id, scheduled_at, duration_minutes')
+          .select('id, scheduled_at, duration_minutes, status')
           .eq('consumer_id', session.user.id)
           .eq('clinician_id', consultation.assigned_clinician_id)
-          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
           .order('scheduled_at', { ascending: false })
           .limit(1);
 
@@ -3537,20 +3572,21 @@ window._sbClient = createClient(
           var infoCard3 = document.createElement('div');
           infoCard3.id = 'reviewApptInfo';
           infoCard3.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+          var isActiveSession = appt.status === 'confirmed';
           infoCard3.innerHTML =
-            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
+            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">' + (isActiveSession ? 'Session In Progress' : 'Upcoming Appointment') + '</div>' +
             '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr3 + '</div>' +
             '<div style="font-size:13px;color:var(--grey2);">' + timeStr3 + ' \u00b7 ' + (appt.duration_minutes || 30) + ' min consultation</div>' +
-            '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
-              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
-              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +
+            '<div id="reviewJoinWrap" style="margin-top:16px;' + (isActiveSession ? '' : 'display:none;') + '">' +
+              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)"' + (isActiveSession ? '' : ' disabled style="opacity:0.4;"') + '>' + (isActiveSession ? 'Rejoin Session' : 'Join Session') + '</button>' +
+              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;">' + (isActiveSession ? 'Your session is still active — rejoin now' : '') + '</div>' +
             '</div>';
 
           var msgSection3 = document.getElementById('reviewMessaging');
           if (msgSection3) msgSection3.parentNode.insertBefore(infoCard3, msgSection3);
 
-          // Start countdown
-          _startReviewCountdown(apptDt);
+          // Start countdown for pending appointments; confirmed ones show rejoin immediately
+          if (!isActiveSession) _startReviewCountdown(apptDt);
         }
         return;
       }

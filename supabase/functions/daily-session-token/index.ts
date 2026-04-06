@@ -61,6 +61,14 @@ serve(async (req) => {
       });
     }
 
+    // 3b. Block joining completed appointments — only the clinician can end a session
+    if (appt.status === "completed") {
+      return new Response(JSON.stringify({ error: "This session has ended" }), {
+        status: 410,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 4. Authorize: user must be the consumer, the clinician, or an admin
     const isConsumer = user.id === appt.consumer_id;
     const isClinician = user.id === appt.clinician_id;

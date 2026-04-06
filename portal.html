@@ -9145,9 +9145,9 @@ function _joinClinicianSession(apptId) {
       });
 
       _clDailyFrame.on('left-meeting', function() {
-        _leaveClinicianSession();
-        db.from('appointments').update({ status: 'completed' }).eq('id', apptId)
-          .then(function(){}).catch(function(){});
+        // Don't mark completed — clinician may have been disconnected.
+        // Show a rejoin option instead. Only "End Session" button truly ends the call.
+        _disconnectClinicianSession();
       });
       _clDailyFrame.on('error', function() { _showClSessionError('Connection error'); });
       _clDailyFrame.join({ url: result.data.roomUrl, token: result.data.token });
@@ -9196,9 +9196,46 @@ function _stopSessionNotesAutoSave() {
   if (_clSessionApptId) _saveSessionNotes(_clSessionApptId);
 }
 
+// Soft disconnect — clinician got kicked out or Daily leave button was clicked.
+// Session stays active; show rejoin UI.
+function _disconnectClinicianSession() {
+  if (_clDailyFrame) { try { _clDailyFrame.destroy(); } catch(e) {} _clDailyFrame = null; }
+  var container = document.getElementById('dailySessionContainer');
+  if (container) {
+    container.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:32px;">' +
+        '<div style="width:48px;height:48px;border:2px solid rgba(255,180,60,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
+          '<span style="font-size:20px;">&#x1F50C;</span>' +
+        '</div>' +
+        '<div style="font-size:16px;font-weight:500;color:#fff;">Disconnected</div>' +
+        '<div style="font-size:13px;color:var(--grey);text-align:center;max-width:360px;line-height:1.6;">You were disconnected from the session. The session is still active.</div>' +
+        '<button onclick="_rejoinClinicianSession()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:500;">Rejoin Session</button>' +
+      '</div>';
+  }
+}
+
+// Rejoin after disconnect
+function _rejoinClinicianSession() {
+  if (_clSessionApptId) {
+    _joinClinicianSession(_clSessionApptId);
+  }
+}
+
+// Hard end — clinician explicitly clicks "End Session". This is the ONLY path
+// that marks the appointment completed and triggers the evaluation form.
 function _leaveClinicianSession() {
   _stopSessionNotesAutoSave();
   if (_clDailyFrame) { try { _clDailyFrame.destroy(); } catch(e) {} _clDailyFrame = null; }
+  // Mark appointment as completed — only this explicit action does so
+  if (_clSessionApptId) {
+    db.from('appointments').update({ status: 'completed' }).eq('id', _clSessionApptId)
+      .then(function(){}).catch(function(){});
+    // Update consultation review_status to in_review
+    db.from('consultations').update({ review_status: 'in_review' })
+      .eq('assigned_clinician_id', currentUserId)
+      .in('review_status', ['live_consult_scheduled'])
+      .then(function(){}).catch(function(){});
+  }
   var overlay = document.getElementById('dailySessionOverlay');
   if (overlay) overlay.style.display = 'none';
   // Show evaluation form

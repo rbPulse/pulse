@@ -2908,7 +2908,7 @@ async function _populateStep6() {
     }
 
     // Check if clinician has assigned a protocol
-    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, prescribed_protocols, no_prescription_reason, assigned_clinician_id, dose_amount, dose_unit, frequency, timing, timing_instructions, duration')
+    var cRes = await client.from('consultations').select('*')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
     var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
@@ -2955,7 +2955,12 @@ async function _populateStep6() {
       var cardsEl = document.getElementById('step6ProtocolCards');
       if (cardsEl) {
         var cd = consultation.data || {};
-        var prescribedProtocols = consultation.prescribed_protocols || cd.prescribed_protocols || {};
+        var prescribedProtocols = cd.prescribed_protocols || consultation.prescribed_protocols || {};
+        // Also check inside evaluations array for the latest eval
+        if ((!prescribedProtocols || !Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; })) && cd.evaluations && cd.evaluations.length > 0) {
+          var latestEval = cd.evaluations[cd.evaluations.length - 1];
+          if (latestEval.prescribed_protocols) prescribedProtocols = latestEval.prescribed_protocols;
+        }
 
         // Fallback: if prescribed_protocols is empty, derive from protocol_assigned string
         var hasAnyProto = Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; });
@@ -2982,12 +2987,13 @@ async function _populateStep6() {
             }).join('');
           }
 
-          // Dosing details — read from consultation columns first, then JSONB fallback
-          var doseAmt = consultation.dose_amount || cd.dose_amount || '—';
-          var doseUnit = consultation.dose_unit || cd.dose_unit || '';
-          var freq = consultation.frequency || cd.frequency || '—';
-          var timing = consultation.timing || cd.timing || '—';
-          var dur = consultation.duration || cd.duration || '—';
+          // Dosing details — check evaluations array, then consultation columns, then JSONB top-level
+          var _le = (cd.evaluations && cd.evaluations.length > 0) ? cd.evaluations[cd.evaluations.length - 1] : {};
+          var doseAmt = _le.dose_amount || consultation.dose_amount || cd.dose_amount || '—';
+          var doseUnit = _le.dose_unit || consultation.dose_unit || cd.dose_unit || '';
+          var freq = _le.frequency || consultation.frequency || cd.frequency || '—';
+          var timing = _le.timing || consultation.timing || cd.timing || '—';
+          var dur = _le.duration || consultation.duration || cd.duration || '—';
 
           var checkId = 'proto-check-' + key;
           cardsHtml += '<div class="summary-protocol-box" style="margin-bottom:14px;">' +

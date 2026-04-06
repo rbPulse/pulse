@@ -686,7 +686,63 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
           <button class="quiz-btn quiz-btn-primary" id="quizStep5Next" onclick="submitQuizStep5()" style="margin-top:24px;">Next &#8594;</button>
           <div class="quiz-error" id="quizStep5Error" style="text-align:center;margin-top:8px;"></div>
         </div>
-        <div class="quiz-step" id="qs-6" data-step="6"></div>
+        <div class="quiz-step" id="qs-6" data-step="6">
+          <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
+          <div class="quiz-question">Review & submit.</div>
+          <div class="quiz-subtitle">Verify your information, then sign to submit your intake.</div>
+
+          <!-- Summary -->
+          <div id="quizSummary" style="margin-bottom:32px;"></div>
+
+          <!-- Consent -->
+          <div style="margin-bottom:24px;">
+            <div class="quiz-label" style="margin-bottom:16px;">Consent & Authorization</div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:18px;margin-bottom:12px;">
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:6px;">Telehealth Consent</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">You are consenting to receive medical consultation services via telehealth. Your clinician will review your intake information, assess eligibility, and recommend a protocol if appropriate.</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:18px;margin-bottom:12px;">
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:6px;">Prescribing Model</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">Pulse operates under a licensed MSO/PC model. Prescriptions are issued by licensed clinicians and fulfilled through FDA-registered compounding pharmacies. A prescription is not guaranteed.</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:18px;margin-bottom:12px;">
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:6px;">Data Handling & HIPAA</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">Your information is protected under HIPAA and handled with strict confidentiality. Data is encrypted in transit and at rest and is never shared for marketing purposes.</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:18px;margin-bottom:12px;">
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:6px;">Right to Withdraw</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">You may withdraw your consent at any time before prescription fulfillment by contacting Pulse support.</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:18px;">
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);margin-bottom:6px;">Regulatory Status</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">Some compounds are FDA-approved for specific indications; others are compounded formulations. This service is not diagnostic and does not replace primary care.</div>
+            </div>
+          </div>
+
+          <!-- Consent checkbox -->
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:24px;cursor:pointer;" onclick="var cb=document.getElementById('quizConsent');cb.checked=!cb.checked;checkQuizSubmit();">
+            <input type="checkbox" id="quizConsent" style="margin-top:3px;accent-color:var(--green);width:18px;height:18px;flex-shrink:0;" onclick="event.stopPropagation();checkQuizSubmit();"/>
+            <label style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;cursor:pointer;">I have read and understood all sections above. I consent to telehealth services, acknowledge the prescribing model, and authorize Pulse to process my health information as described.</label>
+          </div>
+
+          <!-- E-signature -->
+          <div class="quiz-input-group">
+            <label class="quiz-label">E-Signature — type your full legal name</label>
+            <input type="text" class="quiz-input" id="quizSignature" placeholder="Your full name" oninput="checkQuizSubmit()"/>
+          </div>
+
+          <button class="quiz-btn quiz-btn-primary" id="quizSubmitBtn" disabled onclick="submitQuiz()" style="margin-top:16px;">Submit Intake</button>
+          <div class="quiz-error" id="quizSubmitError" style="text-align:center;margin-top:8px;"></div>
+
+          <div style="text-align:center;margin-top:16px;font-size:11px;color:rgba(255,255,255,0.2);line-height:1.6;">
+            All information is transmitted securely and handled in accordance with HIPAA.
+          </div>
+        </div>
 
       </div>
     </div>
@@ -1228,6 +1284,7 @@ function quizGoTo(step) {
     });
 
     _quizStep = step;
+    if (step === 6) populateQuizSummary();
     updateQuizProgress();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, 200);
@@ -1241,6 +1298,165 @@ function updateQuizProgress() {
 
 function quizBack() {
   if (_quizStep > 1) quizGoTo(_quizStep - 1);
+}
+
+function populateQuizSummary() {
+  var d = _quizData;
+  var html = '';
+
+  // Goals
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div class="quiz-label">Goals</div>';
+  html += '<div style="font-size:15px;color:#fff;">' + (d.goals.length ? d.goals.map(function(g) { return g.charAt(0).toUpperCase() + g.slice(1); }).join(', ') : '—') + '</div>';
+  html += '</div>';
+
+  // Peptide experience
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div class="quiz-label">Peptide Experience</div>';
+  var pepLabel = d.peptide_history === 'no' ? 'No prior experience' : 'Yes — ' + (d.peptide_detail || 'details not provided');
+  html += '<div style="font-size:15px;color:#fff;">' + pepLabel + '</div>';
+  html += '</div>';
+
+  // Demographics
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div><div class="quiz-label">DOB</div><div style="font-size:15px;color:#fff;">' + (d.dob || '—') + '</div></div>';
+  html += '<div><div class="quiz-label">Sex</div><div style="font-size:15px;color:#fff;">' + (d.sex || '—') + '</div></div>';
+  html += '<div><div class="quiz-label">Height / Weight</div><div style="font-size:15px;color:#fff;">' + (d.height || '—') + ' · ' + (d.current_weight ? d.current_weight + ' lbs' : '—') + '</div></div>';
+  html += '</div>';
+
+  // Medical
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div class="quiz-label">Medical History</div>';
+  html += '<div style="font-size:15px;color:#fff;">' + (d.medical_history.length ? d.medical_history.map(function(h) { return h.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }); }).join(', ') : 'None') + '</div>';
+  html += '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div><div class="quiz-label">Medications</div><div style="font-size:15px;color:#fff;">' + (d.medications || 'None') + '</div></div>';
+  html += '<div><div class="quiz-label">Allergies</div><div style="font-size:15px;color:#fff;">' + (d.allergies || 'None') + '</div></div>';
+  html += '</div>';
+
+  // Contact
+  html += '<div class="quiz-divider"></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div><div class="quiz-label">Name</div><div style="font-size:15px;color:#fff;">' + (d.first_name || '') + ' ' + (d.last_name || '') + '</div></div>';
+  html += '<div><div class="quiz-label">Email</div><div style="font-size:15px;color:#fff;">' + (d.email || '—') + '</div></div>';
+  html += '<div><div class="quiz-label">Phone</div><div style="font-size:15px;color:#fff;">' + (d.phone_number || '—') + '</div></div>';
+  html += '<div><div class="quiz-label">State</div><div style="font-size:15px;color:#fff;">' + (d.state || '—') + '</div></div>';
+  html += '</div>';
+
+  document.getElementById('quizSummary').innerHTML = html;
+}
+
+function checkQuizSubmit() {
+  var consent = document.getElementById('quizConsent');
+  var sig = document.getElementById('quizSignature');
+  var btn = document.getElementById('quizSubmitBtn');
+  if (btn) btn.disabled = !(consent && consent.checked && sig && sig.value.trim());
+}
+
+async function submitQuiz() {
+  var btn = document.getElementById('quizSubmitBtn');
+  var errEl = document.getElementById('quizSubmitError');
+
+  if (!document.getElementById('quizConsent').checked) return;
+  if (!document.getElementById('quizSignature').value.trim()) return;
+
+  _quizData.signature = document.getElementById('quizSignature').value.trim();
+  _quizData.consent_agreed = true;
+  _quizData.submitted_at = new Date().toISOString();
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+  try {
+    var client = window._sbClient;
+    if (!client) throw new Error('Client not initialized');
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) throw new Error('Not authenticated');
+
+    var fullData = _quizData;
+    fullData.intake_completed = true;
+
+    // Auto-assign clinician
+    var memberSt = (fullData.state || '').toUpperCase().trim();
+    var assignedClinician = null;
+    if (typeof _autoAssignClinicianAsync === 'function') {
+      assignedClinician = await _autoAssignClinicianAsync(client, memberSt);
+    }
+    var assignedClinicianId = assignedClinician ? assignedClinician.id : null;
+
+    // Risk evaluation
+    var riskResult = (typeof evaluateIntakeRisk === 'function') ? evaluateIntakeRisk(fullData) : { status: 'low_risk', reasons: [] };
+
+    // Insert consultation
+    var cInsert = await client.from('consultations').insert({
+      user_id: session.user.id,
+      data: fullData,
+      review_status: 'pending_review',
+      intake_completed: true,
+      assigned_clinician_id: assignedClinicianId,
+      risk_status: riskResult.status,
+      risk_flag_reasons: riskResult.reasons
+    }).select('id').single();
+
+    if (cInsert.error) throw new Error(cInsert.error.message);
+    if (cInsert.data) _consultationId = cInsert.data.id;
+
+    // Upsert profile
+    var fullName = ((fullData.first_name || '') + ' ' + (fullData.last_name || '')).trim();
+    await client.from('profiles').upsert({
+      user_id: session.user.id,
+      email: fullData.email || session.user.email || null,
+      first_name: fullData.first_name || null,
+      last_name: fullData.last_name || null,
+      display_name: fullName || session.user.email.split('@')[0],
+      phone: fullData.phone_number || null,
+      street: fullData.street_address || null,
+      apt: fullData.apt_unit || null,
+      city: fullData.city || null,
+      state: fullData.state || null,
+      zip: fullData.zip_code || null,
+      dob: fullData.dob || null,
+      sex: fullData.sex || null,
+      height: fullData.height || null,
+      weight: fullData.current_weight || null,
+      goals: fullData.goals || null,
+      last_seen: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    // Notify clinician
+    if (assignedClinicianId) {
+      client.from('notifications').insert({
+        user_id: assignedClinicianId,
+        type: 'new_intake',
+        body: 'New patient intake assigned to you for review.',
+        read: false
+      }).then(function(){}).catch(function(){});
+    }
+
+    // Transition to Review Hub
+    goToStep(2);
+
+    // Populate Review Hub
+    var submittedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    var reviewDateEl = document.getElementById('reviewSubmittedDate');
+    if (reviewDateEl) reviewDateEl.textContent = submittedDate;
+
+    if (assignedClinician && assignedClinician.display_name) {
+      var clNameEl = document.getElementById('reviewClinicianName');
+      if (clNameEl) clNameEl.textContent = assignedClinician.display_name;
+    }
+
+    // Init messaging
+    if (typeof initReviewMessaging === 'function') {
+      initReviewMessaging(session.user.id, fullName);
+    }
+
+  } catch(e) {
+    console.error('[Pulse] quiz submit failed:', e);
+    if (errEl) { errEl.textContent = e.message || 'Something went wrong. Please try again.'; errEl.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Intake'; }
+  }
 }
 
 function selectGoalAndAdvance(cardEl) {

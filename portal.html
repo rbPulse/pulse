@@ -6450,19 +6450,83 @@ function populatePortal(user, consultation, greeting) {
     firstName = d.first_name || '';
     // Store member's state for clinician state-matching in booking
     if (d.state) window._memberState = d.state.toUpperCase().trim();
-    // Only show protocol if a clinician has explicitly assigned one
-    var assignedProto = d.assigned_protocol || consultation.protocol || null;
-    if (assignedProto && PROTOCOL_MAP[assignedProto]) {
-      proto = PROTOCOL_MAP[assignedProto];
-      window._userProto = assignedProto;
+
+    // Check if prescription was given
+    var rxGiven = d.prescription_given || consultation.prescription_given;
+    var assignedProtoStr = d.assigned_protocol || consultation.protocol_assigned || consultation.protocol || null;
+    var prescribedProtocols = d.prescribed_protocols || consultation.prescribed_protocols || {};
+
+    // Also check evaluations array
+    if ((!rxGiven && !assignedProtoStr) && d.evaluations && d.evaluations.length > 0) {
+      var latestEval = d.evaluations[d.evaluations.length - 1];
+      if (latestEval.prescription_given) {
+        rxGiven = true;
+        assignedProtoStr = assignedProtoStr || Object.keys(latestEval.prescribed_protocols || {}).filter(function(k){ return latestEval.prescribed_protocols[k]; }).join(', ');
+        prescribedProtocols = latestEval.prescribed_protocols || prescribedProtocols;
+      }
+    }
+
+    if (rxGiven && assignedProtoStr && assignedProtoStr !== 'no prescription') {
+      // Protocol has been prescribed — resolve the first protocol for display
+      var firstProtoKey = assignedProtoStr.split(',')[0].trim().toLowerCase().replace(/\s+/g, '_');
+      proto = PROTOCOL_MAP[firstProtoKey] || null;
+
+      // Build a combined proto object if not in PROTOCOL_MAP
+      if (!proto) {
+        proto = { name: assignedProtoStr, category: 'Prescribed', compounds: [], note: '' };
+      }
+
+      // Collect all prescribed protocol names and compounds
+      var allCompounds = [];
+      var allProtoNames = [];
+      var allProtoKeys = ['sleep','repair','growth','endurance','shred','vitality','vitality_stack','recovery_stack','performance_stack','optimize_stack'];
+      allProtoKeys.forEach(function(k) {
+        if (prescribedProtocols[k]) {
+          var pMap = PROTOCOL_MAP[k];
+          var displayName = k.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+          allProtoNames.push(displayName);
+          if (pMap && pMap.compounds) allCompounds = allCompounds.concat(pMap.compounds);
+        }
+      });
+      // Fallback if prescribedProtocols is empty — parse from string
+      if (allProtoNames.length === 0 && assignedProtoStr) {
+        assignedProtoStr.split(',').forEach(function(p) {
+          var k = p.trim().toLowerCase().replace(/\s+/g, '_');
+          var pMap = PROTOCOL_MAP[k];
+          allProtoNames.push(p.trim());
+          if (pMap && pMap.compounds) allCompounds = allCompounds.concat(pMap.compounds);
+        });
+      }
+      // Deduplicate compounds
+      var seen = {};
+      allCompounds = allCompounds.filter(function(c) { if (seen[c]) return false; seen[c] = true; return true; });
+
+      // Store for use throughout the portal
+      window._userProto = firstProtoKey;
+      window._allProtoNames = allProtoNames;
+      window._allCompounds = allCompounds;
+
+      // Dosing details from evaluation
+      var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+      window._protoDose = _le.dose_amount || consultation.dose_amount || d.dose_amount || null;
+      window._protoDoseUnit = _le.dose_unit || consultation.dose_unit || d.dose_unit || null;
+      window._protoFreq = _le.frequency || consultation.frequency || d.frequency || null;
+      window._protoTiming = _le.timing || consultation.timing || d.timing || null;
+      window._protoDuration = _le.duration || consultation.duration || d.duration || null;
+    } else if (assignedProtoStr === 'no prescription' || rxGiven === false) {
+      // Not prescribed — show appropriate state
+      hasPendingReview = false;
+      proto = null;
     } else {
-      // Consultation exists but no assigned protocol yet — pending clinician review
+      // No protocol assigned yet — pending review
       hasPendingReview = true;
     }
   }
 
-  // Prefer the _memberDisplayName already resolved from profiles; fall back to consultation first_name or email prefix
-  var displayName = _memberDisplayName || firstName || user.email;
+  // Prefer the _memberDisplayName already resolved from profiles; fall back to consultation first + last name, then email prefix
+  var lastName = (consultation && consultation.data) ? (consultation.data.last_name || '') : '';
+  var fullNameFromConsult = (firstName && lastName) ? (firstName + ' ' + lastName).trim() : firstName;
+  var displayName = _memberDisplayName || fullNameFromConsult || user.email.split('@')[0];
 
   // Update sidebar identity with real name if available (profiles takes priority)
   if (_memberDisplayName) {
@@ -6490,17 +6554,18 @@ function populatePortal(user, consultation, greeting) {
     var actionCard = document.getElementById('actionCard');
     if (actionCard) actionCard.style.display = 'none';
 
-    // Overview stat cards — Protocol card: show protocol name
+    // Overview stat cards — Protocol card: show protocol name(s)
     var catEl = document.getElementById('statCategory');
-    if (catEl) catEl.textContent = proto.name;
+    if (catEl) catEl.textContent = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
     var ovSubEl = document.getElementById('ovStatProtocolSub');
-    if (ovSubEl) ovSubEl.textContent = proto.category;
+    if (ovSubEl) ovSubEl.textContent = (window._protoFreq || '') + (window._protoDuration ? ' · ' + window._protoDuration : '');
 
-    // Compounds card: show compound names joined with " · "
+    // Compounds card: show compound names
+    var _displayCompounds = (window._allCompounds && window._allCompounds.length > 0) ? window._allCompounds : proto.compounds;
     var compEl = document.getElementById('statCompounds');
-    if (compEl) compEl.textContent = proto.compounds.length;
+    if (compEl) compEl.textContent = _displayCompounds.length;
     var cycleEl = document.getElementById('statCycle');
-    if (cycleEl) cycleEl.textContent = proto.compounds.join(' · ');
+    if (cycleEl) cycleEl.textContent = _displayCompounds.join(' · ');
 
     // Next Dose card: "Today ✓" if already logged today, else "Tomorrow"
     var todayStr = localDateStr(new Date());

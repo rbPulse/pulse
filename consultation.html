@@ -1024,34 +1024,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <!-- Protocol cards — populated by JS -->
       <div id="step6ProtocolCards"></div>
 
-      <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
-      <div class="timeline">
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Consultation complete</div>
-          <div class="tl-body">Your live session is complete.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Clinician evaluation</div>
-          <div class="tl-body">Your clinician has reviewed your intake and finalized your protocol.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Protocol assigned</div>
-          <div class="tl-body">Your personalized protocol has been prescribed.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-      </div>
-
       <div style="margin-top:32px;text-align:center;">
-        <a href="checkout.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;">Start Your Protocol →</a>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--grey2);margin-top:12px;letter-spacing:0.06em;">Proceed to checkout to begin your personalized protocol.</div>
+        <a href="checkout.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;">Let's Go. I'm Ready</a>
       </div>
     </div>
 
@@ -2934,7 +2908,7 @@ async function _populateStep6() {
     }
 
     // Check if clinician has assigned a protocol
-    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, no_prescription_reason, assigned_clinician_id')
+    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, no_prescription_reason, assigned_clinician_id, dose_amount, dose_unit, frequency, timing, timing_instructions, duration')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
     var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
@@ -2998,13 +2972,14 @@ async function _populateStep6() {
             }).join('');
           }
 
-          // Dosing details
-          var doseAmt = cd.dose_amount || '—';
-          var doseUnit = cd.dose_unit || '';
-          var freq = cd.frequency || '—';
-          var timing = cd.timing || '—';
-          var dur = cd.duration || '—';
+          // Dosing details — read from consultation columns first, then JSONB fallback
+          var doseAmt = consultation.dose_amount || cd.dose_amount || '—';
+          var doseUnit = consultation.dose_unit || cd.dose_unit || '';
+          var freq = consultation.frequency || cd.frequency || '—';
+          var timing = consultation.timing || cd.timing || '—';
+          var dur = consultation.duration || cd.duration || '—';
 
+          var checkId = 'proto-check-' + key;
           cardsHtml += '<div class="summary-protocol-box" style="margin-bottom:14px;">' +
             '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">' +
               '<div style="flex:1;min-width:200px;">' +
@@ -3012,7 +2987,10 @@ async function _populateStep6() {
                 '<div class="spb-name">' + escapeHtml(pName) + '</div>' +
                 (compHtml ? '<div class="spb-compounds">' + compHtml + '</div>' : '') +
               '</div>' +
-              '<a href="checkout.html" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:12px 28px;border-radius:999px;cursor:pointer;font-weight:600;text-decoration:none;white-space:nowrap;box-shadow:0 0 16px rgba(58,122,92,0.3);transition:opacity .2s;display:inline-block;margin-top:8px;">Activate My Protocol</a>' +
+              '<label for="' + checkId + '" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:8px;user-select:none;">' +
+                '<input type="checkbox" id="' + checkId + '" name="selectedProtocols" value="' + escapeAttr(key) + '" checked style="width:20px;height:20px;accent-color:var(--green);cursor:pointer;">' +
+                '<span style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);font-weight:500;">Include</span>' +
+              '</label>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
               '<div style="padding:8px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Dose</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +

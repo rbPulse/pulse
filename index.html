@@ -1222,6 +1222,46 @@ document.addEventListener('DOMContentLoaded',function(){
     </div>
   </div>
 </section>
+<script>
+(function(){
+  document.querySelectorAll('.reviews-marquee-wrap').forEach(function(wrap){
+    var marquee = wrap.querySelector('.reviews-marquee');
+    if(!marquee) return;
+    var startX=0, scrollLeft=0, dragging=false, resumeTimer=null;
+
+    function getTranslateX(){
+      var st = getComputedStyle(marquee);
+      var m = new DOMMatrix(st.transform);
+      return m.m41;
+    }
+
+    wrap.addEventListener('touchstart',function(e){
+      dragging=true;
+      startX=e.touches[0].clientX;
+      scrollLeft=getTranslateX();
+      marquee.style.animationPlayState='paused';
+      marquee.style.transform='translateX('+scrollLeft+'px)';
+      if(resumeTimer) clearTimeout(resumeTimer);
+    },{passive:true});
+
+    wrap.addEventListener('touchmove',function(e){
+      if(!dragging) return;
+      var x=e.touches[0].clientX;
+      var dx=x-startX;
+      marquee.style.transform='translateX('+(scrollLeft+dx)+'px)';
+    },{passive:true});
+
+    wrap.addEventListener('touchend',function(){
+      if(!dragging) return;
+      dragging=false;
+      resumeTimer=setTimeout(function(){
+        marquee.style.transform='';
+        marquee.style.animationPlayState='';
+      },2000);
+    });
+  });
+})();
+</script>
 
 <!-- MD TESTIMONIAL -->
 <section id="testimonial">

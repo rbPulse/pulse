@@ -339,6 +339,55 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
   .progress-line{margin:0 1px;margin-bottom:10px;}
   .cal-day{font-size:10px;}
 }
+
+/* ── Quiz Flow ── */
+.quiz-wrap{max-width:560px;margin:0 auto;padding:32px 24px;min-height:100vh;display:flex;flex-direction:column;}
+.quiz-progress{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-bottom:48px;overflow:hidden;}
+.quiz-progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width 0.4s ease;}
+.quiz-back{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);background:none;border:none;cursor:pointer;padding:0;margin-bottom:32px;transition:color .2s;}
+.quiz-back:hover{color:rgba(255,255,255,0.6);}
+.quiz-back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;}
+.quiz-question{font-size:clamp(24px,5vw,32px);font-weight:600;color:#fff;line-height:1.25;margin-bottom:12px;}
+.quiz-subtitle{font-size:15px;color:rgba(255,255,255,0.5);line-height:1.6;margin-bottom:32px;}
+.quiz-step{display:none;flex:1;}
+.quiz-step.active{display:flex;flex-direction:column;}
+.quiz-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 22px;margin-bottom:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:4px;}
+.quiz-card:hover{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);}
+.quiz-card.selected{border-color:var(--green);background:rgba(58,122,92,0.08);}
+.quiz-card-title{font-size:16px;font-weight:500;color:#fff;}
+.quiz-card-sub{font-size:13px;color:rgba(255,255,255,0.4);}
+.quiz-input-group{margin-bottom:20px;}
+.quiz-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:8px;display:block;}
+.quiz-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 18px;font-size:16px;color:#fff;outline:none;transition:border-color .2s;font-family:'DM Sans',sans-serif;box-sizing:border-box;}
+.quiz-input::placeholder{color:rgba(255,255,255,0.2);}
+.quiz-input:focus{border-color:var(--green);}
+.quiz-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.quiz-select{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 18px;font-size:16px;color:#fff;outline:none;-webkit-appearance:none;appearance:none;font-family:'DM Sans',sans-serif;box-sizing:border-box;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;}
+.quiz-select option{background:#111;color:#fff;}
+.quiz-btn{width:100%;padding:16px;border-radius:12px;font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;cursor:pointer;transition:opacity .2s;border:none;margin-top:auto;}
+.quiz-btn-primary{background:var(--green);color:#000;}
+.quiz-btn-primary:hover{opacity:0.85;}
+.quiz-btn-primary:disabled{opacity:0.3;cursor:not-allowed;}
+.quiz-none-btn{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 20px;cursor:pointer;transition:all .2s;margin-top:8px;}
+.quiz-none-btn:hover{border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);}
+.quiz-none-btn.active{border-color:var(--green);color:var(--green);}
+.quiz-multiselect .quiz-card{position:relative;}
+.quiz-multiselect .quiz-card.selected::after{content:'✓';position:absolute;right:18px;top:50%;transform:translateY(-50%);color:var(--green);font-size:16px;font-weight:600;}
+.quiz-info{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px 18px;font-size:13px;color:rgba(255,255,255,0.4);line-height:1.6;margin-top:16px;}
+.quiz-info strong{color:rgba(255,255,255,0.6);}
+.quiz-badge{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.2);border-radius:999px;padding:6px 14px;margin-bottom:16px;}
+.quiz-hero{text-align:center;padding:48px 0 32px;}
+.quiz-hero-title{font-size:clamp(32px,6vw,48px);font-weight:600;color:#fff;line-height:1.15;margin-bottom:12px;}
+.quiz-hero-sub{font-size:16px;color:rgba(255,255,255,0.45);margin-bottom:8px;}
+.quiz-error{color:rgba(255,100,100,0.8);font-size:12px;margin-top:6px;display:none;}
+.quiz-divider{height:1px;background:rgba(255,255,255,0.06);margin:24px 0;}
+.quiz-secure{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-top:16px;display:flex;align-items:center;gap:6px;}
+@media(max-width:600px){
+  .quiz-wrap{padding:20px 16px;}
+  .quiz-question{font-size:24px;}
+  .quiz-input-row{grid-template-columns:1fr;}
+  .quiz-card{padding:16px 18px;}
+}
 </style>
 </head>
 <body>
@@ -397,197 +446,57 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
     </div>
   </div>
 
-  <!-- STEP 1: CONSOLIDATED INTAKE -->
+  <!-- STEP 1: QUIZ-BASED INTAKE -->
   <div class="step active" id="step-1">
-    <div class="step-eyebrow">Step 1 of 3</div>
-    <h1 class="step-title">Medical intake</h1>
-    <p class="step-sub">Your responses are private and used only to prepare your clinician for your consultation. Complete all fields accurately.</p>
+    <div class="quiz-wrap">
+      <!-- Progress bar -->
+      <div class="quiz-progress"><div class="quiz-progress-fill" id="quizProgressFill" style="width:0%"></div></div>
 
-    <div class="form-section">
-      <div class="form-section-label">Account</div>
-      <div class="form-group">
-        <label class="field-label" for="intakeEmail">Email address</label>
-        <input type="email" id="intakeEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/>
-        <div class="field-error" id="err-intakeEmail">Required</div>
-      </div>
-      <div class="form-group">
-        <label class="field-label" for="intakePassword">Password</label>
-        <input type="password" id="intakePassword" placeholder="Min 6 characters" autocomplete="new-password"/>
-        <div class="field-error" id="err-intakePassword">Min 6 characters</div>
-      </div>
-    </div>
+      <!-- Step container -->
+      <div id="quizStepContainer">
 
-    <div class="form-section">
-      <div class="form-section-label">Personal information</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="field-label" for="firstName">First name</label>
-          <input type="text" id="firstName" placeholder="First name"/>
-          <div class="field-error" id="err-firstName">Required</div>
-        </div>
-        <div class="form-group">
-          <label class="field-label" for="lastName">Last name</label>
-          <input type="text" id="lastName" placeholder="Last name"/>
-          <div class="field-error" id="err-lastName">Required</div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="field-label" for="phoneNumber">Phone number</label>
-        <input type="tel" id="phoneNumber" placeholder="(555) 555-5555" inputmode="tel" autocomplete="tel"/>
-        <div class="field-error" id="err-phoneNumber">Required</div>
-      </div>
-      <div class="form-group">
-        <label class="field-label" for="streetAddress">Street address</label>
-        <input type="text" id="streetAddress" placeholder="123 Main St"/>
-        <div class="field-error" id="err-streetAddress">Required</div>
-      </div>
-      <div class="form-group">
-        <label class="field-label" for="aptUnit">Apt / suite / unit <span style="opacity:0.4;font-size:8px;">(optional)</span></label>
-        <input type="text" id="aptUnit" placeholder="Apt 4B"/>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="field-label" for="city">City</label>
-          <input type="text" id="city" placeholder="New York"/>
-          <div class="field-error" id="err-city">Required</div>
-        </div>
-        <div class="form-group">
-          <label class="field-label" for="state">State</label>
-          <input type="text" id="state" placeholder="NY" maxlength="2" style="text-transform:uppercase;"/>
-          <div class="field-error" id="err-state">Required</div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="field-label" for="zipCode">ZIP code</label>
-          <input type="text" id="zipCode" placeholder="10001" maxlength="10"/>
-          <div class="field-error" id="err-zipCode">Required</div>
-        </div>
-        <div class="form-group"></div>
-      </div>
-    </div>
-
-    <!-- Medical fields -->
-    <div class="form-section">
-      <div class="form-section-label">Medical profile</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="field-label" for="dob">Date of birth</label>
-          <input type="date" id="dob"/>
-          <div class="field-error" id="err-dob">Required</div>
-        </div>
-        <div class="form-group">
-          <label class="field-label" for="sex">Biological sex</label>
-          <select id="sex"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option></select>
-          <div class="field-error" id="err-sex">Required</div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="field-label">Height</label>
-          <div style="display:flex;gap:8px;">
-            <input type="number" id="heightFt" placeholder="ft" min="3" max="8" style="flex:1;"/>
-            <input type="number" id="heightIn" placeholder="in" min="0" max="11" style="flex:1;"/>
+        <!-- LANDING / STEP 1: Goals -->
+        <div class="quiz-step active" id="qs-1" data-step="1">
+          <div class="quiz-hero">
+            <div class="quiz-badge">&#9201; 2 minute quiz</div>
+            <div class="quiz-hero-title">Your peptide protocol<br><em style="color:var(--green);">starts here.</em></div>
+            <div class="quiz-hero-sub">Answer a few questions so we can match you with the right clinician and protocol.</div>
           </div>
+          <div class="quiz-question">What matters most to you right now?</div>
+          <div id="quizGoalCards" class="quiz-multiselect">
+            <div class="quiz-card" data-value="recovery" onclick="selectGoalAndAdvance(this)">
+              <div class="quiz-card-title">Recovery</div>
+              <div class="quiz-card-sub">Heal faster. Reduce inflammation. Get back to training.</div>
+            </div>
+            <div class="quiz-card" data-value="performance" onclick="selectGoalAndAdvance(this)">
+              <div class="quiz-card-title">Performance</div>
+              <div class="quiz-card-sub">Build lean muscle. Increase strength and output.</div>
+            </div>
+            <div class="quiz-card" data-value="bodycomp" onclick="selectGoalAndAdvance(this)">
+              <div class="quiz-card-title">Body Composition</div>
+              <div class="quiz-card-sub">Lose fat. Get leaner. Reshape your physique.</div>
+            </div>
+            <div class="quiz-card" data-value="longevity" onclick="selectGoalAndAdvance(this)">
+              <div class="quiz-card-title">Longevity</div>
+              <div class="quiz-card-sub">Optimize long-term health and cellular function.</div>
+            </div>
+            <div class="quiz-card" data-value="sleep" onclick="selectGoalAndAdvance(this)">
+              <div class="quiz-card-title">Sleep</div>
+              <div class="quiz-card-sub">Deep, restorative sleep without dependency.</div>
+            </div>
+          </div>
+          <button class="quiz-btn quiz-btn-primary" id="quizGoalNext" disabled onclick="quizGoTo(2)" style="margin-top:24px;">Next &#8594;</button>
+          <div style="text-align:center;margin-top:32px;font-size:13px;color:rgba(255,255,255,0.3);">Already a member? <a href="#" onclick="event.preventDefault();openAuthModal('signin');" style="color:var(--green);text-decoration:none;">Sign In</a></div>
         </div>
-        <div class="form-group">
-          <label class="field-label" for="weight">Weight (lbs)</label>
-          <input type="number" id="weight" placeholder="lbs" min="50" max="800"/>
-        </div>
-      </div>
-    </div>
 
-    <div class="form-section">
-      <div class="form-section-label">Goals</div>
-      <div class="goal-chips" id="goalChips">
-        <div class="goal-chip" data-goal="recovery">Recovery</div>
-        <div class="goal-chip" data-goal="performance">Performance</div>
-        <div class="goal-chip" data-goal="bodycomp">Body comp</div>
-        <div class="goal-chip" data-goal="longevity">Longevity</div>
-        <div class="goal-chip" data-goal="sleep">Sleep</div>
-      </div>
-      <div class="field-error" id="err-goals" style="margin-top:6px;">Please select at least one goal</div>
-    </div>
+        <!-- Placeholder steps 2-6 (built in later phases) -->
+        <div class="quiz-step" id="qs-2" data-step="2"></div>
+        <div class="quiz-step" id="qs-3" data-step="3"></div>
+        <div class="quiz-step" id="qs-4" data-step="4"></div>
+        <div class="quiz-step" id="qs-5" data-step="5"></div>
+        <div class="quiz-step" id="qs-6" data-step="6"></div>
 
-    <div class="form-section">
-      <div class="form-section-label">Medications &amp; supplements</div>
-      <div class="form-group">
-        <label class="field-label" for="medications">Current medications</label>
-        <textarea id="medications" rows="2" placeholder="List current medications, dosages, and supplements (or 'None')"></textarea>
       </div>
-    </div>
-
-    <div class="form-section">
-      <div class="form-section-label">Medical history</div>
-      <div class="check-grid">
-        <div class="check-item" id="chk-diabetes"><input type="checkbox" id="diabetes" name="medHistory"/><label for="diabetes">Diabetes</label></div>
-        <div class="check-item" id="chk-heart-disease"><input type="checkbox" id="heart_disease" name="medHistory"/><label for="heart_disease">Heart disease</label></div>
-        <div class="check-item" id="chk-high-bp"><input type="checkbox" id="high_bp" name="medHistory"/><label for="high_bp">High blood pressure</label></div>
-        <div class="check-item" id="chk-thyroid"><input type="checkbox" id="thyroid" name="medHistory"/><label for="thyroid">Thyroid disorder</label></div>
-        <div class="check-item" id="chk-liver"><input type="checkbox" id="liver" name="medHistory"/><label for="liver">Liver disease</label></div>
-        <div class="check-item" id="chk-kidney"><input type="checkbox" id="kidney" name="medHistory"/><label for="kidney">Kidney disease</label></div>
-        <div class="check-item" id="chk-cancer-active"><input type="checkbox" id="cancer_active" name="medHistory" class="disq"/><label for="cancer_active">Active cancer</label></div>
-        <div class="check-item" id="chk-pregnancy"><input type="checkbox" id="pregnancy" name="medHistory" class="disq"/><label for="pregnancy">Pregnant / nursing</label></div>
-        <div class="check-item" id="chk-transplant"><input type="checkbox" id="transplant" name="medHistory" class="disq"/><label for="transplant">Organ transplant</label></div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <div class="form-section-label">Peptide history</div>
-      <div class="form-group">
-        <label class="field-label" for="currentPeptides">Have you used peptides before?</label>
-        <select id="currentPeptides"><option value="">Select</option><option value="no">No</option><option value="yes">Yes</option></select>
-      </div>
-      <div class="form-group" id="peptideDetail" style="display:none;">
-        <label class="field-label" for="peptideDetailText">Please describe your peptide use</label>
-        <textarea id="peptideDetailText" rows="2" placeholder="Which peptides, dosages, and duration"></textarea>
-      </div>
-    </div>
-
-    <!-- Consent -->
-    <div class="form-section" style="margin-top:28px;">
-      <div class="form-section-label">Informed consent</div>
-      <div class="consent-block">
-        <div class="consent-section">
-          <div class="consent-section-title">Telehealth Consultation</div>
-          <div class="consent-section-body">I understand that this consultation will be conducted via secure video telehealth. I acknowledge that telehealth has limitations compared to in-person visits and that my clinician will use their professional judgment in providing recommendations.</div>
-        </div>
-        <div class="consent-section">
-          <div class="consent-section-title">Medical Information</div>
-          <div class="consent-section-body">I confirm that all information provided in this intake form is accurate and complete to the best of my knowledge. I understand that withholding or providing inaccurate medical information may affect the safety and efficacy of any recommended protocol.</div>
-        </div>
-        <div class="consent-section">
-          <div class="consent-section-title">Peptide Therapy</div>
-          <div class="consent-section-body">I understand that peptide therapy is an emerging field and that protocols may be adjusted based on my response. I agree to report any side effects promptly and to follow up as recommended by my clinician.</div>
-        </div>
-        <div class="consent-section">
-          <div class="consent-section-title">Privacy &amp; Data Use</div>
-          <div class="consent-section-body">I understand that my personal and medical information will be handled in accordance with HIPAA and used solely for the purpose of clinical evaluation and treatment planning.</div>
-        </div>
-        <div class="consent-section">
-          <div class="consent-section-title">Async Review Process</div>
-          <div class="consent-section-body">I understand that my intake will be reviewed asynchronously by a licensed clinician. I may be contacted with follow-up questions before a treatment decision is made. This process does not guarantee a prescription.</div>
-        </div>
-      </div>
-      <div class="consent-check" id="consentCheckWrap">
-        <input type="checkbox" id="consentCheck"/>
-        <label for="consentCheck">I have read and agree to the informed consent above. I understand that this does not guarantee a prescription and that all treatment decisions are at the clinician's discretion.</label>
-      </div>
-
-      <div class="sig-wrap">
-        <label class="field-label" for="sigInput">Electronic signature (type your full name)</label>
-        <input type="text" id="sigInput" class="sig-input" placeholder="Your full legal name"/>
-        <div class="field-error" id="err-sig">Signature required</div>
-      </div>
-    </div>
-
-    <div id="step1-error" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:0.08em;"></div>
-    <div class="step-actions">
-      <button class="btn-primary" onclick="submitStep1()">Submit intake <span>→</span></button>
-    </div>
-
-    <div class="disclaimer-footer">
-      All information is transmitted securely and handled in accordance with HIPAA.
     </div>
   </div>
 
@@ -1064,7 +973,100 @@ function isAgeValid(dobVal){
 // Hard disqualifier IDs
 var disqualifiers = ['cancer_active','pregnancy','transplant'];
 
+// ══════════════════════════════════
+// QUIZ FLOW
+// ══════════════════════════════════
+var _quizStep = 1;
+var _quizTotalSteps = 6;
+var _quizData = {
+  goals: [],
+  peptide_history: null,
+  peptide_detail: null,
+  dob: null,
+  sex: null,
+  height: null,
+  heightFt: null,
+  heightIn: null,
+  current_weight: null,
+  medical_history: [],
+  medications: null,
+  allergies: null,
+  email: null,
+  password: null,
+  first_name: null,
+  last_name: null,
+  phone_number: null,
+  street_address: null,
+  apt_unit: null,
+  city: null,
+  state: null,
+  zip_code: null,
+  signature: null,
+  consent_agreed: false,
+  submitted_at: null
+};
+
+function quizGoTo(step) {
+  if (step < 1 || step > _quizTotalSteps) return;
+  var oldEl = document.getElementById('qs-' + _quizStep);
+  var newEl = document.getElementById('qs-' + step);
+  if (!oldEl || !newEl) return;
+
+  var goingForward = step > _quizStep;
+
+  // Animate out
+  oldEl.style.opacity = '0';
+  oldEl.style.transform = goingForward ? 'translateX(-20px)' : 'translateX(20px)';
+
+  setTimeout(function() {
+    oldEl.classList.remove('active');
+    oldEl.style.opacity = '';
+    oldEl.style.transform = '';
+
+    // Animate in
+    newEl.style.opacity = '0';
+    newEl.style.transform = goingForward ? 'translateX(20px)' : 'translateX(-20px)';
+    newEl.classList.add('active');
+
+    requestAnimationFrame(function() {
+      newEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      newEl.style.opacity = '1';
+      newEl.style.transform = 'translateX(0)';
+      setTimeout(function() { newEl.style.transition = ''; }, 300);
+    });
+
+    _quizStep = step;
+    updateQuizProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 200);
+}
+
+function updateQuizProgress() {
+  var pct = Math.round((_quizStep / _quizTotalSteps) * 100);
+  var fill = document.getElementById('quizProgressFill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+function quizBack() {
+  if (_quizStep > 1) quizGoTo(_quizStep - 1);
+}
+
+function selectGoalAndAdvance(cardEl) {
+  var value = cardEl.dataset.value;
+  // Toggle selection (allow multiple)
+  cardEl.classList.toggle('selected');
+  // Update quiz data
+  _quizData.goals = [];
+  document.querySelectorAll('#quizGoalCards .quiz-card.selected').forEach(function(c) {
+    _quizData.goals.push(c.dataset.value);
+  });
+  // Enable/disable next button based on selection
+  var nextBtn = document.getElementById('quizGoalNext');
+  if (nextBtn) nextBtn.disabled = _quizData.goals.length === 0;
+}
+
 // ── Step 1: validate ALL fields (consolidated intake) ──
+// Override submitStep1 to be a no-op (quiz handles its own flow)
 function submitStep1(){
   var valid = true;
   var firstErrEl = null;

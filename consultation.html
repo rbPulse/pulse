@@ -572,7 +572,53 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 
           <button class="quiz-btn quiz-btn-primary" id="quizStep3Next" disabled onclick="submitQuizStep3()">Next &#8594;</button>
         </div>
-        <div class="quiz-step" id="qs-4" data-step="4"></div>
+        <div class="quiz-step" id="qs-4" data-step="4">
+          <button class="quiz-back" onclick="quizBack()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
+          <div class="quiz-question">Anything your clinician should know?</div>
+          <div class="quiz-subtitle">Select any conditions that apply. This helps us ensure your safety.</div>
+
+          <div class="quiz-multiselect" id="quizMedCards">
+            <div class="quiz-card" data-value="diabetes" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title">Diabetes (Type 1 or 2)</div>
+            </div>
+            <div class="quiz-card" data-value="cardio" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title">Cardiovascular disease</div>
+            </div>
+            <div class="quiz-card" data-value="autoimmune" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title">Autoimmune condition</div>
+            </div>
+            <div class="quiz-card" data-value="hormone_sensitive" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title">Hormone-sensitive condition</div>
+            </div>
+            <div class="quiz-card" data-value="cancer_history" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title">History of cancer</div>
+            </div>
+            <div class="quiz-card" data-value="cancer_active" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title" style="color:rgba(255,130,130,0.9);">Active cancer</div>
+            </div>
+            <div class="quiz-card" data-value="pregnancy" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title" style="color:rgba(255,130,130,0.9);">Pregnant or breastfeeding</div>
+            </div>
+            <div class="quiz-card" data-value="transplant" onclick="toggleMedCard(this)">
+              <div class="quiz-card-title" style="color:rgba(255,130,130,0.9);">Organ transplant recipient</div>
+            </div>
+          </div>
+          <button class="quiz-none-btn" id="quizMedNone" onclick="toggleMedNone()">None of these apply</button>
+
+          <div class="quiz-divider"></div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Current medications</label>
+            <textarea class="quiz-input" id="quizMeds" rows="2" placeholder="List any medications, supplements, or hormones. Type 'none' if not applicable." style="resize:vertical;min-height:60px;"></textarea>
+          </div>
+
+          <div class="quiz-input-group">
+            <label class="quiz-label">Known allergies</label>
+            <textarea class="quiz-input" id="quizAllergies" rows="2" placeholder="List any known allergies. Type 'none' if not applicable." style="resize:vertical;min-height:60px;"></textarea>
+          </div>
+
+          <button class="quiz-btn quiz-btn-primary" onclick="submitQuizStep4()" style="margin-top:24px;">Next &#8594;</button>
+        </div>
         <div class="quiz-step" id="qs-5" data-step="5"></div>
         <div class="quiz-step" id="qs-6" data-step="6"></div>
 
@@ -1191,6 +1237,46 @@ function submitQuizStep3() {
   quizGoTo(4);
 }
 
+// ── Step 4: Medical history, medications, allergies ──
+function toggleMedCard(cardEl){
+  var value = cardEl.dataset.value;
+  cardEl.classList.toggle('selected');
+
+  // Deselect "None" if selecting a condition
+  if(cardEl.classList.contains('selected')){
+    var noneBtn = document.getElementById('quizMedNone');
+    if(noneBtn) noneBtn.classList.remove('active');
+  }
+
+  // Check for disqualifiers immediately
+  var disqualifiers = ['cancer_active','pregnancy','transplant'];
+  if(disqualifiers.indexOf(value) !== -1 && cardEl.classList.contains('selected')){
+    _quizData.medical_history = [value];
+    showIneligible();
+    return;
+  }
+}
+
+function toggleMedNone(){
+  var noneBtn = document.getElementById('quizMedNone');
+  noneBtn.classList.toggle('active');
+  if(noneBtn.classList.contains('active')){
+    document.querySelectorAll('#quizMedCards .quiz-card').forEach(function(c){ c.classList.remove('selected'); });
+  }
+}
+
+function submitQuizStep4(){
+  _quizData.medical_history = [];
+  document.querySelectorAll('#quizMedCards .quiz-card.selected').forEach(function(c){
+    _quizData.medical_history.push(c.dataset.value);
+  });
+
+  _quizData.medications = (document.getElementById('quizMeds') || {}).value || null;
+  _quizData.allergies = (document.getElementById('quizAllergies') || {}).value || null;
+
+  quizGoTo(5);
+}
+
 // ── Step 1: validate ALL fields (consolidated intake) ──
 // Override submitStep1 to be a no-op (quiz handles its own flow)
 function submitStep1(){
@@ -1374,10 +1460,15 @@ function submitStep1(){
 
 // ── Show ineligible screen ──
 function showIneligible(){
+  document.querySelectorAll('.quiz-step').forEach(function(s){ s.classList.remove('active'); s.style.display = 'none'; });
+  var progressBar = document.querySelector('.quiz-progress');
+  if(progressBar) progressBar.style.display = 'none';
   document.getElementById('step-1').style.display = 'none';
   var scr = document.getElementById('ineligible-screen');
-  scr.style.display = 'block';
-  gsap.fromTo(scr, {opacity:0,y:20},{opacity:1,y:0,duration:0.45,ease:'power2.out'});
+  if(scr){
+    scr.style.display = 'block';
+    if(typeof gsap !== 'undefined') gsap.fromTo(scr, {opacity:0,y:20},{opacity:1,y:0,duration:0.45,ease:'power2.out'});
+  }
   document.querySelectorAll('.progress-step,.progress-line').forEach(function(el){el.style.opacity='0.3';});
 }
 

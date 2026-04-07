@@ -1891,14 +1891,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="thread-view active" id="consumerThreadView">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
               <div>
-                <div style="font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;">Dr. Sarah Chen</div>
-                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.06em;">Sports Medicine · Your Clinician</div>
+                <div id="careTeamName" style="font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;">Your Clinician</div>
+                <div id="careTeamSub" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.06em;">Your Clinician</div>
               </div>
               <div style="margin-left:auto;"><span class="status-pill active" style="font-size:8px;padding:3px 10px;">Active</span></div>
             </div>
             <div class="msg-bubbles" id="consumerMsgBubbles"></div>
             <div class="msg-compose-row">
-              <textarea class="msg-compose-input" id="consumerMsgInput" rows="1" placeholder="Message Dr. Chen..."></textarea>
+              <textarea class="msg-compose-input" id="consumerMsgInput" rows="1" placeholder="Message your clinician..."></textarea>
               <button class="msg-send-btn" onclick="sendConsumerMessage()">Send</button>
             </div>
           </div>
@@ -6537,17 +6537,19 @@ function populatePortal(user, consultation, greeting) {
     }
   }
 
-  // Prefer the _memberDisplayName already resolved from profiles; fall back to consultation first + last name, then email prefix
+  // Build full name from consultation data
   var lastName = (consultation && consultation.data) ? (consultation.data.last_name || '') : '';
   var fullNameFromConsult = (firstName && lastName) ? (firstName + ' ' + lastName).trim() : firstName;
-  var displayName = _memberDisplayName || fullNameFromConsult || user.email.split('@')[0];
-
-  // Update sidebar identity with real name if available (profiles takes priority)
-  if (_memberDisplayName) {
-    setSidebarIdentity(_memberDisplayName, 'Member', false);
-  } else if (firstName) {
-    setSidebarIdentity(firstName, 'Member', false);
+  // Use consultation name if _memberDisplayName is just the email prefix
+  var isEmailPrefix = _memberDisplayName && _memberDisplayName === user.email.split('@')[0];
+  var displayName = (!isEmailPrefix && _memberDisplayName) ? _memberDisplayName : (fullNameFromConsult || _memberDisplayName || user.email.split('@')[0]);
+  // Update the stored display name so sidebar and other areas use the real name
+  if (fullNameFromConsult && (!_memberDisplayName || isEmailPrefix)) {
+    _memberDisplayName = fullNameFromConsult;
   }
+
+  // Update sidebar identity with real name
+  setSidebarIdentity(_memberDisplayName || displayName, 'Member', false);
 
   // Greeting
   document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
@@ -6555,6 +6557,26 @@ function populatePortal(user, consultation, greeting) {
 
   // Pre-populate resources tab content (generic fallback shown when no protocol assigned yet)
   initResourcesTab();
+
+  // Resolve assigned clinician name for care team header
+  var clinicianId = consultation && consultation.assigned_clinician_id;
+  if (clinicianId && !PREVIEW_MODE) {
+    db.from('profiles').select('display_name, first_name, last_name').eq('user_id', clinicianId).limit(1)
+      .then(function(pr) {
+        if (pr.data && pr.data.length > 0) {
+          var cp = pr.data[0];
+          var clName = cp.display_name || ((cp.first_name || '') + ' ' + (cp.last_name || '')).trim() || null;
+          if (clName) {
+            var nameEl = document.getElementById('careTeamName');
+            var subEl = document.getElementById('careTeamSub');
+            var inputEl = document.getElementById('consumerMsgInput');
+            if (nameEl) nameEl.textContent = clName;
+            if (subEl) subEl.textContent = 'Your Clinician';
+            if (inputEl) inputEl.placeholder = 'Message ' + clName + '...';
+          }
+        }
+      }).catch(function() {});
+  }
 
   if (proto) {
     // ── Consultation exists, protocol resolved ──

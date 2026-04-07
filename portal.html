@@ -6789,28 +6789,48 @@ function togglePatientDetail(patient, rowWrapper) {
     if (wasThis) { _openPatientRow = null; return; }
   }
   _openPatientRow = rowWrapper;
-  // Store active patient context for async review actions
   _activePatientUserId = patient.id || null;
   _activePatientConsultId = (patient._consultation && patient._consultation.id) ? patient._consultation.id : null;
   _activePatientReviewStatus = patient.review_status || null;
 
   var panel = document.createElement('div');
   panel.className = 'patient-detail-panel';
+
+  // For real patients with consultation data, use the CRW layout (same as Overview tab)
+  if (!patient._mock && patient._consultation) {
+    var consultId = patient._consultation.id;
+    var userId = patient.id;
+    panel.innerHTML = '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading...</div>';
+    rowWrapper.appendChild(panel);
+    requestAnimationFrame(function() { requestAnimationFrame(function() { panel.classList.add('open'); }); });
+    // Load the CRW card body, then prepend a close button
+    var origLoaded = panel.dataset.loaded;
+    var _checkClose = setInterval(function() {
+      if (panel.dataset.loaded === 'true' && panel.querySelector('.crw')) {
+        clearInterval(_checkClose);
+        var closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '\u00D7';
+        closeBtn.style.cssText = 'position:absolute;top:12px;right:16px;background:none;border:none;color:#71717A;font-size:24px;cursor:pointer;z-index:10;padding:4px 8px;';
+        closeBtn.onclick = function(e) { e.stopPropagation(); panel.remove(); _openPatientRow = null; };
+        var crw = panel.querySelector('.crw');
+        crw.style.position = 'relative';
+        crw.appendChild(closeBtn);
+      }
+    }, 100);
+    setTimeout(function() { clearInterval(_checkClose); }, 5000);
+    _loadAttentionCardBody(panel, consultId, userId);
+    return;
+  }
+
+  // Fallback for mock/preview patients
   panel.innerHTML = buildPatientDetail(patient);
   rowWrapper.appendChild(panel);
-  // Trigger slide-in animation on mobile (14C)
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      panel.classList.add('open');
-    });
-  });
-  // Show/hide review action buttons based on review_status
+  requestAnimationFrame(function() { requestAnimationFrame(function() { panel.classList.add('open'); }); });
   var reviewActionsEl = panel.querySelector('#clReviewActions');
   if (reviewActionsEl) {
     var rs = patient.review_status;
     reviewActionsEl.style.display = (rs === 'pending_review' || rs === 'in_review') ? '' : 'none';
   }
-  // Load async activity data for real patients
   if (!patient._mock && patient.id && typeof _loadPatientActivity === 'function') {
     _loadPatientActivity(patient.id);
   }

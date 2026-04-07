@@ -200,7 +200,7 @@ section{position:relative;padding:120px 48px;}
 .cmp-no{color:rgba(255,90,90,0.8);}
 .cmp-mid{color:rgba(255,200,60,0.85);}
 /* HOW IT WORKS */
-#how{background:var(--cream) !important;padding-top:72px;padding-bottom:80px;position:relative;overflow:visible;}
+#how{background:#e8e5df !important;padding-top:72px;padding-bottom:80px;position:relative;overflow:visible;}
 .how-inner{max-width:1200px;margin:0 auto;position:relative;min-height:760px;}
 .how-header{text-align:left;margin-bottom:40px;}
 /* Image: dominant visual, breaks out of container */
@@ -210,7 +210,11 @@ section{position:relative;padding:120px 48px;}
 .how-left-content{position:relative;z-index:2;max-width:640px;}
 /* 2x2 card grid */
 .how-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-auto-rows:1fr;}
-.how-card{background:rgba(255,255,255,0.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;}
+.how-card{background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.06);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.06);transition:box-shadow 0.3s,transform 0.3s;}
+.how-card:hover{box-shadow:0 16px 48px rgba(0,0,0,0.1);transform:translateY(-2px);}
+/* Progression connector */
+.how-cards{position:relative;}
+.how-cards::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,rgba(58,122,92,0.15) 20%,rgba(58,122,92,0.15) 80%,transparent);z-index:0;pointer-events:none;}
 .how-card-header{display:flex;align-items:center;gap:12px;min-height:60px;}
 .how-card-icon{width:36px;height:36px;border-radius:50%;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .how-card-icon svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:1.8;}
@@ -340,15 +344,19 @@ section{position:relative;padding:120px 48px;}
 
 /* FAQ */
 #faq{background:var(--bg);padding-bottom:12px;}
+#faq .faq-inner{background:rgba(0,0,0,0.02);border-radius:16px;padding:8px;}
 .faq-inner{max-width:760px;margin:0 auto;}
 .faq-header{text-align:center;margin-bottom:56px;}
-details.faq-item{background:var(--card);border-left:3px solid transparent;transition:border-color .25s;margin-bottom:2px;}
+details.faq-item{background:var(--card);border-left:3px solid transparent;transition:border-color .25s,background .25s,box-shadow .25s;margin-bottom:2px;border-radius:8px;}
+details.faq-item[open]{border-left-color:var(--green);background:rgba(255,255,255,0.03);box-shadow:0 4px 16px rgba(0,0,0,0.06);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height 0.4s ease,padding 0.3s ease,opacity 0.3s ease;opacity:0;padding-top:0;padding-bottom:0;}
+details.faq-item[open] .faq-a{max-height:400px;opacity:1;padding-top:0;padding-bottom:22px;}
 details.faq-item[open]{border-left-color:var(--green);}
 summary.faq-q{padding:22px 26px;font-size:14px;font-weight:500;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;}
 summary.faq-q::-webkit-details-marker{display:none;}
 summary.faq-q::after{content:'+';font-family:'DM Mono',monospace;font-size:18px;color:var(--green);flex-shrink:0;transition:transform .2s;}
 details[open] summary.faq-q::after{content:'−';}
-.faq-a{padding:0 26px 22px;font-size:13px;font-weight:300;color:var(--grey);line-height:1.8;}
+.faq-a{padding:0 26px;font-size:13px;font-weight:300;color:var(--grey);line-height:1.8;}
 
 /* FOOTER */
 footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px;display:flex;align-items:center;justify-content:space-between;}
@@ -577,10 +585,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 /* ── Alternating section backgrounds ── */
 /* Dark sections: consistency, pods, reviews */
 /* Light sections: how, testimonial, faq */
-#how{background:var(--cream) !important;}
+#how{background:#e8e5df !important;}
 #testimonial{background:var(--bg);}
 #reviews{background:var(--cream);}
-#faq{background:var(--cream);}
+#faq{background:#ebe8e3;}
 #problem{background:var(--sage-dark);}
 
 /* Light section text overrides */
@@ -630,7 +638,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 #reviews .section-sub{color:var(--grey);}
 
 /* FAQ section — items on cream */
-#faq details.faq-item{background:#fff;border-left-color:transparent;box-shadow:0 1px 6px rgba(0,0,0,0.04);}
+#faq details.faq-item{background:#fff;border-left-color:transparent;box-shadow:0 8px 32px rgba(0,0,0,0.05);}
+#faq details.faq-item[open]{border-left-color:var(--green);background:#fff;box-shadow:0 12px 40px rgba(0,0,0,0.08);}
 #faq details.faq-item[open]{border-left-color:var(--green);}
 #faq summary.faq-q{color:var(--dark-text);}
 #faq .faq-a{color:var(--mid-text);}

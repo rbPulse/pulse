@@ -1392,6 +1392,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .crw-risk-body{font-size:13px;font-weight:500;color:#A1A1AA;line-height:1.5;}
 .crw-risk-list{font-size:13px;font-weight:500;line-height:1.8;margin:8px 0 0;padding:0;list-style:none;}
 .crw-risk-list li::before{content:'\2022  ';opacity:0.5;}
+.crw-section{background:#151518;border:1px solid #2A2A30;border-radius:10px;padding:20px 24px;margin-bottom:20px;}
+.crw-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#8A8A96;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #2A2A30;}
 .crw-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#71717A;margin-bottom:8px;}
 .crw-val{font-size:16px;font-weight:500;color:#FFFFFF;line-height:1.5;}
 .crw-divider{height:1px;background:#1F1F23;margin:32px 0;}
@@ -4419,12 +4421,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons').eq('id', consultId).limit(1);
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
     var d = res.data[0].data || {};
     var consultCreatedAt = res.data[0].created_at || null;
     var riskStatus = res.data[0].risk_status || null;
     var riskReasons = res.data[0].risk_flag_reasons || [];
+    var consultReviewStatus = res.data[0].review_status || null;
 
     // Fallback: run risk evaluation on-the-fly if not stored
     if (!riskStatus && d) {
@@ -4500,15 +4503,33 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')+
         '</div>'+
         riskHtml+
-        '<div class="crw-lbl">Goals</div>'+
-        '<div class="crw-val">'+escapeHtml(goalsText)+'</div>'+
-        '<div class="crw-divider"></div>'+
-        '<div class="crw-lbl">Clinical Summary</div>'+
-        clinHtml+
+        '<div class="crw-section">'+
+          '<div class="crw-section-title">Goals</div>'+
+          '<div class="crw-val">'+escapeHtml(goalsText)+'</div>'+
+        '</div>'+
+        '<div class="crw-section">'+
+          '<div class="crw-section-title">Clinical Summary</div>'+
+          clinHtml+
+        '</div>'+
+        '<div class="crw-section" id="attn-notes-section-'+consultId+'">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2A2A30;">'+
+            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
+            '<span id="attn-notes-saved-'+consultId+'" style="display:none;font-family:\'DM Mono\',monospace;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>'+
+          '</div>'+
+          '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet \u2014 type here to add notes\u2026" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
+        '</div>'+
         '<div class="crw-actions">'+
           '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
           '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
-          '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>'+
+          (function(){
+            if (consultReviewStatus === 'live_consult_requested') {
+              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
+            } else if (consultReviewStatus === 'live_consult_scheduled') {
+              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
+            } else {
+              return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
+            }
+          })()+
         '</div>'+
         '<div id="attn-action-area-'+consultId+'"></div>'+
       '</div>'+
@@ -4542,6 +4563,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     _refreshAttnMsgs(consultId,userId);
     if(_attnMsgPollers[consultId])clearInterval(_attnMsgPollers[consultId]);
     _attnMsgPollers[consultId]=setInterval(function(){_refreshAttnMsgs(consultId,userId);},10000);
+    // Load session notes
+    _loadPatientNotes(userId, 'attn-notes-section-'+consultId, 'attn-notes-'+consultId);
 
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
@@ -4564,6 +4587,59 @@ function _intakeField(label, value) {
     '<div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);">' + label + '</div>' +
     '<div style="font-size:12px;color:#fff;">' + escapeHtml(value) + '</div>' +
   '</div>';
+}
+
+/* ── Session Notes (auto-save) ── */
+
+async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
+  try {
+    var res = await db.from('appointments')
+      .select('id, notes')
+      .eq('consumer_id', patientUserId)
+      .not('notes', 'is', null)
+      .order('scheduled_at', { ascending: false })
+      .limit(1);
+    var contentEl = document.getElementById(contentElId);
+    if (res.data && res.data.length > 0 && res.data[0].notes && res.data[0].notes.trim()) {
+      if (contentEl) {
+        contentEl.value = res.data[0].notes;
+        contentEl.dataset.apptId = res.data[0].id;
+      }
+    }
+  } catch(e) { /* silent */ }
+}
+
+var _notesSaveTimers = {};
+function _debounceNotesSave(key, patientUserId) {
+  if (_notesSaveTimers[key]) clearTimeout(_notesSaveTimers[key]);
+  _notesSaveTimers[key] = setTimeout(function() { _savePatientCardNotes(key, patientUserId); }, 1500);
+}
+
+async function _savePatientCardNotes(key, patientUserId) {
+  var el = document.getElementById('attn-notes-' + key) || document.getElementById('pdp-notes-' + patientUserId);
+  if (!el) return;
+  var val = el.value.trim();
+  var apptId = el.dataset.apptId;
+
+  try {
+    if (apptId) {
+      await db.from('appointments').update({ notes: val }).eq('id', apptId);
+    } else {
+      var res = await db.from('appointments')
+        .select('id')
+        .eq('consumer_id', patientUserId)
+        .order('scheduled_at', { ascending: false })
+        .limit(1);
+      if (res.data && res.data.length > 0) {
+        el.dataset.apptId = res.data[0].id;
+        await db.from('appointments').update({ notes: val }).eq('id', res.data[0].id);
+      } else {
+        return; // Can't save without an appointment
+      }
+    }
+    var savedEl = document.getElementById('attn-notes-saved-' + key);
+    if (savedEl) { savedEl.style.display = 'inline'; setTimeout(function(){ savedEl.style.display = 'none'; }, 2000); }
+  } catch(e) { console.warn('[Pulse] notes save failed:', e); }
 }
 
 /* ── Attention Card Inline Messaging (Phase B2) ── */

@@ -2863,6 +2863,8 @@ var _memberSubStatus = null;
 function _applySubStatus() {
   var banner = document.getElementById('subStatusBanner');
   if (!banner) return;
+  // Never show the banner if member has completed purchase (protocol is active)
+  if (window._memberPurchaseComplete) { banner.style.display = 'none'; return; }
   banner.style.display = (_memberSubStatus && _memberSubStatus !== 'active') ? 'flex' : 'none';
 }
 
@@ -3481,7 +3483,7 @@ function _continuePortalInit(user, role) {
     var since = new Date(user.created_at);
     document.getElementById('memberSince').textContent = 'Member since ' + since.toLocaleDateString('en-US', {month:'long', year:'numeric'});
     // Derive an initial display name from user_metadata or email prefix
-    var consumerName = (user.user_metadata && user.user_metadata.first_name) ? user.user_metadata.first_name : (user.user_metadata && user.user_metadata.name) || user.email;
+    var consumerName = (user.user_metadata && user.user_metadata.first_name) ? user.user_metadata.first_name : (user.user_metadata && user.user_metadata.name) || user.email.split('@')[0];
     _memberDisplayName = consumerName;
     setSidebarIdentity(consumerName, 'Member', false);
 
@@ -6563,6 +6565,7 @@ function populatePortal(user, consultation, greeting) {
     pill.className = 'status-pill active';
 
     // Hide subscription banner — member has purchased
+    window._memberPurchaseComplete = true;
     var subBanner = document.getElementById('subStatusBanner');
     if (subBanner) subBanner.style.display = 'none';
 

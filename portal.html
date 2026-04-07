@@ -1542,7 +1542,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
       <!-- Identity block (populated by JS via setSidebarIdentity) -->
       <div class="sidebar-identity" id="sidebarIdentity">
-        <div class="sidebar-avatar" id="sidebarAvatar">P</div>
         <div class="sidebar-id-info">
           <div class="sidebar-id-name" id="sidebarName">Loading…</div>
           <div class="sidebar-id-role" id="sidebarRolePill">Member</div>
@@ -2114,6 +2113,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 Back
               </button>
               <span class="thread-who" id="clThreadWho"></span>
+              <button class="adp-btn" id="clThreadViewPatient" style="margin-left:auto;border-color:rgba(58,122,92,0.4);color:var(--green);font-size:9px;padding:5px 14px;display:none;" onclick="viewPatientFromThread()">View Patient</button>
             </div>
             <div class="msg-bubbles" id="clMsgBubbles"></div>
             <div class="msg-compose-row">
@@ -3378,10 +3378,8 @@ if (PREVIEW_MODE) {
 
 // ── Sidebar identity block ──
 function setSidebarIdentity(displayName, roleLabel, isClinicianRole) {
-  var avatarEl = document.getElementById('sidebarAvatar');
   var nameEl   = document.getElementById('sidebarName');
   var roleEl   = document.getElementById('sidebarRolePill');
-  if (avatarEl) avatarEl.textContent = (displayName || 'P').charAt(0).toUpperCase();
   if (nameEl)   nameEl.textContent   = displayName || 'Member';
   if (roleEl) {
     roleEl.textContent = roleLabel || 'Member';
@@ -4304,7 +4302,6 @@ async function loadAttentionCards() {
 
       html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
         '<div class="cl-attn-card-header" onclick="toggleAttentionCard(this.parentElement)" style="cursor:pointer;">' +
-          '<div class="cl-attn-card-avatar">' + escapeHtml(initial) + '</div>' +
           '<div class="cl-attn-card-info">' +
             '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
             '<div class="cl-attn-card-meta">' +
@@ -4750,7 +4747,6 @@ async function loadLiveConsultsSection() {
       }
 
       html += '<div class="cl-live-card">' +
-        '<div class="cl-attn-card-avatar">' + escapeHtml(initial) + '</div>' +
         '<div class="cl-live-card-info">' +
           '<div class="cl-live-card-name">' + escapeHtml(name) + '</div>' +
           '<div class="cl-live-card-detail">' + statusText + '</div>' +
@@ -4813,7 +4809,6 @@ async function loadRecentlyEvaluated() {
       }
 
       listHtml += '<div class="cl-recent-row">' +
-        '<div class="cl-attn-card-avatar" style="width:28px;height:28px;font-size:10px;">' + escapeHtml(initial) + '</div>' +
         '<div class="cl-recent-name">' + escapeHtml(name) + (protocol ? ' <span style="color:var(--grey2);font-size:11px;">· ' + escapeHtml(protocol) + '</span>' : '') + '</div>' +
         '<span class="cl-recent-outcome ' + outcomeClass + '">' + outcomeLabel + '</span>' +
         purchaseHtml +
@@ -6777,6 +6772,7 @@ function renderPatientList(filter) {
     wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,textarea,button,input,select,a,details,summary')) return; togglePatientDetail(p, wrapper); };
     el.appendChild(wrapper);
   });
+  _checkPendingPatientOpen();
 }
 
 var _openPatientRow = null;
@@ -6817,6 +6813,38 @@ function togglePatientDetail(patient, rowWrapper) {
   // Load async activity data for real patients
   if (!patient._mock && patient.id && typeof _loadPatientActivity === 'function') {
     _loadPatientActivity(patient.id);
+  }
+}
+
+// Navigate to Patients tab and auto-open a specific patient's detail card
+var _pendingPatientOpen = null;
+function navigateToPatient(patientId) {
+  _pendingPatientOpen = patientId;
+  switchTab('cl-patients');
+}
+
+// Called after renderPatientList finishes — checks if we need to auto-open a patient
+function _checkPendingPatientOpen() {
+  if (!_pendingPatientOpen) return;
+  var targetId = _pendingPatientOpen;
+  _pendingPatientOpen = null;
+  if (!_clPatientRows) return;
+  var patient = null;
+  for (var i = 0; i < _clPatientRows.length; i++) {
+    if (_clPatientRows[i].id === targetId) { patient = _clPatientRows[i]; break; }
+  }
+  if (!patient) return;
+  // Find the wrapper element for this patient in the list
+  var el = document.getElementById('clPatientList');
+  if (!el) return;
+  var rows = el.children;
+  for (var j = 0; j < rows.length; j++) {
+    var nameEl = rows[j].querySelector('.patient-name-text');
+    if (nameEl && nameEl.textContent === patient.name) {
+      togglePatientDetail(patient, rows[j]);
+      rows[j].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      break;
+    }
   }
 }
 
@@ -7604,6 +7632,7 @@ function _openClThreadMock(threadId) {
   if (threadView) threadView.classList.add('active');
   if (titleEl) titleEl.textContent = thread.patient;
   if (whoEl) whoEl.textContent = thread.patient;
+  _showViewPatientBtn(thread.patientId || null);
 
   renderClBubbles(thread);
 }
@@ -7624,6 +7653,8 @@ function _openClThreadReal(threadId) {
   var label = cached ? cached.patientLabel : threadId.slice(0, 8).toUpperCase();
   if (titleEl) titleEl.textContent = label;
   if (whoEl) whoEl.textContent = label;
+  // threadId is the patient's user_id in real mode
+  _showViewPatientBtn(threadId);
 
   // Load messages for this thread
   db.from('messages')
@@ -7690,6 +7721,20 @@ function _renderClBubblesFromDB(rows) {
   if (atBottom) el.scrollTop = el.scrollHeight;
 }
 
+// Track which patient is in the current open thread
+var _activeThreadPatientId = null;
+
+function viewPatientFromThread() {
+  if (!_activeThreadPatientId) return;
+  navigateToPatient(_activeThreadPatientId);
+}
+
+function _showViewPatientBtn(patientId) {
+  _activeThreadPatientId = patientId || null;
+  var btn = document.getElementById('clThreadViewPatient');
+  if (btn) btn.style.display = patientId ? '' : 'none';
+}
+
 function openClThreadForPatient(patientId) {
   document.querySelectorAll('.patient-detail-panel').forEach(function(p){ p.remove(); });
   switchTab('cl-messages');
@@ -7722,6 +7767,7 @@ function renderClBubbles(thread) {
 function closeClThread() {
   if (_clMsgPollTimer) { clearInterval(_clMsgPollTimer); _clMsgPollTimer = null; }
   _activeClThreadId = null;
+  _showViewPatientBtn(null);
   if (PREVIEW_MODE) {
     _renderClThreadListMock();
   } else {

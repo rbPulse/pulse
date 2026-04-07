@@ -6751,22 +6751,44 @@ function renderPatientList(filter) {
   }
   el.innerHTML = '';
   patients.forEach(function(p) {
-    var initials = p.name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-    var protoText = p.protocol || (p.goal ? ('Goal: ' + p.goal) : 'No protocol assigned');
-    var memberSinceStr = p.memberSince ? new Date(p.memberSince).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—';
+    var d = p._rawData || {};
+    var ageStr = d.dob ? _calcAge(d.dob) + ' yrs' : '';
+    var sexStr = d.sex || '';
+    // Submitted relative time
+    var subAt = d.submitted_at || (p._consultation && p._consultation.created_at) || p.memberSince || '';
+    var subRel = '';
+    if (subAt) {
+      var diffH = Math.floor((Date.now() - new Date(subAt).getTime()) / 3600000);
+      subRel = 'Submitted ' + (diffH < 1 ? 'Just now' : diffH < 24 ? diffH + 'h ago' : Math.floor(diffH / 24) + 'd ago');
+    }
+    var metaParts = [ageStr, sexStr, subRel].filter(Boolean);
+    // Status label: prescribed+activated=green, prescribed+not activated=yellow, not prescribed=red
+    var statusLabel = '';
+    if (p.review_status === 'prescribed' && p.purchase_status === 'completed') {
+      statusLabel = '<span style="color:#22C55E;font-weight:600;">Active</span>';
+    } else if (p.review_status === 'prescribed') {
+      statusLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
+    } else if (p.review_status === 'not_prescribed') {
+      statusLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
+    } else if (p.review_status === 'withdrawn') {
+      statusLabel = '<span style="color:#71717A;font-weight:600;">Withdrawn</span>';
+    } else if (p.review_status === 'in_review') {
+      statusLabel = '<span style="color:#3B82F6;font-weight:600;">In Review</span>';
+    } else {
+      statusLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
+    }
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
-      '<div class="patient-row">' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
-            '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
+      '<div class="cl-attn-card" style="margin-bottom:10px;">' +
+        '<div class="cl-attn-card-header">' +
+          '<div class="cl-attn-card-info">' +
+            '<div class="cl-attn-card-name">' + escapeHtml(p.name) + '</div>' +
+            '<div class="cl-attn-card-meta">' +
+              metaParts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('') +
+              statusLabel +
+            '</div>' +
           '</div>' +
-          '<div class="patient-proto-text">' + escapeHtml(protoText) + '</div>' +
-        '</div>' +
-        '<div class="pat-row-right">' +
-          '<div class="pat-next-appt">' + escapeHtml(memberSinceStr) + '<br>' +
-            '<span style="color:rgba(255,255,255,0.18);">streak: ' + escapeHtml(String(p.streak)) + 'd</span>' +
-          '</div>' +
+          '<div class="cl-attn-card-chevron">\u203A</div>' +
         '</div>' +
       '</div>';
     wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,textarea,button,input,select,a,details,summary')) return; togglePatientDetail(p, wrapper); };

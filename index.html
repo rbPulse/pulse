@@ -1225,8 +1225,6 @@ document.addEventListener('DOMContentLoaded',function(){
 </section>
 <script>
 (function(){
-  var CARD_W = window.innerWidth <= 768 ? 276 : 336; // card width + gap
-
   document.querySelectorAll('.reviews-marquee-wrap').forEach(function(wrap, idx){
     var marquee = wrap.querySelector('.reviews-marquee');
     if(!marquee) return;
@@ -1235,80 +1233,21 @@ document.addEventListener('DOMContentLoaded',function(){
     var pos = (speed > 0) ? -(marquee.scrollWidth / 2) : 0;
     var halfWidth = marquee.scrollWidth / 2;
     var paused = false;
-    var dragging = false;
-    var snapping = false;
-    var startX = 0;
-    var startTime = 0;
-    var dragStartPos = 0;
-    var snapTarget = 0;
-    var resumeTimer = null;
-
-    function wrapPos() {
-      if (pos <= -halfWidth) pos += halfWidth;
-      if (pos >= 0) pos -= halfWidth;
-    }
 
     function tick() {
-      if (snapping) {
-        // Instant snap, then hold
-        pos = snapTarget;
-        snapping = false;
-        wrapPos();
-        resumeTimer = setTimeout(function(){ paused = false; }, 3000);
-        wrapPos();
-      } else if (!paused && !dragging) {
+      if (!paused) {
         pos += speed;
-        wrapPos();
+        if (pos <= -halfWidth) pos += halfWidth;
+        if (pos >= 0) pos -= halfWidth;
       }
       marquee.style.transform = 'translateX(' + pos + 'px)';
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
 
-    // Desktop: hover pause
-    wrap.addEventListener('mouseenter', function(){ paused = true; snapping = false; });
+    // Desktop only: hover pause
+    wrap.addEventListener('mouseenter', function(){ paused = true; });
     wrap.addEventListener('mouseleave', function(){ paused = false; });
-
-    // Touch: swipe with snap
-    wrap.addEventListener('touchstart', function(e){
-      dragging = true;
-      paused = true;
-      snapping = false;
-      startX = e.touches[0].clientX;
-      startTime = Date.now();
-      dragStartPos = pos;
-      if (resumeTimer) clearTimeout(resumeTimer);
-    }, {passive: true});
-
-    wrap.addEventListener('touchmove', function(e){
-      if (!dragging) return;
-      var dx = e.touches[0].clientX - startX;
-      pos = dragStartPos + dx;
-    }, {passive: true});
-
-    wrap.addEventListener('touchend', function(e){
-      if (!dragging) return;
-      dragging = false;
-      var dx = pos - dragStartPos;
-      var dt = Date.now() - startTime;
-      var velocity = dx / (dt || 1); // px per ms
-
-      // Determine snap: swipe = 1 card, fast swipe = 2 cards max
-      var cardShift = 0;
-      if (Math.abs(velocity) > 0.5) {
-        cardShift = velocity > 0 ? 2 : -2;
-      } else if (Math.abs(velocity) > 0.15 || Math.abs(dx) > CARD_W * 0.25) {
-        cardShift = dx > 0 ? 1 : -1;
-      }
-
-      // Snap to nearest card boundary + shift
-      var nearest = Math.round(dragStartPos / CARD_W) * CARD_W;
-      snapTarget = nearest + (cardShift * CARD_W);
-
-      // Animate to snap target
-      snapping = true;
-      paused = true;
-    });
   });
 })();
 </script>

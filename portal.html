@@ -1363,7 +1363,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-avatar{width:32px;height:32px;border-radius:50%;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.25);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;color:var(--green);flex-shrink:0;text-transform:uppercase;}
 .cl-attn-card-info{flex:1;min-width:0;}
 .cl-attn-card-name{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#FFFFFF;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
-.cl-attn-card-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;display:flex;align-items:center;gap:8px;}
+.cl-attn-card-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;display:flex;align-items:center;gap:0;flex-wrap:wrap;}
+.cl-attn-card-meta > span{white-space:nowrap;}
+.cl-attn-card-meta > span:not(:last-child)::after{content:'\00B7';margin:0 10px;color:#71717A;font-weight:700;}
 .cl-attn-card-msg{font-size:11px;color:var(--grey2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
 .cl-attn-card-status{flex-shrink:0;}
 .cl-attn-card-chevron{color:var(--grey2);font-size:14px;transition:transform .2s;flex-shrink:0;}
@@ -4292,7 +4294,7 @@ async function loadAttentionCards() {
       var cd = consultData;
       var headerAge = '';
       if (cd.dob) { headerAge = _calcAge(cd.dob) + ' yrs'; }
-      var headerParts = [headerAge, cd.sex || ''].filter(Boolean).join(' \u00B7 ');
+      var headerMetaSpans = [headerAge, cd.sex || ''].filter(Boolean).map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('');
 
       // Risk label for header
       var riskLabel = '';
@@ -4306,7 +4308,7 @@ async function loadAttentionCards() {
           '<div class="cl-attn-card-info">' +
             '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
             '<div class="cl-attn-card-meta">' +
-              (headerParts ? '<span>' + escapeHtml(headerParts) + '</span>' : '') +
+              headerMetaSpans +
               '<span>Submitted ' + timeStr + '</span>' +
               (isOverdue ? '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>' : '') +
               (riskLabel ? riskLabel : '') +

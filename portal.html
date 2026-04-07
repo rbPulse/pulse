@@ -7617,20 +7617,35 @@ function _renderClThreadListFromCache() {
       else if (diffMin < 1440) timeStr = Math.floor(diffMin / 60) + 'h ago';
       else timeStr = Math.floor(diffMin / 1440) + 'd ago';
     }
-    // Look up patient data for meta line
+    // Look up patient data for meta line + status
     var metaParts = [];
+    var statusLabel = '';
     if (_clPatientRows) {
       for (var pi = 0; pi < _clPatientRows.length; pi++) {
         if (_clPatientRows[pi].id === t.threadId) {
-          var pd = _clPatientRows[pi]._rawData || {};
+          var pp = _clPatientRows[pi];
+          var pd = pp._rawData || {};
           if (pd.dob) metaParts.push(_calcAge(pd.dob) + ' yrs');
           if (pd.sex) metaParts.push(pd.sex);
+          if (pp.review_status === 'prescribed' && pp.purchase_status === 'completed') {
+            statusLabel = '<span style="color:#22C55E;font-weight:600;">Active</span>';
+          } else if (pp.review_status === 'prescribed') {
+            statusLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
+          } else if (pp.review_status === 'not_prescribed') {
+            statusLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
+          } else if (pp.review_status === 'withdrawn') {
+            statusLabel = '<span style="color:#71717A;font-weight:600;">Withdrawn</span>';
+          } else if (pp.review_status === 'in_review') {
+            statusLabel = '<span style="color:#3B82F6;font-weight:600;">In Review</span>';
+          } else {
+            statusLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
+          }
           break;
         }
       }
     }
     if (timeStr) metaParts.push(timeStr);
-    var metaHtml = metaParts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('');
+    var metaHtml = metaParts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('') + statusLabel;
     var previewHtml = t.preview ? '<div style="font-size:12px;color:#71717A;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.preview) + '</div>' : '';
     return '<div class="cl-attn-card" style="margin-bottom:10px;cursor:pointer;" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
       '<div class="cl-attn-card-header">' +

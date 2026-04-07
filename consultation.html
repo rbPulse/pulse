@@ -334,6 +334,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .review-msg-send:hover{opacity:0.85;}
 .review-msg-send:disabled{opacity:0.35;cursor:not-allowed;}
 
+/* ── Live Consult CTA Card ── */
+.live-consult-cta{background:linear-gradient(135deg,rgba(100,150,255,0.10) 0%,rgba(100,150,255,0.04) 100%);border:1px solid rgba(100,150,255,0.25);border-radius:14px;padding:24px 28px;margin-top:4px;margin-bottom:24px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .25s,box-shadow .25s;}
+.live-consult-cta:hover{border-color:rgba(100,150,255,0.45);box-shadow:0 0 24px rgba(100,150,255,0.08);}
+.live-consult-cta::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(100,150,255,0.5),transparent);}
+.live-consult-cta-inner{display:flex;align-items:center;gap:16px;}
+.live-consult-cta-icon{width:42px;height:42px;border-radius:50%;background:rgba(100,150,255,0.12);border:1px solid rgba(100,150,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+.live-consult-cta-body{flex:1;min-width:0;}
+.live-consult-cta-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:4px;}
+.live-consult-cta-sub{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;}
+.live-consult-cta-btn{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(100,150,255,0.15);border:1px solid rgba(100,150,255,0.3);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,210,255,0.95);font-weight:500;transition:background .2s,border-color .2s;}
+.live-consult-cta:hover .live-consult-cta-btn{background:rgba(100,150,255,0.22);border-color:rgba(100,150,255,0.5);}
+
 @media(max-width:400px){
   .progress-dot{width:18px;height:18px;font-size:7px;}
   .progress-line{margin:0 1px;margin-bottom:10px;}
@@ -791,6 +803,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       </div>
     </div>
 
+    <!-- Live Consult CTA (shown when clinician requests a live consult) -->
+    <div id="liveConsultCta" class="live-consult-cta" style="display:none;" onclick="revealReviewBooking()">
+      <div class="live-consult-cta-inner">
+        <div class="live-consult-cta-icon">&#x1F4F9;</div>
+        <div class="live-consult-cta-body">
+          <div class="live-consult-cta-title">Live consultation requested</div>
+          <div class="live-consult-cta-sub" id="liveConsultCtaReason">Your clinician would like to schedule a live video consultation to discuss your intake.</div>
+          <div class="live-consult-cta-btn">Book consultation <span>&#8594;</span></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Booking section for live consult requests -->
     <div id="reviewBooking" style="display:none;margin-top:24px;">
       <!-- Clinician message card -->
@@ -921,7 +945,17 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <button class="btn-primary" onclick="_joinDailySession()">Retry</button>
     </div>
 
-    <!-- Post-call: shown after leaving -->
+    <!-- Disconnected state: shown when member leaves/disconnects (can rejoin) -->
+    <div id="sessionDisconnected" style="display:none;text-align:center;padding:48px 24px;">
+      <div style="width:48px;height:48px;border:2px solid rgba(255,180,60,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <span style="font-size:20px;">&#x1F50C;</span>
+      </div>
+      <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Disconnected</div>
+      <div style="font-size:13px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto 20px;">Your session is still active. You can rejoin at any time until your clinician ends the consultation.</div>
+      <button class="btn-primary" onclick="_rejoinDailySession()">Rejoin Session</button>
+    </div>
+
+    <!-- Post-call: shown after clinician ends the session -->
     <div id="sessionEnded" style="display:none;text-align:center;padding:48px 24px;">
       <div style="width:48px;height:48px;border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Your consultation is complete</div>
@@ -990,34 +1024,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
       <!-- Protocol cards — populated by JS -->
       <div id="step6ProtocolCards"></div>
 
-      <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
-      <div class="timeline">
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Consultation complete</div>
-          <div class="tl-body">Your live session is complete.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Clinician evaluation</div>
-          <div class="tl-body">Your clinician has reviewed your intake and finalized your protocol.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-        <div class="timeline-item">
-          <div class="tl-dot active"><svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2"/></svg></div>
-          <div class="tl-label">Complete</div>
-          <div class="tl-title">Protocol assigned</div>
-          <div class="tl-body">Your personalized protocol has been prescribed.</div>
-          <div class="tl-tag">Done</div>
-        </div>
-      </div>
-
       <div style="margin-top:32px;text-align:center;">
-        <a href="checkout.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;">Start Your Protocol →</a>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--grey2);margin-top:12px;letter-spacing:0.06em;">Proceed to checkout to begin your personalized protocol.</div>
+        <button class="btn-primary" style="padding:16px 48px;font-size:13px;" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
       </div>
     </div>
 
@@ -1709,6 +1717,7 @@ var calOffset = 0; // weeks offset from today
 var selectedDate = null;
 var selectedSlot = null;
 var TOTAL_WEEKS = 4;
+var MAX_MONTHS_AHEAD = 2; // for review booking calendar
 
 // ── Real clinician availability (loaded from DB) ──
 // _eligibleClinicians: array of { id, cl_state, display_name }
@@ -2040,8 +2049,17 @@ function buildCalendar(){
   document.getElementById('calNextBtn').style.opacity = calOffset >= TOTAL_WEEKS - 1 ? '0.3' : '1';
 }
 
-function calPrev(){ if(calOffset > 0){ calOffset--; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
-function calNext(){ if(calOffset < TOTAL_WEEKS-1){ calOffset++; if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar(); } }
+function calPrev(){
+  if(calOffset > 0){ calOffset--;
+    if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar();
+  }
+}
+function calNext(){
+  var max = _reviewBookingClinicianId ? MAX_MONTHS_AHEAD : TOTAL_WEEKS-1;
+  if(calOffset < max){ calOffset++;
+    if(_reviewBookingClinicianId) buildReviewCalendar(); else buildCalendar();
+  }
+}
 
 function buildSlots(day){
   var dow = day.getDay();
@@ -2093,14 +2111,32 @@ var _reviewBookingClinicianId = null;
 
 function initReviewBooking(clinicianId, liveConsultMessage) {
   _reviewBookingClinicianId = clinicianId;
-  // Show the booking section
-  document.getElementById('reviewBooking').style.display = 'block';
-  // Set the clinician's message
+  // Show the CTA card (not the full booking section yet)
+  var ctaEl = document.getElementById('liveConsultCta');
+  if (ctaEl) ctaEl.style.display = 'block';
+  // Set the clinician's message on both CTA and booking card
   if (liveConsultMessage) {
+    var ctaReason = document.getElementById('liveConsultCtaReason');
+    if (ctaReason) ctaReason.textContent = liveConsultMessage;
     document.getElementById('liveConsultReason').textContent = liveConsultMessage;
   }
-  // Load availability for ONLY the assigned clinician
+  // Preload availability in the background so calendar is ready when revealed
   _loadSingleClinicianAvailability(clinicianId);
+}
+
+function revealReviewBooking() {
+  // Hide the CTA card
+  var ctaEl = document.getElementById('liveConsultCta');
+  if (ctaEl) ctaEl.style.display = 'none';
+  // Show the booking section
+  var bookingEl = document.getElementById('reviewBooking');
+  if (bookingEl) {
+    bookingEl.style.display = 'block';
+    // Smooth scroll to booking section
+    setTimeout(function() {
+      bookingEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
 }
 
 async function _loadSingleClinicianAvailability(clinicianId) {
@@ -2151,53 +2187,63 @@ function buildReviewCalendar() {
 
   var today = new Date();
   today.setHours(0,0,0,0);
-  var startOfWeek = new Date(today);
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + calOffset * 7);
 
-  // Month label
+  // Month-based navigation: calOffset = number of months forward from current month
+  var viewMonth = new Date(today.getFullYear(), today.getMonth() + calOffset, 1);
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var midWeek = new Date(startOfWeek);
-  midWeek.setDate(midWeek.getDate() + 3);
-  label.textContent = months[midWeek.getMonth()] + ' ' + midWeek.getFullYear();
+  label.textContent = months[viewMonth.getMonth()] + ' ' + viewMonth.getFullYear();
 
   // Clear existing day cells (keep headers)
   var headers = grid.querySelectorAll('.cal-day-label');
   grid.innerHTML = '';
   headers.forEach(function(h) { grid.appendChild(h); });
 
-  // Build 4 weeks
-  for (var w = 0; w < 4; w++) {
-    for (var d = 0; d < 7; d++) {
-      var day = new Date(startOfWeek);
-      day.setDate(day.getDate() + w * 7 + d);
-      var cell = document.createElement('div');
-      cell.className = 'cal-cell';
-      cell.textContent = day.getDate();
+  // Leading empty cells for days before the 1st
+  var firstDow = viewMonth.getDay();
+  for (var e = 0; e < firstDow; e++) {
+    var empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
 
-      var isPast = day < today;
-      var dow = day.getDay();
-      var hasAvail = !!_reviewBookingAvail[dow];
+  // Days in this month
+  var daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+  for (var d = 1; d <= daysInMonth; d++) {
+    var day = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d);
+    var cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
 
-      if (isPast || !hasAvail) {
-        cell.classList.add('disabled');
-      } else {
-        cell.dataset.date = day.toISOString();
-        cell.addEventListener('click', function() {
-          var prev = grid.querySelector('.cal-cell.selected');
-          if (prev) prev.classList.remove('selected');
-          this.classList.add('selected');
-          selectedDate = new Date(this.dataset.date);
-          selectedSlot = null;
-          buildReviewSlots(selectedDate);
-        });
-      }
+    var isPast = day < today;
+    var dow = day.getDay();
+    var hasAvail = !!_reviewBookingAvail[dow];
 
-      if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
-        cell.classList.add('selected');
-      }
-
-      grid.appendChild(cell);
+    if (day.toDateString() === today.toDateString()) {
+      cell.classList.add('today');
     }
+
+    if (isPast) {
+      cell.classList.add('past');
+    } else if (!hasAvail) {
+      // No availability on this day — leave as default dim style
+    } else {
+      cell.classList.add('has-slots');
+      cell.dataset.date = day.toISOString();
+      cell.addEventListener('click', function() {
+        var prev = grid.querySelector('.cal-day.selected');
+        if (prev) prev.classList.remove('selected');
+        this.classList.add('selected');
+        selectedDate = new Date(this.dataset.date);
+        selectedSlot = null;
+        buildReviewSlots(selectedDate);
+      });
+    }
+
+    if (selectedDate && day.toDateString() === selectedDate.toDateString()) {
+      cell.classList.add('selected');
+    }
+
+    grid.appendChild(cell);
   }
 }
 
@@ -2290,7 +2336,7 @@ async function submitReviewBooking() {
       scheduled_at: selectedDate.toISOString(),
       duration_minutes: 30,
       status: 'pending'
-    });
+    }).select('id');
 
     if (aInsert.error) {
       if (errEl) { errEl.textContent = 'Booking failed: ' + aInsert.error.message; errEl.style.display = 'block'; }
@@ -2537,6 +2583,18 @@ async function _joinDailySession() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) throw new Error('Not authenticated');
 
+    // If appointment ID is missing, try to load it from DB
+    if (!_memberApptId) {
+      var apptLookup = await client.from('appointments')
+        .select('id')
+        .eq('consumer_id', session.user.id)
+        .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
+        .order('scheduled_at', { ascending: false })
+        .limit(1);
+      if (apptLookup.data && apptLookup.data.length > 0) {
+        _memberApptId = apptLookup.data[0].id;
+      }
+    }
     if (!_memberApptId) throw new Error('No appointment found');
 
     // Call the Edge Function — pass anon key as Authorization for gateway,
@@ -2578,19 +2636,13 @@ async function _joinDailySession() {
     // Handle call events
     _dailyCallFrame.on('left-meeting', function() {
       _cleanupDaily();
-      // Mark appointment as completed
-      if (_memberApptId && client) {
-        client.from('appointments').update({ status: 'completed' }).eq('id', _memberApptId)
-          .then(function(){}).catch(function(){});
-      }
-      // Update consultation review_status to in_review
-      if (_consultationId && client) {
-        client.from('consultations').update({ review_status: 'in_review' }).eq('id', _consultationId)
-          .then(function(){}).catch(function(){});
-      }
-      // Show post-call state
+      // Don't mark appointment completed — only the clinician can end the session.
+      // Show disconnected state with rejoin option.
       if (container) container.style.display = 'none';
-      if (endedEl) endedEl.style.display = 'block';
+      var disconnectedEl = document.getElementById('sessionDisconnected');
+      if (disconnectedEl) disconnectedEl.style.display = 'block';
+      // Start polling to detect if clinician ended the session
+      _startSessionEndPoll();
     });
 
     _dailyCallFrame.on('error', function(e) {
@@ -2628,6 +2680,37 @@ function _cleanupDaily() {
   if (container) container.innerHTML = '';
 }
 
+// Rejoin after disconnect — re-enters the Daily room
+function _rejoinDailySession() {
+  var disconnectedEl = document.getElementById('sessionDisconnected');
+  if (disconnectedEl) disconnectedEl.style.display = 'none';
+  _stopSessionEndPoll();
+  _joinDailySession();
+}
+
+// Poll appointment status to detect when clinician ends the session
+var _sessionEndPollTimer = null;
+function _startSessionEndPoll() {
+  _stopSessionEndPoll();
+  _sessionEndPollTimer = setInterval(async function() {
+    if (!_memberApptId || !window._sbClient) return;
+    try {
+      var r = await window._sbClient.from('appointments').select('status').eq('id', _memberApptId).limit(1);
+      if (r.data && r.data.length > 0 && r.data[0].status === 'completed') {
+        _stopSessionEndPoll();
+        // Clinician ended the session — show completed state
+        var disconnectedEl = document.getElementById('sessionDisconnected');
+        if (disconnectedEl) disconnectedEl.style.display = 'none';
+        var endedEl = document.getElementById('sessionEnded');
+        if (endedEl) endedEl.style.display = 'block';
+      }
+    } catch(e) {}
+  }, 5000); // check every 5 seconds
+}
+function _stopSessionEndPoll() {
+  if (_sessionEndPollTimer) { clearInterval(_sessionEndPollTimer); _sessionEndPollTimer = null; }
+}
+
 function _returnToReviewAfterSession() {
   goToStep(2);
   document.getElementById('reviewStatusText').textContent = 'Finalizing review';
@@ -2641,35 +2724,76 @@ function _returnToReviewAfterSession() {
 
 // Protocol data keyed by first selected goal
 var PROTOCOL_MAP = {
+  sleep: {
+    name:'Sleep Protocol',
+    category:'Sleep',
+    compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg']
+  },
+  repair: {
+    name:'Repair Protocol',
+    category:'Recovery',
+    compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg']
+  },
+  growth: {
+    name:'Growth Protocol',
+    category:'Growth',
+    compounds:['CJC-1295 2mg','Ipamorelin 300mcg','Sermorelin 500mcg']
+  },
+  endurance: {
+    name:'Endurance Protocol',
+    category:'Performance',
+    compounds:['AOD-9604 300mcg','CJC-1295 1mg','Thymosin Beta-4 750mcg']
+  },
+  shred: {
+    name:'Shred Protocol',
+    category:'Body Comp',
+    compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','Tesamorelin 2mg']
+  },
+  vitality: {
+    name:'Vitality Protocol',
+    category:'Vitality',
+    compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg']
+  },
+  vitality_stack: {
+    name:'Vitality Stack',
+    category:'Vitality',
+    compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg','BPC-157 250mcg']
+  },
+  recovery_stack: {
+    name:'Recovery Stack',
+    category:'Recovery',
+    compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg','Ipamorelin 300mcg']
+  },
+  performance_stack: {
+    name:'Performance Stack',
+    category:'Performance',
+    compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg','Sermorelin 500mcg']
+  },
+  optimize_stack: {
+    name:'Optimize Stack',
+    category:'Optimization',
+    compounds:['CJC-1295 2mg','Ipamorelin 300mcg','BPC-157 250mcg','Epithalon 10mg']
+  },
+  // Legacy keys
   recovery: {
     name:'Recovery + Repair',
     category:'Recovery',
-    compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg'],
-    note:'Designed for tissue repair and anti-inflammatory support. BPC-157 administered subcutaneously daily, TB-500 bi-weekly. First cycle is 8 weeks.'
+    compounds:['BPC-157 250mcg','TB-500 2.5mg','KPV 500mcg']
   },
   performance: {
     name:'Performance Stack',
     category:'Performance',
-    compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg'],
-    note:'GH-axis optimization for lean mass and recovery. Administered before bed on an empty stomach. Cycle: 12 weeks on, 4 weeks off.'
+    compounds:['CJC-1295 2mg','Ipamorelin 300mcg','AOD-9604 300mcg']
   },
   bodycomp: {
     name:'Body Composition Protocol',
     category:'Body Comp',
-    compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','CJC-1295 1mg'],
-    note:'Progressive dose titration over 4 weeks. Administered subcutaneously once weekly. Includes appetite and metabolic support.'
+    compounds:['Semaglutide 0.5mg','AOD-9604 300mcg','CJC-1295 1mg']
   },
   longevity: {
     name:'Longevity Protocol',
     category:'Longevity',
-    compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg'],
-    note:'Telomere and immune support cycle. 10-day on, 20-day off cadence for Epithalon. Full cycle duration: 60 days.'
-  },
-  sleep: {
-    name:'Sleep + Recovery Protocol',
-    category:'Sleep',
-    compounds:['DSIP 100mcg','Ipamorelin 300mcg','Semax 300mcg'],
-    note:'Peptides administered 30 minutes before bed. Semax optional for stress support. Minimum cycle length: 4 weeks.'
+    compounds:['Epithalon 10mg','Thymosin Alpha-1 1.5mg','Selank 300mcg']
   }
 };
 
@@ -2825,7 +2949,7 @@ async function _populateStep6() {
     }
 
     // Check if clinician has assigned a protocol
-    var cRes = await client.from('consultations').select('data, protocol_assigned, prescription_given, no_prescription_reason, assigned_clinician_id')
+    var cRes = await client.from('consultations').select('*')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
     var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
@@ -2872,7 +2996,22 @@ async function _populateStep6() {
       var cardsEl = document.getElementById('step6ProtocolCards');
       if (cardsEl) {
         var cd = consultation.data || {};
-        var prescribedProtocols = cd.prescribed_protocols || {};
+        var prescribedProtocols = cd.prescribed_protocols || consultation.prescribed_protocols || {};
+        // Also check inside evaluations array for the latest eval
+        if ((!prescribedProtocols || !Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; })) && cd.evaluations && cd.evaluations.length > 0) {
+          var latestEval = cd.evaluations[cd.evaluations.length - 1];
+          if (latestEval.prescribed_protocols) prescribedProtocols = latestEval.prescribed_protocols;
+        }
+
+        // Fallback: if prescribed_protocols is empty, derive from protocol_assigned string
+        var hasAnyProto = Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; });
+        if (!hasAnyProto && assignedProto) {
+          assignedProto.split(',').forEach(function(p) {
+            var k = p.trim().toLowerCase().replace(/\s+/g, '_');
+            if (k) prescribedProtocols[k] = true;
+          });
+        }
+
         var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
         var cardsHtml = '';
 
@@ -2889,13 +3028,15 @@ async function _populateStep6() {
             }).join('');
           }
 
-          // Dosing details
-          var doseAmt = cd.dose_amount || '—';
-          var doseUnit = cd.dose_unit || '';
-          var freq = cd.frequency || '—';
-          var timing = cd.timing || '—';
-          var dur = cd.duration || '—';
+          // Dosing details — check evaluations array, then consultation columns, then JSONB top-level
+          var _le = (cd.evaluations && cd.evaluations.length > 0) ? cd.evaluations[cd.evaluations.length - 1] : {};
+          var doseAmt = _le.dose_amount || consultation.dose_amount || cd.dose_amount || '—';
+          var doseUnit = _le.dose_unit || consultation.dose_unit || cd.dose_unit || '';
+          var freq = _le.frequency || consultation.frequency || cd.frequency || '—';
+          var timing = _le.timing || consultation.timing || cd.timing || '—';
+          var dur = _le.duration || consultation.duration || cd.duration || '—';
 
+          var checkId = 'proto-check-' + key;
           cardsHtml += '<div class="summary-protocol-box" style="margin-bottom:14px;">' +
             '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">' +
               '<div style="flex:1;min-width:200px;">' +
@@ -2903,7 +3044,10 @@ async function _populateStep6() {
                 '<div class="spb-name">' + escapeHtml(pName) + '</div>' +
                 (compHtml ? '<div class="spb-compounds">' + compHtml + '</div>' : '') +
               '</div>' +
-              '<a href="checkout.html" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;background:var(--green);color:#000;border:none;padding:12px 28px;border-radius:999px;cursor:pointer;font-weight:600;text-decoration:none;white-space:nowrap;box-shadow:0 0 16px rgba(58,122,92,0.3);transition:opacity .2s;display:inline-block;margin-top:8px;">Activate My Protocol</a>' +
+              '<label for="' + checkId + '" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:8px;user-select:none;">' +
+                '<input type="checkbox" id="' + checkId + '" name="selectedProtocols" value="' + escapeHtml(key) + '" checked style="width:20px;height:20px;accent-color:var(--green);cursor:pointer;">' +
+                '<span style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);font-weight:500;">Include</span>' +
+              '</label>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
               '<div style="padding:8px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Dose</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +
@@ -2928,6 +3072,50 @@ async function _populateStep6() {
     }
   } catch(e) {
     console.warn('[Pulse] step6 populate failed:', e);
+  }
+}
+
+async function _activateAndGoToPortal() {
+  try {
+    var client = window._sbClient;
+    if (!client) { window.location.href = 'portal.html'; return; }
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) { window.location.href = 'portal.html'; return; }
+
+    // Collect only the checked/selected protocols
+    var selectedProtocols = {};
+    var selectedNames = [];
+    document.querySelectorAll('input[name="selectedProtocols"]:checked').forEach(function(cb) {
+      selectedProtocols[cb.value] = true;
+      var name = cb.value.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+      selectedNames.push(name);
+    });
+
+    // Update consultation with purchase status and activated protocols
+    var consultId = _consultationId;
+    if (!consultId) {
+      var cLookup = await client.from('consultations').select('id').eq('user_id', session.user.id)
+        .order('created_at', { ascending: false }).limit(1);
+      if (cLookup.data && cLookup.data.length > 0) consultId = cLookup.data[0].id;
+    }
+
+    if (consultId) {
+      var cRes = await client.from('consultations').select('data').eq('id', consultId).limit(1);
+      var existingData = (cRes.data && cRes.data.length > 0) ? (cRes.data[0].data || {}) : {};
+      existingData.purchase_status = 'completed';
+      existingData.activated_protocols = selectedProtocols;
+      existingData.activated_protocol_names = selectedNames.join(', ');
+      await client.from('consultations').update({
+        data: existingData,
+        purchase_status: 'completed',
+        protocol_assigned: selectedNames.join(', ')
+      }).eq('id', consultId);
+    }
+
+    window.location.href = 'portal.html';
+  } catch(e) {
+    console.warn('[Pulse] activate failed:', e);
+    window.location.href = 'portal.html';
   }
 }
 
@@ -3379,7 +3567,8 @@ window._sbClient = createClient(
     if (hasConsultation) _consultationId = consultation.id;
 
     // If completed purchase, redirect to portal
-    if (hasConsultation && consultation.purchase_status === 'completed') {
+    var _purchaseComplete = (hasConsultation && (consultation.purchase_status === 'completed' || (consultation.data && consultation.data.purchase_status === 'completed')));
+    if (_purchaseComplete) {
       window.location.href = 'portal.html';
       return;
     }
@@ -3421,8 +3610,14 @@ window._sbClient = createClient(
       }
 
       if (reviewStatus === 'live_consult_requested') {
-        // Phase 8: show step 2 with booking calendar for assigned clinician
+        // Phase 8: show step 2 with CTA card prompting member to book live consult
         await _populateReviewHub();
+        // Update status card to reflect live consult request
+        document.getElementById('reviewStatusText').textContent = 'Live consultation requested';
+        var iconSpanLC = document.querySelector('#reviewStatusCard span');
+        if (iconSpanLC) iconSpanLC.textContent = '\uD83D\uDCF9';
+        var stepSubLC = document.querySelector('#step-2 .step-sub');
+        if (stepSubLC) stepSubLC.textContent = 'Your clinician has requested a live video consultation. Book a time that works for you.';
         showStep(2);
         var _memberName2 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName2 || session.user.email.split('@')[0]);
@@ -3444,10 +3639,10 @@ window._sbClient = createClient(
 
         // Load existing appointment and show countdown
         var apptRes = await window._sbClient.from('appointments')
-          .select('id, scheduled_at, duration_minutes')
+          .select('id, scheduled_at, duration_minutes, status')
           .eq('consumer_id', session.user.id)
           .eq('clinician_id', consultation.assigned_clinician_id)
-          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
+          .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
           .order('scheduled_at', { ascending: false })
           .limit(1);
 
@@ -3469,20 +3664,21 @@ window._sbClient = createClient(
           var infoCard3 = document.createElement('div');
           infoCard3.id = 'reviewApptInfo';
           infoCard3.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+          var isActiveSession = appt.status === 'confirmed';
           infoCard3.innerHTML =
-            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
+            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">' + (isActiveSession ? 'Session In Progress' : 'Upcoming Appointment') + '</div>' +
             '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr3 + '</div>' +
             '<div style="font-size:13px;color:var(--grey2);">' + timeStr3 + ' \u00b7 ' + (appt.duration_minutes || 30) + ' min consultation</div>' +
-            '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
-              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
-              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +
+            '<div id="reviewJoinWrap" style="margin-top:16px;' + (isActiveSession ? '' : 'display:none;') + '">' +
+              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)"' + (isActiveSession ? '' : ' disabled style="opacity:0.4;"') + '>' + (isActiveSession ? 'Rejoin Session' : 'Join Session') + '</button>' +
+              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;">' + (isActiveSession ? 'Your session is still active — rejoin now' : '') + '</div>' +
             '</div>';
 
           var msgSection3 = document.getElementById('reviewMessaging');
           if (msgSection3) msgSection3.parentNode.insertBefore(infoCard3, msgSection3);
 
-          // Start countdown
-          _startReviewCountdown(apptDt);
+          // Start countdown for pending appointments; confirmed ones show rejoin immediately
+          if (!isActiveSession) _startReviewCountdown(apptDt);
         }
         return;
       }

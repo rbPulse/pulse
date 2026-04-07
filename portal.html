@@ -1431,6 +1431,26 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 @media(max-width:1200px){.crw{grid-template-columns:1fr 340px;}.crw-right{min-width:340px;}}
 @media(max-width:900px){.crw{grid-template-columns:1fr;}.crw-right{border-left:none;border-top:1px solid #1F1F23;max-height:500px;}.crw-det-grid{grid-template-columns:1fr 1fr;}}
 .cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+/* ── Consult Reminder Popup ── */
+.consult-reminder-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:crFadeIn .25s ease;}
+@keyframes crFadeIn{from{opacity:0;}to{opacity:1;}}
+.consult-reminder-card{background:#111113;border:1px solid #1F1F23;border-radius:16px;max-width:440px;width:90%;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6);}
+.consult-reminder-top{padding:28px 28px 0;text-align:center;}
+.consult-reminder-pulse{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);margin-bottom:16px;animation:crPulse 2s infinite;}
+@keyframes crPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.3);}50%{box-shadow:0 0 0 12px rgba(34,197,94,0);}}
+.consult-reminder-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:#FFFFFF;margin-bottom:4px;}
+.consult-reminder-countdown{font-family:'DM Mono',monospace;font-size:13px;color:#22C55E;letter-spacing:0.04em;}
+.consult-reminder-info{padding:20px 28px;border-top:1px solid #1F1F23;margin-top:20px;}
+.consult-reminder-name{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#FFFFFF;margin-bottom:4px;}
+.consult-reminder-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;display:flex;align-items:center;gap:0;flex-wrap:wrap;}
+.consult-reminder-meta > span{white-space:nowrap;}
+.consult-reminder-meta > span:not(:last-child)::after{content:'\00B7';margin:0 10px;color:#71717A;font-weight:700;}
+.consult-reminder-detail{font-family:'Inter',sans-serif;font-size:13px;color:#71717A;margin-top:8px;}
+.consult-reminder-actions{display:flex;gap:12px;padding:20px 28px;border-top:1px solid #1F1F23;}
+.consult-reminder-join{flex:1;background:#22C55E;border:none;border-radius:8px;height:44px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#FFFFFF;cursor:pointer;transition:opacity .15s;}
+.consult-reminder-join:hover{opacity:0.85;}
+.consult-reminder-dismiss{flex:0 0 auto;background:transparent;border:1px solid #1F1F23;border-radius:8px;height:44px;padding:0 20px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;cursor:pointer;transition:border-color .15s,color .15s;}
+.consult-reminder-dismiss:hover{border-color:#71717A;color:#FFFFFF;}
 .cl-live-section{margin-top:28px;}
 .cl-live-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
 .cl-live-card-info{flex:1;min-width:0;}
@@ -3784,6 +3804,7 @@ function initClinicianPortal(user, role, greeting) {
   // Activate first clinician tab
   switchTab('cl-overview');
   _startClinicianUnreadPoll();
+  _startConsultReminderPoll();
   loadNotifications();
   _notifPollTimer = setInterval(loadNotifications, 60000);
 
@@ -9247,6 +9268,149 @@ function _markNoShow(apptId) {
     });
   }
 })();
+
+// ── CONSULT REMINDER POPUP ──
+var _consultReminderTimer = null;
+var _consultReminderDismissed = {}; // apptId -> true
+var _consultReminderShowing = null; // apptId currently showing
+
+function _startConsultReminderPoll() {
+  if (_consultReminderTimer) clearInterval(_consultReminderTimer);
+  _checkConsultReminder();
+  _consultReminderTimer = setInterval(_checkConsultReminder, 30000);
+}
+
+function _stopConsultReminderPoll() {
+  if (_consultReminderTimer) { clearInterval(_consultReminderTimer); _consultReminderTimer = null; }
+}
+
+function _checkConsultReminder() {
+  if (!currentUserId || PREVIEW_MODE) return;
+  var now = new Date();
+  var oneMinFromNow = new Date(now.getTime() + 60000);
+  // Fetch appointments starting within the next 1 minute that haven't started
+  db.from('appointments')
+    .select('id, consumer_id, scheduled_at, duration_minutes, status')
+    .eq('clinician_id', currentUserId)
+    .gte('scheduled_at', now.toISOString())
+    .lte('scheduled_at', oneMinFromNow.toISOString())
+    .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
+    .then(function(res) {
+      if (res.error || !res.data || !res.data.length) return;
+      var appt = res.data[0];
+      if (_consultReminderDismissed[appt.id] || _consultReminderShowing === appt.id) return;
+      _showConsultReminder(appt);
+    })
+    .catch(function() {});
+}
+
+function _showConsultReminder(appt) {
+  _consultReminderShowing = appt.id;
+  // Look up patient info
+  var patientName = 'Patient';
+  var metaSpans = '';
+  var statusLabel = '';
+  if (_clPatientRows) {
+    for (var i = 0; i < _clPatientRows.length; i++) {
+      if (_clPatientRows[i].id === appt.consumer_id) {
+        var p = _clPatientRows[i];
+        var d = p._rawData || {};
+        patientName = p.name || patientName;
+        var parts = [];
+        if (d.dob) parts.push(_calcAge(d.dob) + ' yrs');
+        if (d.sex) parts.push(d.sex);
+        if (d.state) parts.push(d.state);
+        metaSpans = parts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('');
+        // Status
+        if (p.review_status === 'prescribed' && p.purchase_status === 'completed') {
+          statusLabel = '<span style="color:#22C55E;font-weight:600;">Active</span>';
+        } else if (p.review_status === 'prescribed') {
+          statusLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
+        } else if (p.review_status === 'not_prescribed') {
+          statusLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
+        } else {
+          statusLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
+        }
+        break;
+      }
+    }
+  }
+  // If patient not in cache, fetch name from profiles
+  if (patientName === 'Patient' && appt.consumer_id) {
+    db.from('profiles').select('display_name, first_name, last_name').eq('user_id', appt.consumer_id).limit(1)
+      .then(function(pr) {
+        if (pr.data && pr.data.length) {
+          var pf = pr.data[0];
+          patientName = pf.display_name || ((pf.first_name || '') + ' ' + (pf.last_name || '')).trim() || patientName;
+          var nameEl = document.getElementById('cr-patient-name');
+          if (nameEl) nameEl.textContent = patientName;
+        }
+      }).catch(function() {});
+  }
+
+  var dur = (appt.duration_minutes || 30) + ' min';
+  var schedTime = new Date(appt.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  var overlay = document.createElement('div');
+  overlay.className = 'consult-reminder-overlay';
+  overlay.id = 'consultReminderOverlay';
+  overlay.innerHTML =
+    '<div class="consult-reminder-card">' +
+      '<div class="consult-reminder-top">' +
+        '<div class="consult-reminder-pulse"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>' +
+        '<div class="consult-reminder-title">Live Consult Starting</div>' +
+        '<div class="consult-reminder-countdown" id="crCountdown"></div>' +
+      '</div>' +
+      '<div class="consult-reminder-info">' +
+        '<div class="consult-reminder-name" id="cr-patient-name">' + escapeHtml(patientName) + '</div>' +
+        '<div class="consult-reminder-meta">' + metaSpans + statusLabel + '</div>' +
+        '<div class="consult-reminder-detail">' + escapeHtml(schedTime) + ' \u00B7 ' + escapeHtml(dur) + '</div>' +
+      '</div>' +
+      '<div class="consult-reminder-actions">' +
+        '<button class="consult-reminder-join" onclick="_joinFromReminder(\'' + escapeAttr(appt.id) + '\')">Join Session</button>' +
+        '<button class="consult-reminder-dismiss" onclick="_dismissConsultReminder(\'' + escapeAttr(appt.id) + '\')">Dismiss</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  // Countdown timer
+  var _crCountdownTimer = setInterval(function() {
+    var el = document.getElementById('crCountdown');
+    if (!el) { clearInterval(_crCountdownTimer); return; }
+    var diff = Math.max(0, Math.floor((new Date(appt.scheduled_at).getTime() - Date.now()) / 1000));
+    if (diff <= 0) {
+      el.textContent = 'Starting now';
+      el.style.fontWeight = '700';
+    } else {
+      el.textContent = 'in ' + diff + 's';
+    }
+  }, 1000);
+  // Run immediately
+  var el = document.getElementById('crCountdown');
+  if (el) {
+    var diff = Math.max(0, Math.floor((new Date(appt.scheduled_at).getTime() - Date.now()) / 1000));
+    el.textContent = diff <= 0 ? 'Starting now' : 'in ' + diff + 's';
+  }
+}
+
+function _joinFromReminder(apptId) {
+  _removeConsultReminderOverlay();
+  _consultReminderDismissed[apptId] = true;
+  _joinClinicianSession(apptId);
+}
+
+function _dismissConsultReminder(apptId) {
+  _consultReminderDismissed[apptId] = true;
+  _removeConsultReminderOverlay();
+}
+
+function _removeConsultReminderOverlay() {
+  _consultReminderShowing = null;
+  var overlay = document.getElementById('consultReminderOverlay');
+  if (overlay) overlay.remove();
+}
 
 // ── DAILY VIDEO SESSION (Clinician) ──
 var _clDailyFrame = null;

@@ -1871,7 +1871,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="p-card">
           <div class="thread-view active" id="consumerThreadView">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
-              <div class="patient-initials" style="width:36px;height:36px;font-size:11px;flex-shrink:0;">SC</div>
               <div>
                 <div style="font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;">Dr. Sarah Chen</div>
                 <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--grey2);letter-spacing:0.06em;">Sports Medicine · Your Clinician</div>
@@ -5751,7 +5750,6 @@ function renderApptList(elId, appts, role) {
       : '';
     wrapper.innerHTML =
       '<div class="appt-row" style="cursor:pointer;">' +
-        '<div class="patient-initials" style="flex-shrink:0;">' + escapeHtml(initials) + '</div>' +
         '<div class="appt-info">' +
           '<div class="appt-patient">' + escapeHtml(displayName) + '</div>' +
           '<div class="appt-type-text">' + escapeHtml(timeLabel) + '</div>' +
@@ -6272,7 +6270,6 @@ function _renderConsumerApptList(appts) {
     wrapper.innerHTML =
       '<div class="consumer-appt-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:0;">' +
         '<div style="display:flex;align-items:center;width:100%;gap:12px;">' +
-          '<div class="patient-initials" style="flex-shrink:0;background:rgba(100,150,255,0.1);border-color:rgba(100,150,255,0.2);color:rgba(150,185,255,0.75);">SC</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
             '<div class="consumer-appt-meta">' + escapeHtml(a.date) + ' · ' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
@@ -6765,7 +6762,6 @@ function renderPatientList(filter) {
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
       '<div class="patient-row">' +
-        '<div class="patient-initials">' + escapeHtml(initials) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
             '<div class="patient-name-text">' + escapeHtml(p.name) + '</div>' +
@@ -7541,7 +7537,6 @@ function _renderClThreadListFromCache() {
     var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
     var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
-      '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
       '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
       '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
       '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
@@ -7568,7 +7563,6 @@ function _renderClThreadListMock() {
     var unreadClass = t.unread > 0 ? ' has-unread' : '';
     var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
     return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.id) + '\')">' +
-      '<div class="msg-avatar-circle">' + escapeHtml(t.initials) + '</div>' +
       '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patient) + '</div>' +
       '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
       '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(t.time) + '</span>' + pip + '</div>' +

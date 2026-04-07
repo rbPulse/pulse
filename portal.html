@@ -1943,7 +1943,7 @@ body.member-mode .loading-icon svg{stroke:var(--m-green-dark);}
             <div class="m-hero-row"><span class="m-hero-row-label">Dose today</span><span class="m-hero-row-val" id="mStatusDose">Not logged</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mStatusNext">—</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">Current phase</span><span class="m-hero-row-val" id="mStatusPhase">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Streak</span><span class="m-hero-row-val green" id="mStatusStreak">—</span></div>
+            <!-- Streak shown in Adherence card only -->
           </div>
           <!-- RIGHT: Coming up -->
           <div class="m-hero-col">
@@ -2000,24 +2000,22 @@ body.member-mode .loading-icon svg{stroke:var(--m-green-dark);}
             <div class="m-hero-row"><span class="m-hero-row-label">Doses logged</span><span class="m-hero-row-val" id="mAdhLogged">—</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">On-time rate</span><span class="m-hero-row-val green" id="mAdhRate">—</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">Current streak</span><span class="m-hero-row-val green" id="mAdhStreak">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Protocol progress</span><span class="m-hero-row-val" id="mAdhProgress">—</span></div>
           </div>
 
-          <!-- Upcoming -->
+          <!-- Upcoming — only non-duplicate future events -->
           <div class="m-card">
             <div class="m-card-label">Upcoming</div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mUpNextDose">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mUpNextRefill">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next appointment</span><span class="m-hero-row-val" id="mUpNextAppt">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next appointment</span><span class="m-hero-row-val" id="mUpNextAppt">None scheduled</span></div>
           </div>
 
-          <!-- Support -->
+          <!-- Support — routes to Resources first, Messages as escalation -->
           <div class="m-card">
             <div class="m-card-label">Support</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('messages')">Missed a dose?</button>
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Protocol questions</button>
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('messages')">Side effects or concerns</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Missed a dose?</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">How do I store my peptides?</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">View all resources</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;border-color:rgba(70,185,122,0.18);color:var(--m-green-dark,#224D3A);" onclick="switchTab('messages')">Contact clinician</button>
             </div>
           </div>
         </div>
@@ -6754,6 +6752,125 @@ function generateTimeSlots(dateStr) {
   return slots;
 }
 
+// ── Parse frequency string into doses per day ──
+function _parseFreqPerDay(freqStr) {
+  if (!freqStr) return null;
+  var s = freqStr.toLowerCase();
+  // "2x daily", "1x daily", "once daily", "twice daily"
+  if (s.indexOf('daily') !== -1 || s.indexOf('day') !== -1) {
+    var m = s.match(/(\d+)/);
+    if (m) return parseInt(m[1]);
+    if (s.indexOf('twice') !== -1) return 2;
+    if (s.indexOf('once') !== -1) return 1;
+    return 1; // default daily = 1
+  }
+  // "1x weekly", "once weekly", "weekly"
+  if (s.indexOf('weekly') !== -1 || s.indexOf('week') !== -1) {
+    var m2 = s.match(/(\d+)/);
+    var perWeek = m2 ? parseInt(m2[1]) : 1;
+    return perWeek / 7; // fractional per day
+  }
+  // Fallback: try to extract a number, assume daily
+  var m3 = s.match(/(\d+)/);
+  return m3 ? parseInt(m3[1]) : 1;
+}
+
+// ── Refresh overview with real dose log data ──
+// Called from populatePortal AND from loadDoseLogs (after logging)
+function _refreshOverviewData() {
+  var op = window._overviewProto;
+  if (!op) return;
+  var el;
+
+  // ── Derived values from real data ──
+  var todayStr = localDateStr(new Date());
+  var loggedToday = loggedDates.indexOf(todayStr) !== -1;
+  var dosesLogged = loggedDates.length;
+  var streak = calcStreak(loggedDates);
+  var freqPerDay = op.freqPerDay;
+  var durWeeks = op.durationWeeks;
+  var totalPrescribed = op.totalPrescribedDoses;
+  // Total dispensed = total prescribed (supply = full protocol dispensed upfront)
+  var totalDispensed = totalPrescribed;
+  var dosesRemaining = totalDispensed != null ? Math.max(0, totalDispensed - dosesLogged) : null;
+  var dosesPerDay = freqPerDay || 1;
+  var coverageDays = dosesRemaining != null ? Math.round(dosesRemaining / dosesPerDay) : null;
+  var startDate = op.startDate ? new Date(op.startDate) : null;
+  var currentWeek = (startDate && durWeeks) ? Math.min(durWeeks, Math.max(1, Math.floor((Date.now() - startDate.getTime()) / (7*86400000)) + 1)) : null;
+  var phaseStr = (currentWeek && durWeeks) ? 'Week ' + currentWeek + ' of ' + durWeeks : null;
+  // Refill date = start + duration
+  var refillDate = (startDate && durWeeks) ? new Date(startDate.getTime() + durWeeks * 7 * 86400000) : null;
+  var refillStr = refillDate ? refillDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : null;
+  // Next dose
+  var nextDoseStr;
+  if (loggedToday) {
+    if (dosesPerDay >= 1) {
+      var tom = new Date(); tom.setDate(tom.getDate() + 1);
+      nextDoseStr = tom.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    } else {
+      // Weekly: next dose in ceil(1/dosesPerDay) days
+      var daysUntil = Math.ceil(1 / dosesPerDay);
+      var nd = new Date(); nd.setDate(nd.getDate() + daysUntil);
+      nextDoseStr = nd.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    }
+  } else {
+    nextDoseStr = 'Today';
+  }
+  // Scheduled doses so far (doses that should have been logged by now)
+  var daysSinceStart = startDate ? Math.floor((Date.now() - startDate.getTime()) / 86400000) : 0;
+  var scheduledDoses = Math.floor(daysSinceStart * dosesPerDay);
+  if (totalPrescribed != null) scheduledDoses = Math.min(scheduledDoses, totalPrescribed);
+  var onTimeRate = scheduledDoses > 0 ? Math.round((dosesLogged / scheduledDoses) * 100) : null;
+  var startStr = startDate ? startDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : null;
+  var freqPlain = op.freqRaw || (dosesPerDay === 1 ? '1 dose daily' : dosesPerDay + ' doses daily');
+
+  // ── HERO LEFT ──
+  el = document.getElementById('mHeroTitle'); if (el) el.textContent = op.displayName + ' Protocol';
+  el = document.getElementById('mHeroSub');
+  if (el) el.textContent = op.doseDesc ? op.doseDesc + ' due today' : 'Dose due today';
+  el = document.getElementById('mHeroDose');
+  if (el) el.textContent = freqPlain + (phaseStr ? ' \u00B7 ' + phaseStr : '');
+  el = document.getElementById('mHeroCta');
+  if (el) {
+    if (loggedToday) { el.textContent = 'Dose logged'; el.classList.add('logged'); el.onclick = null; }
+    else { el.textContent = "Log today's dose"; el.classList.remove('logged'); el.onclick = function(){ switchTab('tracker'); }; }
+  }
+
+  // ── HERO MIDDLE (status) ──
+  el = document.getElementById('mStatusDose');
+  if (el) { el.textContent = loggedToday ? 'Logged' : 'Not logged'; el.className = 'm-hero-row-val' + (loggedToday ? ' green' : ''); }
+  el = document.getElementById('mStatusNext'); if (el) el.textContent = nextDoseStr;
+  el = document.getElementById('mStatusPhase'); if (el) el.textContent = phaseStr || 'No data';
+
+  // ── HERO RIGHT (coming up) ──
+  el = document.getElementById('mUpRefill'); if (el) el.textContent = refillStr || 'No data';
+
+  // ── ROW 2: Protocol card ──
+  el = document.getElementById('mProtoName'); if (el) el.textContent = op.displayName;
+  el = document.getElementById('mProtoDuration'); if (el) el.textContent = durWeeks ? durWeeks + ' weeks' : 'Not specified';
+  el = document.getElementById('mProtoFreq'); if (el) el.textContent = freqPlain;
+  el = document.getElementById('mProtoStarted'); if (el) el.textContent = startStr || 'No data';
+  el = document.getElementById('mProtoPhase'); if (el) el.textContent = phaseStr || 'No data';
+
+  // ── Supply card ──
+  el = document.getElementById('mSupplyCount'); if (el) el.textContent = dosesRemaining != null ? dosesRemaining : 'No data';
+  el = document.getElementById('mSupplyBar');
+  if (el) el.style.width = (dosesRemaining != null && totalDispensed) ? Math.round((dosesRemaining / totalDispensed) * 100) + '%' : '0%';
+  el = document.getElementById('mSupplyCoverage');
+  if (el) el.textContent = coverageDays != null ? coverageDays + ' days (' + Math.round(coverageDays / 7) + ' weeks)' : 'No data';
+  el = document.getElementById('mSupplyRefill'); if (el) el.textContent = refillStr || 'No data';
+
+  // ── Adherence card ──
+  el = document.getElementById('mAdhLogged');
+  if (el) el.textContent = scheduledDoses > 0 ? dosesLogged + ' of ' + scheduledDoses + ' scheduled' : dosesLogged + ' logged';
+  el = document.getElementById('mAdhRate');
+  if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : 'No data';
+  el = document.getElementById('mAdhStreak'); if (el) el.textContent = streak + ' consecutive';
+
+  // ── Upcoming card — ONLY non-duplicate events ──
+  el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
+}
+
 function populatePortal(user, consultation, greeting) {
   var firstName = '';
   var proto = null;
@@ -6918,44 +7035,28 @@ function populatePortal(user, consultation, greeting) {
     var qs = document.getElementById('quickStats');
     if (qs) qs.style.display = 'none';
 
-    // ── Populate overview command center ──
+    // ── Store protocol config for overview refresh ──
     var _pdn = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
-    var _doseStr = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit + ' due today' : (proto.compounds && proto.compounds[0] ? proto.compounds[0] + ' due today' : 'Due today');
-    var _freqPlain = window._protoFreq || '1 dose daily';
-    var _durPlain = window._protoDuration || proto.cycle || '12 weeks';
-    var streakNum = parseInt(document.getElementById('statStreak').textContent) || 0;
-    var durWeeks = parseInt(_durPlain) || 12;
-    var dosesPerWeek = (_freqPlain.match(/(\d+)/)||[0,7])[1] * 1;
-    var totalDoses = durWeeks * dosesPerWeek;
-    var remainingDoses = Math.max(0, totalDoses - streakNum);
-    var coverageDays = dosesPerWeek > 0 ? Math.round(remainingDoses / dosesPerWeek * 7) : 0;
-    var startDate = consultation.created_at ? new Date(consultation.created_at) : new Date();
-    var startStr = startDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-    var currentWeek = Math.min(durWeeks, Math.max(1, Math.floor((Date.now() - startDate.getTime()) / (7*86400000)) + 1));
-    var phaseStr = 'Week ' + currentWeek + ' of ' + durWeeks;
-    var cadenceStr = _freqPlain + ' \u00B7 ' + phaseStr;
-    var refillDate = new Date(startDate.getTime() + durWeeks * 7 * 86400000);
-    var refillStr = refillDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-    var nextDoseDate = loggedToday ? (function(){ var d = new Date(); d.setDate(d.getDate()+1); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); })() : 'Today';
-
-    // HERO LEFT
-    var el;
-    el = document.getElementById('mHeroTitle'); if (el) el.textContent = _pdn + ' Protocol';
-    el = document.getElementById('mHeroSub'); if (el) el.textContent = _doseStr;
-    el = document.getElementById('mHeroDose'); if (el) el.textContent = cadenceStr;
-    el = document.getElementById('mHeroCta');
-    if (el) {
-      if (loggedToday) { el.textContent = 'Dose logged'; el.classList.add('logged'); el.onclick = null; }
-      else { el.textContent = "Log today's dose"; }
+    window._overviewProto = {
+      displayName: _pdn,
+      doseDesc: (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : (proto.compounds && proto.compounds[0] ? proto.compounds[0] : null),
+      freqRaw: window._protoFreq || null,
+      durationRaw: window._protoDuration || proto.cycle || null,
+      startDate: consultation.created_at || null,
+      freqPerDay: _parseFreqPerDay(window._protoFreq),
+      durationWeeks: parseInt(window._protoDuration || proto.cycle) || null,
+    };
+    // Compute total prescribed doses
+    var _op = window._overviewProto;
+    if (_op.freqPerDay && _op.durationWeeks) {
+      _op.totalPrescribedDoses = _op.durationWeeks * 7 * _op.freqPerDay;
+    } else {
+      _op.totalPrescribedDoses = null; // unknown
     }
-    // HERO MIDDLE (status)
-    el = document.getElementById('mStatusDose'); if (el) { el.textContent = loggedToday ? 'Logged' : 'Not logged'; if (loggedToday) el.classList.add('green'); }
-    el = document.getElementById('mStatusNext'); if (el) el.textContent = nextDoseDate;
-    el = document.getElementById('mStatusPhase'); if (el) el.textContent = phaseStr;
-    el = document.getElementById('mStatusStreak'); if (el) el.textContent = streakNum + ' on-time logs';
-    // HERO RIGHT (coming up)
-    el = document.getElementById('mUpRefill'); if (el) el.textContent = refillStr;
-    // Upcoming appointment
+    // Refresh overview with current dose log data
+    _refreshOverviewData();
+
+    // Load upcoming appointment
     if (!PREVIEW_MODE && currentUserId) {
       db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
         .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
@@ -6970,27 +7071,6 @@ function populatePortal(user, consultation, greeting) {
           }
         }).catch(function(){});
     }
-
-    // ROW 2: Protocol card
-    el = document.getElementById('mProtoName'); if (el) el.textContent = _pdn;
-    el = document.getElementById('mProtoDuration'); if (el) el.textContent = durWeeks + ' weeks';
-    el = document.getElementById('mProtoFreq'); if (el) el.textContent = _freqPlain;
-    el = document.getElementById('mProtoStarted'); if (el) el.textContent = startStr;
-    el = document.getElementById('mProtoPhase'); if (el) el.textContent = phaseStr;
-    // Supply card
-    el = document.getElementById('mSupplyCount'); if (el) el.textContent = remainingDoses;
-    el = document.getElementById('mSupplyBar'); if (el) el.style.width = Math.round((remainingDoses / Math.max(1,totalDoses)) * 100) + '%';
-    el = document.getElementById('mSupplyCoverage'); if (el) el.textContent = coverageDays + ' days (' + Math.round(coverageDays/7) + ' weeks)';
-    el = document.getElementById('mSupplyRefill'); if (el) el.textContent = refillStr;
-    // ROW 3: Adherence
-    var scheduledDoses = currentWeek * dosesPerWeek;
-    el = document.getElementById('mAdhLogged'); if (el) el.textContent = streakNum + ' of ' + scheduledDoses + ' scheduled';
-    el = document.getElementById('mAdhRate'); if (el) el.textContent = scheduledDoses > 0 ? Math.round((streakNum / scheduledDoses) * 100) + '%' : '—';
-    el = document.getElementById('mAdhStreak'); if (el) el.textContent = streakNum + ' doses';
-    el = document.getElementById('mAdhProgress'); if (el) el.textContent = phaseStr;
-    // Upcoming card
-    el = document.getElementById('mUpNextDose'); if (el) el.textContent = nextDoseDate;
-    el = document.getElementById('mUpNextRefill'); if (el) el.textContent = refillStr;
 
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
@@ -9181,6 +9261,7 @@ async function loadDoseLogs() {
     var streak = calcStreak(loggedDates);
     _syncStreakToOverview(streak);
     _saveStreakToProfile(streak);
+    _refreshOverviewData(); // re-derive all overview values from updated dose logs
   } catch (err) {
     handleSupabaseError(err, 'dose_logs load');
     console.error('[Pulse] dose_logs unavailable, using local state:', err && err.message);
@@ -9393,6 +9474,7 @@ async function logDose() {
     var streak = calcStreak(loggedDates);
     _syncStreakToOverview(streak);
     _saveStreakToProfile(streak);
+    _refreshOverviewData(); // immediately update overview with new log
     // Reload from DB to confirm (non-blocking)
     if (!PREVIEW_MODE) {
       setTimeout(function() { loadDoseLogs(); }, 600);

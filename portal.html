@@ -2107,12 +2107,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <!-- Conversation view -->
           <div class="thread-view" id="clThreadView">
-            <div class="thread-header">
+            <div class="thread-header" style="flex-wrap:wrap;gap:8px 12px;">
               <button class="thread-back" onclick="closeClThread()">
                 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
                 Back
               </button>
-              <span class="thread-who" id="clThreadWho"></span>
+              <span class="thread-who" id="clThreadWho" style="font-family:'Inter',sans-serif;font-size:16px;font-weight:600;"></span>
+              <span id="clThreadMeta" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;"></span>
               <button class="adp-btn" id="clThreadViewPatient" style="margin-left:auto;border-color:rgba(58,122,92,0.4);color:var(--green);font-size:9px;padding:5px 14px;display:none;" onclick="viewPatientFromThread()">View Patient</button>
             </div>
             <div class="msg-bubbles" id="clMsgBubbles"></div>
@@ -7603,14 +7604,42 @@ function _renderClThreadListFromCache() {
     return;
   }
   el.innerHTML = threads.map(function(t) {
-    var unreadClass = t.unread > 0 ? ' has-unread' : '';
-    var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
-    var timeStr = t.latestTime ? new Date(t.latestTime).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
-    return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
-      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patientLabel) + '</div>' +
-      '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
-      '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(timeStr) + '</span>' + pip + '</div>' +
-      '</div>';
+    var unreadBadge = t.unread > 0 ? '<span style="background:var(--green);color:#fff;font-family:\'DM Mono\',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;margin-left:8px;">' + t.unread + '</span>' : '';
+    // Relative time for last message
+    var timeStr = '';
+    if (t.latestTime) {
+      var diffMs = Date.now() - new Date(t.latestTime).getTime();
+      var diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 1) timeStr = 'Just now';
+      else if (diffMin < 60) timeStr = diffMin + 'm ago';
+      else if (diffMin < 1440) timeStr = Math.floor(diffMin / 60) + 'h ago';
+      else timeStr = Math.floor(diffMin / 1440) + 'd ago';
+    }
+    // Look up patient data for meta line
+    var metaParts = [];
+    if (_clPatientRows) {
+      for (var pi = 0; pi < _clPatientRows.length; pi++) {
+        if (_clPatientRows[pi].id === t.threadId) {
+          var pd = _clPatientRows[pi]._rawData || {};
+          if (pd.dob) metaParts.push(_calcAge(pd.dob) + ' yrs');
+          if (pd.sex) metaParts.push(pd.sex);
+          break;
+        }
+      }
+    }
+    if (timeStr) metaParts.push(timeStr);
+    var metaHtml = metaParts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('');
+    var previewHtml = t.preview ? '<div style="font-size:12px;color:#71717A;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.preview) + '</div>' : '';
+    return '<div class="cl-attn-card" style="margin-bottom:10px;cursor:pointer;" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
+      '<div class="cl-attn-card-header">' +
+        '<div class="cl-attn-card-info">' +
+          '<div class="cl-attn-card-name">' + escapeHtml(t.patientLabel) + unreadBadge + '</div>' +
+          '<div class="cl-attn-card-meta">' + metaHtml + '</div>' +
+          previewHtml +
+        '</div>' +
+        '<div class="cl-attn-card-chevron">\u203A</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
@@ -7630,13 +7659,18 @@ function _renderClThreadListMock() {
     return;
   }
   el.innerHTML = MOCK_THREADS.map(function(t) {
-    var unreadClass = t.unread > 0 ? ' has-unread' : '';
-    var pip = t.unread > 0 ? '<div class="msg-unread-pip"></div>' : '';
-    return '<div class="msg-row' + unreadClass + '" onclick="openClThread(\'' + escapeAttr(t.id) + '\')">' +
-      '<div class="msg-content"><div class="msg-sender-name">' + escapeHtml(t.patient) + '</div>' +
-      '<div class="msg-preview-line">' + escapeHtml(t.preview) + '</div></div>' +
-      '<div class="msg-right"><span class="msg-time-label">' + escapeHtml(t.time) + '</span>' + pip + '</div>' +
-      '</div>';
+    var unreadBadge = t.unread > 0 ? '<span style="background:var(--green);color:#fff;font-family:\'DM Mono\',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;margin-left:8px;">' + t.unread + '</span>' : '';
+    var previewHtml = t.preview ? '<div style="font-size:12px;color:#71717A;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.preview) + '</div>' : '';
+    return '<div class="cl-attn-card" style="margin-bottom:10px;cursor:pointer;" onclick="openClThread(\'' + escapeAttr(t.id) + '\')">' +
+      '<div class="cl-attn-card-header">' +
+        '<div class="cl-attn-card-info">' +
+          '<div class="cl-attn-card-name">' + escapeHtml(t.patient) + unreadBadge + '</div>' +
+          '<div class="cl-attn-card-meta"><span>' + escapeHtml(t.time) + '</span></div>' +
+          previewHtml +
+        '</div>' +
+        '<div class="cl-attn-card-chevron">\u203A</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
@@ -7647,6 +7681,23 @@ function renderClThreadList() {
   } else {
     _renderClThreadListFromCache();
   }
+}
+
+function _populateThreadMeta(threadId) {
+  var metaEl = document.getElementById('clThreadMeta');
+  if (!metaEl || !_clPatientRows) { if (metaEl) metaEl.textContent = ''; return; }
+  for (var i = 0; i < _clPatientRows.length; i++) {
+    if (_clPatientRows[i].id === threadId) {
+      var pd = _clPatientRows[i]._rawData || {};
+      var parts = [];
+      if (pd.dob) parts.push(_calcAge(pd.dob) + ' yrs');
+      if (pd.sex) parts.push(pd.sex);
+      if (pd.state) parts.push(pd.state);
+      metaEl.textContent = parts.join(' \u00B7 ');
+      return;
+    }
+  }
+  metaEl.textContent = '';
 }
 
 function openClThread(threadId) {
@@ -7675,6 +7726,7 @@ function _openClThreadMock(threadId) {
   if (titleEl) titleEl.textContent = thread.patient;
   if (whoEl) whoEl.textContent = thread.patient;
   _showViewPatientBtn(thread.patientId || null);
+  _populateThreadMeta(thread.patientId || null);
 
   renderClBubbles(thread);
 }
@@ -7697,6 +7749,7 @@ function _openClThreadReal(threadId) {
   if (whoEl) whoEl.textContent = label;
   // threadId is the patient's user_id in real mode
   _showViewPatientBtn(threadId);
+  _populateThreadMeta(threadId);
 
   // Load messages for this thread
   db.from('messages')
@@ -7752,10 +7805,22 @@ function _renderClBubblesFromDB(rows) {
     showInlineEmpty(el, 'No messages yet.', 'Start the conversation below.', { icon: 'message' });
     return;
   }
+  var lastDateStr = '';
+  var cached = _clThreadCache[_activeClThreadId];
+  var patientName = cached ? cached.patientLabel : 'Patient';
   el.innerHTML = rows.map(function(m) {
     var side = m.sender_role === 'clinician' ? 'from-me' : 'from-them';
+    var senderLabel = m.sender_role === 'clinician' ? 'You' : escapeHtml(m.sender_name || patientName);
     var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
-    return '<div class="msg-bubble-row ' + side + '">' +
+    var dateStr = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+    var dateSep = '';
+    if (dateStr && dateStr !== lastDateStr) {
+      lastDateStr = dateStr;
+      dateSep = '<div style="text-align:center;padding:12px 0 8px;"><span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:#71717A;background:var(--card);padding:4px 12px;border-radius:999px;border:1px solid var(--border);">' + escapeHtml(dateStr) + '</span></div>';
+    }
+    return dateSep +
+      '<div class="msg-bubble-row ' + side + '">' +
+      '<div class="msg-bubble-label">' + senderLabel + '</div>' +
       '<div class="msg-bubble">' + escapeHtml(m.body) + '</div>' +
       '<div class="msg-bubble-time">' + ts + '</div>' +
       '</div>';

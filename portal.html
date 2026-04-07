@@ -2082,11 +2082,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="tab-eyebrow">Patients</div>
         <div class="tab-title">Your patients.</div>
         <div class="filter-bar">
-          <div class="filter-pill active" id="pflt-all"        onclick="filterPatients('all',this)">All</div>
-          <div class="filter-pill"        id="pflt-open"       onclick="filterPatients('open',this)">Open</div>
-          <div class="filter-pill"        id="pflt-decided"    onclick="filterPatients('decided',this)">Decided</div>
-          <div class="filter-pill"        id="pflt-active"     onclick="filterPatients('active',this)">Active</div>
-          <div class="filter-pill"        id="pflt-withdrawn"  onclick="filterPatients('withdrawn',this)">Withdrawn</div>
+          <div class="filter-pill active" id="pflt-all"                onclick="filterPatients('all',this)">All</div>
+          <div class="filter-pill"        id="pflt-pending_review"     onclick="filterPatients('pending_review',this)">Pending Review</div>
+          <div class="filter-pill"        id="pflt-in_review"          onclick="filterPatients('in_review',this)">In Review</div>
+          <div class="filter-pill"        id="pflt-active"             onclick="filterPatients('active',this)">Active</div>
+          <div class="filter-pill"        id="pflt-awaiting_activation" onclick="filterPatients('awaiting_activation',this)">Awaiting Activation</div>
+          <div class="filter-pill"        id="pflt-not_prescribed"     onclick="filterPatients('not_prescribed',this)">Not Prescribed</div>
+          <div class="filter-pill"        id="pflt-withdrawn"          onclick="filterPatients('withdrawn',this)">Withdrawn</div>
         </div>
         <div style="padding:8px 0 4px;">
           <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
@@ -6671,7 +6673,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','awaiting_review','in_review','live_consult','active','awaiting_purchase','notrx','withdrawn'].forEach(function(f) {
+  ['all','pending_review','in_review','active','awaiting_activation','not_prescribed','withdrawn'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -6729,15 +6731,13 @@ function renderPatientList(filter) {
     return;
   }
 
-  // Apply filter — simplified 3-state model for clinician view
+  // Apply filter — matches status labels shown on card headers
   var patients = rows;
-  // Open = any review_status that isn't prescribed, not_prescribed, or withdrawn
-  if (filter === 'open') patients = rows.filter(function(p){ return !['prescribed', 'not_prescribed', 'withdrawn'].includes(p.review_status); });
-  // Decided = prescribed or not_prescribed
-  if (filter === 'decided') patients = rows.filter(function(p){ return ['prescribed', 'not_prescribed'].includes(p.review_status); });
-  // Active = prescribed AND purchase completed
+  if (filter === 'pending_review') patients = rows.filter(function(p){ return !p.review_status || p.review_status === 'pending_review'; });
+  if (filter === 'in_review') patients = rows.filter(function(p){ return p.review_status === 'in_review' || p.review_status === 'live_consult_requested' || p.review_status === 'live_consult_scheduled'; });
   if (filter === 'active') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status === 'completed'; });
-  // Withdrawn
+  if (filter === 'awaiting_activation') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status !== 'completed'; });
+  if (filter === 'not_prescribed') patients = rows.filter(function(p){ return p.review_status === 'not_prescribed'; });
   if (filter === 'withdrawn') patients = rows.filter(function(p){ return p.review_status === 'withdrawn'; });
 
   // Apply search filter (case-insensitive, by name or protocol)

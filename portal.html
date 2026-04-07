@@ -1571,18 +1571,27 @@ body.member-mode .p-card-sm{background:var(--m-card);border:1px solid var(--m-bo
 body.member-mode .tab-eyebrow{color:var(--m-green-dark);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.25em;font-weight:400;}
 body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:-0.01em;}
 
-/* ══ HERO CARD (Today's Dose) ══ */
-.m-hero{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);padding:40px 44px 32px;margin-bottom:24px;box-shadow:var(--m-shadow-lg);position:relative;overflow:hidden;}
-.m-hero::after{content:'';position:absolute;top:-40%;right:-10%;width:55%;height:180%;background:radial-gradient(ellipse at center,rgba(70,185,122,0.06) 0%,rgba(70,185,122,0.02) 40%,transparent 70%);pointer-events:none;}
+/* ══ HERO CARD (Today — 3 column command center) ══ */
+.m-hero{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);padding:0;margin-bottom:24px;box-shadow:var(--m-shadow-lg);position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr 1fr;}
+.m-hero-col{padding:32px 28px;}
+.m-hero-col:not(:last-child){border-right:1px solid var(--m-border-soft);}
+.m-hero-col-primary{padding:36px 32px;background:linear-gradient(135deg,var(--m-card) 60%,rgba(70,185,122,0.03) 100%);}
 .m-hero-label{font-family:'DM Mono',monospace;font-size:10px;font-weight:400;letter-spacing:0.25em;text-transform:uppercase;color:var(--m-text3);margin-bottom:12px;}
-.m-hero-title{font-family:'Inter',sans-serif;font-size:clamp(28px,3.5vw,36px);font-weight:600;color:var(--m-text);margin-bottom:6px;line-height:1.15;letter-spacing:-0.02em;}
-.m-hero-sub{font-family:'Inter',sans-serif;font-size:15px;color:var(--m-text2);margin-bottom:4px;font-weight:400;}
-.m-hero-dose{font-family:'Inter',sans-serif;font-size:clamp(36px,5vw,48px);font-weight:600;color:var(--m-text);margin:20px 0 28px;line-height:1;letter-spacing:-0.02em;}
-.m-hero-cta{display:inline-flex;align-items:center;justify-content:center;background:var(--m-green-dark);color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;border:none;border-radius:999px;padding:15px 40px;cursor:pointer;transition:all .25s;box-shadow:0 0 20px rgba(34,77,58,0.2);position:relative;z-index:1;}
+.m-hero-title{font-family:'Inter',sans-serif;font-size:clamp(24px,3vw,30px);font-weight:600;color:var(--m-text);margin-bottom:8px;line-height:1.2;letter-spacing:-0.02em;}
+.m-hero-sub{font-family:'Inter',sans-serif;font-size:15px;color:var(--m-text2);margin-bottom:4px;font-weight:400;line-height:1.5;}
+.m-hero-dose{font-family:'Inter',sans-serif;font-size:15px;color:var(--m-text2);margin-bottom:24px;line-height:1.5;}
+.m-hero-cta{display:inline-flex;align-items:center;justify-content:center;background:var(--m-green-dark);color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;border:none;border-radius:999px;padding:15px 36px;cursor:pointer;transition:all .25s;box-shadow:0 0 20px rgba(34,77,58,0.2);position:relative;z-index:1;}
 .m-hero-cta:hover{background:var(--m-green);box-shadow:0 0 28px rgba(70,185,122,0.3);}
-.m-hero-hints{display:flex;align-items:center;gap:28px;margin-top:28px;padding:16px 20px;background:var(--m-bg2);border-radius:var(--m-radius-sm);border:1px solid var(--m-border-soft);}
-.m-hero-hint{display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text2);font-weight:400;}
-.m-hero-hint-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+.m-hero-cta.logged{background:var(--m-green-tint);color:var(--m-green-dark);box-shadow:none;cursor:default;}
+/* Hero status rows */
+.m-hero-row{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--m-border-soft);}
+.m-hero-row:last-child{border-bottom:none;}
+.m-hero-row-label{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text3);font-weight:400;}
+.m-hero-row-val{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text);font-weight:500;text-align:right;}
+.m-hero-row-val.green{color:var(--m-green-dark);}
+.m-hero-section-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--m-text3);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--m-border);}
+/* Hero hints — removed */
+.m-hero-hints{display:none;}
 
 /* ══ BELOW-HERO GRID ══ */
 .m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:24px;}
@@ -1735,14 +1744,14 @@ body.member-mode .loading-icon svg{stroke:var(--m-green-dark);}
 
 /* ── Responsive ── */
 @media(max-width:900px){
+  .m-hero{grid-template-columns:1fr;}
+  .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid var(--m-border-soft);}
   .m-grid{grid-template-columns:1fr 1fr;}
   body.member-mode .portal-main{padding:28px 20px;}
 }
 @media(max-width:600px){
-  .m-hero{padding:28px 24px 24px;border-radius:16px;}
-  .m-hero-title{font-size:24px;}
-  .m-hero-dose{font-size:32px;margin:16px 0 22px;}
-  .m-hero-hints{flex-direction:column;align-items:flex-start;gap:10px;padding:14px 16px;}
+  .m-hero-col{padding:24px 20px;}
+  .m-hero-col-primary{padding:28px 24px;}
   .m-grid{grid-template-columns:1fr;gap:14px;}
   .m-card{padding:22px;border-radius:16px;}
   body.member-mode .portal-main{padding:20px 16px;}
@@ -1918,74 +1927,98 @@ body.member-mode .loading-icon svg{stroke:var(--m-green-dark);}
         <div class="action-card" id="actionCard" style="display:none;"><div class="action-card-title">Start your protocol.</div><div class="action-card-sub" id="actionSub"></div><a href="consultation.html" class="btn-green" id="actionBtn">Book Your Consultation</a></div>
         <div class="quick-stats" id="quickStats" style="display:none;"><div class="stat-tile"><div class="stat-tile-val" id="_statCategory2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCompounds2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCycle2">—</div></div><div class="stat-tile" id="streakTile" style="display:none;"><div class="stat-tile-val" id="_statStreak2">0</div></div></div>
 
-        <!-- ══ HERO CARD: Today's Dose ══ -->
+        <!-- ══ HERO: Treatment Command Center ══ -->
         <div class="m-hero" id="mHero">
-          <div class="m-hero-label">TODAY'S DOSE</div>
-          <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
-          <div class="m-hero-sub" id="mHeroSub">Loading...</div>
-          <div class="m-hero-dose" id="mHeroDose">—</div>
-          <button class="m-hero-cta" id="mHeroCta" onclick="switchTab('tracker')">Start Dose</button>
-          <div class="m-hero-hints">
-            <div class="m-hero-hint"><span class="m-hero-hint-icon" style="background:rgba(70,185,122,0.08);color:#224D3A;">✓</span> <span id="mHintSite">Next: Left abdomen</span></div>
-            <div class="m-hero-hint"><span class="m-hero-hint-icon" style="background:rgba(24,32,28,0.05);color:#7E857E;">○</span> Takes ~30 seconds</div>
-            <div class="m-hero-hint"><span class="m-hero-hint-icon" style="background:rgba(200,160,52,0.08);color:#8a6d1b;">◆</span> Clinician reviewed</div>
+          <!-- LEFT: Today's action -->
+          <div class="m-hero-col m-hero-col-primary">
+            <div class="m-hero-label" id="mHeroLabel">TODAY</div>
+            <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
+            <div class="m-hero-sub" id="mHeroSub">Loading...</div>
+            <div class="m-hero-dose" id="mHeroDose"></div>
+            <button class="m-hero-cta" id="mHeroCta" onclick="switchTab('tracker')">Log today's dose</button>
+          </div>
+          <!-- MIDDLE: Status -->
+          <div class="m-hero-col">
+            <div class="m-hero-section-title">Status</div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Dose today</span><span class="m-hero-row-val" id="mStatusDose">Not logged</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mStatusNext">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Current phase</span><span class="m-hero-row-val" id="mStatusPhase">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Streak</span><span class="m-hero-row-val green" id="mStatusStreak">—</span></div>
+          </div>
+          <!-- RIGHT: Coming up -->
+          <div class="m-hero-col">
+            <div class="m-hero-section-title">Coming Up</div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mUpRefill">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next check-in</span><span class="m-hero-row-val" id="mUpCheckin">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Messages</span><span class="m-hero-row-val" id="mUpMessages">No unread</span></div>
           </div>
         </div>
 
-        <!-- ══ BELOW-HERO GRID ══ -->
+        <!-- ══ ROW 2: Protocol / Supply / Care Team ══ -->
         <div class="m-grid" id="mGrid">
-          <!-- Your Protocol -->
+          <!-- Protocol Summary -->
           <div class="m-card" id="mCardProtocol">
-            <div class="m-card-label">Your Protocol</div>
+            <div class="m-card-label">Protocol</div>
             <div class="m-card-title" id="mProtoName">—</div>
-            <div class="m-card-text" id="mProtoDuration">—</div>
-            <div class="m-card-text" id="mProtoFreq">—</div>
+            <div class="m-hero-row" style="margin-top:12px;"><span class="m-hero-row-label">Duration</span><span class="m-hero-row-val" id="mProtoDuration">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Frequency</span><span class="m-hero-row-val" id="mProtoFreq">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Started</span><span class="m-hero-row-val" id="mProtoStarted">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Phase</span><span class="m-hero-row-val" id="mProtoPhase">—</span></div>
             <button class="m-card-link" onclick="switchTab('protocol')">View full protocol</button>
-          </div>
-
-          <!-- Your Clinician -->
-          <div class="m-card" id="mCardClinician">
-            <div class="m-card-label">Your Clinician</div>
-            <div class="m-cl-row">
-              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
-              <div>
-                <div class="m-cl-name" id="mClName">Your Clinician</div>
-                <div class="m-cl-status">Monitoring your progress</div>
-              </div>
-            </div>
-            <div class="m-card-text" id="mClReview" style="margin-bottom:8px;"></div>
-            <button class="m-card-btn" onclick="switchTab('messages')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message clinician</button>
           </div>
 
           <!-- Supply -->
           <div class="m-card" id="mCardSupply">
             <div class="m-card-label">Supply</div>
-            <div><span class="m-card-stat" id="mSupplyCount">—</span><span class="m-card-stat-unit">doses remaining</span></div>
+            <div style="margin-bottom:12px;"><span class="m-card-stat" id="mSupplyCount">—</span><span class="m-card-stat-unit">doses remaining</span></div>
             <div class="m-card-progress"><div class="m-card-progress-fill" id="mSupplyBar" style="width:75%;"></div></div>
-            <div class="m-card-text" id="mSupplyRefill">Refill info loading...</div>
+            <div class="m-hero-row" style="margin-top:12px;"><span class="m-hero-row-label">Coverage</span><span class="m-hero-row-val" id="mSupplyCoverage">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mSupplyRefill">—</span></div>
+          </div>
+
+          <!-- Care Team -->
+          <div class="m-card" id="mCardClinician">
+            <div class="m-card-label">Care Team</div>
+            <div class="m-cl-row">
+              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
+              <div>
+                <div class="m-cl-name" id="mClName">Your Clinician</div>
+                <div class="m-cl-status" id="mClLastResponse">Monitoring your progress</div>
+              </div>
+            </div>
+            <div class="m-hero-row" style="margin-top:8px;"><span class="m-hero-row-label">Unread</span><span class="m-hero-row-val" id="mClUnread">None</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next check-in</span><span class="m-hero-row-val" id="mClCheckin">—</span></div>
+            <button class="m-card-btn" onclick="switchTab('messages')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Open messages</button>
           </div>
         </div>
 
-        <!-- ══ SECOND ROW ══ -->
+        <!-- ══ ROW 3: Adherence / Upcoming / Support ══ -->
         <div class="m-grid">
-          <!-- Progress -->
+          <!-- Adherence -->
           <div class="m-card">
-            <div class="m-card-label">Progress</div>
-            <div class="m-card-title" id="mProgressTitle" style="color:#3FAF7A;">You're on track</div>
-            <div class="m-card-text" id="mProgressText">Keep it up — consistency is key.</div>
+            <div class="m-card-label">Adherence</div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Doses logged</span><span class="m-hero-row-val" id="mAdhLogged">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">On-time rate</span><span class="m-hero-row-val green" id="mAdhRate">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Current streak</span><span class="m-hero-row-val green" id="mAdhStreak">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Protocol progress</span><span class="m-hero-row-val" id="mAdhProgress">—</span></div>
           </div>
 
-          <!-- Progress detail -->
+          <!-- Upcoming -->
           <div class="m-card">
-            <div class="m-card-label">Progress</div>
-            <div class="m-card-text" id="mProgressWeek">Week 1 → Week 2</div>
-            <div class="m-card-text" style="font-size:13px;color:#A0A5A2;margin-top:4px;" id="mProgressDetail">Adherence and trend data will appear here.</div>
+            <div class="m-card-label">Upcoming</div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mUpNextDose">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mUpNextRefill">—</span></div>
+            <div class="m-hero-row"><span class="m-hero-row-label">Next appointment</span><span class="m-hero-row-val" id="mUpNextAppt">—</span></div>
           </div>
 
-          <!-- Supply info -->
+          <!-- Support -->
           <div class="m-card">
-            <div class="m-card-label">Supply</div>
-            <div class="m-card-text" id="mSupplyShipment">Next shipment in 2 weeks</div>
+            <div class="m-card-label">Support</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('messages')">Missed a dose?</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Protocol questions</button>
+              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('messages')">Side effects or concerns</button>
+            </div>
           </div>
         </div>
 
@@ -6885,42 +6918,79 @@ function populatePortal(user, consultation, greeting) {
     var qs = document.getElementById('quickStats');
     if (qs) qs.style.display = 'none';
 
-    // ── Populate new member-mode hero card and grid ──
-    var _protoDisplayName = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
-    var _heroTitle = document.getElementById('mHeroTitle');
-    if (_heroTitle) _heroTitle.textContent = _protoDisplayName + ' Protocol';
-    var _heroSub = document.getElementById('mHeroSub');
-    if (_heroSub) _heroSub.textContent = [window._protoFreq || '1 injection', window._protoTiming || 'Morning'].filter(Boolean).join(' · ');
-    var _heroDose = document.getElementById('mHeroDose');
-    if (_heroDose) _heroDose.textContent = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : (proto.compounds && proto.compounds[0] ? proto.compounds[0].replace(/.*?(\d+\s*\w+)$/, '$1') : '—');
-    var _heroCta = document.getElementById('mHeroCta');
-    if (_heroCta) _heroCta.textContent = loggedToday ? 'Dose Logged ✓' : 'Start Dose';
-    if (_heroCta && loggedToday) { _heroCta.style.background = '#E8F7F0'; _heroCta.style.color = '#3FAF7A'; _heroCta.style.boxShadow = 'none'; }
-    // Protocol card
-    var _mpName = document.getElementById('mProtoName');
-    if (_mpName) _mpName.textContent = _protoDisplayName;
-    var _mpDur = document.getElementById('mProtoDuration');
-    if (_mpDur) _mpDur.textContent = window._protoDuration || proto.cycle || '—';
-    var _mpFreq = document.getElementById('mProtoFreq');
-    if (_mpFreq) _mpFreq.textContent = window._protoFreq || '1x daily';
-    // Progress
-    var _mpProgress = document.getElementById('mProgressTitle');
-    if (_mpProgress) _mpProgress.textContent = loggedToday ? "You're on track" : 'Log today to stay on track';
+    // ── Populate overview command center ──
+    var _pdn = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
+    var _doseStr = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit + ' due today' : (proto.compounds && proto.compounds[0] ? proto.compounds[0] + ' due today' : 'Due today');
+    var _freqPlain = window._protoFreq || '1 dose daily';
+    var _durPlain = window._protoDuration || proto.cycle || '12 weeks';
     var streakNum = parseInt(document.getElementById('statStreak').textContent) || 0;
-    var _mpWeek = document.getElementById('mProgressWeek');
-    if (_mpWeek) _mpWeek.textContent = 'Day ' + streakNum + ' streak';
-    // Supply (estimate from duration)
-    var _mSupply = document.getElementById('mSupplyCount');
-    var durWeeks = parseInt(window._protoDuration) || 12;
-    var totalDoses = durWeeks * 7;
+    var durWeeks = parseInt(_durPlain) || 12;
+    var dosesPerWeek = (_freqPlain.match(/(\d+)/)||[0,7])[1] * 1;
+    var totalDoses = durWeeks * dosesPerWeek;
     var remainingDoses = Math.max(0, totalDoses - streakNum);
-    if (_mSupply) _mSupply.textContent = remainingDoses;
-    var _mSupplyBar = document.getElementById('mSupplyBar');
-    if (_mSupplyBar) _mSupplyBar.style.width = Math.round((remainingDoses / totalDoses) * 100) + '%';
-    var _mSupplyRefill = document.getElementById('mSupplyRefill');
-    if (_mSupplyRefill) _mSupplyRefill.textContent = 'Refill in ~' + Math.max(1, Math.round(remainingDoses / 7)) + ' weeks';
-    var _mSupplyShip = document.getElementById('mSupplyShipment');
-    if (_mSupplyShip) _mSupplyShip.textContent = 'Next shipment in ~' + Math.max(1, Math.round(remainingDoses / 7)) + ' weeks';
+    var coverageDays = dosesPerWeek > 0 ? Math.round(remainingDoses / dosesPerWeek * 7) : 0;
+    var startDate = consultation.created_at ? new Date(consultation.created_at) : new Date();
+    var startStr = startDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    var currentWeek = Math.min(durWeeks, Math.max(1, Math.floor((Date.now() - startDate.getTime()) / (7*86400000)) + 1));
+    var phaseStr = 'Week ' + currentWeek + ' of ' + durWeeks;
+    var cadenceStr = _freqPlain + ' \u00B7 ' + phaseStr;
+    var refillDate = new Date(startDate.getTime() + durWeeks * 7 * 86400000);
+    var refillStr = refillDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    var nextDoseDate = loggedToday ? (function(){ var d = new Date(); d.setDate(d.getDate()+1); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); })() : 'Today';
+
+    // HERO LEFT
+    var el;
+    el = document.getElementById('mHeroTitle'); if (el) el.textContent = _pdn + ' Protocol';
+    el = document.getElementById('mHeroSub'); if (el) el.textContent = _doseStr;
+    el = document.getElementById('mHeroDose'); if (el) el.textContent = cadenceStr;
+    el = document.getElementById('mHeroCta');
+    if (el) {
+      if (loggedToday) { el.textContent = 'Dose logged'; el.classList.add('logged'); el.onclick = null; }
+      else { el.textContent = "Log today's dose"; }
+    }
+    // HERO MIDDLE (status)
+    el = document.getElementById('mStatusDose'); if (el) { el.textContent = loggedToday ? 'Logged' : 'Not logged'; if (loggedToday) el.classList.add('green'); }
+    el = document.getElementById('mStatusNext'); if (el) el.textContent = nextDoseDate;
+    el = document.getElementById('mStatusPhase'); if (el) el.textContent = phaseStr;
+    el = document.getElementById('mStatusStreak'); if (el) el.textContent = streakNum + ' on-time logs';
+    // HERO RIGHT (coming up)
+    el = document.getElementById('mUpRefill'); if (el) el.textContent = refillStr;
+    // Upcoming appointment
+    if (!PREVIEW_MODE && currentUserId) {
+      db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
+        .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true }).limit(1)
+        .then(function(r) {
+          if (r.data && r.data.length) {
+            var apptDate = new Date(r.data[0].scheduled_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
+            var e1 = document.getElementById('mUpCheckin'); if (e1) e1.textContent = apptDate;
+            var e2 = document.getElementById('mClCheckin'); if (e2) e2.textContent = apptDate;
+            var e3 = document.getElementById('mUpNextAppt'); if (e3) e3.textContent = apptDate;
+          }
+        }).catch(function(){});
+    }
+
+    // ROW 2: Protocol card
+    el = document.getElementById('mProtoName'); if (el) el.textContent = _pdn;
+    el = document.getElementById('mProtoDuration'); if (el) el.textContent = durWeeks + ' weeks';
+    el = document.getElementById('mProtoFreq'); if (el) el.textContent = _freqPlain;
+    el = document.getElementById('mProtoStarted'); if (el) el.textContent = startStr;
+    el = document.getElementById('mProtoPhase'); if (el) el.textContent = phaseStr;
+    // Supply card
+    el = document.getElementById('mSupplyCount'); if (el) el.textContent = remainingDoses;
+    el = document.getElementById('mSupplyBar'); if (el) el.style.width = Math.round((remainingDoses / Math.max(1,totalDoses)) * 100) + '%';
+    el = document.getElementById('mSupplyCoverage'); if (el) el.textContent = coverageDays + ' days (' + Math.round(coverageDays/7) + ' weeks)';
+    el = document.getElementById('mSupplyRefill'); if (el) el.textContent = refillStr;
+    // ROW 3: Adherence
+    var scheduledDoses = currentWeek * dosesPerWeek;
+    el = document.getElementById('mAdhLogged'); if (el) el.textContent = streakNum + ' of ' + scheduledDoses + ' scheduled';
+    el = document.getElementById('mAdhRate'); if (el) el.textContent = scheduledDoses > 0 ? Math.round((streakNum / scheduledDoses) * 100) + '%' : '—';
+    el = document.getElementById('mAdhStreak'); if (el) el.textContent = streakNum + ' doses';
+    el = document.getElementById('mAdhProgress'); if (el) el.textContent = phaseStr;
+    // Upcoming card
+    el = document.getElementById('mUpNextDose'); if (el) el.textContent = nextDoseDate;
+    el = document.getElementById('mUpNextRefill'); if (el) el.textContent = refillStr;
 
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
@@ -6983,10 +7053,13 @@ function populatePortal(user, consultation, greeting) {
     if (_heroD) _heroD.textContent = '';
     var _heroC = document.getElementById('mHeroCta');
     if (_heroC) _heroC.style.display = 'none';
-    var _heroLabel = document.getElementById('mHero');
-    if (_heroLabel) { var lbl = _heroLabel.querySelector('.m-hero-label'); if (lbl) lbl.textContent = 'STATUS'; }
-    var _heroHints = document.querySelector('.m-hero-hints');
-    if (_heroHints) _heroHints.style.display = 'none';
+    var _heroLbl = document.getElementById('mHeroLabel');
+    if (_heroLbl) _heroLbl.textContent = 'STATUS';
+    // Set status columns to pending state
+    var _sd = document.getElementById('mStatusDose'); if (_sd) _sd.textContent = 'Pending review';
+    var _sn = document.getElementById('mStatusNext'); if (_sn) _sn.textContent = '—';
+    var _sp = document.getElementById('mStatusPhase'); if (_sp) _sp.textContent = 'Awaiting assignment';
+    var _ss = document.getElementById('mStatusStreak'); if (_ss) _ss.textContent = '—';
     // Hide grid cards that don't apply yet
     var _mGrid = document.getElementById('mGrid');
     if (_mGrid) _mGrid.style.display = 'none';

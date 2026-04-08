@@ -5233,11 +5233,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         '<div class="crw-name">'+escapeHtml(patientName)+'</div>'+
         '<div class="crw-meta">'+
           '<span>'+ageStr+' yrs</span><span class="crw-meta-sep">\u00B7</span>'+
-          '<span>'+escapeHtml(d.dob||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           '<span>'+escapeHtml(d.sex||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
-          '<span>'+escapeHtml(d.state||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           (heightStr&&heightStr!=='\u2014'?'<span>'+escapeHtml(heightStr)+'</span><span class="crw-meta-sep">\u00B7</span>':'')+
           (d.current_weight?'<span>'+escapeHtml(d.current_weight)+' lbs</span><span class="crw-meta-sep">\u00B7</span>':'')+
+          '<span>'+escapeHtml(d.state||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           '<span>Submitted '+subRel+'</span>'+
           (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')+
         '</div>'+
@@ -5290,8 +5289,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">'+
             _df('Email',d.email||'\u2014')+_df('Phone',d.phone_number||'\u2014')+
           '</div>'+
-          '<div class="crw-det-grid" style="grid-template-columns:1fr;margin-top:8px;">'+
-            _df('Address',addressStr)+
+          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">'+
+            _df('Address',addressStr)+_df('Date of Birth',d.dob||'\u2014')+
           '</div>'+
           '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;opacity:0.5;margin-top:8px;margin-bottom:0;">'+
             _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+

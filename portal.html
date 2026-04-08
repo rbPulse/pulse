@@ -2118,7 +2118,8 @@ body.clinician-mode .crw-right{background:var(--cl-high) !important;border-left:
 body.clinician-mode .crw-right-msg{background:var(--cl-high) !important;}
 /* ── CRW right column fix ── */
 body.clinician-mode .crw-right-details{background:var(--cl-mid) !important;border:1px solid rgba(0,0,0,0.14) !important;border-radius:10px !important;overflow:visible !important;max-height:none !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
-body.clinician-mode .crw-right{overflow:visible !important;min-width:0 !important;padding:4px 16px 16px;}
+body.clinician-mode .crw-right{overflow:visible !important;min-width:0 !important;padding:4px 16px 16px;display:flex !important;flex-direction:column !important;}
+body.clinician-mode .crw-right-details{margin-top:auto !important;}
 body.clinician-mode .crw-right-details .crw-det-grid{grid-template-columns:1fr 1fr !important;}
 body.clinician-mode .crw-right-details .crw-det-val{font-size:13px !important;word-break:break-word !important;}
 body.clinician-mode .crw-right-details .crw-lbl{color:var(--cl-text3) !important;}
@@ -5189,7 +5190,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var st = d.submitted_at?new Date(d.submitted_at).getTime():(consultCreatedAt?new Date(consultCreatedAt).getTime():0);
     var isOverdue = st&&(Date.now()-st>86400000);
     var diffH = st?Math.floor((Date.now()-st)/3600000):0;
-    var subRel = diffH<1?'just now':diffH<24?diffH+'h ago':Math.floor(diffH/24)+'d ago';
+    var subRel;
+    if (diffH < 1) { var diffMin = st ? Math.floor((Date.now()-st)/60000) : 0; subRel = diffMin < 1 ? '< 1m' : diffMin + 'm'; }
+    else if (diffH < 24) { subRel = diffH + 'h'; }
+    else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
 
     // Risk
     var riskHtml = '';
@@ -5232,6 +5236,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<span>'+escapeHtml(d.dob||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           '<span>'+escapeHtml(d.sex||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           '<span>'+escapeHtml(d.state||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
+          (heightStr&&heightStr!=='\u2014'?'<span>'+escapeHtml(heightStr)+'</span><span class="crw-meta-sep">\u00B7</span>':'')+
+          (d.current_weight?'<span>'+escapeHtml(d.current_weight)+' lbs</span><span class="crw-meta-sep">\u00B7</span>':'')+
           '<span>Submitted '+subRel+'</span>'+
           (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')+
         '</div>'+
@@ -5281,13 +5287,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         '</div>'+
         '<div class="crw-right-details">'+
           '<div class="crw-section-title">Patient Details</div>'+
-          '<div class="crw-det-grid">'+
+          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">'+
             _df('Email',d.email||'\u2014')+_df('Phone',d.phone_number||'\u2014')+
           '</div>'+
-          '<div class="crw-det-grid">'+
-            _df('Height',heightStr)+_df('Weight',d.current_weight?d.current_weight+' lbs':'\u2014')+_df('Address',addressStr)+
+          '<div class="crw-det-grid" style="grid-template-columns:1fr;margin-top:8px;">'+
+            _df('Address',addressStr)+
           '</div>'+
-          '<div class="crw-det-grid" style="opacity:0.5;margin-bottom:0;">'+
+          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;opacity:0.5;margin-top:8px;margin-bottom:0;">'+
             _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+
           '</div>'+
         '</div>'+

@@ -4856,16 +4856,20 @@ async function _loadClOverviewStats() {
       }
     }
 
-    // Unread messages — use _loadMyPatients for consistent patient list
+    // Unread messages — count threads where latest message is from consumer (needs response)
     _loadMyPatients(function(patientIds) {
       if (patientIds.length > 0) {
         db.from('messages')
-          .select('id', { count: 'exact', head: true })
+          .select('thread_id, sender_role, created_at')
           .in('thread_id', patientIds)
-          .eq('sender_role', 'consumer')
-          .eq('read', false)
-          .then(function(unread) {
-            document.getElementById('clStatUnread').textContent = unread.count || 0;
+          .order('created_at', { ascending: false })
+          .then(function(res) {
+            if (res.error || !res.data) { document.getElementById('clStatUnread').textContent = 0; return; }
+            var latestByThread = {};
+            (res.data || []).forEach(function(r) { if (!latestByThread[r.thread_id]) latestByThread[r.thread_id] = r; });
+            var count = 0;
+            Object.values(latestByThread).forEach(function(r) { if (r.sender_role === 'consumer') count++; });
+            document.getElementById('clStatUnread').textContent = count;
           }).catch(function(){ document.getElementById('clStatUnread').textContent = 0; });
       } else {
         document.getElementById('clStatUnread').textContent = 0;
@@ -8918,6 +8922,22 @@ function _buildClThreadCache(rows) {
       seen[tid].unread++;
     }
   });
+  // Also mark threads as "needs response" if the latest message is from consumer
+  // This catches cases where read=true was set by old code but clinician never replied
+  Object.values(seen).forEach(function(t) {
+    // rows are newest-first, so first row for this thread is the latest
+    var latestRow = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].thread_id === t.threadId) { latestRow = rows[i]; break; }
+    }
+    if (latestRow && latestRow.sender_role === 'consumer') {
+      // Last message is from patient — clinician hasn't replied
+      t.needsResponse = true;
+      if (t.unread === 0) t.unread = 1; // ensure at least 1 unread for visual indicator
+    } else {
+      t.needsResponse = false;
+    }
+  });
   // Re-build in chronological order for each thread's messages array
   // (rows are newest-first, so we reverse to get asc order per thread)
   var rowsAsc = rows.slice().reverse();
@@ -9345,23 +9365,35 @@ function _updateClMsgBadge(count) {
 }
 
 function _startClinicianUnreadPoll() {
-  if (_clinicianUnreadPollTimer || !currentUserId) return;
+  if (!currentUserId) return;
+  if (_clinicianUnreadPollTimer) clearInterval(_clinicianUnreadPollTimer);
   function check() {
     _loadMyPatients(function(patientIds) {
       if (patientIds.length === 0) { _updateClMsgBadge(0); return; }
+      // Count threads where the LATEST message is from consumer (needs clinician response)
       db.from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('sender_role', 'consumer')
-        .eq('read', false)
+        .select('thread_id, sender_role, created_at')
         .in('thread_id', patientIds)
-        .then(function(res) { _updateClMsgBadge(!res.error ? (res.count || 0) : 0); })
-        .catch(function() {});
+        .order('created_at', { ascending: false })
+        .then(function(res) {
+          if (res.error || !res.data) { _updateClMsgBadge(0); return; }
+          // For each thread, check if the latest message is from consumer
+          var latestByThread = {};
+          (res.data || []).forEach(function(r) {
+            if (!latestByThread[r.thread_id]) latestByThread[r.thread_id] = r;
+          });
+          var needsResponse = 0;
+          Object.values(latestByThread).forEach(function(r) {
+            if (r.sender_role === 'consumer') needsResponse++;
+          });
+          _updateClMsgBadge(needsResponse);
+        })
+        .catch(function() { _updateClMsgBadge(0); });
     });
   }
   check();
   _clinicianUnreadPollTimer = setInterval(check, 60000);
 }
-
 // Phase 18 — mark-as-read helpers called when the Messages tab is opened
 
 function _markConsumerMsgsRead() {

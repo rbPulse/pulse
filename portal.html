@@ -3025,18 +3025,14 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
 
 <!-- PHASE 15: CONSUMER RESCHEDULE MODAL -->
 <div class="p15-overlay" id="p15-reschedule-overlay" onclick="if(event.target===this)_closeP15Modal('p15-reschedule-overlay')">
-  <div class="p15-modal">
+  <div class="p15-modal" style="max-width:480px;">
     <div class="p15-modal-title" id="p15-reschedule-title">Reschedule appointment</div>
-    <div class="p15-modal-sub">Pick a new date and preferred time slot.</div>
+    <div class="p15-modal-sub">Select a new date and available time.</div>
     <label class="p15-label">Date</label>
-    <input type="date" class="p15-date-input" id="p15-reschedule-date" style="color-scheme:dark;"/>
-    <div class="p15-slot-group">
-      <span class="p15-slot-label">Time slot</span>
-      <div class="p15-slot-row">
-        <button class="p15-slot-chip" data-slot="Morning (9am–12pm)"  onclick="_selectRescheduleSlot(this)">Morning (9am–12pm)</button>
-        <button class="p15-slot-chip" data-slot="Afternoon (12pm–5pm)" onclick="_selectRescheduleSlot(this)">Afternoon (12pm–5pm)</button>
-        <button class="p15-slot-chip" data-slot="Evening (5pm–7pm)"   onclick="_selectRescheduleSlot(this)">Evening (5pm–7pm)</button>
-      </div>
+    <input type="date" class="p15-date-input" id="p15-reschedule-date" onchange="_onRescheduleDateChange(this.value)"/>
+    <div id="p15-reschedule-slots" style="margin-top:12px;display:none;">
+      <span class="p15-slot-label">Available times</span>
+      <div id="p15-reschedule-slot-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
     </div>
     <div class="p15-footer">
       <button class="p15-btn-dismiss" onclick="_closeP15Modal('p15-reschedule-overlay')">Back</button>
@@ -6275,7 +6271,7 @@ function _renderApptPatientDetail(patient, appt, panel) {
 
   var actionsHtml = joinBtnHtml +
     (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
-    '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
+    '<button class="adp-btn" onclick="_openClRescheduleModal(\'' + safeId + '\')">Reschedule</button>' +
     (canCancel ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '');
 
   // Build medical history
@@ -6387,7 +6383,7 @@ function buildApptDetail(a, role) {
       var safeType   = escapeAttr(a.type || 'Appointment');
       actionsHtml =
         (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
-        '<button class="adp-btn" onclick="_openRescheduleModal(\'' + safeId + '\',\'' + safeType + '\',false)">Reschedule</button>' +
+        '<button class="adp-btn" onclick="_openClRescheduleModal(\'' + safeId + '\')">Reschedule</button>' +
         (canCancel  ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '') +
         (canNoShow  ? '<button class="cl-appt-action-btn noshow-cl" onclick="_markNoShow(\'' + safeId + '\')">No-Show</button>' : '');
     }
@@ -6625,10 +6621,12 @@ function initConsumerBooking() {
   _selectedBookingSlot = null;
   resetBookConfirm();
 
-  // Populate appointment-type select once
+  // Populate appointment-type select — exclude "Initial Consult" for active members
   var typeEl = document.getElementById('bookType');
   if (typeEl && typeEl.options.length <= 1) {
+    var isActive = window._memberPurchaseComplete;
     APPT_TYPES.forEach(function(t) {
+      if (isActive && t === 'Initial Consult') return; // Already completed
       var o = document.createElement('option'); o.value = t; o.textContent = t;
       typeEl.appendChild(o);
     });
@@ -7122,6 +7120,46 @@ function _renderConsumerApptList(appts) {
   });
 }
 
+// ── Monthly Check-in Auto-Scheduling ──
+// Creates monthly check-in appointments for the protocol duration.
+// Idempotent: checks for existing monthly_checkin appointments before creating.
+async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durationWeeks) {
+  try {
+    // Check if monthly check-ins already exist for this member
+    var existing = await db.from('appointments')
+      .select('id')
+      .eq('consumer_id', consumerId)
+      .eq('clinician_id', clinicianId)
+      .like('notes', '%monthly_checkin%')
+      .limit(1);
+    if (existing.data && existing.data.length > 0) return; // Already scheduled
+
+    var start = new Date(startDate || Date.now());
+    var months = Math.max(1, Math.ceil(durationWeeks / 4));
+    var appointments = [];
+    for (var i = 1; i <= months; i++) {
+      var checkinDate = new Date(start);
+      checkinDate.setMonth(checkinDate.getMonth() + i);
+      // Schedule at 10:00 AM on the same day-of-month
+      checkinDate.setHours(10, 0, 0, 0);
+      appointments.push({
+        consumer_id: consumerId,
+        clinician_id: clinicianId,
+        scheduled_at: checkinDate.toISOString(),
+        duration_minutes: 20,
+        status: 'confirmed',
+        notes: 'monthly_checkin|Month ' + i + ' check-in'
+      });
+    }
+    if (appointments.length > 0) {
+      await db.from('appointments').insert(appointments);
+      console.log('[Pulse] Scheduled ' + appointments.length + ' monthly check-ins');
+    }
+  } catch(e) {
+    console.warn('[Pulse] Monthly check-in scheduling failed:', e && e.message);
+  }
+}
+
 function _cancelConsumerAppt(apptId, btnEl) {
   if (!apptId) return;
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
@@ -7481,6 +7519,11 @@ function populatePortal(user, consultation, greeting) {
     window._memberPurchaseComplete = true;
     var subBanner = document.getElementById('subStatusBanner');
     if (subBanner) subBanner.style.display = 'none';
+
+    // Schedule monthly check-ins if not already done
+    if (!PREVIEW_MODE && currentUserId && consultation.assigned_clinician_id) {
+      _ensureMonthlyCheckins(currentUserId, consultation.assigned_clinician_id, consultation.created_at, parseInt(window._protoDuration) || 12);
+    }
 
     // Hide action card — protocol is ready, no CTA needed
     var actionCard = document.getElementById('actionCard');
@@ -10443,6 +10486,31 @@ function _confirmConsumerCancel() {
 // ─────────────────────────────────────────────────────
 // CONSUMER RESCHEDULE FLOW
 // ─────────────────────────────────────────────────────
+// ── Reschedule: date-first slot selection ──
+function _onRescheduleDateChange(dateVal) {
+  var slotsContainer = document.getElementById('p15-reschedule-slots');
+  var slotList = document.getElementById('p15-reschedule-slot-list');
+  if (!slotsContainer || !slotList || !dateVal) { if (slotsContainer) slotsContainer.style.display = 'none'; return; }
+  var slots = generateTimeSlots(dateVal);
+  var available = slots.filter(function(s) { return s.available; });
+  if (available.length === 0) {
+    slotsContainer.style.display = 'block';
+    slotList.innerHTML = '<div style="color:rgba(0,0,0,0.45);font-size:13px;padding:8px 0;">No available times on this date.</div>';
+    return;
+  }
+  slotsContainer.style.display = 'block';
+  slotList.innerHTML = available.map(function(s) {
+    return '<button class="filter-pill" style="font-size:12px;padding:6px 14px;" onclick="_selectRescheduleSlot(this)" data-slot="' + escapeAttr(s.time) + '">' + escapeHtml(s.time) + '</button>';
+  }).join('');
+  _p15ReschedSlot = '';
+}
+
+function _selectRescheduleSlot(el) {
+  document.querySelectorAll('#p15-reschedule-slot-list .filter-pill').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  _p15ReschedSlot = el.dataset.slot;
+}
+
 function _openRescheduleModal(apptId, apptType, isBookAgain) {
   _p15ReschedApptId = apptId;
   _p15ReschedType   = apptType || 'Appointment';
@@ -10502,17 +10570,26 @@ function _confirmReschedule() {
     );
   }
   Promise.all(updates).then(function() {
-    // Parse scheduled_at from date + slot approximation
+    // Parse scheduled_at from date + exact time slot (e.g. "10:30 AM")
     var d = new Date(dateVal + 'T12:00:00');
-    var slotHour = 9; // default to morning
-    if (_p15ReschedSlot.indexOf('Afternoon') !== -1) slotHour = 12;
-    else if (_p15ReschedSlot.indexOf('Evening') !== -1) slotHour = 17;
-    d.setHours(slotHour, 0, 0, 0);
+    var slotParts = _p15ReschedSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (slotParts) {
+      var h = parseInt(slotParts[1]);
+      var m = parseInt(slotParts[2]);
+      if (slotParts[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+      if (slotParts[3].toUpperCase() === 'AM' && h === 12) h = 0;
+      d.setHours(h, m, 0, 0);
+    } else {
+      d.setHours(10, 0, 0, 0);
+    }
+    // Get assigned clinician
+    var clId = null;
+    if (consultation && consultation.assigned_clinician_id) clId = consultation.assigned_clinician_id;
     return db.from('appointments').insert({
       consumer_id: currentUserId,
-      clinician_id: CLINICIAN_ID,
+      clinician_id: clId,
       scheduled_at: d.toISOString(),
-      duration_minutes: 30,
+      duration_minutes: APPT_DURATION,
       status: 'pending'
     });
   }).then(function() {
@@ -10525,6 +10602,76 @@ function _confirmReschedule() {
 }
 
 // ─────────────────────────────────────────────────────
+// CLINICIAN RESCHEDULE FLOW
+// ─────────────────────────────────────────────────────
+var _clReschedApptId = null;
+var _clReschedSlot = '';
+
+function _openClRescheduleModal(apptId) {
+  _clReschedApptId = apptId;
+  _clReschedSlot = '';
+  // Reuse the same reschedule modal as member (date-first + time slots)
+  document.getElementById('p15-reschedule-title').textContent = 'Reschedule appointment';
+  var dateInput = document.getElementById('p15-reschedule-date');
+  if (dateInput) dateInput.value = '';
+  var slotsContainer = document.getElementById('p15-reschedule-slots');
+  if (slotsContainer) slotsContainer.style.display = 'none';
+  _openP15Modal('p15-reschedule-overlay');
+  // Override the confirm button to use clinician reschedule logic
+  var confirmBtn = document.querySelector('#p15-reschedule-overlay .p15-btn-confirm');
+  if (confirmBtn) confirmBtn.onclick = _confirmClReschedule;
+}
+
+async function _confirmClReschedule() {
+  var dateVal = document.getElementById('p15-reschedule-date').value;
+  if (!dateVal) { showToast('Please select a date.'); return; }
+  if (!_p15ReschedSlot) { showToast('Please select a time slot.'); return; }
+  _closeP15Modal('p15-reschedule-overlay');
+
+  try {
+    // Get the original appointment to find the consumer
+    var origRes = await db.from('appointments').select('consumer_id, clinician_id, duration_minutes, notes').eq('id', _clReschedApptId).limit(1);
+    var orig = (origRes.data && origRes.data.length > 0) ? origRes.data[0] : null;
+    if (!orig) { showToast('Appointment not found.'); return; }
+
+    // Cancel the old appointment
+    await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', _clReschedApptId);
+
+    // Parse new time
+    var d = new Date(dateVal + 'T12:00:00');
+    var slotParts = _p15ReschedSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (slotParts) {
+      var h = parseInt(slotParts[1]);
+      var m = parseInt(slotParts[2]);
+      if (slotParts[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+      if (slotParts[3].toUpperCase() === 'AM' && h === 12) h = 0;
+      d.setHours(h, m, 0, 0);
+    } else { d.setHours(10, 0, 0, 0); }
+
+    // Create new appointment
+    await db.from('appointments').insert({
+      consumer_id: orig.consumer_id,
+      clinician_id: orig.clinician_id || currentUserId,
+      scheduled_at: d.toISOString(),
+      duration_minutes: orig.duration_minutes || APPT_DURATION,
+      status: 'confirmed',
+      notes: orig.notes || null
+    });
+
+    // Notify member
+    createNotification(orig.consumer_id, 'appt_rescheduled', 'Your appointment has been rescheduled by your clinician.', 'appointments');
+    _clApptRows = null;
+    filterClAppts(_clApptFilter || 'scheduled');
+    showToast('Appointment rescheduled. Member has been notified.');
+  } catch(e) {
+    console.warn('[Pulse] Clinician reschedule failed:', e && e.message);
+    showToast('Something went wrong. Please try again.');
+  }
+  // Reset confirm button back to member reschedule
+  var confirmBtn = document.querySelector('#p15-reschedule-overlay .p15-btn-confirm');
+  if (confirmBtn) confirmBtn.onclick = _confirmReschedule;
+}
+
 // CLINICIAN CANCEL FLOW
 // ─────────────────────────────────────────────────────
 function _openClCancelModal(apptId) {

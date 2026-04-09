@@ -4856,22 +4856,21 @@ async function _loadClOverviewStats() {
       }
     }
 
-    // Unread messages — count messages where sender_role='consumer' and read=false
-    // scoped to this clinician's patients
-    var patientRes = await db.from('consultations')
-      .select('user_id')
-      .eq('assigned_clinician_id', currentUserId);
-    var patientIds = (patientRes.data || []).map(function(c) { return c.user_id; });
-    if (patientIds.length > 0) {
-      var unread = await db.from('messages')
-        .select('id', { count: 'exact', head: true })
-        .in('thread_id', patientIds)
-        .eq('sender_role', 'consumer')
-        .eq('read', false);
-      document.getElementById('clStatUnread').textContent = unread.count || 0;
-    } else {
-      document.getElementById('clStatUnread').textContent = 0;
-    }
+    // Unread messages — use _loadMyPatients for consistent patient list
+    _loadMyPatients(function(patientIds) {
+      if (patientIds.length > 0) {
+        db.from('messages')
+          .select('id', { count: 'exact', head: true })
+          .in('thread_id', patientIds)
+          .eq('sender_role', 'consumer')
+          .eq('read', false)
+          .then(function(unread) {
+            document.getElementById('clStatUnread').textContent = unread.count || 0;
+          }).catch(function(){ document.getElementById('clStatUnread').textContent = 0; });
+      } else {
+        document.getElementById('clStatUnread').textContent = 0;
+      }
+    });
   } catch(e) {
     console.warn('[Pulse] overview stats failed:', e);
   }
@@ -8964,7 +8963,8 @@ function _renderClThreadListFromCache() {
     return;
   }
   el.innerHTML = threads.map(function(t) {
-    var unreadBadge = t.unread > 0 ? '<span style="background:var(--green);color:#fff;font-family:\'DM Mono\',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:999px;margin-left:8px;">' + t.unread + '</span>' : '';
+    var hasUnread = t.unread > 0;
+    var unreadBadge = hasUnread ? '<span style="background:#1DB954;color:#fff;font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:8px;">' + t.unread + '</span>' : '';
     var timeStr = '';
     if (t.latestTime) {
       var diffMs = Date.now() - new Date(t.latestTime).getTime();
@@ -8993,14 +8993,18 @@ function _renderClThreadListFromCache() {
         }
       }
     }
-    if (timeStr) metaParts.push(timeStr);
     var metaHtml = metaParts.map(function(s) { return '<span>' + escapeHtml(s) + '</span>'; }).join('') + statusLabel;
-    var previewHtml = t.preview ? '<div style="font-size:12px;color:#71717A;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(t.preview) + '</div>' : '';
-    return '<div class="cl-attn-card" style="margin-bottom:10px;cursor:pointer;" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
+    // Time label clearly marked as "Last message" to distinguish from submission time
+    var timeLabelHtml = timeStr ? '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:' + (hasUnread ? '#1DB954' : 'rgba(0,0,0,0.4)') + ';margin-top:4px;font-weight:' + (hasUnread ? '600' : '400') + ';">' + (hasUnread ? '\u25CF ' : '') + 'Last message: ' + escapeHtml(timeStr) + '</div>' : '';
+    var previewHtml = t.preview ? '<div style="font-size:12px;color:rgba(0,0,0,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;">' + escapeHtml(t.preview) + '</div>' : '';
+    // Unread thread: green left border
+    var cardStyle = 'margin-bottom:10px;cursor:pointer;' + (hasUnread ? 'border-left:3px solid #1DB954;' : '');
+    return '<div class="cl-attn-card" style="' + cardStyle + '" onclick="openClThread(\'' + escapeAttr(t.threadId) + '\')">' +
       '<div class="cl-attn-card-header">' +
         '<div class="cl-attn-card-info">' +
           '<div class="cl-attn-card-name">' + escapeHtml(t.patientLabel) + unreadBadge + '</div>' +
           '<div class="cl-attn-card-meta">' + metaHtml + '</div>' +
+          timeLabelHtml +
           previewHtml +
         '</div>' +
         '<div class="cl-attn-card-chevron">\u203A</div>' +
@@ -9121,20 +9125,8 @@ function _openClThreadReal(threadId) {
       var rows = res.data || [];
       _renderClBubblesFromDB(rows);
 
-      // Mark unread consumer messages as read
-      var unreadIds = rows
-        .filter(function(r) { return r.sender_role === 'consumer' && r.read === false; })
-        .map(function(r) { return r.id; });
-      if (unreadIds.length > 0) {
-        db.from('messages')
-          .update({ read: true })
-          .in('id', unreadIds)
-          .then(function() {
-            // Update cache
-            if (_clThreadCache[threadId]) _clThreadCache[threadId].unread = 0;
-          })
-          .catch(function() {});
-      }
+      // DO NOT mark messages as read on open — only mark when clinician replies
+      // (read state managed in sendClMessage)
 
       // Start polling for new messages in this thread
       if (_clMsgPollTimer) clearInterval(_clMsgPollTimer);
@@ -9277,6 +9269,14 @@ function sendClMessage() {
         _openClThreadReal(_sentThreadId);
         return;
       }
+      // Mark all unread consumer messages in this thread as read (clinician responded)
+      db.from('messages').update({ read: true })
+        .eq('thread_id', _sentThreadId).eq('sender_role', 'consumer').eq('read', false)
+        .then(function() {
+          if (_clThreadCache[_sentThreadId]) _clThreadCache[_sentThreadId].unread = 0;
+          // Refresh sidebar badge
+          _startClinicianUnreadPoll();
+        }).catch(function(){});
       // Insert in-portal notification for the patient (Phase 27)
       createNotification(_sentThreadId, 'new_message', 'Your clinician replied to your message.', 'messages');
       // Notify patient of clinician reply (fire-and-forget, Phase 17)
@@ -9379,16 +9379,8 @@ function _markConsumerMsgsRead() {
 }
 
 function _markClinicianMsgsRead() {
-  // Mark all unread consumer messages as read and clear the clinician badge
-  if (!currentUserId) return;
-  try {
-    db.from('messages')
-      .update({ read: true })
-      .eq('sender_role', 'consumer')
-      .eq('read', false)
-      .then(function() { _updateClMsgBadge(0); })
-      .catch(function() {});
-  } catch(e) {}
+  // No longer marks all messages read on tab open.
+  // Messages are marked read only when the clinician replies (in sendClMessage).
 }
 
 function initConsumerMessages() {

@@ -1867,12 +1867,14 @@ body.clinician-mode .crw-det-lbl{color:var(--cl-text3);font-family:'Inter',sans-
 body.clinician-mode .crw-det-val{color:var(--cl-text);font-family:'Inter',sans-serif;font-size:14px;}
 
 /* ── CRW Risk banners ── */
-body.clinician-mode .crw-risk{border-radius:10px;padding:12px 14px;margin:12px 0;}
-body.clinician-mode .crw-risk-low{background:rgba(29,185,84,0.06);border-color:rgba(29,185,84,0.15);}
-body.clinician-mode .crw-risk-mod{background:rgba(234,179,8,0.06);border-color:rgba(234,179,8,0.15);}
-body.clinician-mode .crw-risk-high{background:rgba(229,62,62,0.06);border-color:rgba(229,62,62,0.15);}
-body.clinician-mode .crw-risk-title{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;}
-body.clinician-mode .crw-risk-body{color:rgba(0,0,0,0.6);font-family:'Inter',sans-serif;}
+body.clinician-mode .crw-risk{border-radius:10px;padding:14px 16px;margin:12px 0;border-width:2px !important;}
+body.clinician-mode .crw-risk-low{background:rgba(29,185,84,0.06);border:2px solid #111111 !important;}
+body.clinician-mode .crw-risk-mod{background:rgba(234,179,8,0.06);border:2px solid #111111 !important;}
+body.clinician-mode .crw-risk-high{background:rgba(229,62,62,0.06);border:2px solid #111111 !important;}
+body.clinician-mode .crw-risk-title{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;color:#111111 !important;font-weight:700;}
+body.clinician-mode .crw-risk-body{color:#111111 !important;font-family:'Inter',sans-serif;font-weight:500;}
+body.clinician-mode .crw-risk-list{color:#111111 !important;}
+body.clinician-mode .crw-risk-list li{color:#111111 !important;font-weight:500;}
 
 /* ── CRW Actions ── */
 body.clinician-mode .crw-actions{background:var(--cl-high);border-top:1px solid var(--cl-border);justify-content:center;}
@@ -5255,21 +5257,49 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>'+
           '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
         '</div>'+
-        '<div class="crw-actions">'+
-          '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
-          '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
-          (function(){
-            if (consultReviewStatus === 'live_consult_requested') {
-              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
-            } else if (consultReviewStatus === 'live_consult_scheduled') {
-              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
-            } else if (consultReviewStatus === 'in_review') {
-              return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.45);cursor:default;opacity:0.8;">Consult Completed</span>';
-            } else {
-              return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
-            }
-          })()+
-        '</div>'+
+        (function(){
+          // Post-decision: show outcome card instead of action buttons
+          if (consultReviewStatus === 'prescribed') {
+            var protoAssigned = d.assigned_protocol || d.protocol_assigned || 'Not specified';
+            var evalDate = d.evaluation_date ? new Date(d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+            var doseInfo = [d.dose_amount, d.dose_unit].filter(Boolean).join(' ') || '—';
+            var freqInfo = d.frequency || '—';
+            var durInfo = d.duration || '—';
+            return '<div class="crw-section" style="border:2px solid #1DB954;background:rgba(29,185,84,0.04);">'+
+              '<div class="crw-section-title" style="color:#1DB954;border-bottom-color:rgba(29,185,84,0.15);">Prescribed</div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Protocol</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(protoAssigned)+'</div></div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Dose</div><div class="crw-clin-val">'+escapeHtml(doseInfo)+'</div></div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Frequency</div><div class="crw-clin-val">'+escapeHtml(freqInfo)+'</div></div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Duration</div><div class="crw-clin-val">'+escapeHtml(durInfo)+'</div></div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Evaluated</div><div class="crw-clin-val">'+escapeHtml(evalDate)+'</div></div>'+
+            '</div>';
+          } else if (consultReviewStatus === 'not_prescribed') {
+            var declineReason = d.no_prescription_reason || 'No reason provided';
+            var declineNotes = d.session_notes || d.clinician_notes || '';
+            var evalDate2 = d.evaluation_date ? new Date(d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+            return '<div class="crw-section" style="border:2px solid #E53E3E;background:rgba(229,62,62,0.04);">'+
+              '<div class="crw-section-title" style="color:#E53E3E;border-bottom-color:rgba(229,62,62,0.15);">Declined</div>'+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Reason</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(declineReason)+'</div></div>'+
+              (declineNotes ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Notes</div><div class="crw-clin-val">'+escapeHtml(declineNotes)+'</div></div>' : '')+
+              '<div class="crw-clin-row"><div class="crw-clin-lbl">Evaluated</div><div class="crw-clin-val">'+escapeHtml(evalDate2)+'</div></div>'+
+            '</div>';
+          } else {
+            // Pre-decision: show action buttons
+            return '<div class="crw-actions">'+
+              '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
+              '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
+              (function(){
+                if (consultReviewStatus === 'live_consult_requested') {
+                  return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
+                } else if (consultReviewStatus === 'live_consult_scheduled') {
+                  return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
+                } else {
+                  return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
+                }
+              })()+
+            '</div>';
+          }
+        })()+
         '<div id="attn-action-area-'+consultId+'"></div>'+
       '</div>'+
       '<div class="crw-right">'+
@@ -8043,19 +8073,6 @@ function togglePatientDetail(patient, rowWrapper) {
     panel.innerHTML = '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading...</div>';
     rowWrapper.appendChild(panel);
     requestAnimationFrame(function() { requestAnimationFrame(function() { panel.classList.add('open'); }); });
-    var _checkClose = setInterval(function() {
-      if (panel.dataset.loaded === 'true' && panel.querySelector('.crw')) {
-        clearInterval(_checkClose);
-        var closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '\u00D7';
-        closeBtn.style.cssText = 'position:absolute;top:12px;right:16px;background:none;border:none;color:#71717A;font-size:24px;cursor:pointer;z-index:10;padding:4px 8px;';
-        closeBtn.onclick = function(e) { e.stopPropagation(); panel.remove(); _openPatientRow = null; };
-        var crw = panel.querySelector('.crw');
-        crw.style.position = 'relative';
-        crw.appendChild(closeBtn);
-      }
-    }, 100);
-    setTimeout(function() { clearInterval(_checkClose); }, 5000);
     _loadAttentionCardBody(panel, consultId, userId);
     return;
   }
@@ -11155,10 +11172,11 @@ async function _loadSessionPatientCard(apptId) {
         '</div>' +
       '</div>';
 
-    cardEl.innerHTML = html;
+    // Reuse the canonical patient card renderer instead of custom HTML
+    _loadAttentionCardBody(cardEl, consultation.id, consumerId);
   } catch(e) {
     console.warn('[Pulse] session patient card load failed:', e);
-    cardEl.innerHTML = '<div style="padding:20px;color:rgba(200,80,80,0.7);font-size:12px;">Failed to load patient info.</div>';
+    cardEl.innerHTML = '<div style="padding:20px;font-size:12px;">Failed to load patient info.</div>';
   }
 }
 

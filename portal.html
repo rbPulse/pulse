@@ -2828,8 +2828,8 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
           <div class="filter-pill active" id="pflt-all"                onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-pending_review"     onclick="filterPatients('pending_review',this)">Pending Review</div>
           <div class="filter-pill"        id="pflt-in_review"          onclick="filterPatients('in_review',this)">In Review</div>
-          <div class="filter-pill"        id="pflt-active"             onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-awaiting_activation" onclick="filterPatients('awaiting_activation',this)">Awaiting Activation</div>
+          <div class="filter-pill"        id="pflt-active"             onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-not_prescribed"     onclick="filterPatients('not_prescribed',this)">Not Prescribed</div>
           <div class="filter-pill"        id="pflt-withdrawn"          onclick="filterPatients('withdrawn',this)">Withdrawn</div>
         </div>
@@ -5160,11 +5160,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status').eq('id', consultId).limit(1);
-    if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No intake data found.</div>'; return; }
-    var d = res.data[0].data || {};
-    var consultCreatedAt = res.data[0].created_at || null;
-    var riskStatus = res.data[0].risk_status || null;
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, no_prescription_reason, other_notes, evaluation_date, session_notes').eq('id', consultId).limit(1);
+    if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="font-size:12px;">No intake data found.</div>'; return; }
+    var consultRow = res.data[0];
+    var d = consultRow.data || {};
+    var consultCreatedAt = consultRow.created_at || null;
+    var riskStatus = consultRow.risk_status || null;
     var riskReasons = res.data[0].risk_flag_reasons || [];
 
     // Fallback: run risk evaluation on-the-fly if not stored
@@ -5260,23 +5261,32 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         (function(){
           // Post-decision: show outcome card instead of action buttons
           if (consultReviewStatus === 'prescribed') {
-            var protoAssigned = d.assigned_protocol || d.protocol_assigned || 'Not specified';
-            var evalDate = d.evaluation_date ? new Date(d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-            var doseInfo = [d.dose_amount, d.dose_unit].filter(Boolean).join(' ') || '—';
-            var freqInfo = d.frequency || '—';
-            var durInfo = d.duration || '—';
+            // Read from top-level consultation columns first, fall back to JSONB data
+            var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+            var protoAssigned = consultRow.protocol_assigned || d.assigned_protocol || d.protocol_assigned || 'Not specified';
+            var evalDate = (consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+            var _da = consultRow.dose_amount || _le.dose_amount || d.dose_amount || '';
+            var _du = consultRow.dose_unit || _le.dose_unit || d.dose_unit || '';
+            var doseInfo = [_da, _du].filter(Boolean).join(' ') || '—';
+            var freqInfo = consultRow.frequency || _le.frequency || d.frequency || '—';
+            var timingInfo = consultRow.timing || _le.timing || d.timing || '';
+            var durInfo = consultRow.duration || _le.duration || d.duration || '—';
+            var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
             return '<div class="crw-section" style="border:2px solid #1DB954;background:rgba(29,185,84,0.04);">'+
               '<div class="crw-section-title" style="color:#1DB954;border-bottom-color:rgba(29,185,84,0.15);">Prescribed</div>'+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Protocol</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(protoAssigned)+'</div></div>'+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Dose</div><div class="crw-clin-val">'+escapeHtml(doseInfo)+'</div></div>'+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Frequency</div><div class="crw-clin-val">'+escapeHtml(freqInfo)+'</div></div>'+
+              (timingInfo ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Timing</div><div class="crw-clin-val">'+escapeHtml(timingInfo)+'</div></div>' : '')+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Duration</div><div class="crw-clin-val">'+escapeHtml(durInfo)+'</div></div>'+
+              (otherNotes ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Notes</div><div class="crw-clin-val">'+escapeHtml(otherNotes)+'</div></div>' : '')+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Evaluated</div><div class="crw-clin-val">'+escapeHtml(evalDate)+'</div></div>'+
             '</div>';
           } else if (consultReviewStatus === 'not_prescribed') {
-            var declineReason = d.no_prescription_reason || 'No reason provided';
-            var declineNotes = d.session_notes || d.clinician_notes || '';
-            var evalDate2 = d.evaluation_date ? new Date(d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+            var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+            var declineReason = consultRow.no_prescription_reason || _le2.no_prescription_reason || d.no_prescription_reason || 'No reason provided';
+            var declineNotes = consultRow.session_notes || consultRow.other_notes || _le2.session_notes || _le2.other_notes || d.session_notes || d.clinician_notes || '';
+            var evalDate2 = (consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
             return '<div class="crw-section" style="border:2px solid #E53E3E;background:rgba(229,62,62,0.04);">'+
               '<div class="crw-section-title" style="color:#E53E3E;border-bottom-color:rgba(229,62,62,0.15);">Declined</div>'+
               '<div class="crw-clin-row"><div class="crw-clin-lbl">Reason</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(declineReason)+'</div></div>'+

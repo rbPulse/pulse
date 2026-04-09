@@ -2558,8 +2558,11 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
               </div>
             </div>
             <div class="m-hero-row" style="margin-top:8px;"><span class="m-hero-row-label">Unread</span><span class="m-hero-row-val" id="mClUnread">None</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next check-in</span><span class="m-hero-row-val" id="mClCheckin">—</span></div>
-            <button class="m-card-btn" onclick="switchTab('messages')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Open messages</button>
+            <div class="m-hero-row"><span class="m-hero-row-label">Monthly check-in</span><span class="m-hero-row-val" id="mClCheckin">—</span></div>
+            <div style="display:flex;gap:8px;margin-top:auto;padding-top:12px;">
+              <button class="m-card-btn" style="flex:1;" onclick="switchTab('messages')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
+              <button class="m-card-btn" style="flex:1;" onclick="switchTab('appointments')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule consult</button>
+            </div>
           </div>
         </div>
 
@@ -6818,7 +6821,7 @@ function initConsumerBooking() {
   if (typeEl && typeEl.options.length <= 1) {
     var isActive = window._memberPurchaseComplete;
     APPT_TYPES.forEach(function(t) {
-      if (isActive && t === 'Initial Consult') return; // Already completed
+      if (t === 'Initial Consult') return; // Members in portal have already completed intake
       var o = document.createElement('option'); o.value = t; o.textContent = t;
       typeEl.appendChild(o);
     });
@@ -7906,6 +7909,7 @@ function populatePortal(user, consultation, greeting) {
 
     // Load upcoming appointment
     if (!PREVIEW_MODE && currentUserId) {
+      // Next upcoming appointment (any type)
       db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
         .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
         .gte('scheduled_at', new Date().toISOString())
@@ -7914,8 +7918,21 @@ function populatePortal(user, consultation, greeting) {
           if (r.data && r.data.length) {
             var apptDate = new Date(r.data[0].scheduled_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
             var e1 = document.getElementById('mUpCheckin'); if (e1) e1.textContent = apptDate;
-            var e2 = document.getElementById('mClCheckin'); if (e2) e2.textContent = apptDate;
             var e3 = document.getElementById('mUpNextAppt'); if (e3) e3.textContent = apptDate;
+          }
+        }).catch(function(){});
+      // Next monthly check-in specifically
+      db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
+        .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
+        .gte('scheduled_at', new Date().toISOString())
+        .like('notes', '%monthly_checkin%')
+        .order('scheduled_at', { ascending: true }).limit(1)
+        .then(function(r) {
+          if (r.data && r.data.length) {
+            var checkinDate = new Date(r.data[0].scheduled_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
+            var e2 = document.getElementById('mClCheckin'); if (e2) e2.textContent = checkinDate;
+          } else {
+            var e2 = document.getElementById('mClCheckin'); if (e2) e2.textContent = 'Not scheduled';
           }
         }).catch(function(){});
     }

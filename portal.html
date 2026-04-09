@@ -1769,6 +1769,37 @@ body.member-mode .loading-icon svg{stroke:#2F6F55;}
   body.member-mode .portal-main{padding:20px 16px;}
 }
 
+/* ── Tracker tab specifics ── */
+body.member-mode .log-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
+body.member-mode .log-card-title{color:var(--m-text) !important;}
+body.member-mode .log-card-sub{color:var(--m-text2) !important;}
+body.member-mode .log-card-logged{color:#2F6F55 !important;}
+/* ── Resources tab specifics ── */
+body.member-mode .res-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
+body.member-mode .res-card-title{color:var(--m-text) !important;}
+body.member-mode .res-card-sub{color:var(--m-text2) !important;}
+body.member-mode .res-faq-item{border-bottom-color:var(--m-border) !important;}
+body.member-mode .res-faq-item summary{color:var(--m-text) !important;}
+body.member-mode .res-faq-item[open] summary{color:var(--m-text) !important;}
+body.member-mode .res-faq-item summary::after{color:var(--m-text3) !important;}
+body.member-mode .res-faq-item[open] summary::after{color:#2F6F55 !important;}
+body.member-mode .res-faq-item[open]{border-left-color:#2F6F55 !important;}
+body.member-mode .res-faq-body{color:var(--m-text2) !important;}
+body.member-mode .res-steps-list li{color:var(--m-text2) !important;border-bottom-color:var(--m-border) !important;}
+body.member-mode .res-steps-list li::before{color:#2F6F55 !important;background:rgba(47,111,85,0.08) !important;border-color:rgba(47,111,85,0.18) !important;}
+/* ── Appointment action buttons ── */
+body.member-mode .appt-action-btn{background:var(--m-bg) !important;border:1px solid var(--m-border) !important;color:var(--m-text) !important;border-radius:10px !important;padding:8px 16px !important;font-family:'Inter',sans-serif !important;font-size:13px !important;cursor:pointer !important;}
+body.member-mode .appt-action-btn:hover{border-color:rgba(47,111,85,0.3) !important;color:#2F6F55 !important;}
+body.member-mode .cancel-btn{color:#9e3a3a !important;border-color:rgba(158,58,58,0.2) !important;}
+body.member-mode .cancel-btn:hover{color:#c44 !important;border-color:rgba(200,68,68,0.3) !important;}
+body.member-mode .reschedule-btn{color:var(--m-text) !important;}
+body.member-mode .book-again-btn{color:#2F6F55 !important;border-color:rgba(47,111,85,0.2) !important;}
+/* ── Booking slot grid override ── */
+body.member-mode .slot-grid{color:var(--m-text) !important;}
+body.member-mode .slot-grid *{color:var(--m-text) !important;}
+/* ── Consumer messaging sender labels ── */
+body.member-mode #consumerMsgBubbles .msg-bubble-label{color:var(--m-text2) !important;font-size:12px;font-weight:500;}
+
 /* ── MEMBER-MODE: Nuclear dark-theme cleanup ── */
 /* Catch every base CSS rule that uses dark variables/colors */
 body.member-mode .portal-main{color:var(--m-text);}
@@ -2730,7 +2761,6 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
                 <div id="careTeamName" style="font-size:16px;font-weight:600;margin-bottom:3px;">Your Clinician</div>
                 <div id="careTeamSub" style="font-size:13px;opacity:0.55;">Your Clinician</div>
               </div>
-              <div style="margin-left:auto;"><span class="status-pill active" style="font-size:8px;padding:3px 10px;">Active</span></div>
             </div>
             <div class="msg-bubbles" id="consumerMsgBubbles"></div>
             <div class="msg-compose-row">
@@ -9700,9 +9730,9 @@ function renderConsumerThreadFromDB(rows) {
   el.innerHTML = rows.map(function(m) {
     var side = m.sender_role === 'consumer' ? 'from-me' : 'from-them';
     var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
-    var label = (side === 'from-them' && m.sender_name) ? '<div class="msg-bubble-label">' + escapeHtml(m.sender_name) + '</div>' : '';
+    var senderName = m.sender_role === 'consumer' ? 'You' : (m.sender_name || 'Your Clinician');
     return '<div class="msg-bubble-row ' + side + '">' +
-      label +
+      '<div class="msg-bubble-label">' + escapeHtml(senderName) + '</div>' +
       '<div class="msg-bubble">' + escapeHtml(m.body) + '</div>' +
       '<div class="msg-bubble-time">' + ts + '</div>' +
       '</div>';

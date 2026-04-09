@@ -2827,7 +2827,6 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
         <div class="filter-bar">
           <div class="filter-pill active" id="pflt-all"                onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-pending_review"     onclick="filterPatients('pending_review',this)">Pending Review</div>
-          <div class="filter-pill"        id="pflt-in_review"          onclick="filterPatients('in_review',this)">In Review</div>
           <div class="filter-pill"        id="pflt-awaiting_activation" onclick="filterPatients('awaiting_activation',this)">Awaiting Activation</div>
           <div class="filter-pill"        id="pflt-active"             onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-not_prescribed"     onclick="filterPatients('not_prescribed',this)">Not Prescribed</div>
@@ -7930,7 +7929,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','pending_review','in_review','active','awaiting_activation','not_prescribed','withdrawn'].forEach(function(f) {
+  ['all','pending_review','active','awaiting_activation','not_prescribed','withdrawn'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -7990,8 +7989,7 @@ function renderPatientList(filter) {
 
   // Apply filter — matches status labels shown on card headers
   var patients = rows;
-  if (filter === 'pending_review') patients = rows.filter(function(p){ return !p.review_status || p.review_status === 'pending_review'; });
-  if (filter === 'in_review') patients = rows.filter(function(p){ return p.review_status === 'in_review' || p.review_status === 'live_consult_requested' || p.review_status === 'live_consult_scheduled'; });
+  if (filter === 'pending_review') patients = rows.filter(function(p){ return !['prescribed','not_prescribed','withdrawn'].includes(p.review_status); });
   if (filter === 'active') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status === 'completed'; });
   if (filter === 'awaiting_activation') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status !== 'completed'; });
   if (filter === 'not_prescribed') patients = rows.filter(function(p){ return p.review_status === 'not_prescribed'; });

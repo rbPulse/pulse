@@ -7136,20 +7136,70 @@ async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durati
 
     var start = new Date(startDate || Date.now());
     var months = Math.max(1, Math.ceil(durationWeeks / 4));
+
+    // Get already-booked slots for this clinician to avoid conflicts
+    var bookedRes = await db.from('appointments')
+      .select('scheduled_at')
+      .eq('clinician_id', clinicianId)
+      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")');
+    var bookedTimes = new Set((bookedRes.data || []).map(function(a) {
+      return new Date(a.scheduled_at).toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+    }));
+
+    // Available hours to pick from (spread across the day)
+    var slotHours = [9, 10, 11, 13, 14, 15, 16];
+    var slotMinutes = [0, 30];
+
     var appointments = [];
     for (var i = 1; i <= months; i++) {
       var checkinDate = new Date(start);
       checkinDate.setMonth(checkinDate.getMonth() + i);
-      // Schedule at 10:00 AM on the same day-of-month
-      checkinDate.setHours(10, 0, 0, 0);
-      appointments.push({
-        consumer_id: consumerId,
-        clinician_id: clinicianId,
-        scheduled_at: checkinDate.toISOString(),
-        duration_minutes: 20,
-        status: 'confirmed',
-        notes: 'monthly_checkin|Month ' + i + ' check-in'
-      });
+      checkinDate.setSeconds(0, 0);
+
+      // Find the first available slot on that day that isn't booked
+      var scheduled = false;
+      // Try the target day, then shift up to 3 days forward if fully booked
+      for (var dayOffset = 0; dayOffset <= 3 && !scheduled; dayOffset++) {
+        var tryDate = new Date(checkinDate);
+        tryDate.setDate(tryDate.getDate() + dayOffset);
+        var dow = tryDate.getDay();
+        // Skip weekends (assuming standard availability)
+        if (dow === 0 || dow === 6) continue;
+
+        for (var hi = 0; hi < slotHours.length && !scheduled; hi++) {
+          for (var mi = 0; mi < slotMinutes.length && !scheduled; mi++) {
+            tryDate.setHours(slotHours[hi], slotMinutes[mi], 0, 0);
+            var key = tryDate.toISOString().slice(0, 16);
+            if (!bookedTimes.has(key)) {
+              appointments.push({
+                consumer_id: consumerId,
+                clinician_id: clinicianId,
+                scheduled_at: tryDate.toISOString(),
+                duration_minutes: 20,
+                status: 'confirmed',
+                notes: 'monthly_checkin|Month ' + i + ' check-in'
+              });
+              bookedTimes.add(key); // Block this slot for subsequent months
+              scheduled = true;
+            }
+          }
+        }
+      }
+      // Fallback: if all slots exhausted, still create with a random offset
+      if (!scheduled) {
+        var fallback = new Date(checkinDate);
+        var randHour = slotHours[Math.floor(Math.random() * slotHours.length)];
+        var randMin = slotMinutes[Math.floor(Math.random() * slotMinutes.length)];
+        fallback.setHours(randHour, randMin, 0, 0);
+        appointments.push({
+          consumer_id: consumerId,
+          clinician_id: clinicianId,
+          scheduled_at: fallback.toISOString(),
+          duration_minutes: 20,
+          status: 'confirmed',
+          notes: 'monthly_checkin|Month ' + i + ' check-in'
+        });
+      }
     }
     if (appointments.length > 0) {
       await db.from('appointments').insert(appointments);

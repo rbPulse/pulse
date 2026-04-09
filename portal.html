@@ -2730,15 +2730,27 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
           </div>
           <!-- Clinician is auto-assigned on confirm -->
 
-          <div class="settings-field" style="margin-bottom:18px;">
-            <div class="settings-field-lbl" style="margin-bottom:10px;">Available Times</div>
-            <div class="slot-grid" id="bookDateChips" style="flex-wrap:wrap;align-items:flex-start;"></div>
+          <!-- Calendar-first booking: pick date on month view, then see times -->
+          <div style="margin-bottom:18px;">
+            <div class="settings-field-lbl" style="margin-bottom:10px;">Select a Date</div>
+            <div id="bookCalendarWrap" style="margin-bottom:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <button id="bookCalPrev" onclick="_bookCalNav(-1)" style="background:none;border:1px solid var(--m-border,rgba(20,20,20,0.06));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">←</button>
+                <span id="bookCalMonth" style="font-size:15px;font-weight:600;"></span>
+                <button id="bookCalNext" onclick="_bookCalNav(1)" style="background:none;border:1px solid var(--m-border,rgba(20,20,20,0.06));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">→</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:4px;" id="bookCalHdr"></div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;" id="bookCalGrid"></div>
+            </div>
           </div>
 
           <div id="bookTimeSection" style="display:none;margin-bottom:18px;">
-            <div class="settings-field-lbl" style="margin-bottom:10px;">Available Times</div>
-            <div class="slot-grid" id="bookTimeSlots"></div>
+            <div class="settings-field-lbl" style="margin-bottom:10px;" id="bookTimeSectionLabel">Available Times</div>
+            <div id="bookTimeSlots" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
           </div>
+
+          <!-- Legacy slot grid hidden -->
+          <div class="slot-grid" id="bookDateChips" style="display:none;"></div>
 
           <div class="book-confirm-card" id="bookConfirmCard">
             <div class="book-confirm-label">Appointment Summary</div>
@@ -6916,64 +6928,156 @@ function _portalAutoAssignClinician(slotDt) {
   return candidates[0].id;
 }
 
+var _bookCalOffset = 0; // months forward from current
+var _bookSelectedDate = null;
+
 function _renderBookingGrid() {
-  var chipsEl = document.getElementById('bookDateChips');
-  if (!chipsEl) return;
-  chipsEl.innerHTML = '';
-
-  var now   = new Date();
-  var cutoff = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
-  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
   // Build active-DOW set from eligible clinicians' availability rows
   var activeDOW = {};
-  _bookAvailRows.forEach(function(r) {
-    if (_bookClinicianAvail[r.clinician_id] && r.active) activeDOW[r.day_of_week] = true;
-  });
+  if (_bookAvailRows) {
+    _bookAvailRows.forEach(function(r) {
+      if (_bookClinicianAvail && _bookClinicianAvail[r.clinician_id] && r.active) activeDOW[r.day_of_week] = true;
+      else if (!_bookClinicianAvail && r.active) activeDOW[r.day_of_week] = true;
+    });
+  }
+  window._bookActiveDOW = activeDOW;
+  _bookCalOffset = 0;
+  _bookSelectedDate = null;
+  _renderBookCalendar();
+  document.getElementById('bookTimeSection').style.display = 'none';
+}
 
-  // Build a per-date section: { dateStr, label, slots[] }
-  var today = new Date(now); today.setHours(0,0,0,0);
-  var sections = [];
+function _bookCalNav(dir) {
+  _bookCalOffset += dir;
+  if (_bookCalOffset < 0) _bookCalOffset = 0;
+  if (_bookCalOffset > 3) _bookCalOffset = 3;
+  _renderBookCalendar();
+}
 
-  for (var i = 0; i < 14; i++) {
-    var d = new Date(today); d.setDate(d.getDate() + i);
-    var dow = d.getDay();
-    if (!activeDOW[dow]) continue; // clinician not available this DOW
+function _renderBookCalendar() {
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DOW_HDR = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var viewMonth = new Date(today.getFullYear(), today.getMonth() + _bookCalOffset, 1);
+  var activeDOW = window._bookActiveDOW || {};
 
-    var dateStr = localDateStr(d);
-    var slots = _generateSlotsForDate(d, cutoff);
-    if (slots.length === 0) continue; // all slots taken or too soon
+  // Month label
+  var labelEl = document.getElementById('bookCalMonth');
+  if (labelEl) labelEl.textContent = MONTHS[viewMonth.getMonth()] + ' ' + viewMonth.getFullYear();
 
-    var fullLabel = DAY_FULL[dow] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
-    sections.push({ dateStr: dateStr, label: fullLabel, slots: slots });
+  // Day-of-week headers
+  var hdrEl = document.getElementById('bookCalHdr');
+  if (hdrEl) {
+    hdrEl.innerHTML = DOW_HDR.map(function(d) {
+      return '<div style="font-size:11px;font-weight:600;color:rgba(0,0,0,0.35);padding:4px 0;">' + d + '</div>';
+    }).join('');
   }
 
-  if (sections.length === 0) {
-    chipsEl.innerHTML = '<div style="font-size:13px;color:var(--grey2);line-height:1.7;padding:12px 0;">No availability in the next 14 days. Check back soon.</div>';
-    document.getElementById('bookTimeSection').style.display = 'none';
+  // Calendar grid
+  var gridEl = document.getElementById('bookCalGrid');
+  if (!gridEl) return;
+  gridEl.innerHTML = '';
+
+  // Leading empty cells
+  var firstDow = viewMonth.getDay();
+  for (var e = 0; e < firstDow; e++) {
+    var empty = document.createElement('div');
+    gridEl.appendChild(empty);
+  }
+
+  // Days in this month
+  var daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+  var cutoff = new Date(new Date().getTime() + 60 * 60 * 1000);
+
+  for (var d = 1; d <= daysInMonth; d++) {
+    var day = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d);
+    var cell = document.createElement('div');
+    cell.textContent = d;
+    cell.style.cssText = 'padding:8px 4px;border-radius:8px;font-size:14px;cursor:default;transition:all .15s;';
+
+    var isPast = day < today;
+    var dow = day.getDay();
+    var hasAvail = !!activeDOW[dow];
+    var isToday = day.toDateString() === today.toDateString();
+
+    if (isPast || !hasAvail) {
+      cell.style.color = 'rgba(0,0,0,0.2)';
+    } else {
+      // Check if any slots actually available
+      var dateStr = localDateStr(day);
+      var slots = _generateSlotsForDate(day, cutoff);
+      if (slots.length === 0) {
+        cell.style.color = 'rgba(0,0,0,0.2)';
+      } else {
+        cell.style.color = 'var(--m-text,#111)';
+        cell.style.cursor = 'pointer';
+        cell.style.fontWeight = '500';
+        cell.dataset.date = dateStr;
+        cell.dataset.label = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow] + ', ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][day.getMonth()] + ' ' + d;
+        cell.onmouseenter = function() { if (!this.classList.contains('book-cal-selected')) this.style.background = 'rgba(47,111,85,0.06)'; };
+        cell.onmouseleave = function() { if (!this.classList.contains('book-cal-selected')) this.style.background = ''; };
+        cell.onclick = function() { _onBookCalDatePick(this); };
+      }
+    }
+
+    if (isToday) {
+      cell.style.border = '1px solid #2F6F55';
+      cell.style.borderRadius = '8px';
+    }
+
+    if (_bookSelectedDate && dateStr === _bookSelectedDate) {
+      cell.classList.add('book-cal-selected');
+      cell.style.background = '#2F6F55';
+      cell.style.color = '#fff';
+      cell.style.fontWeight = '600';
+    }
+
+    gridEl.appendChild(cell);
+  }
+}
+
+function _onBookCalDatePick(el) {
+  var dateStr = el.dataset.date;
+  var dateLabel = el.dataset.label;
+  _bookSelectedDate = dateStr;
+
+  // Re-render calendar to show selection
+  _renderBookCalendar();
+
+  // Generate and show time slots for this date
+  var cutoff = new Date(new Date().getTime() + 60 * 60 * 1000);
+  var day = new Date(dateStr + 'T12:00:00');
+  var slots = _generateSlotsForDate(day, cutoff);
+
+  var timeSec = document.getElementById('bookTimeSection');
+  var timeSlots = document.getElementById('bookTimeSlots');
+  var timeLbl = document.getElementById('bookTimeSectionLabel');
+  if (!timeSec || !timeSlots) return;
+
+  if (timeLbl) timeLbl.textContent = 'Available times for ' + dateLabel;
+
+  if (slots.length === 0) {
+    timeSec.style.display = 'block';
+    timeSlots.innerHTML = '<div style="font-size:13px;padding:8px 0;color:rgba(0,0,0,0.45);">No available times on this date.</div>';
     return;
   }
 
-  // Render date-section headings + time buttons inline in chipsEl
-  // We repurpose the existing layout: each section heading + slot row
-  sections.forEach(function(sec) {
-    var heading = document.createElement('div');
-    heading.style.cssText = 'width:100%;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-top:14px;margin-bottom:6px;flex-basis:100%;';
-    heading.textContent = sec.label;
-    chipsEl.appendChild(heading);
-    sec.slots.forEach(function(slotTime) {
-      (function(ds, ts) {
-        var pill = document.createElement('div');
-        pill.className = 'slot-pill';
-        pill.textContent = ts;
-        pill.dataset.date = ds;
-        pill.dataset.time = ts;
-        pill.onclick = function(){ _onBookSlotPick(this, ds, ts, sec.label); };
-        chipsEl.appendChild(pill);
-      })(sec.dateStr, slotTime);
-    });
+  timeSec.style.display = 'block';
+  timeSlots.innerHTML = '';
+  slots.forEach(function(slotTime) {
+    var pill = document.createElement('div');
+    pill.className = 'filter-pill';
+    pill.style.cssText = 'font-size:13px;padding:8px 16px;cursor:pointer;';
+    pill.textContent = slotTime;
+    pill.dataset.date = dateStr;
+    pill.dataset.time = slotTime;
+    pill.onclick = function() {
+      // Deselect others
+      timeSlots.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      _onBookSlotPick(this, dateStr, slotTime, dateLabel);
+    };
+    timeSlots.appendChild(pill);
   });
 }
 

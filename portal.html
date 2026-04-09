@@ -5636,10 +5636,9 @@ function _loadMyPatients(cb) {
     })
     .catch(function() { return []; });
 
-  // Query 2: patients from consultations assigned to this clinician
+  // Query 2: ALL patients from consultations assigned to this clinician (any status)
   var consultPromise = db.from('consultations').select('user_id')
     .eq('assigned_clinician_id', currentUserId)
-    .in('review_status', ['pending_review','in_review','live_consult_requested','live_consult_scheduled','prescribed','not_prescribed'])
     .then(function(r) {
       if (r.error) return [];
       return (r.data || []).map(function(c){ return c.user_id; }).filter(Boolean);
@@ -9668,10 +9667,10 @@ function switchTab(name) {
   if (name === 'resources')        { initResourcesTab(); }
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'requested'); }
-  if (name === 'cl-patients')      { initClPatients(); }
+  if (name === 'cl-patients')      { _myPatientIds = null; initClPatients(); }
   if (name === 'cl-overview')       { _startClOverviewPoll(); loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); loadWeeklySchedule(); }
   else                              { _stopClOverviewPoll(); }
-  if (name === 'cl-messages')      { initClMessages(); _markClinicianMsgsRead(); }
+  if (name === 'cl-messages')      { _myPatientIds = null; initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
   var pbbConsumerItems = document.querySelectorAll('#pbbConsumer .pbb-item');
   pbbConsumerItems.forEach(function(el) { el.classList.remove('active'); });

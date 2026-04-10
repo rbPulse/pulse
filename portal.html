@@ -1623,6 +1623,11 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .m-card-progress{width:100%;height:8px;background:rgba(47,111,85,0.15);border-radius:999px;margin:12px 0;border:none;overflow:hidden;}
 .m-card-progress-fill{height:100%;background:#2F6F55;border-radius:999px;transition:width .5s ease;}
 
+/* ── Pulse brand card ECG animation ── */
+.pulse-ecg .ecg-signal{stroke-dasharray:12 80;stroke-dashoffset:92;animation:ecgSignal 3s ease-in-out infinite;}
+@keyframes ecgSignal{0%{stroke-dashoffset:92;}100%{stroke-dashoffset:0;}}
+.pulse-ecg .ecg-base{opacity:0.25;}
+
 /* ── Clinician avatar ── */
 .m-cl-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
 .m-cl-avatar{width:42px;height:42px;border-radius:50%;background:rgba(47,111,85,0.08);border:1px solid rgba(47,111,85,0.15);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#2F6F55;flex-shrink:0;letter-spacing:0.05em;}
@@ -2579,9 +2584,15 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
           </div>
 
           <!-- Pulse brand card -->
-          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:140px;background:#050505;border:none;">
-            <div style="width:80px;height:80px;border:2.5px solid #3a7a5c;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(58,122,92,0.8),0 0 24px rgba(58,122,92,0.4);">
-              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#3a7a5c" stroke-width="2" style="filter:drop-shadow(0 0 4px rgba(58,122,92,0.8));"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:160px;background:radial-gradient(circle at 50% 50%,#1a3d2e 0%,#122b20 40%,#0a1a13 75%,#060f0a 100%);border:1px solid rgba(58,122,92,0.15);box-shadow:var(--m-shadow,0 2px 8px rgba(20,20,20,0.04));position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(58,122,92,0.12),transparent 55%);pointer-events:none;"></div>
+            <div style="position:relative;z-index:1;">
+              <div style="width:90px;height:90px;border:2px solid rgba(58,122,92,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(58,122,92,0.25),0 0 40px rgba(58,122,92,0.08);">
+                <svg class="pulse-ecg" viewBox="0 0 24 24" width="40" height="40" fill="none" style="overflow:visible;">
+                  <path class="ecg-base" d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#3a7a5c" stroke-width="2" stroke-linecap="round"/>
+                  <path class="ecg-signal" d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#5cc99a" stroke-width="2.5" stroke-linecap="round" filter="drop-shadow(0 0 3px rgba(92,201,154,0.6))"/>
+                </svg>
+              </div>
             </div>
           </div>
           <!-- Hidden element for JS compat -->

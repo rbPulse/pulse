@@ -8330,7 +8330,7 @@ function renderPatientList(filter) {
     } else if (p.review_status === 'withdrawn') {
       statusLabel = '<span style="color:#71717A;font-weight:600;">Withdrawn</span>';
     } else if (p.review_status === 'in_review') {
-      statusLabel = '<span style="color:#3B82F6;font-weight:600;">In Review</span>';
+      statusLabel = '<span style="color:#3B82F6;font-weight:600;">Pending Review</span>';
     } else {
       statusLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
     }
@@ -8657,7 +8657,7 @@ function buildPatientDetail(p) {
   // Review status label display
   var reviewStatusDisplay = '';
   if (reviewStatusLabel === 'pending_review') reviewStatusDisplay = 'Pending Review';
-  else if (reviewStatusLabel === 'in_review') reviewStatusDisplay = 'In Review';
+  else if (reviewStatusLabel === 'in_review') reviewStatusDisplay = 'Pending Review';
   else if (reviewStatusLabel === 'prescribed') reviewStatusDisplay = 'Prescribed';
   else if (reviewStatusLabel === 'not_prescribed') reviewStatusDisplay = 'Not Prescribed';
   else if (reviewStatusLabel === 'live_consult_requested') reviewStatusDisplay = 'Live Consult Requested';
@@ -9374,7 +9374,7 @@ function _threadReviewChip(rs) {
   var style = 'font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.1em;padding:1px 6px;border-radius:999px;margin-left:6px;';
   var label, colors;
   if (rs === 'pending_review')           { label = 'PENDING';    colors = 'background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);'; }
-  else if (rs === 'in_review')           { label = 'IN REVIEW';  colors = 'background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);'; }
+  else if (rs === 'in_review')           { label = 'PENDING';    colors = 'background:rgba(220,180,75,0.1);border:1px solid rgba(220,180,75,0.22);color:rgba(220,180,75,0.85);'; }
   else if (rs === 'live_consult_requested') { label = 'CONSULT REQ'; colors = 'background:rgba(140,100,220,0.1);border:1px solid rgba(140,100,220,0.22);color:rgba(170,140,230,0.85);'; }
   else if (rs === 'live_consult_scheduled') { label = 'SCHEDULED'; colors = 'background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.8);'; }
   else if (rs === 'prescribed')          { label = 'PRESCRIBED'; colors = 'background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.22);color:var(--green);'; }
@@ -9428,7 +9428,7 @@ function _renderClThreadListFromCache() {
           else if (pp.review_status === 'prescribed') statusLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
           else if (pp.review_status === 'not_prescribed') statusLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
           else if (pp.review_status === 'withdrawn') statusLabel = '<span style="color:#71717A;font-weight:600;">Withdrawn</span>';
-          else if (pp.review_status === 'in_review') statusLabel = '<span style="color:#3B82F6;font-weight:600;">In Review</span>';
+          else if (pp.review_status === 'in_review') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Pending Review</span>';
           else statusLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
           break;
         }
@@ -11771,15 +11771,25 @@ function _showEvaluationForm(apptId) {
         }
       })
       .catch(function(e) { console.warn('[Pulse] eval form load failed (async):', e); });
-    // Load latest appointment notes for this patient (from prior live consult)
-    db.from('appointments').select('notes').eq('consumer_id', _activePatientUserId)
-      .not('notes', 'is', null).order('scheduled_at', { ascending: false }).limit(1)
-      .then(function(r) {
-        if (r.data && r.data.length > 0 && r.data[0].notes && r.data[0].notes.trim()) {
-          var notesEl = document.getElementById('evalNotes');
-          if (notesEl && !notesEl.value) notesEl.value = r.data[0].notes;
-        }
-      }).catch(function(){});
+    // Load notes: first check if there's a live textarea from the patient card, then DB
+    var _existingNotes = '';
+    var _attnNotes = document.getElementById('attn-notes-' + _activePatientConsultId);
+    var _pdpNotes = document.getElementById('pdp-notes-' + _activePatientUserId);
+    if (_attnNotes && _attnNotes.value.trim()) _existingNotes = _attnNotes.value.trim();
+    else if (_pdpNotes && _pdpNotes.value.trim()) _existingNotes = _pdpNotes.value.trim();
+    if (_existingNotes) {
+      var notesEl = document.getElementById('evalNotes');
+      if (notesEl && !notesEl.value) notesEl.value = _existingNotes;
+    } else {
+      db.from('appointments').select('notes').eq('consumer_id', _activePatientUserId)
+        .not('notes', 'is', null).order('scheduled_at', { ascending: false }).limit(1)
+        .then(function(r) {
+          if (r.data && r.data.length > 0 && r.data[0].notes && r.data[0].notes.trim()) {
+            var notesEl = document.getElementById('evalNotes');
+            if (notesEl && !notesEl.value) notesEl.value = r.data[0].notes;
+          }
+        }).catch(function(){});
+    }
   } else if (apptId) {
     // Appointment-based mode: load from appointment record
     db.from('appointments').select('consumer_id, notes, scheduled_at').eq('id', apptId).limit(1)

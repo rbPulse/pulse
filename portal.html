@@ -1572,7 +1572,7 @@ body.member-mode .tab-eyebrow{color:#2F6F55;font-family:'DM Mono',monospace;font
 body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:-0.01em;}
 
 /* ══ HERO CARD (Today — 3 column command center) ══ */
-.m-hero{background:#EFEAE0;border:none;border-radius:var(--m-radius);padding:0;margin-bottom:32px;box-shadow:0 10px 30px rgba(0,0,0,0.10);position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr 1fr;}
+.m-hero{background:#EFEAE0;border:2px solid rgba(20,20,20,0.12);border-radius:var(--m-radius);padding:0;margin-bottom:32px;box-shadow:0 10px 30px rgba(0,0,0,0.08);position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr 1fr;}
 .m-hero-col{padding:32px;background:#EFEAE0;}
 .m-hero-col:not(:last-child){border-right:1px solid rgba(0,0,0,0.06);}
 .m-hero-col-primary{padding:36px;background:linear-gradient(to right,rgba(0,0,0,0) 75%,rgba(0,0,0,0.18) 100%),radial-gradient(circle at 45% 40%,rgba(255,255,255,0.10),transparent 50%),linear-gradient(135deg,#2F6A52 0%,#234A3B 45%,#1A342A 100%);border-right:none;position:relative;}
@@ -2506,7 +2506,7 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
             <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
             <div class="m-hero-sub" id="mHeroSub">Loading...</div>
             <div class="m-hero-dose" id="mHeroDose"></div>
-            <button class="m-hero-cta" id="mHeroCta" onclick="switchTab('tracker')">Log today's dose</button>
+            <button class="m-hero-cta" id="mHeroCta" onclick="logDose()">Log today's dose</button>
           </div>
           <!-- MIDDLE: Status -->
           <div class="m-hero-col">
@@ -2672,7 +2672,7 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
         <div class="log-card">
           <div class="log-card-info">
             <div class="log-card-title">Log today's dose</div>
-            <div class="log-card-sub">Keep your protocol on track. Record each injection as you go.</div>
+            <div class="log-card-sub">Keep your protocol on track. Record each dose as you go.</div>
           </div>
           <div>
             <button class="btn-green" id="logDoseBtn" onclick="logDose()">Log Dose</button>
@@ -2887,10 +2887,10 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
       <!-- ── CLINICIAN SCHEDULE ── -->
       <div class="portal-tab" id="tab-cl-schedule">
         <div class="tab-eyebrow">Availability</div>
-        <div class="tab-title">Set when patients can book live video consultations with you</div>
+        <div class="tab-title">Set when patients can book consultations with you</div>
 
-        <div style="background:rgba(100,150,255,0.05);border:1px solid rgba(100,150,255,0.15);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;color:var(--grey);line-height:1.5;">
-          This availability is shown to patients only when you request a live video consultation. Patients cannot book appointments with you directly.
+        <div style="background:rgba(100,150,255,0.05);border:1px solid rgba(100,150,255,0.15);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;line-height:1.5;">
+          Your availability is used for all appointment scheduling — including monthly check-ins, ad hoc consults requested by active members, and clinician-initiated consultations.
         </div>
 
         <!-- Consult settings -->
@@ -3779,12 +3779,12 @@ var RESOURCES_MAP = {
     injectionGuide: {
       steps: [
         'Wash hands thoroughly with soap and water.',
-        'Clean the injection site (outer thigh or abdomen) with an alcohol swab. Let dry for 10 seconds.',
+        'Clean the administration site (outer thigh or abdomen) with an alcohol swab. Let dry for 10 seconds.',
         'Pinch a fold of skin between thumb and index finger.',
-        'Insert the needle at a 45° angle for subcutaneous injection.',
+        'Administer the dose subcutaneously.',
         'Slowly depress the plunger over 3–5 seconds.',
-        'Withdraw the needle and apply gentle pressure with a clean swab.',
-        'Dispose of needle in a sharps container immediately.'
+        'Apply gentle pressure to the site after administration.',
+        'Dispose of any materials according to included instructions.'
       ]
     },
     faq: [
@@ -3808,16 +3808,16 @@ var RESOURCES_MAP = {
     injectionGuide: {
       steps: [
         'Wash hands thoroughly with soap and water.',
-        'Clean the injection site with an alcohol swab. Let dry.',
-        'For localised injury: inject subcutaneously as close to the injury site as practical.',
-        'For systemic use: inject in the abdomen or outer thigh.',
-        'Insert needle at 45° angle, depress plunger slowly.',
+        'Clean the administration site with an alcohol swab. Let dry.',
+        'For localised injury: administer subcutaneously as close to the injury site as practical.',
+        'For systemic use: administer in the abdomen or outer thigh.',
+        'Administer the dose subcutaneously at the recommended site.',
         'Withdraw and apply gentle pressure.',
-        'Dispose of needle immediately in sharps container.'
+        'Dispose of materials according to included instructions.'
       ]
     },
     faq: [
-      { q: 'Can I inject near the injury site?', a: 'Yes — local injection near the target tissue is common and may enhance results for acute injuries. Subcutaneous injection anywhere is also effective systemically.' },
+      { q: 'Can I administer near the injury site?', a: 'Yes — local administration near the target tissue is common and may enhance results for acute injuries. Subcutaneous administration anywhere is also effective systemically.' },
       { q: 'How long until I see results?', a: 'Acute soft tissue injuries often improve within 7–14 days. Tendon and joint issues typically require 4–8 weeks.' },
       { q: 'Can I use this while training?', a: 'Yes. Many athletes use Repair specifically to train through minor injuries and recover faster between sessions.' },
       { q: 'Is it safe long-term?', a: 'BPC-157 and TB-500 have strong safety profiles in research. Your protocol includes planned rest cycles — follow your clinician\'s guidance.' },
@@ -3838,10 +3838,10 @@ var RESOURCES_MAP = {
       steps: [
         'Wash hands thoroughly.',
         'Clean abdomen or outer thigh with alcohol swab. Allow to dry.',
-        'Pinch skin fold and insert needle at 45°.',
+        'Pinch skin fold and administer at the recommended site.',
         'Inject slowly over 5 seconds.',
-        'Withdraw needle, apply gentle pressure.',
-        'Dispose of needle in sharps container.'
+        'Apply gentle pressure after administration.',
+        'Dispose of any materials per instructions.'
       ]
     },
     faq: [
@@ -3866,9 +3866,9 @@ var RESOURCES_MAP = {
       steps: [
         'Wash hands thoroughly.',
         'Clean abdomen with alcohol swab. Allow to dry completely.',
-        'Pinch abdominal skin and insert needle at 45°.',
+        'Pinch abdominal skin and administer at the recommended site.',
         'Inject slowly, withdraw, apply gentle pressure.',
-        'Dispose of needle in sharps container immediately.'
+        'Dispose of any materials according to included instructions.'
       ]
     },
     faq: [
@@ -3892,12 +3892,12 @@ var RESOURCES_MAP = {
     injectionGuide: {
       steps: [
         'Wash hands thoroughly.',
-        'Clean injection site (abdomen preferred) with alcohol swab.',
+        'Clean administration site (abdomen preferred) with alcohol swab.',
         'Allow skin to dry completely before injecting.',
         'Pinch skin and insert at 45°.',
         'Inject slowly, withdraw gently.',
-        'Rotate injection sites to prevent lipohypertrophy.',
-        'Dispose of needle immediately.'
+        'Rotate administration sites to prevent lipohypertrophy.',
+        'Dispose of materials per included instructions.'
       ]
     },
     faq: [
@@ -3923,10 +3923,10 @@ var RESOURCES_MAP = {
         'Wash hands thoroughly.',
         'Clean outer thigh or abdomen with alcohol swab.',
         'Allow to dry completely.',
-        'Insert needle at 45° into pinched skin fold.',
+        'Administer at the recommended° into pinched skin fold.',
         'Inject slowly over 3–5 seconds.',
-        'Withdraw and apply light pressure.',
-        'Dispose of needle in sharps container.'
+        'Apply gentle pressure after administration.',
+        'Dispose of any materials per instructions.'
       ]
     },
     faq: [
@@ -3957,17 +3957,17 @@ RESOURCES_MAP['generic'] = {
   injectionGuide: {
     steps: [
       'Wash hands thoroughly with soap and water for at least 20 seconds.',
-      'Clean the injection site (abdomen or outer thigh) with an alcohol swab. Allow to air-dry for 10 seconds.',
+      'Clean the administration site (abdomen or outer thigh) with an alcohol swab. Allow to air-dry for 10 seconds.',
       'Pinch a fold of skin between your thumb and index finger.',
-      'Insert the needle at a 45° angle for subcutaneous injection.',
+      'Administer the dose subcutaneously.',
       'Slowly depress the plunger over 3–5 seconds.',
-      'Withdraw the needle and apply gentle pressure with a clean swab.',
-      'Dispose of the used needle immediately in a sharps container.'
+      'Apply gentle pressure to the site after administration.',
+      'Dispose of materials according to included instructions.'
     ]
   },
   faq: [
     { q: 'When will my protocol be assigned?', a: 'Your clinician will review your intake form and assign a protocol within 1–2 business days. You will see your protocol appear in the Protocol tab once it is confirmed.' },
-    { q: 'Where do I find my injection supplies?', a: 'Your Pulse pod includes all necessary syringes, alcohol swabs, and bacteriostatic water. If anything is missing or damaged, contact support immediately.' },
+    { q: 'Where do I find my protocol supplies?', a: 'Your Pulse kit includes everything needed for your protocol. If anything is missing or damaged, contact support immediately.' },
     { q: 'Are peptides safe?', a: 'All Pulse protocols use research-backed peptides with established safety profiles. Your clinician will only assign compounds appropriate for your health status and goals.' },
     { q: 'Do I need to refrigerate my peptides?', a: 'Lyophilised (dry powder) peptides can be stored at room temperature before reconstitution. Once you add bacteriostatic water, store in the refrigerator at 2–8°C and use within 30 days.' },
     { q: 'What if I have a question before my protocol is assigned?', a: 'Use the Messages tab to send a direct message to your clinician or the support team. We typically respond within one business day.' }
@@ -4358,6 +4358,9 @@ function _continuePortalInit(user, role) {
   } else {
     // Consumer flow — apply light theme
     document.body.classList.add('member-mode');
+    // Show member pill in navbar
+    var _memberBadge = document.getElementById('navRoleBadge');
+    if (_memberBadge) { _memberBadge.textContent = 'Member'; _memberBadge.style.display = 'inline-block'; }
     var since = new Date(user.created_at);
     document.getElementById('memberSince').textContent = 'Member since ' + since.toLocaleDateString('en-US', {month:'long', year:'numeric'});
     // Derive an initial display name from user_metadata or email prefix
@@ -7679,7 +7682,7 @@ function _refreshOverviewData() {
   el = document.getElementById('mHeroCta');
   if (el) {
     if (loggedToday) { el.textContent = 'Dose logged'; el.classList.add('logged'); el.onclick = null; }
-    else { el.textContent = "Log today's dose"; el.classList.remove('logged'); el.onclick = function(){ switchTab('tracker'); }; }
+    else { el.textContent = "Log today's dose"; el.classList.remove('logged'); el.onclick = function(){ logDose(); }; }
   }
 
   // ── HERO MIDDLE (status) ──
@@ -9984,9 +9987,9 @@ function initResourcesTab() {
   });
   html += '</div>';
 
-  // Card 2 — Injection Guide (always expanded)
+  // Card 2 — Administration Guide (always expanded)
   html += '<div class="res-card">';
-  html += '<div class="res-card-title">Injection Guide</div>';
+  html += '<div class="res-card-title">Administration Guide</div>';
   html += '<ol class="res-steps-list">';
   resData.injectionGuide.steps.forEach(function(step) {
     html += '<li>' + escapeHtml(step) + '</li>';
@@ -12254,7 +12257,7 @@ function _showClSessionError(msg) {
       - Consumer: go to Resources tab
       - Protocol Guide card appears with expandable sections
       - Click a section → it expands with content
-      - Injection Guide card appears with numbered steps
+      - Administration Guide card appears with numbered steps
       - Common Questions card appears with FAQ items
       - Support request textarea and send button are visible
 

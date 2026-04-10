@@ -11586,14 +11586,14 @@ function _showEvaluationForm(apptId) {
   }
   evalOverlay.style.display = 'flex';
 
-  var _lbl = 'font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);display:block;margin-bottom:6px;';
-  var _sec = 'font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.26em;text-transform:uppercase;color:var(--green);margin-bottom:14px;margin-top:28px;';
+  var _lbl = 'font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.45);display:block;margin-bottom:6px;font-weight:600;';
+  var _sec = 'font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#1DB954;margin-bottom:14px;margin-top:28px;font-weight:600;';
 
   var protoRows = _EVAL_PROTOCOLS.map(function(p) {
     var key = p.toLowerCase().replace(/\s+/g,'_');
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
-      '<span style="font-size:13px;color:var(--grey);">' + escapeHtml(p) + '</span>' +
-      '<select class="book-select eval-proto-toggle" data-proto="' + escapeAttr(key) + '" style="width:80px;font-size:12px;padding:6px 10px;" disabled>' +
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
+      '<span style="font-family:\'Inter\',sans-serif;font-size:14px;color:#111111;">' + escapeHtml(p) + '</span>' +
+      '<select class="book-select eval-proto-toggle" data-proto="' + escapeAttr(key) + '" style="width:80px;font-size:13px;padding:6px 10px;" disabled>' +
         '<option value="no">No</option><option value="yes">Yes</option>' +
       '</select></div>';
   }).join('');
@@ -11602,11 +11602,11 @@ function _showEvaluationForm(apptId) {
     '<div style="max-width:640px;width:100%;margin:0 auto;padding:48px 24px 64px;">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:40px;">' +
         '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
-        '<span style="font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:0.28em;color:#fff;text-transform:uppercase;">Pulse</span>' +
+        '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;color:#111111;text-transform:uppercase;">Pulse</span>' +
       '</div>' +
       '<div style="' + _sec + '">Patient Evaluation</div>' +
-      '<div style="font-size:24px;font-weight:600;color:#fff;margin-bottom:6px;">Complete your evaluation</div>' +
-      '<div style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:32px;">Review the session and submit your evaluation for this patient.</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:24px;font-weight:600;color:#111111;margin-bottom:6px;">Complete your evaluation</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:14px;color:rgba(0,0,0,0.55);line-height:1.6;margin-bottom:32px;">Review the session and submit your evaluation for this patient.</div>' +
       '<div id="evalPatientInfo" style="margin-bottom:24px;"></div>' +
 
       // Session Notes
@@ -11642,20 +11642,30 @@ function _showEvaluationForm(apptId) {
           '<div class="settings-field"><label style="' + _lbl + '">Dose Unit <span style="color:rgba(200,80,80,0.7);">*</span></label><select id="evalDoseUnit" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="mL">mL</option></select></div>' +
         '</div>' +
         '<div class="settings-grid" style="margin-bottom:12px;">' +
-          '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalFrequency" class="settings-input" type="text" placeholder="e.g. 2x daily" oninput="_evalCheckSubmit()"/></div>' +
-          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, 30 min before meals" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+              '<input id="evalFreqNum" class="settings-input" type="number" min="1" max="10" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/>' +
+              '<select id="evalFreqPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="daily">daily</option><option value="weekly">weekly</option></select>' +
+            '</div>' +
+          '</div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, before meals" oninput="_evalCheckSubmit()"/></div>' +
         '</div>' +
         '<div class="settings-grid" style="margin-bottom:12px;">' +
-          '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalDuration" class="settings-input" type="text" placeholder="e.g. 8 weeks" oninput="_evalCheckSubmit()"/></div>' +
+          '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+              '<input id="evalDurNum" class="settings-input" type="number" min="1" max="52" placeholder="e.g. 8" oninput="_evalCheckSubmit()"/>' +
+              '<select id="evalDurPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option></select>' +
+            '</div>' +
+          '</div>' +
           '<div class="settings-field"><label style="' + _lbl + '">Protocol Version <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalProtoVersion" class="settings-input" type="number" min="1" max="999" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/></div>' +
         '</div>' +
-        '<div style="margin-bottom:20px;"><label style="' + _lbl + '">Other Notes <span style="opacity:0.4;font-size:7px;">(optional)</span></label><textarea id="evalOtherNotes" class="settings-input" rows="2" placeholder="Additional notes…" style="resize:vertical;min-height:50px;line-height:1.6;"></textarea></div>' +
+        '<div style="margin-bottom:20px;"><label style="' + _lbl + '">Other Notes <span style="opacity:0.5;font-size:9px;">(optional)</span></label><textarea id="evalOtherNotes" class="settings-input" rows="2" placeholder="Additional notes…" style="resize:vertical;min-height:50px;line-height:1.6;"></textarea></div>' +
       '</div>' +
 
       // Submit
       '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:24px;">' +
         '<button class="btn-green" id="evalSubmitBtn" disabled style="opacity:0.4;cursor:not-allowed;" onclick="_submitEvaluation(\'' + escapeAttr(apptId || '') + '\')">Submit Evaluation</button>' +
-        '<span id="evalMsg" style="display:none;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.08em;"></span>' +
+        '<span id="evalMsg" style="display:none;font-family:\'Inter\',sans-serif;font-size:12px;"></span>' +
       '</div>' +
     '</div>';
 
@@ -11751,11 +11761,13 @@ function _evalCheckSubmit() {
     document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ if (s.value === 'yes') anyProto = true; });
     var doseAmt = (document.getElementById('evalDoseAmount') || {}).value || '';
     var doseUnit = (document.getElementById('evalDoseUnit') || {}).value || '';
-    var freq = (document.getElementById('evalFrequency') || {}).value || '';
+    var freq = (document.getElementById('evalFreqNum') || {}).value || '';
+    var freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
     var timing = (document.getElementById('evalTiming') || {}).value || '';
-    var dur = (document.getElementById('evalDuration') || {}).value || '';
+    var durNum = (document.getElementById('evalDurNum') || {}).value || '';
+    var durPeriod = (document.getElementById('evalDurPeriod') || {}).value || '';
     var protoVer = (document.getElementById('evalProtoVersion') || {}).value || '';
-    valid = anyProto && doseAmt && doseUnit && freq && timing && dur.trim() && protoVer;
+    valid = anyProto && doseAmt && doseUnit && freq && freqPeriod && timing && durNum && durPeriod && protoVer;
   }
 
   btn.disabled = !valid;
@@ -11817,10 +11829,13 @@ async function _submitEvaluation(apptId) {
       });
       evalData.dose_amount = (document.getElementById('evalDoseAmount') || {}).value || '';
       evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
-      evalData.frequency = (document.getElementById('evalFrequency') || {}).value || '';
+      var _freqNum = (document.getElementById('evalFreqNum') || {}).value || '';
+      var _freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
+      evalData.frequency = _freqNum + ' dose' + (parseInt(_freqNum) > 1 ? 's ' : ' ') + _freqPeriod;
       evalData.timing = (document.getElementById('evalTiming') || {}).value || '';
-      evalData.timing_instructions = evalData.timing; // unified into single timing field
-      evalData.duration = (document.getElementById('evalDuration') || {}).value || '';
+      var _durNum = (document.getElementById('evalDurNum') || {}).value || '';
+      var _durPeriod = (document.getElementById('evalDurPeriod') || {}).value || '';
+      evalData.duration = _durNum + ' ' + _durPeriod;
       evalData.other_notes = (document.getElementById('evalOtherNotes') || {}).value || '';
       evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';
     }

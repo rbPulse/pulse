@@ -11678,9 +11678,12 @@ function _showEvaluationForm(apptId) {
 
   evalOverlay.innerHTML =
     '<div style="max-width:640px;width:100%;margin:0 auto;padding:48px 24px 64px;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:40px;">' +
-        '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
-        '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;color:#111111;text-transform:uppercase;">Pulse</span>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
+          '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;color:#111111;text-transform:uppercase;">Pulse</span>' +
+        '</div>' +
+        '<button onclick="_closeEvalOverlay()" style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:rgba(0,0,0,0.5);background:none;border:1px solid rgba(0,0,0,0.12);border-radius:10px;padding:8px 16px;cursor:pointer;transition:all .2s;">← Back to portal</button>' +
       '</div>' +
       '<div style="' + _sec + '">Patient Evaluation</div>' +
       '<div style="font-family:\'Inter\',sans-serif;font-size:24px;font-weight:600;color:#111111;margin-bottom:6px;">Complete your evaluation</div>' +
@@ -11798,15 +11801,20 @@ function _showEvaluationForm(apptId) {
   }
 }
 
+function _closeEvalOverlay() {
+  var overlay = document.getElementById('evalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 function _evalStyleProtoToggle(sel) {
   if (sel.value === 'yes') {
-    sel.style.background = '#1DB954';
-    sel.style.color = '#fff';
-    sel.style.borderColor = '#1DB954';
+    sel.style.setProperty('background', '#1DB954', 'important');
+    sel.style.setProperty('color', '#fff', 'important');
+    sel.style.setProperty('border-color', '#1DB954', 'important');
   } else {
-    sel.style.background = '';
-    sel.style.color = '';
-    sel.style.borderColor = '';
+    sel.style.removeProperty('background');
+    sel.style.removeProperty('color');
+    sel.style.removeProperty('border-color');
   }
 }
 

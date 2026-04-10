@@ -7665,11 +7665,11 @@ function _refreshOverviewData() {
   } else {
     nextDoseStr = 'Today';
   }
-  // Scheduled doses so far (doses that should have been logged by now)
-  var daysSinceStart = startDate ? Math.floor((Date.now() - startDate.getTime()) / 86400000) : 0;
-  var scheduledDoses = Math.floor(daysSinceStart * dosesPerDay);
+  // Scheduled doses so far (inclusive of today — day 1 is the start day)
+  var daysSinceStart = startDate ? Math.floor((Date.now() - startDate.getTime()) / 86400000) + 1 : 1;
+  var scheduledDoses = Math.max(1, Math.round(daysSinceStart * dosesPerDay));
   if (totalPrescribed != null) scheduledDoses = Math.min(scheduledDoses, totalPrescribed);
-  var onTimeRate = scheduledDoses > 0 ? Math.round((dosesLogged / scheduledDoses) * 100) : null;
+  var onTimeRate = scheduledDoses > 0 ? Math.min(100, Math.round((dosesLogged / scheduledDoses) * 100)) : null;
   var startStr = startDate ? startDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : null;
   var freqPlain = _normalizeFreqLabel(op.freqRaw, dosesPerDay);
 

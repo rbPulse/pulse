@@ -1759,6 +1759,7 @@ body.member-mode .loading-icon svg{stroke:#2F6F55;}
   .m-hero{grid-template-columns:1fr;}
   .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid var(--m-border-soft);}
   .m-grid{grid-template-columns:1fr 1fr;}
+  .m-pulse-brand-card{order:99;}
   body.member-mode .portal-main{padding:28px 20px;}
 }
 @media(max-width:600px){
@@ -1907,6 +1908,7 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
   body.member-mode .m-hero{grid-template-columns:1fr;}
   body.member-mode .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid rgba(20,20,20,0.06);}
   body.member-mode .m-grid{grid-template-columns:1fr;gap:14px;}
+  body.member-mode .m-pulse-brand-card{order:99;}
   body.member-mode .portal-main{padding:16px 12px;}
   body.member-mode .m-card{padding:18px;}
 }
@@ -2576,11 +2578,18 @@ body.clinician-mode select option{background:var(--cl-high) !important;color:var
             <div class="m-hero-row"><span class="m-hero-row-label">Current streak</span><span class="m-hero-row-val green" id="mAdhStreak">—</span></div>
           </div>
 
-          <!-- Upcoming — only non-duplicate future events -->
-          <div class="m-card m-card-tier3">
-            <div class="m-card-label">Upcoming</div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next appointment</span><span class="m-hero-row-val" id="mUpNextAppt">None scheduled</span></div>
+          <!-- Pulse brand card -->
+          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:140px;background:linear-gradient(135deg,#2E6A52 0%,#234A3B 50%,#1A342A 100%);border:none;position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.06),transparent 60%);pointer-events:none;"></div>
+            <div style="text-align:center;position:relative;z-index:1;">
+              <div style="width:48px;height:48px;border:2px solid rgba(255,255,255,0.35);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;color:rgba(255,255,255,0.5);text-transform:uppercase;">Your wellness journey</div>
+            </div>
           </div>
+          <!-- Hidden element for JS compat -->
+          <span id="mUpNextAppt" style="display:none;"></span>
 
           <!-- Support — routes to Resources first, Messages as escalation -->
           <div class="m-card m-card-tier3">

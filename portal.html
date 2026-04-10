@@ -11576,6 +11576,84 @@ function _leaveClinicianSession() {
 // ── POST-CALL EVALUATION FORM ──
 var _EVAL_PROTOCOLS = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
 
+// Build eval form patient header with collapsible detail card (simplified — no messaging/notes/buttons)
+async function _loadEvalPatientHeader(el, consultId, userId, profile) {
+  var name = (profile && profile.display_name) || '—';
+  // Fetch consultation for risk/submitted info
+  try {
+    var res = await db.from('consultations').select('data, created_at, risk_status, review_status').eq('id', consultId).limit(1);
+    var c = (res.data && res.data.length) ? res.data[0] : {};
+    var d = c.data || {};
+    var ageStr = d.dob ? _calcAge(d.dob) + ' yrs' : '';
+    var sexStr = d.sex || '';
+    var stateStr = d.state || '';
+    var heightStr = d.height || '';
+    var weightStr = d.current_weight ? d.current_weight + ' lbs' : '';
+    // Submitted time
+    var st = d.submitted_at ? new Date(d.submitted_at).getTime() : (c.created_at ? new Date(c.created_at).getTime() : 0);
+    var diffH = st ? Math.floor((Date.now() - st) / 3600000) : 0;
+    var subRel;
+    if (diffH < 1) subRel = '< 1h';
+    else if (diffH < 24) subRel = diffH + 'h';
+    else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
+    var isOverdue = st && (Date.now() - st > 86400000);
+    // Risk
+    var rs = c.risk_status || '';
+    var riskHtml = '';
+    if (rs === 'high_risk') riskHtml = '<span style="color:#EF4444;font-weight:600;">High Risk</span>';
+    else if (rs === 'moderate_risk') riskHtml = '<span style="color:#EAB308;font-weight:600;">Moderate Risk</span>';
+    else if (rs === 'low_risk') riskHtml = '<span style="color:#22C55E;font-weight:500;">Low Risk</span>';
+    // Meta line
+    var metaParts = [ageStr, sexStr, heightStr, weightStr, stateStr].filter(Boolean);
+    var metaHtml = metaParts.map(function(s){return '<span>'+escapeHtml(s)+'</span>';}).join('<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>');
+    metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span><span>Submitted ' + escapeHtml(subRel) + '</span>';
+    if (riskHtml) metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' + riskHtml;
+    if (isOverdue) metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span><span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>';
+    // Build risk detail, goals, clinical summary, patient details for dropdown
+    var riskStatus = c.risk_status || '';
+    var riskReasons = d.risk_flag_reasons || [];
+    if (!riskStatus && d) { var re = _evaluateRiskFallback(d); riskStatus = re.status; riskReasons = re.reasons; }
+    var riskCardHtml = '';
+    if (riskStatus === 'high_risk') riskCardHtml = '<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div><ul class="crw-risk-list" style="color:#EF4444;">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul></div>';
+    else if (riskStatus === 'moderate_risk') riskCardHtml = '<div class="crw-risk crw-risk-mod"><div class="crw-risk-title" style="color:#EAB308;">MODERATE RISK</div><ul class="crw-risk-list" style="color:rgba(234,179,8,0.8);">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul></div>';
+    else riskCardHtml = '<div class="crw-risk crw-risk-low"><div class="crw-risk-title" style="color:#22C55E;">LOW RISK</div><div class="crw-risk-body">No concerns flagged</div></div>';
+    var goalsArr = d.goals || [];
+    var goalsText = goalsArr.length ? goalsArr.map(function(g){return g.charAt(0).toUpperCase()+g.slice(1);}).join(', ') : 'No goals specified';
+    var mhArr = d.medical_history || []; if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
+    var mhDisplay = _buildMedHistoryDisplay(mhArr);
+    var pepVal = d.peptide_history || d.currentPeptides || '';
+    var pepStr = pepVal === 'yes' ? 'Yes' : pepVal === 'no' ? 'No' : 'Not specified';
+    var clinHtml = '<div class="crw-clin-row"><div class="crw-clin-lbl">Medical History</div><div class="crw-clin-val">' + mhDisplay + '</div></div>' +
+      '<div class="crw-clin-row"><div class="crw-clin-lbl">Medications</div><div class="crw-clin-val">' + escapeHtml(d.medications || 'None') + '</div></div>' +
+      '<div class="crw-clin-row"><div class="crw-clin-lbl">Allergies</div><div class="crw-clin-val">' + escapeHtml(d.allergies || 'None reported') + '</div></div>' +
+      '<div class="crw-clin-row"><div class="crw-clin-lbl">Peptide / Hormone Use</div><div class="crw-clin-val">' + escapeHtml(pepStr) + '</div></div>';
+    function _df(l,v){return '<div><div class="crw-det-lbl">'+l+'</div><div class="crw-det-val">'+escapeHtml(v)+'</div></div>';}
+    var addressParts = [d.street_address, d.apt_unit, d.city, d.state, d.zip_code].filter(Boolean);
+    var addressStr = addressParts.length ? addressParts.join(', ') : '\u2014';
+    var detailsHtml = '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">' + _df('Email', d.email || '\u2014') + _df('Phone', d.phone_number || '\u2014') + '</div>' +
+      '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">' + _df('Address', addressStr) + _df('Date of Birth', d.dob || '\u2014') + '</div>';
+
+    el.innerHTML =
+      '<details style="border:1px solid rgba(0,0,0,0.12);border-radius:12px;overflow:hidden;margin-bottom:24px;">' +
+        '<summary style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none;list-style:none;background:var(--cl-high,#ECEEE9);">' +
+          '<div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:18px;font-weight:600;color:#111111;margin-bottom:4px;">' + escapeHtml(name) + '</div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.5);display:flex;flex-wrap:wrap;align-items:center;">' + metaHtml + '</div>' +
+          '</div>' +
+          '<span style="font-size:12px;color:rgba(0,0,0,0.3);font-family:\'Inter\',sans-serif;flex-shrink:0;margin-left:16px;">View details \u25BE</span>' +
+        '</summary>' +
+        '<div style="padding:20px;border-top:1px solid rgba(0,0,0,0.08);">' +
+          riskCardHtml +
+          '<div class="crw-section"><div class="crw-section-title">Goals</div><div class="crw-val">' + escapeHtml(goalsText) + '</div></div>' +
+          '<div class="crw-section"><div class="crw-section-title">Clinical Summary</div>' + clinHtml + '</div>' +
+          '<div class="crw-section"><div class="crw-section-title">Patient Details</div>' + detailsHtml + '</div>' +
+        '</div>' +
+      '</details>';
+  } catch(e) {
+    el.innerHTML = '<div style="padding:12px;font-size:13px;color:rgba(0,0,0,0.4);">Failed to load patient info.</div>';
+  }
+}
+
 function _showEvaluationForm(apptId) {
   var evalOverlay = document.getElementById('evalOverlay');
   if (!evalOverlay) {
@@ -11618,7 +11696,7 @@ function _showEvaluationForm(apptId) {
       // Prescription Decision
       '<div style="' + _sec + '">Prescription Decision</div>' +
       '<div style="margin-bottom:20px;">' +
-        '<label style="' + _lbl + '">Are you providing the member a prescription?</label>' +
+        '<label style="' + _lbl + '">Are you providing the patient a prescription?</label>' +
         '<select id="evalPrescriptionGiven" class="book-select" onchange="_onPrescriptionDecisionChange()">' +
           '<option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option>' +
         '</select>' +
@@ -11671,7 +11749,10 @@ function _showEvaluationForm(apptId) {
 
   // Attach change listeners to protocol toggles
   document.querySelectorAll('.eval-proto-toggle').forEach(function(sel) {
-    sel.addEventListener('change', _evalCheckSubmit);
+    sel.addEventListener('change', function() {
+      _evalStyleProtoToggle(this);
+      _evalCheckSubmit();
+    });
   });
 
   // Load patient info — async mode (no apptId) vs appointment mode
@@ -11682,24 +11763,8 @@ function _showEvaluationForm(apptId) {
         if (!pr || !pr.data || pr.data.length === 0) return;
         var p = pr.data[0];
         var infoEl = document.getElementById('evalPatientInfo');
-        if (infoEl) {
-          infoEl.innerHTML =
-            '<details style="border:1px solid rgba(0,0,0,0.12);border-radius:12px;overflow:hidden;">' +
-              '<summary style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none;list-style:none;background:var(--cl-high,#F6F7F5);">' +
-                '<div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#1DB954;margin-bottom:6px;font-weight:600;">Patient — Async Review</div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:16px;font-weight:600;color:#111111;margin-bottom:4px;">' + escapeHtml(p.display_name || '—') + '</div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.5);">' + escapeHtml(p.email || '') + (p.dob ? ' · DOB: ' + escapeHtml(p.dob) : '') + (p.sex ? ' · ' + escapeHtml(p.sex) : '') + '</div>' +
-                '</div>' +
-                '<span style="font-size:12px;color:rgba(0,0,0,0.35);font-family:\'Inter\',sans-serif;">View details ▾</span>' +
-              '</summary>' +
-              '<div id="evalPatientCardBody" style="border-top:1px solid rgba(0,0,0,0.08);"></div>' +
-            '</details>';
-          // Load full patient card into the dropdown
-          if (_activePatientConsultId && _activePatientUserId) {
-            var cardBody = document.getElementById('evalPatientCardBody');
-            if (cardBody) _loadAttentionCardBody(cardBody, _activePatientConsultId, _activePatientUserId);
-          }
+        if (infoEl && _activePatientConsultId) {
+          _loadEvalPatientHeader(infoEl, _activePatientConsultId, _activePatientUserId, p);
         }
       })
       .catch(function(e) { console.warn('[Pulse] eval form load failed (async):', e); });
@@ -11725,27 +11790,23 @@ function _showEvaluationForm(apptId) {
         if (!pr || !pr.data || pr.data.length === 0) return;
         var p = pr.data[0];
         var infoEl = document.getElementById('evalPatientInfo');
-        if (infoEl) {
-          infoEl.innerHTML =
-            '<details style="border:1px solid rgba(0,0,0,0.12);border-radius:12px;overflow:hidden;">' +
-              '<summary style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none;list-style:none;background:var(--cl-high,#F6F7F5);">' +
-                '<div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#1DB954;margin-bottom:6px;font-weight:600;">Patient</div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:16px;font-weight:600;color:#111111;margin-bottom:4px;">' + escapeHtml(p.display_name || '—') + '</div>' +
-                  '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.5);">' + escapeHtml(p.email || '') + (p.dob ? ' · DOB: ' + escapeHtml(p.dob) : '') + (p.sex ? ' · ' + escapeHtml(p.sex) : '') + '</div>' +
-                '</div>' +
-                '<span style="font-size:12px;color:rgba(0,0,0,0.35);font-family:\'Inter\',sans-serif;">View details ▾</span>' +
-              '</summary>' +
-              '<div id="evalPatientCardBody" style="border-top:1px solid rgba(0,0,0,0.08);"></div>' +
-            '</details>';
-          // Load full patient card if consultation ID available
-          if (_activePatientConsultId && _activePatientUserId) {
-            var cardBody = document.getElementById('evalPatientCardBody');
-            if (cardBody) _loadAttentionCardBody(cardBody, _activePatientConsultId, _activePatientUserId);
-          }
+        if (infoEl && _activePatientConsultId) {
+          _loadEvalPatientHeader(infoEl, _activePatientConsultId, _activePatientUserId, p);
         }
       })
       .catch(function(e) { console.warn('[Pulse] eval form load failed:', e); });
+  }
+}
+
+function _evalStyleProtoToggle(sel) {
+  if (sel.value === 'yes') {
+    sel.style.background = '#1DB954';
+    sel.style.color = '#fff';
+    sel.style.borderColor = '#1DB954';
+  } else {
+    sel.style.background = '';
+    sel.style.color = '';
+    sel.style.borderColor = '';
   }
 }
 
@@ -11759,7 +11820,7 @@ function _onPrescriptionDecisionChange() {
     noRxSection.style.display = 'none';
   } else if (val === 'no') {
     rxSection.style.opacity = '0.3'; rxSection.style.pointerEvents = 'none';
-    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ s.disabled = true; s.value = 'no'; });
+    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ s.disabled = true; s.value = 'no'; _evalStyleProtoToggle(s); });
     noRxSection.style.display = 'block';
   } else {
     rxSection.style.opacity = '0.3'; rxSection.style.pointerEvents = 'none';

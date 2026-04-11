@@ -3021,6 +3021,12 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
           <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
         </div>
+        <div class="filter-bar" id="clApptDateFilters" style="display:none;margin-top:8px;">
+          <div class="filter-pill active" id="flt-date-all"   onclick="_filterClApptsByDate('all',this)">All</div>
+          <div class="filter-pill"        id="flt-date-today" onclick="_filterClApptsByDate('today',this)">Today</div>
+          <div class="filter-pill"        id="flt-date-week"  onclick="_filterClApptsByDate('week',this)">This Week</div>
+          <div class="filter-pill"        id="flt-date-month" onclick="_filterClApptsByDate('month',this)">This Month</div>
+        </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>
         </div>
@@ -6314,11 +6320,32 @@ var _clAppointments = [];
 // Loaded real appointment rows from DB (or mock); shared across filters
 var _clApptRows = null;
 
+var _clApptDateFilter = 'all';
+
+function _filterClApptsByDate(range, pillEl) {
+  _clApptDateFilter = range;
+  ['all','today','week','month'].forEach(function(f) {
+    var p = document.getElementById('flt-date-' + f);
+    if (p) p.classList.toggle('active', f === range);
+  });
+  // Re-apply current filter with date range
+  if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
+}
+
 function filterClAppts(filter, pillEl) {
   _clApptFilter = filter;
+  _clApptDateFilter = 'all'; // Reset date filter on tab change
   ['requested','scheduled','completed'].forEach(function(f) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
+  });
+  // Show date filters only for Upcoming tab
+  var dateFilters = document.getElementById('clApptDateFilters');
+  if (dateFilters) dateFilters.style.display = (filter === 'scheduled') ? 'flex' : 'none';
+  // Reset date filter pills
+  ['all','today','week','month'].forEach(function(f) {
+    var p = document.getElementById('flt-date-' + f);
+    if (p) p.classList.toggle('active', f === 'all');
   });
   if (PREVIEW_MODE || !currentUserId) {
     _applyClApptFilter(ALL_APPTS, filter);
@@ -6414,6 +6441,23 @@ function _applyClApptFilter(rows, filter) {
       var isFuture = a.scheduledAt ? a.scheduledAt > new Date() : false;
       return (st === 'pending' || st === 'confirmed') && isFuture;
     });
+    // Apply date range sub-filter
+    if (_clApptDateFilter && _clApptDateFilter !== 'all') {
+      var now = new Date();
+      filtered = filtered.filter(function(a) {
+        if (!a.scheduledAt) return false;
+        if (_clApptDateFilter === 'today') {
+          return a.scheduledAt.toDateString() === now.toDateString();
+        } else if (_clApptDateFilter === 'week') {
+          var weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+          return a.scheduledAt <= weekEnd;
+        } else if (_clApptDateFilter === 'month') {
+          var monthEnd = new Date(now); monthEnd.setMonth(monthEnd.getMonth() + 1);
+          return a.scheduledAt <= monthEnd;
+        }
+        return true;
+      });
+    }
   } else if (filter === 'completed') {
     // Completed status OR past appointments (regardless of status)
     filtered = rows.filter(function(a) {
@@ -6714,10 +6758,25 @@ function renderApptList(elId, appts, role) {
     else if (rawSt === 'pending') statusLabel = '<span style="color:#EAB308;font-weight:600;">Pending</span>';
     else if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
     else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
+    // Patient stage label (from cached patient data)
+    var stageLabel = '';
+    if (role === 'clinician' && _clPatientRows && a.consumerId) {
+      for (var _pi = 0; _pi < _clPatientRows.length; _pi++) {
+        if (_clPatientRows[_pi].id === a.consumerId) {
+          var _rs = _clPatientRows[_pi].review_status;
+          var _ps = _clPatientRows[_pi].purchase_status;
+          if (_rs === 'prescribed' && _ps === 'completed') stageLabel = '<span style="color:#22C55E;font-weight:600;">Active</span>';
+          else if (_rs === 'prescribed') stageLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
+          else if (_rs === 'not_prescribed') stageLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
+          else stageLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
+          break;
+        }
+      }
+    }
     wrapper.innerHTML =
       '<div class="appt-row">' +
         '<div class="appt-info">' +
-          '<div class="appt-patient">' + escapeHtml(displayName) + '</div>' +
+          '<div class="appt-patient">' + escapeHtml(displayName) + (stageLabel ? '<span style="margin-left:10px;font-size:12px;">' + stageLabel + '</span>' : '') + '</div>' +
           '<div class="appt-type-text">' + escapeHtml(timeLabel) +
             (a.dur ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.dur) : '') +
             (statusLabel ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + statusLabel : '') +

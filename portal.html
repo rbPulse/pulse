@@ -2001,7 +2001,7 @@ body.clinician-mode .crw-right{background:var(--cl-high);border-left:1px solid v
 body.clinician-mode .crw-name{color:var(--cl-text);font-size:20px;font-weight:600;}
 body.clinician-mode .crw-meta{color:var(--cl-text2);font-size:14px;}
 body.clinician-mode .crw-meta-sep{color:rgba(0,0,0,0.2);}
-body.clinician-mode .crw-overdue{color:#E53E3E;}
+body.clinician-mode .crw-overdue{color:#E53E3E !important;font-weight:600 !important;}
 body.clinician-mode .crw-section{background:var(--cl-mid);border:1px solid rgba(0,0,0,0.14);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:14px;}
 body.clinician-mode .crw-section-title{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;border-bottom-color:var(--cl-border);}
 body.clinician-mode .crw-lbl{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;}
@@ -2260,6 +2260,7 @@ body.clinician-mode .portal-main .crw-section-title{color:rgba(0,0,0,0.45) !impo
 body.clinician-mode .portal-main .crw-lbl{color:rgba(0,0,0,0.45) !important;}
 body.clinician-mode .portal-main .crw-det-lbl{color:rgba(0,0,0,0.45) !important;}
 body.clinician-mode .portal-main .adp-close{color:#111111 !important;}
+body.clinician-mode .portal-main .crw-overdue{color:#E53E3E !important;}
 body.clinician-mode .portal-main .settings-toggle-text,
 body.clinician-mode .portal-main .avail-day-name,
 body.clinician-mode .portal-main .avail-hours,
@@ -6752,8 +6753,11 @@ function renderApptList(elId, appts, role) {
     var initials = role === 'consumer' ? 'SC' : (a.initials || '?');
     var rawSt = a._rawStatus || a.status;
     var canJoinRow = role === 'clinician' && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
+    var rescheduleBtnHtml = canJoinRow
+      ? '<button style="background:transparent;color:#111;font-family:Inter,sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border:1px solid rgba(0,0,0,0.12);border-radius:10px;cursor:pointer;margin-left:6px;" onclick="event.stopPropagation();_openClRescheduleModal(\'' + escapeAttr(a._id || '') + '\')">Reschedule</button>'
+      : '';
     var joinBtnHtml = canJoinRow
-      ? '<button style="background:#1DB954;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:500;padding:8px 18px;border:none;border-radius:10px;cursor:pointer;margin-left:8px;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
+      ? '<button style="background:#1DB954;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:500;padding:8px 18px;border:none;border-radius:10px;cursor:pointer;margin-left:6px;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
       : '';
     var statusLabel = '';
     if (rawSt === 'confirmed') statusLabel = '<span style="color:#22C55E;font-weight:600;">Confirmed</span>';
@@ -6784,6 +6788,7 @@ function renderApptList(elId, appts, role) {
             (statusLabel ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + statusLabel : '') +
           '</div>' +
         '</div>' +
+        rescheduleBtnHtml +
         joinBtnHtml +
         '<div style="color:var(--grey2);font-size:14px;flex-shrink:0;">\u203A</div>' +
       '</div>';

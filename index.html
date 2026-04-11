@@ -329,17 +329,21 @@ section{position:relative;padding:120px 48px;}
 .review-meta{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;color:var(--green);text-transform:uppercase;}
 /* TESTIMONIAL v2 */
 #testimonial{background:var(--bg);padding:72px 0 80px;min-height:600px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;}
-.testimonial-inner{max-width:860px;margin:0 auto;text-align:center;}
-.testimonial-heading{font-size:clamp(32px,4vw,56px);font-weight:600;line-height:1.1;letter-spacing:-0.02em;margin-bottom:10px;color:var(--white);}
-.testimonial-mark{font-size:48px;line-height:1;color:var(--green);font-family:Georgia,serif;margin-top:24px;margin-bottom:8px;display:block;animation:pulse-glow 2.4s ease-in-out infinite;}
-.testimonial-quote{font-size:clamp(14px,1.6vw,18px);font-weight:400;line-height:1.6;color:var(--white);font-style:italic;margin-bottom:16px;}
-.testimonial-divider{width:40px;height:1px;background:var(--green);margin:0 auto 18px;opacity:0.5;}
-.testimonial-name{font-size:15px;font-weight:600;margin-bottom:6px;}
+.testimonial-inner{max-width:1000px;margin:0 auto;text-align:center;}
+.testimonial-heading{font-size:clamp(32px,4vw,56px);font-weight:600;line-height:1.1;letter-spacing:-0.02em;margin-bottom:40px;color:var(--white);}
+.testimonial-split{display:grid;grid-template-columns:280px 1px 1fr;gap:48px;align-items:center;text-align:left;}
+.testimonial-doctor{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;}
+.testimonial-photo{width:140px;height:140px;border-radius:50%;object-fit:cover;object-position:top;flex-shrink:0;border:3px solid rgba(58,122,92,0.35);}
+.testimonial-name{font-size:17px;font-weight:600;margin-bottom:4px;}
 .testimonial-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;color:var(--grey);text-transform:uppercase;line-height:1.8;}
-.testimonial-attribution{display:flex;align-items:center;justify-content:center;gap:18px;text-align:left;}
-.testimonial-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;flex-shrink:0;border:2px solid rgba(58,122,92,0.35);}
 .testimonial-name-link{text-decoration:none;color:inherit;}
 .testimonial-name-link:hover .testimonial-name{color:var(--green);}
+.testimonial-separator{width:1px;height:100%;max-height:260px;background:linear-gradient(to bottom,transparent,rgba(58,122,92,0.35) 20%,rgba(58,122,92,0.35) 80%,transparent);align-self:center;justify-self:center;}
+.testimonial-quote-col{display:flex;flex-direction:column;justify-content:center;}
+.testimonial-mark{font-size:48px;line-height:1;color:var(--green);font-family:Georgia,serif;margin-bottom:12px;display:block;}
+.testimonial-quote{font-size:clamp(15px,1.6vw,18px);font-weight:400;line-height:1.75;color:var(--white);font-style:italic;margin:0;}
+.testimonial-divider{display:none;}
+.testimonial-attribution{display:none;}
 
 /* FAQ */
 #faq{background:var(--bg);padding-top:72px;padding-bottom:80px;min-height:912px;box-sizing:border-box;}
@@ -489,7 +493,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .review-card{padding:24px 20px;}
   .testimonial-inner{padding:0 8px;}
   .testimonial-heading{white-space:normal !important;}
-  .testimonial-photo{width:52px;height:52px;}
+  .testimonial-split{grid-template-columns:1fr;gap:32px;text-align:center;}
+  .testimonial-separator{width:80px;height:1px;max-height:1px;background:linear-gradient(to right,transparent,rgba(58,122,92,0.35),transparent);justify-self:center;}
+  .testimonial-photo{width:100px;height:100px;}
+  .testimonial-quote-col{text-align:center;}
 
   /* FAQ — ensure touch target */
   details.faq-item{margin-bottom:2px;}
@@ -529,7 +536,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   /* Section padding */
   section{padding:60px 20px;}
   /* Testimonial attribution: wrap gracefully */
-  .testimonial-attribution{flex-wrap:wrap;justify-content:center;text-align:center;}
+  .testimonial-split{gap:24px;}
 }
 
 @media(max-width:480px){
@@ -584,7 +591,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
   .bento-grid{grid-template-columns:1fr;}
 
   /* Testimonial attribution stack on very small */
-  .testimonial-attribution{flex-direction:column;align-items:center;text-align:center;gap:12px;}
+  .testimonial-photo{width:80px;height:80px;}
 }
 
 /* ── Alternating section backgrounds ── */
@@ -1300,15 +1307,19 @@ document.addEventListener('DOMContentLoaded',function(){
 <section id="testimonial">
   <div class="testimonial-inner">
     <div class="eyebrow reveal">The Proof</div>
-    <h2 class="testimonial-heading" style="white-space:nowrap;">Trusted by leading medical experts.</h2>
-    <span class="testimonial-mark">&ldquo;</span>
-    <p class="testimonial-quote">My patients ask about peptides constantly, and the research backs them up. The problem has never been the science. It&rsquo;s been sourcing quality compounds, getting the dosing right, and actually staying on a protocol long enough to see results. Pulse solves all three. It&rsquo;s the first system I&rsquo;d recommend by name.</p>
-    <div class="testimonial-divider"></div>
-    <div class="testimonial-attribution">
-      <img src="dr-elguizaoui.jpg" alt="Sameh Elguizaoui, M.D." class="testimonial-photo" style="width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(58,122,92,0.35);flex-shrink:0;"/>
-      <div>
-        <a href="https://newyorkorthopedics.com/our-doctors/sameh-elguizaoui-m-d/" target="_blank" rel="noopener" class="testimonial-name-link"><div class="testimonial-name">Sameh Elguizaoui, M.D.</div></a>
-        <div class="testimonial-title">Board-Certified Orthopedic Surgeon<br/>Sports Medicine Specialist<br/>Lenox Hill Hospital &middot; Mount Sinai &middot; New York</div>
+    <h2 class="testimonial-heading reveal" style="white-space:nowrap;">Trusted by leading medical experts.</h2>
+    <div class="testimonial-split">
+      <div class="testimonial-doctor">
+        <img src="dr-elguizaoui.jpg" alt="Sameh Elguizaoui, M.D." class="testimonial-photo"/>
+        <div>
+          <a href="https://newyorkorthopedics.com/our-doctors/sameh-elguizaoui-m-d/" target="_blank" rel="noopener" class="testimonial-name-link"><div class="testimonial-name">Sameh Elguizaoui, M.D.</div></a>
+          <div class="testimonial-title">Board-Certified Orthopedic Surgeon<br/>Sports Medicine Specialist<br/>Lenox Hill Hospital &middot; Mount Sinai &middot; New York</div>
+        </div>
+      </div>
+      <div class="testimonial-separator"></div>
+      <div class="testimonial-quote-col">
+        <span class="testimonial-mark">&ldquo;</span>
+        <p class="testimonial-quote">My patients ask about peptides constantly, and the research backs them up. The problem has never been the science. It&rsquo;s been sourcing quality compounds, getting the dosing right, and actually staying on a protocol long enough to see results. Pulse solves all three. It&rsquo;s the first system I&rsquo;d recommend by name.</p>
       </div>
     </div>
   </div>

@@ -2254,6 +2254,12 @@ body.clinician-mode .portal-main .crw-btn-grn,
 body.clinician-mode .portal-main .crw-btn-red,
 body.clinician-mode .portal-main .crw-msg-btn,
 body.clinician-mode .portal-main .msg-send-btn{color:#fff !important;}
+/* Fix text inside CRW cards loaded in appointment details */
+body.clinician-mode .portal-main .crw-msg-hdr{color:rgba(0,0,0,0.45) !important;}
+body.clinician-mode .portal-main .crw-section-title{color:rgba(0,0,0,0.45) !important;}
+body.clinician-mode .portal-main .crw-lbl{color:rgba(0,0,0,0.45) !important;}
+body.clinician-mode .portal-main .crw-det-lbl{color:rgba(0,0,0,0.45) !important;}
+body.clinician-mode .portal-main .adp-close{color:#111111 !important;}
 body.clinician-mode .portal-main .settings-toggle-text,
 body.clinician-mode .portal-main .avail-day-name,
 body.clinician-mode .portal-main .avail-hours,
@@ -9004,13 +9010,21 @@ async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
       .eq('consumer_id', patientUserId)
       .not('notes', 'is', null)
       .order('scheduled_at', { ascending: false })
-      .limit(1);
+      .limit(5);
     var contentEl = document.getElementById(contentElId);
-    if (res.data && res.data.length > 0 && res.data[0].notes && res.data[0].notes.trim()) {
-      if (contentEl) {
-        contentEl.value = res.data[0].notes;
-        contentEl.dataset.apptId = res.data[0].id;
+    // Find first real note (skip monthly_checkin tags)
+    var realNote = null;
+    if (res.data) {
+      for (var i = 0; i < res.data.length; i++) {
+        var n = res.data[i].notes;
+        if (n && n.trim() && n.indexOf('monthly_checkin') === -1) {
+          realNote = res.data[i]; break;
+        }
       }
+    }
+    if (realNote && contentEl) {
+      contentEl.value = realNote.notes;
+      contentEl.dataset.apptId = realNote.id;
     }
   } catch(e) { /* silent */ }
 }

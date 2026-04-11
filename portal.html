@@ -11011,7 +11011,7 @@ async function _openClRescheduleModal(apptId) {
     var orig = origRes.data;
     if (!orig) { showToast('Appointment not found.'); return; }
 
-    // Cancel the appointment (include clinician_id for RLS)
+    // Cancel the appointment
     var cancelRes = await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', apptId);
     if (cancelRes.error) { console.warn('[Pulse] Cancel failed:', cancelRes.error); showToast('Failed to cancel appointment.'); return; }
 

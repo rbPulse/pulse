@@ -11001,69 +11001,45 @@ function _confirmReschedule() {
 var _clReschedApptId = null;
 var _clReschedSlot = '';
 
-function _openClRescheduleModal(apptId) {
-  _clReschedApptId = apptId;
-  _clReschedSlot = '';
-  // Reuse the same reschedule modal as member (date-first + time slots)
-  document.getElementById('p15-reschedule-title').textContent = 'Reschedule appointment';
-  var dateInput = document.getElementById('p15-reschedule-date');
-  if (dateInput) dateInput.value = '';
-  var slotsContainer = document.getElementById('p15-reschedule-slots');
-  if (slotsContainer) slotsContainer.style.display = 'none';
-  _openP15Modal('p15-reschedule-overlay');
-  // Override the confirm button to use clinician reschedule logic
-  var confirmBtn = document.querySelector('#p15-reschedule-overlay .p15-btn-confirm');
-  if (confirmBtn) confirmBtn.onclick = _confirmClReschedule;
-}
-
-async function _confirmClReschedule() {
-  var dateVal = document.getElementById('p15-reschedule-date').value;
-  if (!dateVal) { showToast('Please select a date.'); return; }
-  if (!_p15ReschedSlot) { showToast('Please select a time slot.'); return; }
-  _closeP15Modal('p15-reschedule-overlay');
-
+async function _openClRescheduleModal(apptId) {
+  if (!apptId) return;
   try {
-    // Get the original appointment to find the consumer
-    var origRes = await db.from('appointments').select('consumer_id, clinician_id, duration_minutes, notes').eq('id', _clReschedApptId).limit(1);
+    // Get the original appointment
+    var origRes = await db.from('appointments').select('consumer_id, clinician_id, scheduled_at').eq('id', apptId).limit(1);
     var orig = (origRes.data && origRes.data.length > 0) ? origRes.data[0] : null;
     if (!orig) { showToast('Appointment not found.'); return; }
 
-    // Cancel the old appointment
-    await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', _clReschedApptId);
+    // Cancel the appointment
+    await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', apptId);
 
-    // Parse new time
-    var d = new Date(dateVal + 'T12:00:00');
-    var slotParts = _p15ReschedSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (slotParts) {
-      var h = parseInt(slotParts[1]);
-      var m = parseInt(slotParts[2]);
-      if (slotParts[3].toUpperCase() === 'PM' && h !== 12) h += 12;
-      if (slotParts[3].toUpperCase() === 'AM' && h === 12) h = 0;
-      d.setHours(h, m, 0, 0);
-    } else { d.setHours(10, 0, 0, 0); }
+    // Send message to patient asking them to rebook
+    var clName = document.getElementById('sidebarName') ? document.getElementById('sidebarName').textContent : 'Your clinician';
+    var apptDate = new Date(orig.scheduled_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    var apptTime = new Date(orig.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    var msgBody = 'Hi — I need to reschedule our appointment on ' + apptDate + ' at ' + apptTime + '. I apologize for the inconvenience. Please book a new time at your earliest convenience through your Appointments tab. Thank you for your understanding.';
 
-    // Create new appointment
-    await db.from('appointments').insert({
-      consumer_id: orig.consumer_id,
-      clinician_id: orig.clinician_id || currentUserId,
-      scheduled_at: d.toISOString(),
-      duration_minutes: orig.duration_minutes || APPT_DURATION,
-      status: 'confirmed',
-      notes: orig.notes || null
+    await db.from('messages').insert({
+      thread_id: orig.consumer_id,
+      sender_id: currentUserId,
+      sender_role: 'clinician',
+      sender_name: clName,
+      body: msgBody,
+      read: false
     });
 
-    // Notify member
-    createNotification(orig.consumer_id, 'appt_rescheduled', 'Your appointment has been rescheduled by your clinician.', 'appointments');
+    // Notify patient
+    createNotification(orig.consumer_id, 'appt_rescheduled', 'Your clinician has cancelled your appointment and asked you to rebook.', 'appointments');
+
+    // Refresh the list
     _clApptRows = null;
     filterClAppts(_clApptFilter || 'scheduled');
-    showToast('Appointment rescheduled. Member has been notified.');
+
+    // Show confirmation to clinician
+    showToast('Appointment cancelled. The patient has been messaged to rebook.');
   } catch(e) {
     console.warn('[Pulse] Clinician reschedule failed:', e && e.message);
     showToast('Something went wrong. Please try again.');
   }
-  // Reset confirm button back to member reschedule
-  var confirmBtn = document.querySelector('#p15-reschedule-overlay .p15-btn-confirm');
-  if (confirmBtn) confirmBtn.onclick = _confirmReschedule;
 }
 
 // CLINICIAN CANCEL FLOW

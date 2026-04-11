@@ -3021,11 +3021,11 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
           <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
         </div>
-        <div class="filter-bar" id="clApptDateFilters" style="display:none;margin-top:8px;">
-          <div class="filter-pill active" id="flt-date-all"   onclick="_filterClApptsByDate('all',this)">All</div>
-          <div class="filter-pill"        id="flt-date-today" onclick="_filterClApptsByDate('today',this)">Today</div>
-          <div class="filter-pill"        id="flt-date-week"  onclick="_filterClApptsByDate('week',this)">This Week</div>
-          <div class="filter-pill"        id="flt-date-month" onclick="_filterClApptsByDate('month',this)">This Month</div>
+        <div class="filter-bar" id="clApptDateFilters" style="display:none;margin-top:6px;">
+          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-all"   onclick="_filterClApptsByDate('all',this)">All</div>
+          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-today" onclick="_filterClApptsByDate('today',this)">Today</div>
+          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-week"  onclick="_filterClApptsByDate('week',this)">This Week</div>
+          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-month" onclick="_filterClApptsByDate('month',this)">This Month</div>
         </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>
@@ -3074,6 +3074,8 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <span id="clThreadMeta" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;"></span>
               <button class="adp-btn" id="clThreadViewPatient" style="margin-left:auto;border-color:rgba(58,122,92,0.4);color:var(--green);font-size:9px;padding:5px 14px;display:none;" onclick="viewPatientFromThread()">View Patient</button>
             </div>
+            <!-- Collapsible patient details -->
+            <div id="clThreadPatientCard" style="display:none;margin-bottom:12px;"></div>
             <div class="msg-bubbles" id="clMsgBubbles"></div>
             <div class="msg-compose-row">
               <textarea class="msg-compose-input" id="clMsgInput" rows="1" placeholder="Message..."></textarea>
@@ -9457,6 +9459,32 @@ function renderClThreadList() {
   }
 }
 
+function _loadThreadPatientCard(patientId) {
+  var el = document.getElementById('clThreadPatientCard');
+  if (!el) return;
+  if (!patientId || PREVIEW_MODE) { el.style.display = 'none'; return; }
+  // Find consultation ID for this patient
+  db.from('consultations').select('id').eq('user_id', patientId).order('created_at', { ascending: false }).limit(1)
+    .then(function(r) {
+      if (!r.data || !r.data.length) { el.style.display = 'none'; return; }
+      var consultId = r.data[0].id;
+      el.style.display = 'block';
+      el.innerHTML =
+        '<details style="border:1px solid rgba(0,0,0,0.12);border-radius:10px;overflow:hidden;">' +
+          '<summary style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;list-style:none;font-family:\'Inter\',sans-serif;font-size:12px;color:rgba(0,0,0,0.45);">' +
+            '<span>Patient details</span><span>\u25BE</span>' +
+          '</summary>' +
+          '<div id="clThreadPatientBody" style="border-top:1px solid rgba(0,0,0,0.08);max-height:400px;overflow-y:auto;"></div>' +
+        '</details>';
+      var body = document.getElementById('clThreadPatientBody');
+      if (body) {
+        _activePatientUserId = patientId;
+        _activePatientConsultId = consultId;
+        _loadAttentionCardBody(body, consultId, patientId);
+      }
+    }).catch(function() { el.style.display = 'none'; });
+}
+
 function _populateThreadMeta(threadId) {
   var metaEl = document.getElementById('clThreadMeta');
   if (!metaEl || !_clPatientRows) { if (metaEl) metaEl.textContent = ''; return; }
@@ -9501,6 +9529,7 @@ function _openClThreadMock(threadId) {
   if (whoEl) whoEl.textContent = thread.patient;
   _showViewPatientBtn(thread.patientId || null);
   _populateThreadMeta(thread.patientId || null);
+  _loadThreadPatientCard(thread.patientId || null);
 
   renderClBubbles(thread);
 }
@@ -9523,6 +9552,7 @@ function _openClThreadReal(threadId) {
   if (whoEl) whoEl.textContent = label;
   _showViewPatientBtn(threadId);
   _populateThreadMeta(threadId);
+  _loadThreadPatientCard(threadId);
 
   // Load messages for this thread
   db.from('messages')

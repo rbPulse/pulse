@@ -10686,10 +10686,26 @@ function _handleNotifClick(id, link) {
   _updateNotifBadge();
   // Mark as read in DB
   if (currentUserId && !PREVIEW_MODE) {
-    db.from('notifications').update({ read:true }).eq('id', id).catch(function() {});
+    db.from('notifications').update({ read:true }).eq('id', id).then(function(){}).catch(function() {});
   }
-  // Navigate if link provided
-  if (link) { switchTab(link); closeNotifPanel(); }
+  // Determine target tab
+  var target = link;
+  if (!target) {
+    // Infer from notification content
+    var notif = _notifData.find(function(n) { return n.id === id; });
+    var body = notif ? (notif.body || '').toLowerCase() : '';
+    var type = notif ? (notif.type || '') : '';
+    if (type === 'new_message' || body.indexOf('message') !== -1) {
+      target = document.body.classList.contains('clinician-mode') ? 'cl-messages' : 'messages';
+    } else if (type === 'appt_confirmed' || type === 'appt_cancelled' || type === 'appt_rescheduled' || body.indexOf('appointment') !== -1) {
+      target = document.body.classList.contains('clinician-mode') ? 'cl-appointments' : 'appointments';
+    } else if (type === 'protocol_assigned' || body.indexOf('protocol') !== -1) {
+      target = document.body.classList.contains('clinician-mode') ? 'cl-patients' : 'protocol';
+    } else if (body.indexOf('intake') !== -1 || body.indexOf('review') !== -1) {
+      target = 'cl-overview';
+    }
+  }
+  if (target) { switchTab(target); closeNotifPanel(); }
 }
 
 function markAllNotifsRead() {

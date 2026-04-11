@@ -6464,141 +6464,28 @@ function toggleApptDetail(appt, role, rowWrapper) {
   rowWrapper.appendChild(panel);
 }
 
-// Load full patient detail for an appointment (reuses patient detail panel from Patients tab)
+// Load full patient detail for an appointment — reuse canonical CRW card
 function _loadPatientDetailForAppt(appt, panel) {
   var consumerId = appt.consumerId;
   if (!consumerId) { panel.innerHTML = buildApptDetail(appt, 'clinician'); return; }
 
-  var _consultation = { user_id: consumerId, data: {} };
-  var _profile = null;
-
-  db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1)
+  // Find consultation ID to load the canonical patient card
+  db.from('consultations').select('id').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1)
   .then(function(cRes) {
-    if (cRes.data && cRes.data.length > 0) _consultation = cRes.data[0];
-    return db.from('profiles').select('*').eq('user_id', consumerId).limit(1);
+    if (cRes.data && cRes.data.length > 0) {
+      var consultId = cRes.data[0].id;
+      _activePatientUserId = consumerId;
+      _activePatientConsultId = consultId;
+      _loadAttentionCardBody(panel, consultId, consumerId);
+    } else {
+      panel.innerHTML = '<div style="padding:20px;font-size:13px;color:rgba(0,0,0,0.45);">No consultation found for this patient.</div>';
+    }
   })
-  .then(function(pRes) {
-    if (pRes.data && pRes.data.length > 0) _profile = pRes.data[0];
-    var consultation = _consultation;
-    var profile = _profile;
-    var patient = _normalisePatientRow(consultation, profile);
-
-    // Merge appointment-specific data
-    patient._apptId = appt._id;
-    patient._apptStatus = appt.status;
-    patient._apptRawStatus = appt._rawStatus || appt.status;
-    patient._apptTime = appt.fullTimeStr || appt.time;
-    patient._apptDur = appt.dur;
-    patient._apptNotes = appt.notes || '';
-
-    // Build the patient detail panel HTML (same as Patients tab but with appointment actions)
-    _renderApptPatientDetail(patient, appt, panel);
-  }).catch(function(err) {
-    console.warn('[Pulse] patient detail load failed:', err);
-    panel.innerHTML = buildApptDetail(appt, 'clinician');
+  .catch(function(e) {
+    console.warn('[Pulse] appt detail load failed:', e);
+    panel.innerHTML = '<div style="padding:20px;font-size:13px;">Failed to load patient details.</div>';
   });
 }
-
-function _renderApptPatientDetail(patient, appt, panel) {
-  var d = patient._rawData || {};
-  var name = patient.name || '—';
-
-  var safeId = escapeAttr(appt._id || '');
-  var rawSt = appt._rawStatus || appt.status;
-  var canConfirm = rawSt === 'pending';
-  var canCancel = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'noshow';
-  var safeType = escapeAttr(appt.type || 'Appointment');
-  var consumerId = patient.id || appt.consumerId || '';
-
-  var _canJoin = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
-  var joinBtnHtml = _canJoin
-    ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.5);color:var(--green);font-weight:600;" onclick="_joinClinicianSession(\'' + safeId + '\')">Join Session</button>'
-    : '';
-
-  var actionsHtml = joinBtnHtml +
-    (canConfirm ? '<button class="adp-btn" style="border-color:rgba(58,122,92,0.4);color:var(--green);" onclick="_updateApptStatus(\'' + safeId + '\',\'confirmed\')">Confirm</button>' : '') +
-    '<button class="adp-btn" onclick="_openClRescheduleModal(\'' + safeId + '\')">Reschedule</button>' +
-    (canCancel ? '<button class="cl-appt-action-btn cancel-cl" onclick="_openClCancelModal(\'' + safeId + '\')">Cancel</button>' : '');
-
-  // Build medical history
-  var mhArr = d.medical_history || d.health_conditions || [];
-  if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
-  var mhDisplay = _buildMedHistoryDisplay(mhArr);
-
-  var goalsText = patient.goal || d.primary_goal || '—';
-  var ageStr = d.dob ? String(_calcAge(d.dob)) : '—';
-  var heightStr = d.height || '—';
-
-  function _df2(label, value) {
-    return '<div><div class="crw-det-lbl">' + label + '</div><div class="crw-det-val">' + escapeHtml(value) + '</div></div>';
-  }
-
-  panel.innerHTML =
-    '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-      '<div></div>' +
-      '<button class="adp-close" onclick="this.closest(\'.patient-detail-panel\').remove()">×</button>' +
-    '</div>' +
-    '<div class="crw">' +
-      '<div class="crw-left">' +
-        '<div class="crw-name">' + escapeHtml(name) + '</div>' +
-        '<div class="crw-meta">' +
-          '<span>' + escapeHtml(ageStr) + ' yrs</span><span class="crw-meta-sep">\u00B7</span>' +
-          (d.sex ? '<span>' + escapeHtml(d.sex) + '</span><span class="crw-meta-sep">\u00B7</span>' : '') +
-          '<span>' + escapeHtml(appt.fullTimeStr || appt.time || '') + '</span>' +
-        '</div>' +
-
-        '<div class="crw-section" style="margin-top:20px;">' +
-          '<div class="crw-section-title">Goals</div>' +
-          '<div class="crw-val">' + escapeHtml(goalsText) + '</div>' +
-        '</div>' +
-
-        '<div class="crw-section">' +
-          '<div class="crw-section-title">Clinical Summary</div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl">Medical History</div><div class="crw-clin-val">' + mhDisplay + '</div></div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl">Medications</div><div class="crw-clin-val">' + escapeHtml(d.medications || 'None') + '</div></div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl">Allergies</div><div class="crw-clin-val">' + escapeHtml(d.allergies || 'None reported') + '</div></div>' +
-        '</div>' +
-
-        '<div class="crw-section">' +
-          '<div class="crw-section-title">Session Notes</div>' +
-          '<textarea class="adp-notes" id="adp-notes-' + safeId + '" placeholder="Session notes..." style="width:100%;min-height:80px;">' + escapeHtml(appt.notes || '') + '</textarea>' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
-            '<button class="adp-btn" style="border-color:rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);" onclick="_saveApptNotes(\'' + safeId + '\')">Save Notes</button>' +
-            '<span id="adp-saved-' + safeId + '" style="display:none;font-family:\'DM Mono\',monospace;font-size:9px;color:var(--green);">Saved</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="crw-actions" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">' + actionsHtml + '</div>' +
-
-      '</div>' +
-      '<div class="crw-right">' +
-        '<div class="crw-right-msg" id="pdp-msg-' + escapeAttr(consumerId) + '">' +
-          '<div class="crw-msg-hdr">Patient Communication</div>' +
-          '<div class="crw-msg-list" id="pdp-msg-list-' + escapeAttr(consumerId) + '">' +
-            '<div class="crw-msg-empty">No messages yet.</div>' +
-          '</div>' +
-          '<div class="crw-msg-comp">' +
-            '<textarea class="crw-msg-in" id="pdp-msg-input-' + escapeAttr(consumerId) + '" placeholder="Type a message..." rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendPdpMsg(\'' + escapeAttr(consumerId) + '\');}" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,100)+\'px\';"></textarea>' +
-            '<button class="crw-msg-btn" onclick="_sendPdpMsg(\'' + escapeAttr(consumerId) + '\')">Send</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="crw-right-details">' +
-          '<div class="crw-section-title">Patient Details</div>' +
-          '<div class="crw-det-grid">' +
-            _df2('Email', patient.email || '—') + _df2('Phone', d.phone_number || '—') + _df2('State', d.state || '—') +
-          '</div>' +
-          '<div class="crw-det-grid">' +
-            _df2('Height', heightStr) + _df2('Weight', d.current_weight ? d.current_weight + ' lbs' : '—') + _df2('DOB', d.dob || '—') +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
-  // Load inline messages
-  if (consumerId) _loadPdpMessages(consumerId);
-}
-
 function buildApptDetail(a, role) {
   var name    = role === 'clinician' ? (a.patient || '—') : (a.clinician || 'Dr. Sarah Chen');
   // Use the pre-formatted fullTimeStr when available, otherwise fall back

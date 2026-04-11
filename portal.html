@@ -11003,6 +11003,7 @@ var _clReschedSlot = '';
 
 async function _openClRescheduleModal(apptId) {
   if (!apptId) return;
+  if (!confirm('This will cancel the appointment and send the patient a message to rebook. Continue?')) return;
   try {
     // Get the original appointment
     var origRes = await db.from('appointments').select('consumer_id, clinician_id, scheduled_at').eq('id', apptId).limit(1);
@@ -11010,7 +11011,8 @@ async function _openClRescheduleModal(apptId) {
     if (!orig) { showToast('Appointment not found.'); return; }
 
     // Cancel the appointment
-    await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', apptId);
+    var cancelRes = await db.from('appointments').update({ status: 'cancelled_by_clinician', updated_at: new Date().toISOString() }).eq('id', apptId);
+    if (cancelRes.error) { console.warn('[Pulse] Cancel failed:', cancelRes.error); showToast('Failed to cancel appointment.'); return; }
 
     // Send message to patient asking them to rebook
     var clName = document.getElementById('sidebarName') ? document.getElementById('sidebarName').textContent : 'Your clinician';
@@ -11018,7 +11020,7 @@ async function _openClRescheduleModal(apptId) {
     var apptTime = new Date(orig.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     var msgBody = 'Hi — I need to reschedule our appointment on ' + apptDate + ' at ' + apptTime + '. I apologize for the inconvenience. Please book a new time at your earliest convenience through your Appointments tab. Thank you for your understanding.';
 
-    await db.from('messages').insert({
+    var msgRes = await db.from('messages').insert({
       thread_id: orig.consumer_id,
       sender_id: currentUserId,
       sender_role: 'clinician',
@@ -11026,6 +11028,7 @@ async function _openClRescheduleModal(apptId) {
       body: msgBody,
       read: false
     });
+    if (msgRes.error) console.warn('[Pulse] Message send failed:', msgRes.error.message);
 
     // Notify patient
     createNotification(orig.consumer_id, 'appt_rescheduled', 'Your clinician has cancelled your appointment and asked you to rebook.', 'appointments');

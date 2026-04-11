@@ -31,8 +31,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:auto;}
 body{background:var(--bg);color:var(--white);font-family:'Inter',sans-serif;font-weight:400;overflow-x:hidden;cursor:auto;}
-/* GRAIN */
-#grain{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9998;opacity:.032;}
 /* CURSOR */
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:100;background:linear-gradient(to bottom,rgba(5,5,5,0.92) 0%,rgba(5,5,5,0.6) 60%,transparent 100%);}
@@ -588,9 +586,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 #testimonial{background:var(--bg);}
 #reviews{background:var(--cream);}
 #faq{background:var(--cream);}
-#problem{background:var(--sage-dark);position:relative;}
-#problem::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:0.06;pointer-events:none;z-index:1;mix-blend-mode:overlay;}
-#problem>*{position:relative;z-index:2;}
+#problem{background:var(--sage-dark);}
 
 /* Light section text overrides */
 #peptides,#how,#testimonial,#faq{color:var(--dark-text);}
@@ -852,7 +848,6 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 </head>
 <body>
-<canvas id="grain"></canvas>
 <!-- NAV -->
 <nav>
   <a href="#" class="nav-brand">
@@ -1615,48 +1610,6 @@ gsap.from('.footer-links', {
     vf.wdth += (targetWdth - vf.wdth) * 0.08;
     applyVF();
   })();
-})();
-
-// ═══════════════════════════════════════════════════════
-// FEATURE 2 — Noise/grain canvas overlay
-// ═══════════════════════════════════════════════════════
-(function(){
-  const canvas = document.getElementById('grain');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const SIZE = 200;
-  const offscreen = document.createElement('canvas');
-  offscreen.width = offscreen.height = SIZE;
-  const octx = offscreen.getContext('2d');
-  let frame = 0, pattern;
-  function makeGrain() {
-    const img = octx.createImageData(SIZE, SIZE);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const v = (Math.random() * 255) | 0;
-      d[i] = d[i+1] = d[i+2] = v;
-      d[i+3] = 255;
-    }
-    octx.putImageData(img, 0, 0);
-    pattern = ctx.createPattern(offscreen, 'repeat');
-  }
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-  makeGrain();
-  function tick() {
-    requestAnimationFrame(tick);
-    frame++;
-    if (frame % 4 !== 0) return;
-    makeGrain();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = pattern;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  tick();
 })();
 
 // ═══════════════════════════════════════════════════════

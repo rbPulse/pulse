@@ -915,11 +915,11 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 <!-- DESIGNED FOR CONSISTENCY -->
 <style>
-/* ── WHY PULSE ── */
+/* ── WHY PULSE: Premium atmospheric section ── */
 #consistency{
   background:radial-gradient(ellipse 80% 60% at 50% 45%,rgba(30,60,42,0.5) 0%,rgba(12,20,16,0.8) 50%,#080e0b 100%),
              linear-gradient(180deg,#0a0f0c 0%,#0d1410 40%,#0b100d 100%);
-  padding:72px 48px 80px;min-height:600px;box-sizing:border-box;position:relative;overflow:hidden;
+  padding:100px 48px 96px;min-height:600px;box-sizing:border-box;position:relative;overflow:hidden;
 }
 /* Subtle noise texture */
 #consistency::before{
@@ -936,67 +936,84 @@ document.addEventListener('DOMContentLoaded',function(){
 }
 #consistency>*{position:relative;z-index:1;}
 
-.consistency-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;}
-.consistency-bullets{display:flex;flex-direction:column;gap:20px;margin-top:28px;}
-.consistency-bullet{display:flex;align-items:center;gap:14px;}
-.consistency-bullet-icon{width:24px;height:24px;flex-shrink:0;color:var(--green);}
-.consistency-bullet-text{font-size:18px;font-weight:400;color:var(--white);line-height:1.55;}
-.consistency-img-col{display:flex;justify-content:center;}
-.consistency-img-placeholder{width:100%;max-width:440px;aspect-ratio:4/5;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;}
-.consistency-img-placeholder span{font-size:13px;color:rgba(255,255,255,0.3);font-style:italic;}
-@media(max-width:768px){
-  #consistency{padding:48px 24px 56px;min-height:auto;}
-  .consistency-inner{grid-template-columns:1fr;gap:32px;}
-  .consistency-img-col{order:-1;}
-  .consistency-img-placeholder{max-width:100%;}
+/* Header block */
+.consistency-header-wrap{max-width:900px;margin:0 auto;text-align:center;}
+#consistency .eyebrow{color:rgba(255,255,255,0.4);margin-bottom:20px;}
+#consistency .section-h{color:#fff;font-size:clamp(36px,5vw,60px);font-weight:600;letter-spacing:-0.025em;line-height:1.08;}
+#consistency .section-h em{color:#4aba82;font-weight:400;font-style:italic;}
+.consistency-support{font-size:17px;font-weight:300;color:rgba(255,255,255,0.5);line-height:1.6;margin-top:16px;}
+
+/* Comparison card: floating premium treatment */
+.compare-wrap{max-width:760px;width:100%;margin:56px auto 0;}
+.compare-card{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  border-radius:20px;overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,0.4),0 2px 12px rgba(0,0,0,0.3),0 0 80px rgba(58,122,92,0.08);
+  border:1px solid rgba(255,255,255,0.06);
 }
-/* ── Comparison card ── */
-.compare-wrap{max-width:720px;width:100%;margin:48px auto 0;}
-.compare-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.4),0 0 80px rgba(58,122,92,0.08);}
-.compare-col-header{padding:28px 24px 22px;display:flex;align-items:center;justify-content:center;gap:10px;}
-.compare-col-header.pulse{background:linear-gradient(180deg,#2d6349 0%,var(--green) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);}
-.compare-col-header.others{background:var(--cream);}
-.compare-logo-icon{width:26px;height:26px;border:1.5px solid rgba(255,255,255,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* Column headers */
+.compare-col-header{padding:28px 28px 24px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.compare-col-header.pulse{background:linear-gradient(180deg,#2a6b4a 0%,#245e40 100%);}
+.compare-col-header.others{background:#f2efe9;}
+.compare-logo-icon{width:26px;height:26px;border:1.5px solid rgba(255,255,255,0.45);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .compare-logo-icon svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;}
-.compare-header-text{font-family:'Inter',sans-serif;font-size:14px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;}
+.compare-header-text{font-family:'Inter',sans-serif;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;}
 .compare-col-header.pulse .compare-header-text{color:#fff;}
-.compare-col-header.others .compare-header-text{color:rgba(0,0,0,0.4);}
-.compare-cell{padding:22px 24px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:8px;min-height:110px;padding-top:20px;}
-.compare-cell.pulse{background:linear-gradient(180deg,rgba(55,118,88,0.95) 0%,rgba(50,108,80,0.95) 100%);border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);}
-.compare-cell.others{background:var(--cream);border-bottom:1px solid rgba(0,0,0,0.06);}
-.compare-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.compare-icon.check{background:rgba(255,255,255,0.15);}
-.compare-icon.check svg{stroke:#fff;width:13px;height:13px;}
-.compare-icon.x{background:rgba(220,60,60,0.1);}
-.compare-icon.x svg{stroke:rgba(220,70,70,0.7);width:11px;height:11px;}
-.compare-text{font-size:14px;line-height:1.6;font-weight:400;}
-.compare-cell.pulse .compare-text{color:#fff;font-weight:400;}
-.compare-cell.pulse .compare-text strong{font-weight:700;}
-.compare-cell.others .compare-text{color:rgba(0,0,0,0.45);}
+.compare-col-header.others .compare-header-text{color:rgba(0,0,0,0.35);}
+
+/* Cells */
+.compare-cell{padding:28px 28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:10px;min-height:120px;}
+.compare-cell.pulse{background:linear-gradient(180deg,rgba(42,107,74,0.92) 0%,rgba(36,94,64,0.92) 100%);border-bottom:1px solid rgba(255,255,255,0.06);}
+.compare-cell.others{background:#f2efe9;border-bottom:1px solid rgba(0,0,0,0.05);}
+
+/* Icons: refined, understated */
+.compare-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.compare-icon.check{background:rgba(255,255,255,0.14);}
+.compare-icon.check svg{stroke:#fff;width:13px;height:13px;stroke-width:2.5;}
+.compare-icon.x{background:rgba(180,60,60,0.1);}
+.compare-icon.x svg{stroke:rgba(190,70,70,0.6);width:11px;height:11px;stroke-width:2;}
+
+/* Text in cells */
+.compare-text{font-size:14px;line-height:1.65;font-weight:400;letter-spacing:0.005em;}
+.compare-cell.pulse .compare-text{color:rgba(255,255,255,0.92);}
+.compare-cell.pulse .compare-text strong{font-weight:700;color:#fff;}
+.compare-cell.others .compare-text{color:rgba(0,0,0,0.42);}
 .compare-card > .compare-cell:nth-last-child(-n+2){border-bottom:none;}
-.compare-img-col{display:flex;flex-direction:column;align-items:stretch;}
-.compare-img{width:100%;border-radius:16px;display:block;object-fit:cover;}
-.compare-cta{display:inline-block;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;background:var(--green);color:#000;padding:14px 36px;border-radius:999px;text-decoration:none;font-weight:600;transition:opacity .2s;}
-.compare-cta:hover{opacity:0.85;}
+
+/* CTA button */
+.compare-cta{display:inline-block;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;background:var(--green);color:#000;padding:16px 48px;border-radius:999px;text-decoration:none;font-weight:600;transition:all .25s;box-shadow:0 4px 20px rgba(58,122,92,0.25);}
+.compare-cta:hover{opacity:0.9;box-shadow:0 6px 28px rgba(58,122,92,0.35);transform:translateY(-1px);}
+
+/* Unused legacy */
+.consistency-inner,.consistency-bullets,.consistency-bullet,.consistency-bullet-icon,.consistency-bullet-text,.consistency-img-col,.consistency-img-placeholder{display:none;}
+.compare-img-col,.compare-img{display:none;}
+
+/* ── Mobile ── */
 @media(max-width:768px){
-  .compare-wrap{max-width:100%;}
-  .consistency-header-wrap{padding:0 !important;}
-  .compare-cell{min-height:70px;padding:14px 12px;padding-top:14px;gap:6px;}
-  .compare-text{font-size:12px !important;line-height:1.5;}
-  .compare-icon{width:18px;height:18px;}
-  .compare-icon.check svg{width:10px;height:10px;}
-  .compare-icon.x svg{width:8px;height:8px;}
-  .compare-col-header{padding:18px 12px 14px;}
+  #consistency{padding:64px 24px 72px;min-height:auto;}
+  #consistency .section-h{font-size:clamp(28px,7vw,40px);}
+  .consistency-support{font-size:15px;}
+  .compare-wrap{max-width:100%;margin-top:40px;}
+  .compare-card{border-radius:14px;}
+  .compare-col-header{padding:20px 16px 16px;}
   .compare-header-text{font-size:12px;}
   .compare-logo-icon{width:22px;height:22px;}
   .compare-logo-icon svg{width:11px;height:11px;}
+  .compare-cell{min-height:80px;padding:18px 16px;gap:8px;}
+  .compare-text{font-size:12px !important;line-height:1.5;}
+  .compare-icon{width:20px;height:20px;}
+  .compare-icon.check svg{width:11px;height:11px;}
+  .compare-icon.x svg{width:9px;height:9px;}
+  .consistency-header-wrap{padding:0 !important;}
 }
 </style>
 <section id="consistency">
-  <div class="consistency-header-wrap" style="max-width:100%;margin:0 auto;padding:0 48px;text-align:center;">
+  <div class="consistency-header-wrap" style="padding:0;text-align:center;">
     <div class="eyebrow reveal">Why Pulse</div>
-    <h2 class="section-h" style="margin-bottom:0;">Taking peptides shouldn't be this hard.</h2>
-    <h2 class="section-h" style="margin-top:4px;white-space:nowrap;"><em>We made it simple.</em></h2>
+    <h2 class="section-h reveal" style="margin-bottom:0;">Taking peptides shouldn't be this hard.</h2>
+    <h2 class="section-h reveal" style="margin-top:6px;"><em>We made it simple.</em></h2>
+    <p class="consistency-support reveal">A better delivery system, cleaner experience, and real clinical oversight.</p>
   </div>
 
   <div class="compare-wrap">
@@ -1011,38 +1028,38 @@ document.addEventListener('DOMContentLoaded',function(){
         </div>
 
         <div class="compare-cell pulse">
-          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="compare-text"><strong>Auto-injector pen.</strong> Controlled, repeatable, simple delivery.</div>
         </div>
         <div class="compare-cell others">
-          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
           <div class="compare-text">Syringes, vials, and manual injection every time.</div>
         </div>
 
         <div class="compare-cell pulse">
-          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="compare-text"><strong>Pre-filled pods.</strong> No mixing, measuring, or prep.</div>
         </div>
         <div class="compare-cell others">
-          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
           <div class="compare-text">Reconstitute, measure, and draw up each dose yourself.</div>
         </div>
 
         <div class="compare-cell pulse">
-          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="compare-text"><strong>Clinically prescribed.</strong> Monitored by our medical specialists.</div>
         </div>
         <div class="compare-cell others">
-          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
           <div class="compare-text">No follow-up after your prescription ships. Hard to get a hold of.</div>
         </div>
 
         <div class="compare-cell pulse">
-          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="compare-icon check"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="compare-text"><strong>Protocol matching.</strong> Designed to fit your body, goals, and health profile.</div>
         </div>
         <div class="compare-cell others">
-          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+          <div class="compare-icon x"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
           <div class="compare-text">Same dose for everyone. Generic, one-size-fits-all protocols.</div>
         </div>
       </div>

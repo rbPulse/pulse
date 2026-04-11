@@ -2614,7 +2614,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="m-card" id="mCardClinician">
             <div class="m-card-label">Care Team</div>
             <div class="m-cl-row">
-              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
+              <div class="m-cl-avatar" id="mClAvatar" onclick="_openClinicianProfile()" style="cursor:pointer;">Dr</div>
               <div>
                 <div class="m-cl-name" id="mClName">Your Clinician</div>
                 <div class="m-cl-status" id="mClLastResponse">Monitoring your progress</div>
@@ -2626,6 +2626,21 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
               <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Clinician Profile Popup -->
+        <div id="clProfileOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)_closeClinicianProfile()">
+          <div style="background:var(--m-card,#FBFAF6);border:1px solid var(--m-border,rgba(0,0,0,0.06));border-radius:20px;padding:36px 32px;max-width:380px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.12);position:relative;text-align:center;">
+            <button onclick="_closeClinicianProfile()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:rgba(0,0,0,0.3);cursor:pointer;padding:4px;">&times;</button>
+            <div id="clProfilePhoto" style="width:120px;height:120px;border-radius:50%;background:rgba(47,111,85,0.08);border:3px solid rgba(47,111,85,0.15);margin:0 auto 20px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+              <span style="font-family:'Inter',sans-serif;font-size:28px;font-weight:600;color:#2F6F55;" id="clProfileInitials">Dr</span>
+            </div>
+            <div id="clProfileName" style="font-family:'Inter',sans-serif;font-size:20px;font-weight:600;color:var(--m-text,#1a1a1a);margin-bottom:4px;">Your Clinician</div>
+            <div id="clProfileCredentials" style="font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text3,rgba(0,0,0,0.4));margin-bottom:20px;">Clinician</div>
+            <div style="width:40px;height:1px;background:rgba(47,111,85,0.2);margin:0 auto 20px;"></div>
+            <div id="clProfileBio" style="font-family:'Inter',sans-serif;font-size:14px;font-weight:400;color:var(--m-text2,#555);line-height:1.7;text-align:left;"></div>
+            <div id="clProfileNoBio" style="font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text3,rgba(0,0,0,0.35));font-style:italic;display:none;">No bio available yet.</div>
           </div>
         </div>
 
@@ -5077,6 +5092,49 @@ function _showPhotoPreview(url) {
   preview.innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;"/>';
 }
 
+function _openClinicianProfile() {
+  var overlay = document.getElementById('clProfileOverlay');
+  if (!overlay) return;
+  // Populate photo
+  var photoEl = document.getElementById('clProfilePhoto');
+  var initialsEl = document.getElementById('clProfileInitials');
+  if (photoEl) {
+    if (window._clinicianPhotoUrl) {
+      photoEl.innerHTML = '<img src="' + window._clinicianPhotoUrl + '" style="width:100%;height:100%;object-fit:cover;"/>';
+    } else {
+      var initials = (window._clinicianName || 'Dr').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+      photoEl.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:28px;font-weight:600;color:#2F6F55;">' + initials + '</span>';
+    }
+  }
+  // Populate name
+  var nameEl = document.getElementById('clProfileName');
+  if (nameEl) nameEl.textContent = window._clinicianName || 'Your Clinician';
+  // Populate credentials/specialty
+  var credEl = document.getElementById('clProfileCredentials');
+  if (credEl) {
+    var parts = [];
+    if (window._clinicianCredentials) parts.push(window._clinicianCredentials);
+    if (window._clinicianSpecialty) parts.push(window._clinicianSpecialty);
+    credEl.textContent = parts.length > 0 ? parts.join(' · ') : 'Clinician';
+  }
+  // Populate bio
+  var bioEl = document.getElementById('clProfileBio');
+  var noBioEl = document.getElementById('clProfileNoBio');
+  if (window._clinicianBio) {
+    if (bioEl) { bioEl.textContent = window._clinicianBio; bioEl.style.display = 'block'; }
+    if (noBioEl) noBioEl.style.display = 'none';
+  } else {
+    if (bioEl) bioEl.style.display = 'none';
+    if (noBioEl) noBioEl.style.display = 'block';
+  }
+  overlay.style.display = 'flex';
+}
+
+function _closeClinicianProfile() {
+  var overlay = document.getElementById('clProfileOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 function _loadClinicianPhoto() {
   if (!currentUserId || PREVIEW_MODE) return;
   // Update initials from name
@@ -5188,6 +5246,9 @@ async function saveClinicianSettings() {
         display_name:    'Dr. ' + (lastName || firstName),
         notify_messages: _clinicianNotifyMessages,
         cl_state:        state.trim().toUpperCase() || null,
+        cl_bio:          bio.trim() || null,
+        cl_credentials:  credentials.trim() || null,
+        cl_specialty:    specialty.trim() || null,
         updated_at:      new Date().toISOString()
       }, { onConflict: 'user_id' }).then(function(){}).catch(function(){});
     }
@@ -8054,7 +8115,7 @@ function populatePortal(user, consultation, greeting) {
   // Resolve assigned clinician name for care team header
   var clinicianId = consultation && consultation.assigned_clinician_id;
   if (clinicianId && !PREVIEW_MODE) {
-    db.from('profiles').select('display_name, first_name, last_name, photo_url').eq('user_id', clinicianId).limit(1)
+    db.from('profiles').select('display_name, first_name, last_name, photo_url, cl_bio, cl_credentials, cl_specialty').eq('user_id', clinicianId).limit(1)
       .then(function(pr) {
         if (pr.data && pr.data.length > 0) {
           var cp = pr.data[0];
@@ -8087,6 +8148,10 @@ function populatePortal(user, consultation, greeting) {
               }
             }
             window._clinicianPhotoUrl = cp.photo_url || null;
+            window._clinicianBio = cp.cl_bio || null;
+            window._clinicianCredentials = cp.cl_credentials || null;
+            window._clinicianSpecialty = cp.cl_specialty || null;
+            window._clinicianName = clName;
           }
         }
       }).catch(function() {});

@@ -2843,6 +2843,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="p-card">
           <div class="thread-view active" id="consumerThreadView">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+              <div id="msgClAvatar" class="m-cl-avatar" style="width:42px;height:42px;">Dr</div>
               <div>
                 <div id="careTeamName" style="font-size:16px;font-weight:600;margin-bottom:3px;">Your Clinician</div>
                 <div id="careTeamSub" style="font-size:13px;opacity:0.55;">Your Clinician</div>
@@ -3169,6 +3170,19 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
           <div class="settings-section">
             <div class="settings-section-lbl">Public Profile</div>
+            <div class="settings-field" style="margin-bottom:16px;">
+              <label class="settings-field-lbl">Profile Photo</label>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:8px;">
+                <div id="clPhotoPreview" style="width:72px;height:72px;border-radius:50%;background:rgba(58,122,92,0.08);border:2px solid rgba(58,122,92,0.15);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                  <span id="clPhotoInitials" style="font-family:'Inter',sans-serif;font-size:20px;font-weight:600;color:#3a7a5c;letter-spacing:0.05em;">Dr</span>
+                </div>
+                <div>
+                  <label for="clPhotoInput" style="display:inline-block;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;color:var(--green);cursor:pointer;padding:8px 16px;border:1px solid rgba(58,122,92,0.25);border-radius:999px;transition:border-color .2s;">Upload Photo</label>
+                  <input type="file" id="clPhotoInput" accept="image/*" style="display:none;" onchange="_handlePhotoUpload(this)"/>
+                  <div id="clPhotoStatus" style="font-family:'Inter',sans-serif;font-size:10px;color:rgba(0,0,0,0.35);margin-top:6px;">Visible to your patients</div>
+                </div>
+              </div>
+            </div>
             <div class="settings-field">
               <label class="settings-field-lbl">Bio / About</label>
               <textarea class="settings-input" id="clBio" rows="3" placeholder="A brief professional bio shown to patients…" style="resize:vertical;line-height:1.6;min-height:72px;"></textarea>
@@ -4654,6 +4668,8 @@ async function applyClProfile(meta) {
     // Sync the Settings tab duration select
     var dse = document.getElementById('clSettingsDuration'); if (dse) dse.value = String(APPT_DURATION);
   }
+  // Load clinician photo
+  _loadClinicianPhoto();
   if (meta.cl_avail && Array.isArray(meta.cl_avail)) {
     meta.cl_avail.forEach(function(saved) {
       AVAIL_STATE.forEach(function(s) {
@@ -4884,6 +4900,77 @@ function initClinicianPortal(user, role, greeting) {
         .catch(function() { /* non-fatal; keep defaults */ });
     }
   }
+}
+
+// ── Clinician Photo Upload ──
+async function _handlePhotoUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB.'); return; }
+  var statusEl = document.getElementById('clPhotoStatus');
+  if (statusEl) statusEl.textContent = 'Uploading...';
+
+  try {
+    // Resize to max 400px for profile photo
+    var dataUrl = await _resizeImage(file, 400);
+
+    // Store in profiles table as photo_url (base64 data URL)
+    var res = await db.from('profiles').update({ photo_url: dataUrl }).eq('user_id', currentUserId);
+    if (res.error) { console.warn('[Pulse] Photo save error:', res.error); showToast('Failed to save photo.'); if (statusEl) statusEl.textContent = 'Upload failed'; return; }
+
+    // Update preview
+    _showPhotoPreview(dataUrl);
+    if (statusEl) statusEl.textContent = 'Photo saved';
+    showToast('Profile photo updated.');
+  } catch(e) {
+    console.warn('[Pulse] Photo upload failed:', e);
+    showToast('Failed to upload photo.');
+    if (statusEl) statusEl.textContent = 'Upload failed';
+  }
+}
+
+function _resizeImage(file, maxSize) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var w = img.width, h = img.height;
+        if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
+        else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function _showPhotoPreview(url) {
+  var preview = document.getElementById('clPhotoPreview');
+  if (!preview) return;
+  preview.innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;"/>';
+}
+
+function _loadClinicianPhoto() {
+  if (!currentUserId || PREVIEW_MODE) return;
+  // Update initials from name
+  var nameEl = document.getElementById('sidebarName');
+  var initialsEl = document.getElementById('clPhotoInitials');
+  if (nameEl && initialsEl) {
+    var name = nameEl.textContent || '';
+    var initials = name.replace('Dr. ', '').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+    if (initials) initialsEl.textContent = initials;
+  }
+  db.from('profiles').select('photo_url').eq('user_id', currentUserId).maybeSingle()
+    .then(function(res) {
+      if (res.data && res.data.photo_url) _showPhotoPreview(res.data.photo_url);
+    }).catch(function() {});
 }
 
 async function saveClinicianSettings() {
@@ -7847,7 +7934,7 @@ function populatePortal(user, consultation, greeting) {
   // Resolve assigned clinician name for care team header
   var clinicianId = consultation && consultation.assigned_clinician_id;
   if (clinicianId && !PREVIEW_MODE) {
-    db.from('profiles').select('display_name, first_name, last_name').eq('user_id', clinicianId).limit(1)
+    db.from('profiles').select('display_name, first_name, last_name, photo_url').eq('user_id', clinicianId).limit(1)
       .then(function(pr) {
         if (pr.data && pr.data.length > 0) {
           var cp = pr.data[0];
@@ -7859,11 +7946,27 @@ function populatePortal(user, consultation, greeting) {
             if (nameEl) nameEl.textContent = clName;
             if (subEl) subEl.textContent = 'Your Clinician';
             if (inputEl) inputEl.placeholder = 'Message ' + clName + '...';
-            // Also update the overview grid clinician card
+            // Update overview grid clinician card
             var mClName = document.getElementById('mClName');
             if (mClName) mClName.textContent = clName;
             var mClAvatar = document.getElementById('mClAvatar');
-            if (mClAvatar) mClAvatar.textContent = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+            if (mClAvatar) {
+              if (cp.photo_url) {
+                mClAvatar.innerHTML = '<img src="' + cp.photo_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+              } else {
+                mClAvatar.textContent = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+              }
+            }
+            // Update messages tab avatar
+            var msgAvatar = document.getElementById('msgClAvatar');
+            if (msgAvatar) {
+              if (cp.photo_url) {
+                msgAvatar.innerHTML = '<img src="' + cp.photo_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+              } else {
+                msgAvatar.textContent = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+              }
+            }
+            window._clinicianPhotoUrl = cp.photo_url || null;
           }
         }
       }).catch(function() {});

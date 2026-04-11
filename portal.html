@@ -3178,8 +3178,26 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 </div>
                 <div>
                   <label for="clPhotoInput" style="display:inline-block;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;color:var(--green);cursor:pointer;padding:8px 16px;border:1px solid rgba(58,122,92,0.25);border-radius:999px;transition:border-color .2s;">Upload Photo</label>
-                  <input type="file" id="clPhotoInput" accept="image/*" style="display:none;" onchange="_handlePhotoUpload(this)"/>
+                  <input type="file" id="clPhotoInput" accept="image/*" style="display:none;" onchange="_handlePhotoSelect(this)"/>
                   <div id="clPhotoStatus" style="font-family:'Inter',sans-serif;font-size:10px;color:rgba(0,0,0,0.35);margin-top:6px;">Visible to your patients</div>
+                </div>
+              </div>
+              <!-- Photo crop/position overlay -->
+              <div id="clPhotoCropOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:none;align-items:center;justify-content:center;">
+                <div style="background:#fff;border-radius:16px;padding:28px;max-width:360px;width:90%;text-align:center;">
+                  <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#111;margin-bottom:4px;">Position your photo</div>
+                  <div style="font-family:'Inter',sans-serif;font-size:12px;color:rgba(0,0,0,0.4);margin-bottom:20px;">Drag to reposition</div>
+                  <div id="clCropArea" style="width:200px;height:200px;border-radius:50%;overflow:hidden;margin:0 auto 20px;border:3px solid rgba(58,122,92,0.3);cursor:grab;position:relative;touch-action:none;">
+                    <img id="clCropImg" style="position:absolute;cursor:grab;user-select:none;-webkit-user-drag:none;" draggable="false"/>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:20px;">
+                    <span style="font-size:11px;color:rgba(0,0,0,0.35);">Zoom</span>
+                    <input type="range" id="clCropZoom" min="100" max="300" value="100" style="width:160px;accent-color:var(--green);"/>
+                  </div>
+                  <div style="display:flex;gap:10px;justify-content:center;">
+                    <button onclick="_cancelPhotoCrop()" style="font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;padding:10px 24px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:none;color:#111;cursor:pointer;">Cancel</button>
+                    <button onclick="_confirmPhotoCrop()" style="font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;padding:10px 24px;border-radius:999px;border:none;background:var(--green);color:#fff;cursor:pointer;">Save</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4902,31 +4920,133 @@ function initClinicianPortal(user, role, greeting) {
   }
 }
 
-// ── Clinician Photo Upload ──
-async function _handlePhotoUpload(input) {
+// ── Clinician Photo Upload with Crop/Position ──
+var _cropState = { imgSrc: null, imgW: 0, imgH: 0, offsetX: 0, offsetY: 0, zoom: 100, dragging: false, startX: 0, startY: 0, startOX: 0, startOY: 0 };
+
+function _handlePhotoSelect(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
   if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      _cropState.imgSrc = e.target.result;
+      _cropState.imgW = img.width;
+      _cropState.imgH = img.height;
+      _cropState.zoom = 100;
+      _cropState.offsetX = 0;
+      _cropState.offsetY = 0;
+      _openPhotoCrop();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function _openPhotoCrop() {
+  var overlay = document.getElementById('clPhotoCropOverlay');
+  if (overlay) overlay.style.display = 'flex';
+  var zoomInput = document.getElementById('clCropZoom');
+  if (zoomInput) zoomInput.value = '100';
+  _updateCropImage();
+  _setupCropDrag();
+}
+
+function _updateCropImage() {
+  var img = document.getElementById('clCropImg');
+  if (!img) return;
+  var area = 200; // crop circle size
+  var zoom = _cropState.zoom / 100;
+  var aspect = _cropState.imgW / _cropState.imgH;
+  var w, h;
+  if (aspect > 1) { h = area * zoom; w = h * aspect; }
+  else { w = area * zoom; h = w / aspect; }
+  img.src = _cropState.imgSrc;
+  img.style.width = w + 'px';
+  img.style.height = h + 'px';
+  // Clamp offsets so image covers the circle
+  var maxX = Math.max(0, (w - area) / 2);
+  var maxY = Math.max(0, (h - area) / 2);
+  _cropState.offsetX = Math.max(-maxX, Math.min(maxX, _cropState.offsetX));
+  _cropState.offsetY = Math.max(-maxY, Math.min(maxY, _cropState.offsetY));
+  img.style.left = ((area - w) / 2 + _cropState.offsetX) + 'px';
+  img.style.top = ((area - h) / 2 + _cropState.offsetY) + 'px';
+}
+
+function _setupCropDrag() {
+  var area = document.getElementById('clCropArea');
+  var zoom = document.getElementById('clCropZoom');
+  if (!area) return;
+
+  function onStart(x, y) { _cropState.dragging = true; _cropState.startX = x; _cropState.startY = y; _cropState.startOX = _cropState.offsetX; _cropState.startOY = _cropState.offsetY; }
+  function onMove(x, y) { if (!_cropState.dragging) return; _cropState.offsetX = _cropState.startOX + (x - _cropState.startX); _cropState.offsetY = _cropState.startOY + (y - _cropState.startY); _updateCropImage(); }
+  function onEnd() { _cropState.dragging = false; }
+
+  area.onmousedown = function(e) { e.preventDefault(); onStart(e.clientX, e.clientY); };
+  document.addEventListener('mousemove', function(e) { onMove(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', onEnd);
+  area.ontouchstart = function(e) { var t = e.touches[0]; onStart(t.clientX, t.clientY); };
+  document.addEventListener('touchmove', function(e) { if (_cropState.dragging) { var t = e.touches[0]; onMove(t.clientX, t.clientY); } });
+  document.addEventListener('touchend', onEnd);
+
+  if (zoom) {
+    zoom.oninput = function() { _cropState.zoom = parseInt(this.value); _updateCropImage(); };
+  }
+}
+
+function _cancelPhotoCrop() {
+  var overlay = document.getElementById('clPhotoCropOverlay');
+  if (overlay) overlay.style.display = 'none';
+  var input = document.getElementById('clPhotoInput');
+  if (input) input.value = '';
+}
+
+async function _confirmPhotoCrop() {
   var statusEl = document.getElementById('clPhotoStatus');
-  if (statusEl) statusEl.textContent = 'Uploading...';
+  if (statusEl) statusEl.textContent = 'Saving...';
+  var overlay = document.getElementById('clPhotoCropOverlay');
 
   try {
-    // Resize to max 400px for profile photo
-    var dataUrl = await _resizeImage(file, 400);
+    // Render the cropped area to canvas
+    var canvas = document.createElement('canvas');
+    var size = 400; // output size
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var img = new Image();
+    img.src = _cropState.imgSrc;
+    await new Promise(function(resolve) { img.onload = resolve; if (img.complete) resolve(); });
 
-    // Store in profiles table as photo_url (base64 data URL)
+    var area = 200;
+    var zoom = _cropState.zoom / 100;
+    var aspect = _cropState.imgW / _cropState.imgH;
+    var w, h;
+    if (aspect > 1) { h = area * zoom; w = h * aspect; }
+    else { w = area * zoom; h = w / aspect; }
+    var drawX = (area - w) / 2 + _cropState.offsetX;
+    var drawY = (area - h) / 2 + _cropState.offsetY;
+    var scale = size / area;
+    ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.clip();
+    ctx.drawImage(img, drawX * scale, drawY * scale, w * scale, h * scale);
+
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     var res = await db.from('profiles').update({ photo_url: dataUrl }).eq('user_id', currentUserId);
     if (res.error) { console.warn('[Pulse] Photo save error:', res.error); showToast('Failed to save photo.'); if (statusEl) statusEl.textContent = 'Upload failed'; return; }
 
-    // Update preview
     _showPhotoPreview(dataUrl);
+    if (overlay) overlay.style.display = 'none';
     if (statusEl) statusEl.textContent = 'Photo saved';
     showToast('Profile photo updated.');
   } catch(e) {
-    console.warn('[Pulse] Photo upload failed:', e);
-    showToast('Failed to upload photo.');
+    console.warn('[Pulse] Photo crop/save failed:', e);
+    showToast('Failed to save photo.');
     if (statusEl) statusEl.textContent = 'Upload failed';
   }
+}
+
+async function _handlePhotoUpload(input) {
+  // Legacy fallback — redirect to new flow
+  _handlePhotoSelect(input);
 }
 
 function _resizeImage(file, maxSize) {

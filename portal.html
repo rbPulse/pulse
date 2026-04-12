@@ -7017,7 +7017,7 @@ function _updateApptStatus(apptId, newStatus) {
                 '<p>Hi ' + (patientName || 'there') + ',</p>' +
                 '<p>We\'re sorry to let you know that your clinician has had to cancel your appointment.</p>' +
                 '<p><strong>Original time:</strong> ' + _apptDateStr + '</p>' +
-                '<p>Please <a href="' + window.location.origin + '/portal.html">log in to the Pulse portal</a> to reschedule at your convenience.</p>'
+                '<p>Please <a href="' + new URL('portal.html', window.location.href).href + '">log in to the Pulse portal</a> to reschedule at your convenience.</p>'
               );
             }
           }
@@ -9270,7 +9270,7 @@ function _saveAssignedProtocol(patientId) {
                 'Your Pulse protocol has been assigned',
                 '<p>Hi ' + (_pName || 'there') + ',</p>' +
                 '<p>Your clinician has assigned you a protocol: <strong>' + proto + '</strong>.</p>' +
-                '<p>Log in to the <a href="' + window.location.origin + '/portal.html">Pulse portal</a> to view your protocol details and get started.</p>'
+                '<p>Log in to the <a href="' + new URL('portal.html', window.location.href).href + '">Pulse portal</a> to view your protocol details and get started.</p>'
               );
             }
             break;
@@ -10093,7 +10093,7 @@ function sendClMessage() {
             'Your Pulse clinician replied',
             '<p>Your clinician has sent you a new message.</p>' +
             '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
-            '<p><a href="' + window.location.origin + '/portal.html">Log in to the Pulse portal</a> to view the full conversation.</p>'
+            '<p><a href="' + new URL('portal.html', window.location.href).href + '">Log in to the Pulse portal</a> to view the full conversation.</p>'
           );
         }
       }
@@ -10326,7 +10326,7 @@ function sendConsumerMessage() {
           'New message from ' + (_memberDisplayName || 'a patient'),
           '<p>You have a new message from <strong>' + (_memberDisplayName || 'a patient') + '</strong>.</p>' +
           '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
-          '<p><a href="' + window.location.origin + '/portal.html">Go to portal</a> to reply.</p>'
+          '<p><a href="' + new URL('portal.html', window.location.href).href + '">Go to portal</a> to reply.</p>'
         );
         // Phase 27: insert notification for clinician if their user ID is available
         if (CLINICIAN_ID) {
@@ -11258,7 +11258,7 @@ function _confirmConsumerCancel() {
           'Your Pulse appointment has been cancelled',
           '<p>Hi ' + (_memberDisplayName || 'there') + ',</p>' +
           '<p>Your appointment has been cancelled as requested.</p>' +
-          '<p>You can book a new appointment at any time from your <a href="' + window.location.origin + '/portal.html">Pulse portal</a>.</p>'
+          '<p>You can book a new appointment at any time from your <a href="' + new URL('portal.html', window.location.href).href + '">Pulse portal</a>.</p>'
         );
       }
       if (_clinicianEmail) {
@@ -11266,7 +11266,7 @@ function _confirmConsumerCancel() {
           _clinicianEmail,
           'Appointment cancelled by member',
           '<p>A patient (<strong>' + (_memberDisplayName || 'unknown') + '</strong>) has cancelled their appointment.</p>' +
-          '<p><a href="' + window.location.origin + '/portal.html">Log in to the portal</a> to review their schedule.</p>'
+          '<p><a href="' + new URL('portal.html', window.location.href).href + '">Log in to the portal</a> to review their schedule.</p>'
         );
       }
       // Phase 27: insert notification for the consumer confirming their cancellation

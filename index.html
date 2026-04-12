@@ -1932,9 +1932,12 @@ async function doSignUp() {
 // Sign in / sign up from the modal
 async function _signInWithGoogle() {
   try {
+    // Resolve 'portal.html' relative to the current page so it works on
+    // both root domains and subpath deployments (e.g. github.io/pulse/)
+    var redirectUrl = new URL('portal.html', window.location.href).href;
     var { error } = await window._sbClient.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/portal.html' }
+      options: { redirectTo: redirectUrl }
     });
     if (error) { alert('Google sign-in failed: ' + error.message); }
   } catch(e) { console.warn('[Pulse] Google OAuth error:', e); }

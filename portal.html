@@ -8692,40 +8692,71 @@ function _refreshOverviewData() {
   el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
 }
 
+// Canonical protocol start date used by every adherence surface (Progress
+// card on My Protocol, the Dose Log page, and any mobile mirrors). Priority:
+//   1. Clinician-prescribed Rx start date (most authoritative)
+//   2. Consultation created_at (fallback when no Rx start captured)
+//   3. Earliest logged dose (absolute fallback)
+// Returned as a midnight-local Date, or null if nothing is known.
+function _memberProtoStart() {
+  var s = window._protoRxStartDate || window._protoStartDate || null;
+  if (s) {
+    var d = (s instanceof Date) ? new Date(s.getTime()) : new Date(s);
+    d.setHours(0,0,0,0);
+    return d;
+  }
+  if (typeof loggedDates !== 'undefined' && loggedDates && loggedDates.length) {
+    var sorted = loggedDates.slice().sort();
+    var first = new Date(sorted[0] + 'T00:00:00');
+    first.setHours(0,0,0,0);
+    return first;
+  }
+  return null;
+}
+
+// Shared adherence calculation. Both the My Protocol Progress card and the
+// Dose Log stats row call this so their "On-time rate" and "logged" counts
+// are guaranteed to match.
+function _computeMemberAdherence() {
+  var start = _memberProtoStart();
+  var today = new Date(); today.setHours(0,0,0,0);
+  var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+  var logged = 0;
+  if (start && typeof loggedDates !== 'undefined' && loggedDates && loggedDates.length) {
+    loggedDates.forEach(function(d) {
+      var dd = new Date(d + 'T00:00:00');
+      dd.setHours(0,0,0,0);
+      if (dd >= start && dd <= today) logged++;
+    });
+  }
+  var daysSince = start ? (Math.floor((today.getTime() - start.getTime()) / 86400000) + 1) : 0;
+  var scheduled = Math.max(1, Math.round(Math.max(1, daysSince) * freqPerDay));
+  var rate = start ? Math.min(100, Math.round((logged / scheduled) * 100)) : 0;
+  return { start: start, today: today, freqPerDay: freqPerDay, logged: logged, daysSince: daysSince, scheduled: scheduled, rate: rate };
+}
+
 // Recalculates and renders the My Protocol "Progress" card stats.
 // Called from populatePortal and from _refreshOverviewData so it always
 // reflects the latest loggedDates (which loads async after portal init).
 function _refreshProtoProgress() {
   var el = function(id){ return document.getElementById(id); };
-  var start = window._protoRxStartDate || null;
   var weeks = window._protoRxDurWeeks || null;
-  if (!start || !weeks) return;
+  if (!weeks) return;
+  var adh = _computeMemberAdherence();
+  if (!adh.start) return;
   var totalDays = weeks * 7;
-  var daysSince = Math.floor((Date.now() - start.getTime()) / 86400000) + 1;
-  var currentWeek = Math.min(weeks, Math.max(1, Math.ceil(daysSince / 7)));
-  var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
-  var totalDoses = Math.max(1, Math.round(totalDays * freqPerDay));
-  // Count logged doses since protocol start
-  var loggedSinceStart = 0;
-  if (typeof loggedDates !== 'undefined' && loggedDates && loggedDates.length) {
-    loggedDates.forEach(function(d) {
-      var dd = new Date(d + 'T00:00:00');
-      if (dd >= start) loggedSinceStart++;
-    });
-  }
-  var dosesRemaining = Math.max(0, totalDoses - loggedSinceStart);
+  var currentWeek = Math.min(weeks, Math.max(1, Math.ceil(adh.daysSince / 7)));
+  var totalDoses = Math.max(1, Math.round(totalDays * adh.freqPerDay));
+  var dosesRemaining = Math.max(0, totalDoses - adh.logged);
   // % complete based on logged doses out of total prescribed doses
-  var pct = Math.min(100, Math.max(0, Math.round((loggedSinceStart / totalDoses) * 100)));
+  var pct = Math.min(100, Math.max(0, Math.round((adh.logged / totalDoses) * 100)));
   if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + weeks;
-  if (el('protoProgressSub')) el('protoProgressSub').textContent = loggedSinceStart + ' of ' + totalDoses + ' doses';
+  if (el('protoProgressSub')) el('protoProgressSub').textContent = adh.logged + ' of ' + totalDoses + ' doses';
   if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
   if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
-  if (el('protoStatLogged')) el('protoStatLogged').textContent = loggedSinceStart;
+  if (el('protoStatLogged')) el('protoStatLogged').textContent = adh.logged;
   if (el('protoStatRemaining')) el('protoStatRemaining').textContent = dosesRemaining;
-  // On-time rate — same methodology as the Log page (logged vs scheduled to date)
-  var scheduled = Math.max(1, Math.round(daysSince * freqPerDay));
-  var rate = Math.min(100, Math.round((loggedSinceStart / scheduled) * 100));
-  if (el('protoStatRate')) el('protoStatRate').textContent = rate + '%';
+  if (el('protoStatRate')) el('protoStatRate').textContent = adh.rate + '%';
 }
 
 // Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
@@ -11517,31 +11548,17 @@ function renderCalendar() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Stats — On-time rate spans the ENTIRE protocol period, not just this month
+  // Stats — share the same adherence calc as the My Protocol Progress card
+  // so the on-time rate (and logged count) are always identical across tabs.
   var streak = calcStreak(loggedDates);
-  var rate = 0;
-  if (protoStart) {
-    var daysSinceStart = Math.floor((today.getTime() - protoStart.getTime()) / 86400000) + 1;
-    if (daysSinceStart > 0) {
-      // Count logged doses since protoStart
-      var loggedSincePeriod = 0;
-      loggedDates.forEach(function(d) {
-        var dd = new Date(d + 'T00:00:00');
-        if (dd >= protoStart && dd <= today) loggedSincePeriod++;
-      });
-      // Factor in frequency per day (from prescribed evaluation)
-      var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
-      var scheduled = Math.max(1, Math.round(daysSinceStart * freqPerDay));
-      rate = Math.min(100, Math.round((loggedSincePeriod / scheduled) * 100));
-    }
-  } else if (loggedDates.length > 0) {
-    rate = 100; // no protocol start known — show 100% if logged
-  }
+  var adh = _computeMemberAdherence();
+  var rate = adh.start ? adh.rate : (loggedDates.length > 0 ? 100 : 0);
 
   var el = function(id){ return document.getElementById(id); };
   if (el('streakNum')) el('streakNum').textContent = streak;
   if (el('consistencyNum')) el('consistencyNum').textContent = rate + '%';
-  if (el('totalLogged')) el('totalLogged').textContent = loggedDates.length;
+  // Total logged shows doses since protocol start so it matches the Progress card
+  if (el('totalLogged')) el('totalLogged').textContent = adh.start ? adh.logged : loggedDates.length;
 
   _syncStreakToOverview(streak);
   if (el('streakTile') && streak > 0) el('streakTile').style.display = '';

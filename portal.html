@@ -8585,7 +8585,9 @@ function _refreshOverviewData() {
   var dosesRemaining = totalDispensed != null ? Math.max(0, totalDispensed - dosesLogged) : null;
   var dosesPerDay = freqPerDay || 1;
   var coverageDays = dosesRemaining != null ? Math.round(dosesRemaining / dosesPerDay) : null;
-  var startDate = op.startDate ? new Date(op.startDate) : null;
+  // Use the canonical member-protocol start date so "Week X of N" and refill
+  // projections match the Progress card on My Protocol and the Dose Log page.
+  var startDate = _memberProtoStart() || (op.startDate ? new Date(op.startDate) : null);
   var currentWeek = (startDate && durWeeks) ? Math.min(durWeeks, Math.max(1, Math.floor((Date.now() - startDate.getTime()) / (7*86400000)) + 1)) : null;
   var phaseStr = (currentWeek && durWeeks) ? 'Week ' + currentWeek + ' of ' + durWeeks : null;
   // Refill date = start + duration
@@ -8606,20 +8608,33 @@ function _refreshOverviewData() {
   } else {
     nextDoseStr = 'Today';
   }
-  // Scheduled doses so far (inclusive of today — day 1 is the start day)
-  var daysSinceStart = startDate ? Math.floor((Date.now() - startDate.getTime()) / 86400000) + 1 : 1;
-  var scheduledDoses = Math.max(1, Math.round(daysSinceStart * dosesPerDay));
+  // Adherence — single source of truth shared with the Progress card and
+  // Dose Log page so every number on every member surface agrees.
+  var _adh = _computeMemberAdherence();
+  var dosesLoggedSinceStart = _adh.start ? _adh.logged : dosesLogged;
+  var scheduledDoses = _adh.scheduled;
   if (totalPrescribed != null) scheduledDoses = Math.min(scheduledDoses, totalPrescribed);
-  var onTimeRate = scheduledDoses > 0 ? Math.min(100, Math.round((dosesLogged / scheduledDoses) * 100)) : null;
+  var onTimeRate = _adh.start ? _adh.rate : null;
   var startStr = startDate ? startDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : null;
   var freqPlain = _normalizeFreqLabel(op.freqRaw, dosesPerDay);
 
   // ── HERO LEFT ──
-  el = document.getElementById('mHeroTitle'); if (el) el.textContent = op.displayName;
+  // Layout mirrors the mobile hero:
+  //   YOUR PROTOCOL  (eyebrow)
+  //   Sleep          (big — protocol name)
+  //   1 dose daily · 200 mg  (cadence + dose meta)
+  el = document.getElementById('mHeroLabel'); if (el) el.textContent = 'Your Protocol';
+  // Small title slot no longer used — protocol name lives in the big slot now.
+  el = document.getElementById('mHeroTitle'); if (el) { el.textContent = ''; el.style.display = 'none'; }
   el = document.getElementById('mHeroSub');
-  if (el) el.textContent = op.doseDesc || 'Dose scheduled';
+  if (el) el.textContent = op.displayName || 'Your Protocol';
   el = document.getElementById('mHeroDose');
-  if (el) el.textContent = freqPlain + (phaseStr ? ' \u00B7 ' + phaseStr : '');
+  if (el) {
+    var _hparts = [];
+    if (freqPlain) _hparts.push(freqPlain);
+    if (op.doseDesc) _hparts.push(op.doseDesc);
+    el.textContent = _hparts.length ? _hparts.join(' \u00B7 ') : 'Dose scheduled';
+  }
   el = document.getElementById('mHeroCta');
   if (el) {
     if (loggedToday) { el.textContent = 'Dose logged'; el.classList.add('logged'); el.onclick = null; }
@@ -8651,8 +8666,10 @@ function _refreshOverviewData() {
   el = document.getElementById('mSupplyRefill'); if (el) el.textContent = refillStr || 'No data';
 
   // ── Adherence card ──
+  // Uses the shared _computeMemberAdherence() result so the Overview numbers
+  // always match the My Protocol Progress card and the Dose Log stats row.
   el = document.getElementById('mAdhLogged');
-  if (el) el.textContent = scheduledDoses > 0 ? dosesLogged + ' of ' + scheduledDoses + ' scheduled' : dosesLogged + ' logged';
+  if (el) el.textContent = scheduledDoses > 0 ? dosesLoggedSinceStart + ' of ' + scheduledDoses + ' scheduled' : dosesLoggedSinceStart + ' logged';
   el = document.getElementById('mAdhRate');
   if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : 'No data';
   el = document.getElementById('mAdhStreak'); if (el) el.textContent = streak + ' consecutive';
@@ -9164,7 +9181,7 @@ function populatePortal(user, consultation, greeting) {
     }
     // Update hero card for pending state
     var _heroT = document.getElementById('mHeroTitle');
-    if (_heroT) _heroT.textContent = 'Intake Under Review';
+    if (_heroT) { _heroT.style.display = ''; _heroT.textContent = 'Intake Under Review'; }
     var _heroS = document.getElementById('mHeroSub');
     if (_heroS) _heroS.textContent = 'Your clinician is reviewing your intake and goals.';
     var _heroD = document.getElementById('mHeroDose');

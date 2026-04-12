@@ -145,15 +145,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .proto-rx-value{font-family:'Inter',sans-serif;font-size:15px;color:#fff;font-weight:600;letter-spacing:-0.01em;}
 
 /* Progress card */
-.proto-progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.proto-progress-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
 .proto-progress-phase{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#fff;letter-spacing:-0.01em;}
 .proto-progress-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--grey2);margin-top:2px;}
-.proto-progress-pct{font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:var(--green);letter-spacing:-0.02em;}
-.proto-progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-bottom:18px;}
+.proto-progress-pct-wrap{text-align:right;line-height:1;}
+.proto-progress-pct{font-family:'Inter',sans-serif;font-size:24px;font-weight:600;color:var(--green);letter-spacing:-0.02em;line-height:1;}
+.proto-progress-pct-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--grey2);font-weight:600;margin-top:4px;}
+.proto-progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-bottom:20px;}
 .proto-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .4s ease;}
-.proto-progress-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding-top:16px;border-top:1px solid var(--border);}
-.proto-progress-stat{text-align:left;}
-.proto-progress-stat-val{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.01em;line-height:1;margin-bottom:4px;}
+.proto-progress-stats{display:flex;align-items:center;justify-content:center;gap:56px;padding-top:18px;border-top:1px solid var(--border);}
+.proto-progress-stat{text-align:center;}
+.proto-progress-stat-val{font-family:'Inter',sans-serif;font-size:20px;font-weight:600;color:#fff;letter-spacing:-0.01em;line-height:1;margin-bottom:6px;}
 .proto-progress-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--grey2);font-weight:500;}
 
 /* Clinician notes */
@@ -1766,6 +1768,7 @@ body.member-mode .proto-rx-value{color:var(--m-text);}
 body.member-mode .proto-progress-phase{color:var(--m-text);}
 body.member-mode .proto-progress-sub{color:var(--m-text3);}
 body.member-mode .proto-progress-pct{color:#2F6F55;}
+body.member-mode .proto-progress-pct-lbl{color:var(--m-text3);}
 body.member-mode .proto-progress-bar{background:rgba(20,20,20,0.06);}
 body.member-mode .proto-progress-stats{border-top-color:var(--m-border);}
 body.member-mode .proto-progress-stat-val{color:var(--m-text);}
@@ -3017,7 +3020,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <div class="proto-progress-phase" id="protoProgressPhase">Week 1 of 8</div>
                 <div class="proto-progress-sub" id="protoProgressSub">—</div>
               </div>
-              <div class="proto-progress-pct" id="protoProgressPct">0%</div>
+              <div class="proto-progress-pct-wrap">
+                <div class="proto-progress-pct" id="protoProgressPct">0%</div>
+                <div class="proto-progress-pct-lbl">Complete</div>
+              </div>
             </div>
             <div class="proto-progress-bar"><div class="proto-progress-fill" id="protoProgressFill" style="width:0%;"></div></div>
             <div class="proto-progress-stats">
@@ -3027,7 +3033,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               </div>
               <div class="proto-progress-stat">
                 <div class="proto-progress-stat-val" id="protoStatRemaining">—</div>
-                <div class="proto-progress-stat-lbl">Days remaining</div>
+                <div class="proto-progress-stat-lbl">Doses remaining</div>
               </div>
               <div class="proto-progress-stat">
                 <div class="proto-progress-stat-val" id="protoStatRate">—</div>
@@ -8392,13 +8398,8 @@ function _refreshProtoProgress() {
   var totalDays = weeks * 7;
   var daysSince = Math.floor((Date.now() - start.getTime()) / 86400000) + 1;
   var currentWeek = Math.min(weeks, Math.max(1, Math.ceil(daysSince / 7)));
-  var pct = Math.min(100, Math.max(0, Math.round((daysSince / totalDays) * 100)));
-  var daysRemaining = Math.max(0, totalDays - daysSince);
-  if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + weeks;
-  if (el('protoProgressSub')) el('protoProgressSub').textContent = daysSince + ' days in';
-  if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
-  if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
-  if (el('protoStatRemaining')) el('protoStatRemaining').textContent = daysRemaining + 'd';
+  var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+  var totalDoses = Math.max(1, Math.round(totalDays * freqPerDay));
   // Count logged doses since protocol start
   var loggedSinceStart = 0;
   if (typeof loggedDates !== 'undefined' && loggedDates && loggedDates.length) {
@@ -8407,9 +8408,16 @@ function _refreshProtoProgress() {
       if (dd >= start) loggedSinceStart++;
     });
   }
+  var dosesRemaining = Math.max(0, totalDoses - loggedSinceStart);
+  // % complete based on logged doses out of total prescribed doses
+  var pct = Math.min(100, Math.max(0, Math.round((loggedSinceStart / totalDoses) * 100)));
+  if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + weeks;
+  if (el('protoProgressSub')) el('protoProgressSub').textContent = loggedSinceStart + ' of ' + totalDoses + ' doses';
+  if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
+  if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
   if (el('protoStatLogged')) el('protoStatLogged').textContent = loggedSinceStart;
-  // On-time rate — same methodology as the Log page
-  var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+  if (el('protoStatRemaining')) el('protoStatRemaining').textContent = dosesRemaining;
+  // On-time rate — same methodology as the Log page (logged vs scheduled to date)
   var scheduled = Math.max(1, Math.round(daysSince * freqPerDay));
   var rate = Math.min(100, Math.round((loggedSinceStart / scheduled) * 100));
   if (el('protoStatRate')) el('protoStatRate').textContent = rate + '%';

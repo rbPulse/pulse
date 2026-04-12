@@ -642,6 +642,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .nav-settings-gear:hover { color: #fff; }
 @media(max-width:768px) {
   .nav-settings-gear { display: block; }
+  /* Hide secondary nav items to declutter mobile top bar */
+  .nav-user-email { display: none !important; }
+  .nav-role-badge { display: none !important; }
+  #navAdminLink { display: none !important; }
+  .nav-signout { display: none !important; }
+  .nav-right { gap: 10px !important; }
 }
 
 /* ── BOTTOM TAB BAR ──────────────────────────────────────────────────────────
@@ -1574,6 +1580,15 @@ body.member-mode .nav-role-badge,body.member-mode #navRoleBadge{color:#2F6F55;ba
 
 /* ── Sidebar ── */
 body.member-mode .portal-sidebar{background:#F3F0E8;border-right:1px solid var(--m-border);}
+body.member-mode .portal-bottom-bar{background:var(--m-card,#FBFAF6) !important;border-top:1px solid var(--m-border,rgba(0,0,0,0.06)) !important;box-shadow:0 -2px 12px rgba(0,0,0,0.04);}
+body.member-mode .pbb-item{color:var(--m-text3,rgba(0,0,0,0.4)) !important;font-family:'Inter',sans-serif;font-weight:500;}
+body.member-mode .pbb-item.active{color:#2F6F55 !important;border-top-color:#2F6F55 !important;}
+body.member-mode .pbb-item .pbb-icon{color:inherit;}
+body.member-mode nav{background:rgba(245,244,239,0.88) !important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--m-border) !important;}
+body.member-mode .notif-bell{color:rgba(0,0,0,0.5) !important;}
+body.member-mode .notif-bell:hover{color:#111 !important;}
+body.member-mode .nav-settings-gear{color:rgba(0,0,0,0.5) !important;}
+body.member-mode .nav-settings-gear:hover{color:#111 !important;}
 body.member-mode .sidebar-identity{border-bottom:1px solid var(--m-border);padding:22px 20px 18px;}
 body.member-mode .sidebar-id-name{color:var(--m-text);font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.01em;}
 body.member-mode .sidebar-id-role{color:#2F6F55;background:var(--m-green-tint);border:1px solid var(--m-green-border);}
@@ -1975,6 +1990,12 @@ body.clinician-mode .nav-role-badge,body.clinician-mode #navRoleBadge{color:var(
 
 /* ── Sidebar ── */
 body.clinician-mode .portal-sidebar{background:var(--cl-sidebar);border-right:1px solid var(--cl-border);}
+body.clinician-mode .portal-bottom-bar{background:var(--cl-high,#ECEEE9) !important;border-top:1px solid var(--cl-border) !important;box-shadow:0 -2px 12px rgba(0,0,0,0.04);}
+body.clinician-mode .pbb-item{color:var(--cl-text3) !important;font-family:'Inter',sans-serif;font-weight:500;}
+body.clinician-mode .pbb-item.active{color:#2F6F55 !important;border-top-color:#2F6F55 !important;}
+body.clinician-mode nav{background:var(--cl-bg) !important;border-bottom:1px solid var(--cl-border) !important;}
+body.clinician-mode .notif-bell{color:rgba(0,0,0,0.5) !important;}
+body.clinician-mode .nav-settings-gear{color:rgba(0,0,0,0.5) !important;}
 body.clinician-mode .sidebar-identity{border-bottom:1px solid var(--cl-border);padding:16px 18px;}
 body.clinician-mode .sidebar-id-name{color:var(--cl-text);font-family:'Inter',sans-serif;font-size:15px;font-weight:600;}
 body.clinician-mode .sidebar-id-role{color:var(--cl-green);background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.15);}
@@ -2449,14 +2470,17 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
       <div class="notif-panel" id="notifPanel">
         <div class="notif-panel-header">
           <span class="notif-panel-title">Notifications</span>
-          <button class="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
+            <button class="notif-close" onclick="closeNotifPanel()" aria-label="Close" style="background:none;border:none;font-size:18px;color:rgba(0,0,0,0.35);cursor:pointer;padding:0 4px;line-height:1;">&times;</button>
+          </div>
         </div>
         <div class="notif-list" id="notifList">
           <div class="notif-empty"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="1.5" style="display:block;margin:0 auto 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>No notifications yet.</div>
         </div>
       </div>
     </div>
-    <button class="nav-settings-gear" id="navSettingsGear" onclick="switchTab(window._userRole==='clinician'||window._userRole==='admin'?'cl-settings':'settings')" aria-label="Settings" title="Settings">⚙</button>
+    <button class="nav-settings-gear" id="navSettingsGear" onclick="_toggleSettingsTab()" aria-label="Settings" title="Settings">⚙</button>
     <button class="nav-signout" onclick="doSignOut()">Sign Out</button>
   </div>
 </nav>
@@ -11094,6 +11118,23 @@ function _handleNotifClick(id, link) {
     }
   }
   if (target) { switchTab(target); closeNotifPanel(); }
+}
+
+// Toggle between Settings tab and the previous tab (mobile nav gear button)
+var _prevTabBeforeSettings = null;
+function _toggleSettingsTab() {
+  var isClinician = window._userRole === 'clinician' || window._userRole === 'admin';
+  var settingsTab = isClinician ? 'cl-settings' : 'settings';
+  var currentActive = document.querySelector('.portal-tab.active');
+  var currentTabId = currentActive ? currentActive.id.replace('tab-', '') : '';
+  if (currentTabId === settingsTab && _prevTabBeforeSettings) {
+    // Already on settings — go back
+    switchTab(_prevTabBeforeSettings);
+    _prevTabBeforeSettings = null;
+  } else {
+    _prevTabBeforeSettings = currentTabId || (isClinician ? 'cl-overview' : 'overview');
+    switchTab(settingsTab);
+  }
 }
 
 function markAllNotifsRead() {

@@ -10671,7 +10671,7 @@ async function _logPastDose(dateStr) {
 }
 
 function checkTodayLogged() {
-  var todayStr = new Date().toISOString().slice(0, 10);
+  var todayStr = localDateStr(new Date());
   if (loggedDates.indexOf(todayStr) !== -1) {
     _setAlreadyLoggedState();
   }
@@ -10768,7 +10768,7 @@ function _saveStreakToProfile(streak) {
 
 async function logDose() {
   /* Supabase: table dose_logs already defined in schema comments; unique(user_id, dose_date) handles duplicates */
-  var today = new Date().toISOString().slice(0, 10);
+  var today = localDateStr(new Date());
 
   // Already logged today — apply already-logged state, do not insert
   if (loggedDates.indexOf(today) !== -1) {

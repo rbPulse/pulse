@@ -1955,6 +1955,71 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
   body.member-mode .msg-bubbles{max-height:50vh;}
   body.member-mode .p15-modal{margin:16px;max-width:calc(100vw - 32px);}
 }
+/* ═══ MOBILE OVERVIEW — focused daily dashboard ═══ */
+.m-mobile-overview{display:none;}
+@media(max-width:768px){
+  body.member-mode .m-mobile-overview{display:flex;flex-direction:column;gap:14px;}
+  /* Hide legacy desktop-style cards on mobile */
+  body.member-mode #tab-overview .m-hero{display:none !important;}
+  body.member-mode #tab-overview .m-grid{display:none !important;}
+  /* Tighten tab header on mobile overview */
+  body.member-mode #tab-overview .tab-eyebrow{margin-bottom:4px;font-size:10px;}
+  body.member-mode #tab-overview .tab-title{font-size:22px;margin-bottom:18px;}
+}
+
+/* Today Hero Card — the command center */
+.mo-hero{background:linear-gradient(180deg,#224D3A 0%,#1a3d2e 55%,#122b20 100%);border-radius:20px;padding:26px 24px 22px;color:#fff;box-shadow:0 8px 28px rgba(34,77,58,0.18),0 2px 8px rgba(0,0,0,0.06);position:relative;overflow:hidden;}
+.mo-hero::before{content:'';position:absolute;top:-40%;right:-20%;width:320px;height:320px;background:radial-gradient(circle,rgba(74,186,130,0.12),transparent 60%);pointer-events:none;}
+.mo-hero-eyebrow{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.55);font-weight:600;margin-bottom:6px;position:relative;}
+.mo-hero-proto{font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:rgba(255,255,255,0.75);margin-bottom:8px;letter-spacing:-0.005em;position:relative;}
+.mo-hero-dose{font-family:'Inter',sans-serif;font-size:42px;font-weight:600;color:#fff;line-height:1;letter-spacing:-0.025em;margin-bottom:6px;position:relative;}
+.mo-hero-meta{font-family:'Inter',sans-serif;font-size:13px;color:rgba(255,255,255,0.6);font-weight:400;margin-bottom:18px;position:relative;}
+.mo-hero-cta{display:block;width:100%;background:#fff;color:#1a3d2e;border:none;border-radius:999px;padding:14px 20px;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-bottom:20px;position:relative;}
+.mo-hero-cta:active{transform:scale(0.98);}
+.mo-hero-cta.logged{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.18);cursor:default;}
+.mo-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);position:relative;}
+.mo-stat{text-align:left;}
+.mo-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.45);font-weight:600;margin-bottom:4px;}
+.mo-stat-val{font-family:'Inter',sans-serif;font-size:13px;color:#fff;font-weight:600;letter-spacing:-0.01em;}
+
+/* Card base */
+.mo-card{background:#FBFAF6;border:1px solid rgba(20,20,20,0.06);border-radius:16px;padding:20px 22px;box-shadow:0 2px 8px rgba(20,20,20,0.03);}
+.mo-card-lbl{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(20,20,20,0.4);font-weight:600;margin-bottom:14px;}
+
+/* Plan card rows */
+.mo-plan-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.mo-plan-row{display:flex;align-items:center;justify-content:space-between;font-family:'Inter',sans-serif;font-size:13px;font-weight:400;}
+.mo-plan-row>span:first-child{color:rgba(20,20,20,0.5);}
+.mo-plan-row>span:last-child{color:#1a1a1a;font-weight:600;}
+
+/* Supply */
+.mo-supply{padding:14px 0 0;border-top:1px solid rgba(20,20,20,0.05);margin-bottom:14px;}
+.mo-supply-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+.mo-supply-num{font-family:'Inter',sans-serif;font-size:24px;font-weight:600;color:#1a1a1a;letter-spacing:-0.02em;}
+.mo-supply-unit{font-family:'Inter',sans-serif;font-size:12px;color:rgba(20,20,20,0.5);margin-left:4px;}
+.mo-supply-refill{font-family:'Inter',sans-serif;font-size:11px;color:rgba(20,20,20,0.45);font-weight:500;}
+.mo-progress{width:100%;height:6px;background:rgba(20,20,20,0.06);border-radius:999px;overflow:hidden;}
+.mo-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .4s ease;}
+.mo-card-link{background:none;border:none;padding:10px 0 0;font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;font-weight:600;cursor:pointer;text-align:left;display:block;}
+
+/* Care Team */
+.mo-cl-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.mo-cl-avatar{width:52px;height:52px;border-radius:50%;background:rgba(47,111,85,0.08);border:2px solid rgba(47,111,85,0.15);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#2F6F55;flex-shrink:0;overflow:hidden;}
+.mo-cl-info{flex:1;min-width:0;}
+.mo-cl-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1a1a1a;letter-spacing:-0.01em;}
+.mo-cl-profile{display:inline-block;font-family:'Inter',sans-serif;font-size:11px;color:#2F6F55;text-decoration:none;margin-top:3px;opacity:0.75;font-weight:500;}
+.mo-cl-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mo-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;background:#fff;border:1px solid rgba(20,20,20,0.08);border-radius:999px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:#1a1a1a;cursor:pointer;transition:all .15s;}
+.mo-btn:active{transform:scale(0.98);}
+
+/* Support */
+.mo-support-list{display:flex;flex-direction:column;gap:6px;}
+.mo-support-btn{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#fff;border:1px solid rgba(20,20,20,0.06);border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#1a1a1a;text-align:left;cursor:pointer;transition:all .15s;}
+.mo-support-btn>span{color:rgba(20,20,20,0.35);font-size:16px;margin-left:12px;}
+.mo-support-btn:active{transform:scale(0.99);background:rgba(47,111,85,0.04);}
+.mo-support-btn-primary{background:rgba(47,111,85,0.06);border-color:rgba(47,111,85,0.18);color:#2F6F55;}
+.mo-support-btn-primary>span{color:#2F6F55;}
+
 @media(max-width:600px){
   body.member-mode .m-hero{grid-template-columns:1fr;}
   body.member-mode .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid rgba(20,20,20,0.06);}
@@ -2612,6 +2677,83 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="member-card" style="display:none;"><div><div class="member-badge"><span class="member-badge-dot"></span>Founding Member</div><div class="member-since" id="memberSince">Member since —</div></div><div class="status-pill waitlist" id="statusPill">Waitlist Member</div></div>
         <div class="action-card" id="actionCard" style="display:none;"><div class="action-card-title">Start your protocol.</div><div class="action-card-sub" id="actionSub"></div><a href="consultation.html" class="btn-green" id="actionBtn">Book Your Consultation</a></div>
         <div class="quick-stats" id="quickStats" style="display:none;"><div class="stat-tile"><div class="stat-tile-val" id="_statCategory2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCompounds2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCycle2">—</div></div><div class="stat-tile" id="streakTile" style="display:none;"><div class="stat-tile-val" id="_statStreak2">0</div></div></div>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             MOBILE-ONLY OVERVIEW — focused daily dashboard
+             Hidden on desktop; replaces the card grid on screens ≤768px
+        ══════════════════════════════════════════════════════════════ -->
+        <div class="m-mobile-overview" id="mMobileOverview">
+          <!-- ─── 1. TODAY HERO CARD ─── -->
+          <div class="mo-hero">
+            <div class="mo-hero-eyebrow">Today</div>
+            <div class="mo-hero-proto" id="moProtoName">Your Protocol</div>
+            <div class="mo-hero-dose" id="moDoseAmount">—</div>
+            <div class="mo-hero-meta" id="moDoseMeta">—</div>
+            <button class="mo-hero-cta" id="moHeroCta" onclick="logDose()">Log Dose</button>
+            <div class="mo-hero-stats">
+              <div class="mo-stat">
+                <div class="mo-stat-lbl">Next dose</div>
+                <div class="mo-stat-val" id="moNextDose">—</div>
+              </div>
+              <div class="mo-stat">
+                <div class="mo-stat-lbl">Phase</div>
+                <div class="mo-stat-val" id="moPhase">—</div>
+              </div>
+              <div class="mo-stat">
+                <div class="mo-stat-lbl">On-time</div>
+                <div class="mo-stat-val" id="moOnTime">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── 2. PLAN CARD (Protocol + Supply merged) ─── -->
+          <div class="mo-card">
+            <div class="mo-card-lbl">Your Plan</div>
+            <div class="mo-plan-rows">
+              <div class="mo-plan-row"><span>Duration</span><span id="moPlanDuration">—</span></div>
+              <div class="mo-plan-row"><span>Frequency</span><span id="moPlanFreq">—</span></div>
+              <div class="mo-plan-row"><span>Started</span><span id="moPlanStarted">—</span></div>
+            </div>
+            <div class="mo-supply">
+              <div class="mo-supply-top">
+                <div>
+                  <span class="mo-supply-num" id="moSupplyCount">—</span>
+                  <span class="mo-supply-unit">doses remaining</span>
+                </div>
+                <div class="mo-supply-refill" id="moSupplyRefill">—</div>
+              </div>
+              <div class="mo-progress"><div class="mo-progress-fill" id="moSupplyBar" style="width:0%;"></div></div>
+            </div>
+            <button class="mo-card-link" onclick="switchTab('protocol')">View full protocol ›</button>
+          </div>
+
+          <!-- ─── 3. CARE TEAM CARD ─── -->
+          <div class="mo-card">
+            <div class="mo-card-lbl">Care Team</div>
+            <div class="mo-cl-row">
+              <div class="mo-cl-avatar" id="moClAvatar">Dr</div>
+              <div class="mo-cl-info">
+                <div class="mo-cl-name" id="moClName">Your Clinician</div>
+                <a href="#" class="mo-cl-profile" onclick="event.preventDefault();_openClinicianProfile()">View profile ›</a>
+              </div>
+            </div>
+            <div class="mo-cl-actions">
+              <button class="mo-btn" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Message</button>
+              <button class="mo-btn" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Schedule</button>
+            </div>
+          </div>
+
+          <!-- ─── 4. SUPPORT CARD ─── -->
+          <div class="mo-card">
+            <div class="mo-card-lbl">Support</div>
+            <div class="mo-support-list">
+              <button class="mo-support-btn" onclick="switchTab('resources')">Missed a dose? <span>›</span></button>
+              <button class="mo-support-btn" onclick="switchTab('resources')">How do I store my peptides? <span>›</span></button>
+              <button class="mo-support-btn" onclick="switchTab('resources')">View all resources <span>›</span></button>
+              <button class="mo-support-btn mo-support-btn-primary" onclick="switchTab('messages')">Contact clinician <span>›</span></button>
+            </div>
+          </div>
+        </div>
 
         <!-- ══ HERO: Treatment Command Center ══ -->
         <div class="m-hero" id="mHero">
@@ -8078,6 +8220,36 @@ function _refreshOverviewData() {
   if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : 'No data';
   el = document.getElementById('mAdhStreak'); if (el) el.textContent = streak + ' consecutive';
 
+  // ── MOBILE OVERVIEW — sync all data to the mobile layout ──
+  // 1. Today Hero
+  el = document.getElementById('moProtoName'); if (el) el.textContent = op.displayName + ' Protocol';
+  el = document.getElementById('moDoseAmount');
+  if (el) el.textContent = op.doseDesc || (freqPlain || '—');
+  el = document.getElementById('moDoseMeta');
+  if (el) {
+    var parts = [];
+    if (freqPlain && op.doseDesc) parts.push(freqPlain);
+    if (phaseStr) parts.push(phaseStr);
+    el.textContent = parts.length ? parts.join(' · ') : (op.doseDesc ? '' : 'Dose scheduled');
+  }
+  el = document.getElementById('moHeroCta');
+  if (el) {
+    if (loggedToday) { el.textContent = '✓ Dose Logged'; el.classList.add('logged'); el.onclick = null; }
+    else { el.textContent = 'Log Dose'; el.classList.remove('logged'); el.onclick = function(){ logDose(); }; }
+  }
+  el = document.getElementById('moNextDose'); if (el) el.textContent = nextDoseStr || '—';
+  el = document.getElementById('moPhase'); if (el) el.textContent = phaseStr || '—';
+  el = document.getElementById('moOnTime'); if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : '—';
+
+  // 2. Plan card
+  el = document.getElementById('moPlanDuration'); if (el) el.textContent = durWeeks ? durWeeks + ' weeks' : '—';
+  el = document.getElementById('moPlanFreq'); if (el) el.textContent = freqPlain || '—';
+  el = document.getElementById('moPlanStarted'); if (el) el.textContent = startStr || '—';
+  el = document.getElementById('moSupplyCount'); if (el) el.textContent = dosesRemaining != null ? dosesRemaining : '—';
+  el = document.getElementById('moSupplyBar');
+  if (el) el.style.width = (dosesRemaining != null && totalDispensed) ? Math.round((dosesRemaining / totalDispensed) * 100) + '%' : '0%';
+  el = document.getElementById('moSupplyRefill'); if (el) el.textContent = refillStr ? 'Refill ' + refillStr : '';
+
   // ── Upcoming card — ONLY non-duplicate events ──
   el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
 }
@@ -8204,12 +8376,24 @@ function populatePortal(user, consultation, greeting) {
             // Update overview grid clinician card
             var mClName = document.getElementById('mClName');
             if (mClName) mClName.textContent = clName;
+            var clInitials = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
             var mClAvatar = document.getElementById('mClAvatar');
             if (mClAvatar) {
               if (cp.photo_url) {
                 mClAvatar.innerHTML = '<img src="' + cp.photo_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
               } else {
-                mClAvatar.textContent = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+                mClAvatar.textContent = clInitials;
+              }
+            }
+            // Update MOBILE overview clinician card
+            var moClName = document.getElementById('moClName');
+            if (moClName) moClName.textContent = clName;
+            var moClAvatar = document.getElementById('moClAvatar');
+            if (moClAvatar) {
+              if (cp.photo_url) {
+                moClAvatar.innerHTML = '<img src="' + cp.photo_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+              } else {
+                moClAvatar.textContent = clInitials;
               }
             }
             // Update messages tab avatar

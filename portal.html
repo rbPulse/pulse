@@ -11389,8 +11389,7 @@ async function saveConsumerSettings() {
   var fName = nameParts[0] || '';
   var lName = nameParts.slice(1).join(' ') || '';
 
-  // 1) Upsert ONLY the known-safe profiles columns (name, display, notify).
-  //    Contact fields live in consultations.data so we don't depend on schema.
+  // 1) Upsert profiles with correct column names (phone/street/apt/city/state/zip)
   try {
     var r = await db.from('profiles').upsert({
       user_id:         currentUserId,
@@ -11398,31 +11397,34 @@ async function saveConsumerSettings() {
       last_name:       lName || null,
       display_name:    newName,
       notify_messages: _memberNotifyMessages,
+      phone:           phone || null,
+      street:          street || null,
+      apt:             apt || null,
+      city:            city || null,
+      state:           state || null,
+      zip:             zip || null,
       updated_at:      new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (r.error) console.warn('[Pulse] profiles save error:', r.error.message);
   } catch(e) { console.warn('[Pulse] profiles save exception:', e && e.message); }
 
-  // 2) Persist contact info into consultations.data (the authoritative store).
-  //    This always works since the JSONB column is guaranteed to exist.
+  // 2) Also sync into consultations.data so clinician view / intake review
+  //    / prescribing flow all see the updated contact info.
   try {
     var cRes = await db.from('consultations').select('id, data').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1);
     if (cRes.data && cRes.data.length) {
       var c = cRes.data[0];
       var d = c.data || {};
       d.phone_number = phone || null;
-      d.phone = phone || null;
-      d.street = street || null;
-      d.apt = apt || null;
+      d.street_address = street || null;
+      d.apt_unit = apt || null;
       d.city = city || null;
       d.state = state || null;
-      d.zip = zip || null;
+      d.zip_code = zip || null;
       d.first_name = fName || d.first_name;
       d.last_name = lName || d.last_name;
       var cUpdate = await db.from('consultations').update({ data: d }).eq('id', c.id);
       if (cUpdate.error) console.warn('[Pulse] consultation contact save error:', cUpdate.error.message);
-    } else {
-      console.warn('[Pulse] no consultation row found to save contact info');
     }
   } catch(e2) { console.warn('[Pulse] contact save exception:', e2 && e2.message); }
 
@@ -11441,25 +11443,45 @@ async function saveConsumerSettings() {
   }
 }
 
-// Load the member's saved contact info from consultations.data (the source of truth)
+// Load the member's saved contact info from profiles (primary) with
+// consultations.data fallback for any fields not yet in profiles.
 function _loadConsumerContactSettings() {
   if (!currentUserId || PREVIEW_MODE) return;
-  db.from('consultations').select('data').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1)
+  db.from('profiles').select('phone, street, apt, city, state, zip').eq('user_id', currentUserId).maybeSingle()
     .then(function(res) {
-      if (!res || !res.data || !res.data.length) return;
-      var d = res.data[0].data || {};
+      var p = (res && res.data) || {};
       var set = function(id, val) {
         var el = document.getElementById(id);
         if (el) el.value = val || '';
       };
-      set('settingsPhone', d.phone_number || d.phone);
-      set('settingsStreet', d.street);
-      set('settingsApt', d.apt);
-      set('settingsCity', d.city);
-      set('settingsState', d.state);
-      set('settingsZip', d.zip);
+      set('settingsPhone', p.phone);
+      set('settingsStreet', p.street);
+      set('settingsApt', p.apt);
+      set('settingsCity', p.city);
+      set('settingsState', p.state);
+      set('settingsZip', p.zip);
+
+      // Fallback: fill any empty fields from consultations.data (intake)
+      var anyEmpty = !p.phone || !p.street || !p.city || !p.state || !p.zip;
+      if (anyEmpty) {
+        db.from('consultations').select('data').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1)
+          .then(function(cRes) {
+            if (!cRes || !cRes.data || !cRes.data.length) return;
+            var d = cRes.data[0].data || {};
+            var fallback = function(id, val) {
+              var el = document.getElementById(id);
+              if (el && !el.value && val) el.value = val;
+            };
+            fallback('settingsPhone', d.phone_number || d.phone);
+            fallback('settingsStreet', d.street_address || d.street);
+            fallback('settingsApt', d.apt_unit || d.apt);
+            fallback('settingsCity', d.city);
+            fallback('settingsState', d.state);
+            fallback('settingsZip', d.zip_code || d.zip);
+          }).catch(function(){});
+      }
     }).catch(function(err) {
-      console.warn('[Pulse] contact load failed:', err && err.message);
+      console.warn('[Pulse] profiles contact load failed:', err && err.message);
     });
 }
 

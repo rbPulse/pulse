@@ -133,6 +133,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .proto-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .proto-category-badge{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.25);color:var(--green);padding:3px 10px;border-radius:999px;}
 .proto-reviewed{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.06em;color:var(--grey2);}
+.proto-prescribed{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--grey2);letter-spacing:0.01em;}
 
 /* Protocol status pill */
 .proto-status-pill{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.25);color:var(--green);padding:3px 10px;border-radius:999px;font-weight:600;}
@@ -1936,7 +1937,7 @@ body.member-mode .setup-card,body.member-mode .res-card{
 body.member-mode .greeting-sub,body.member-mode .action-card-sub,
 body.member-mode .action-card-proto,body.member-mode .compounds-note,
 body.member-mode .empty-sub,body.member-mode .ov-stat-sub,
-body.member-mode .member-since,body.member-mode .proto-reviewed{color:var(--m-text2) !important;}
+body.member-mode .member-since,body.member-mode .proto-reviewed,body.member-mode .proto-prescribed{color:var(--m-text2) !important;}
 body.member-mode .ov-stat-label,body.member-mode .compounds-label,
 body.member-mode .stat-tile-label{color:var(--m-text3) !important;}
 body.member-mode .ov-stat-val,body.member-mode .stat-tile-val,
@@ -2970,9 +2971,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="tab-eyebrow">Your Protocol</div>
             <div class="proto-name" id="protoName">—</div>
             <div class="proto-meta">
-              <span class="proto-category-badge" id="protoCategoryBadge">—</span>
-              <span class="proto-reviewed" id="protoReviewed">—</span>
-              <span class="proto-status-pill" id="protoStatusPill">Active</span>
+              <span class="proto-prescribed" id="protoReviewed">—</span>
+              <!-- Hidden legacy elements kept for JS compat -->
+              <span class="proto-category-badge" id="protoCategoryBadge" style="display:none;"></span>
+              <span class="proto-status-pill" id="protoStatusPill" style="display:none;">Active</span>
             </div>
           </div>
 
@@ -8609,11 +8611,27 @@ function populatePortal(user, consultation, greeting) {
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
     document.getElementById('protoContent').style.display = 'block';
-    document.getElementById('protoName').textContent = proto.name;
+    // Show just the category + 'Protocol' (e.g. 'Sleep Protocol') instead of
+    // the marketing composite name like 'Sleep + Recovery Protocol'
+    var cleanName = (proto.category ? proto.category + ' Protocol' : proto.name);
+    document.getElementById('protoName').textContent = cleanName;
     document.getElementById('protoCategoryBadge').textContent = proto.category;
 
-    var reviewDate = consultation.created_at ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '—';
-    document.getElementById('protoReviewed').textContent = 'Reviewed ' + reviewDate;
+    var reviewDate = consultation.created_at ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : null;
+    var prescriberName = window._clinicianName || null;
+    // Ensure it starts with 'Dr.' — stored names may or may not include the prefix
+    if (prescriberName && !/^dr\.?\s/i.test(prescriberName)) {
+      prescriberName = 'Dr. ' + prescriberName;
+    }
+    var prescribedText = '';
+    if (prescriberName && reviewDate) {
+      prescribedText = 'Prescribed by ' + prescriberName + ' on ' + reviewDate;
+    } else if (reviewDate) {
+      prescribedText = 'Prescribed on ' + reviewDate;
+    } else if (prescriberName) {
+      prescribedText = 'Prescribed by ' + prescriberName;
+    }
+    document.getElementById('protoReviewed').textContent = prescribedText || '—';
 
     // Compounds — show compound names only (actual doses live in the Prescription card)
     var tagsEl = document.getElementById('compoundTags');

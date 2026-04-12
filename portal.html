@@ -8355,6 +8355,28 @@ function _refreshOverviewData() {
   el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
 }
 
+// Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
+// Called both from populatePortal (when protocol loads) and from the clinician
+// profile fetch (when _clinicianName becomes available asynchronously).
+function _updateProtoPrescribedLine() {
+  var el = document.getElementById('protoReviewed');
+  if (!el) return;
+  var reviewDate = window._protoReviewDate || null;
+  var prescriberName = window._clinicianName || null;
+  if (prescriberName && !/^dr\.?\s/i.test(prescriberName)) {
+    prescriberName = 'Dr. ' + prescriberName;
+  }
+  var text = '';
+  if (prescriberName && reviewDate) {
+    text = 'Prescribed by ' + prescriberName + ' on ' + reviewDate;
+  } else if (reviewDate) {
+    text = 'Prescribed on ' + reviewDate;
+  } else if (prescriberName) {
+    text = 'Prescribed by ' + prescriberName;
+  }
+  el.textContent = text || '—';
+}
+
 function populatePortal(user, consultation, greeting) {
   var firstName = '';
   var proto = null;
@@ -8511,6 +8533,9 @@ function populatePortal(user, consultation, greeting) {
             window._clinicianCredentials = cp.cl_credentials || null;
             window._clinicianSpecialty = cp.cl_specialty || null;
             window._clinicianName = clName;
+            // Re-render the protocol header 'Prescribed by...' line now that
+            // we have the clinician name available.
+            if (typeof _updateProtoPrescribedLine === 'function') _updateProtoPrescribedLine();
           }
         }
       }).catch(function() {});
@@ -8617,21 +8642,11 @@ function populatePortal(user, consultation, greeting) {
     document.getElementById('protoName').textContent = cleanName;
     document.getElementById('protoCategoryBadge').textContent = proto.category;
 
-    var reviewDate = consultation.created_at ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : null;
-    var prescriberName = window._clinicianName || null;
-    // Ensure it starts with 'Dr.' — stored names may or may not include the prefix
-    if (prescriberName && !/^dr\.?\s/i.test(prescriberName)) {
-      prescriberName = 'Dr. ' + prescriberName;
-    }
-    var prescribedText = '';
-    if (prescriberName && reviewDate) {
-      prescribedText = 'Prescribed by ' + prescriberName + ' on ' + reviewDate;
-    } else if (reviewDate) {
-      prescribedText = 'Prescribed on ' + reviewDate;
-    } else if (prescriberName) {
-      prescribedText = 'Prescribed by ' + prescriberName;
-    }
-    document.getElementById('protoReviewed').textContent = prescribedText || '—';
+    // Store the review date for the prescribed-line updater
+    window._protoReviewDate = consultation.created_at
+      ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})
+      : null;
+    _updateProtoPrescribedLine();
 
     // Compounds — show compound names only (actual doses live in the Prescription card)
     var tagsEl = document.getElementById('compoundTags');

@@ -664,7 +664,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .notif-panel-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px; border-bottom:1px solid var(--border); }
 .notif-panel-title { font-family:'Inter',sans-serif; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:rgba(0,0,0,0.4); }
 .notif-mark-all { font-family:'Inter',sans-serif; font-size:9px; letter-spacing:0.1em; background:none; border:none; color:var(--green); cursor:pointer; }
-.notif-list { max-height:340px; overflow-y:auto; }
+/* Cap to ~3 rows; additional notifications reveal themselves via in-panel scroll */
+.notif-list { max-height:260px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .notif-row { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; display:flex; align-items:flex-start; gap:10px; }
 .notif-row:hover { background:rgba(0,0,0,0.03); }
 .notif-row.unread { background:rgba(58,122,92,0.05); }
@@ -897,10 +898,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     left: 12px;
     right: 12px;
     width: auto;
+    /* Panel is still capped by .notif-list internal scroll; this is a safety ceiling */
     max-height: calc(100vh - 80px);
-    overflow-y: auto;
+    overflow: hidden;
   }
+  /* Mobile: cap slightly shorter so the bottom fade is visible above the fold */
+  .notif-list { max-height: 240px; }
+  /* Always-visible scrollbar on mobile so users see there's more */
+  .notif-list::-webkit-scrollbar { width: 4px; }
+  .notif-list::-webkit-scrollbar-thumb { background: rgba(47,111,85,0.35); border-radius: 4px; }
 }
+/* Subtle fade-out at the bottom of the scroll area to hint at more */
+.notif-panel::after {
+  content:'';
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:22px;
+  background:linear-gradient(to bottom, rgba(251,250,246,0), rgba(251,250,246,0.95));
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s;
+}
+.notif-panel.has-overflow::after { opacity:1; }
 
 /* ── 14G: APPOINTMENT SLOT GRID — WRAP + MIN-WIDTH ──────────────────────── */
 .slot-grid {
@@ -1185,22 +1204,42 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
    Note: 13C already handles ≤480px; extend the same treatment to 768px.
 */
 @media(max-width:768px) {
+  /* Make the messages tab fill the viewport so only .msg-bubbles scrolls */
+  #tab-messages.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Subtract top nav (58) + bottom nav (~64) + portal-main vertical padding */
+    height: calc(100dvh - 140px);
+    padding-bottom: 0 !important;
+  }
+  #tab-messages .tab-eyebrow,
+  #tab-messages .tab-title { flex: 0 0 auto; }
   #tab-messages .p-card {
     padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
   .thread-view.active {
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 220px);
-  }
-  .msg-bubbles {
-    flex: 1;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: none;
   }
+  .msg-bubbles {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+    margin-bottom: 10px;
+  }
   .msg-compose-row {
-    position: sticky;
-    bottom: 0;
+    flex: 0 0 auto;
+    position: static;
     background: var(--card);
     padding: 10px 0 0;
     border-top: 1px solid var(--border);
@@ -1216,13 +1255,25 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   }
 }
 @media(max-width:480px) {
-  .thread-view.active {
-    max-height: calc(100vh - 190px);
+  #tab-messages.active {
+    height: calc(100dvh - 132px);
   }
   .msg-bubble { font-size: 13px; max-width: 88%; font-family:'Inter',sans-serif; font-weight:400; line-height:1.55; padding:9px 12px; }
-  .msg-send-btn { min-height: 38px; padding: 0 16px; font-size: 11px; }
-  .msg-compose-input { font-size: 13px; font-family:'Inter',sans-serif; font-weight:400; line-height:1.5; min-height: 38px; padding: 8px 12px; /* use touch-action manipulation + user-scalable=no to prevent iOS zoom without requiring 16px */ }
-  .msg-compose-row { padding-top: 8px; gap: 8px; }
+  .msg-send-btn { min-height: 36px; padding: 0 14px; font-size: 10px; align-self: flex-end; }
+  .msg-compose-input {
+    font-size: 13px;
+    font-family:'Inter',sans-serif;
+    font-weight:400;
+    line-height:1.5;
+    min-height: 36px;
+    max-height: 96px; /* grows with typing, caps before eating the bubble area */
+    padding: 8px 12px;
+    overflow-y: auto;
+  }
+  .msg-compose-row { padding-top: 8px; gap: 8px; align-items: flex-end; }
+  /* Tighten the eyebrow/title above the card so more room is left for bubbles */
+  #tab-messages .tab-eyebrow { margin-bottom: 4px; font-size: 10px; }
+  #tab-messages .tab-title { margin-bottom: 10px; font-size: 20px; }
 }
 
 /* ── 31J: RESOURCES TAB — CARD PADDING REDUCTION ────────────────────────────
@@ -3243,7 +3294,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             </div>
             <div class="msg-bubbles" id="consumerMsgBubbles"></div>
             <div class="msg-compose-row">
-              <textarea class="msg-compose-input" id="consumerMsgInput" rows="1" placeholder="Message your clinician..."></textarea>
+              <textarea class="msg-compose-input" id="consumerMsgInput" rows="1" placeholder="Message your clinician..." oninput="_autoResizeMsgInput(this)" onkeydown="_msgInputKeydown(event, sendConsumerMessage)"></textarea>
               <button class="msg-send-btn" onclick="sendConsumerMessage()">Send</button>
             </div>
           </div>
@@ -3509,7 +3560,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div id="clThreadPatientCard" style="display:none;margin-bottom:12px;"></div>
             <div class="msg-bubbles" id="clMsgBubbles"></div>
             <div class="msg-compose-row">
-              <textarea class="msg-compose-input" id="clMsgInput" rows="1" placeholder="Message..."></textarea>
+              <textarea class="msg-compose-input" id="clMsgInput" rows="1" placeholder="Message..." oninput="_autoResizeMsgInput(this)" onkeydown="_msgInputKeydown(event, sendClMessage)"></textarea>
               <button class="msg-send-btn" onclick="sendClMessage()">Send</button>
             </div>
           </div>
@@ -10627,7 +10678,7 @@ function sendClMessage() {
   var input = document.getElementById('clMsgInput');
   if (!input || !input.value.trim() || !_activeClThreadId) return;
   var text = input.value.trim();
-  input.value = '';
+  _resetMsgInput('clMsgInput');
 
   // Optimistic UI then insert
   var el = document.getElementById('clMsgBubbles');
@@ -10872,11 +10923,36 @@ function renderConsumerThread() {
   el.scrollTop = el.scrollHeight;
 }
 
+// ── Auto-grow message compose textarea ──
+// Resets to a single row on empty, grows up to CSS max-height while typing,
+// then scrolls internally rather than pushing the page. Called from oninput.
+function _autoResizeMsgInput(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  var max = parseInt(getComputedStyle(el).maxHeight) || 160;
+  var next = Math.min(el.scrollHeight, max);
+  el.style.height = next + 'px';
+}
+function _msgInputKeydown(e, sendFn) {
+  // Enter sends on desktop; Shift+Enter newline; mobile keyboards typically
+  // send a newline for Enter which still triggers oninput — that's fine.
+  if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
+    e.preventDefault();
+    if (typeof sendFn === 'function') sendFn();
+  }
+}
+function _resetMsgInput(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.value = '';
+  el.style.height = '';
+}
+
 function sendConsumerMessage() {
   var input = document.getElementById('consumerMsgInput');
   if (!input || !input.value.trim()) return;
   var text = input.value.trim();
-  input.value = '';
+  _resetMsgInput('consumerMsgInput');
 
   if (!currentUserId) {
     CONSUMER_THREAD.messages.push({ from:'me', text:text, time:'Just now' });
@@ -11823,6 +11899,16 @@ function _renderNotifPanel() {
       '<div class="notif-time">' + time + '</div></div>' +
       '</div>';
   }).join('');
+  // Flag the panel as overflowing when the list has scrollable content so the
+  // bottom fade hint + scrollbar make it obvious there are more notifications.
+  var panel = document.getElementById('notifPanel');
+  if (panel) {
+    // Defer until layout settles so scrollHeight is accurate
+    requestAnimationFrame(function() {
+      var overflow = list.scrollHeight > list.clientHeight + 1;
+      panel.classList.toggle('has-overflow', overflow);
+    });
+  }
 }
 
 function _updateNotifBadge() {

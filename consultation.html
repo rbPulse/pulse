@@ -384,9 +384,14 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .quiz-none-btn:hover{border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);}
 .quiz-none-btn.active{border-color:var(--green);color:var(--green);}
 .quiz-multiselect{display:grid;grid-template-columns:1fr;gap:12px;grid-auto-rows:1fr;}
+/* Small, muted hint that sits above the multi-select grid.
+   !important on color so it reads correctly under the light-theme
+   '.main *' color sledgehammer further down in this stylesheet. */
+.quiz-multi-hint{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(0,0,0,0.4) !important;margin:-18px 0 16px;}
 /* Persistent checkbox indicator so users immediately understand this is a
-   multi-select. Unchecked = empty green-bordered square; checked = filled. */
-.quiz-multiselect .quiz-card{padding-right:54px;}
+   multi-select. Unchecked = empty green-bordered square; checked = filled.
+   !important used to beat the light-theme .quiz-card override below. */
+.quiz-multiselect .quiz-card{padding-right:52px !important;}
 .quiz-multiselect .quiz-card::before{
   content:'';
   position:absolute;
@@ -682,7 +687,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
             <div class="quiz-hero-sub">Answer a few questions so we can match you with the right clinician and protocol.</div>
           </div>
           <div class="quiz-question">What matters most to you right now?</div>
-          <div class="quiz-subtitle">Select all that apply — your clinician uses these to tailor your protocol.</div>
+          <div class="quiz-multi-hint">Select all that apply.</div>
           <div id="quizGoalCards" class="quiz-multiselect">
             <div class="quiz-card" data-value="recovery" onclick="selectGoalAndAdvance(this)">
               <div class="quiz-card-title">Recovery</div>

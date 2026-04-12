@@ -474,6 +474,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .book-confirm-title{font-size:13px;font-weight:500;color:#2c2c2c;margin-bottom:3px;}
 .book-confirm-meta{font-family:'Inter',sans-serif;font-size:10px;color:#6b6b6b;line-height:1.6;}
 .consumer-appt-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:transparent;border:none;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.consumer-appt-filters{display:flex;gap:6px;flex-wrap:wrap;}
+.cappt-filter-pill{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid rgba(20,20,20,0.1);background:transparent;color:rgba(20,20,20,0.5);cursor:pointer;transition:all .15s;}
+.cappt-filter-pill:hover{border-color:rgba(20,20,20,0.22);color:rgba(20,20,20,0.75);}
+.cappt-filter-pill.active{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.3);color:#2F6F55;}
 .consumer-appt-row:last-child{border-bottom:none;}
 .consumer-appt-row:hover{background:rgba(255,255,255,0.025);}
 .consumer-appt-name{font-size:13px;font-weight:500;color:#fff;margin-bottom:2px;}
@@ -3122,7 +3126,14 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <!-- Your appointments (populated by JS, hidden when empty) -->
         <div id="consumerApptSection" style="display:none;">
           <div class="p-card">
-            <div class="compounds-label">Your Appointments</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+              <div class="compounds-label" style="margin-bottom:0;">Your Appointments</div>
+              <div class="consumer-appt-filters" id="consumerApptFilters">
+                <button class="cappt-filter-pill active" data-filter="upcoming" onclick="_filterConsumerAppts('upcoming')">Upcoming</button>
+                <button class="cappt-filter-pill" data-filter="completed" onclick="_filterConsumerAppts('completed')">Completed</button>
+                <button class="cappt-filter-pill" data-filter="cancelled" onclick="_filterConsumerAppts('cancelled')">Cancelled</button>
+              </div>
+            </div>
             <div id="consumerApptList" style="max-height:360px;overflow-y:auto;"></div>
           </div>
         </div>
@@ -7989,20 +8000,64 @@ function _loadAndRenderConsumerAppts() {
     });
 }
 
+var _consumerApptFilter = 'upcoming';
+function _filterConsumerAppts(filter) {
+  _consumerApptFilter = filter;
+  // Toggle pill active state
+  var pills = document.querySelectorAll('#consumerApptFilters .cappt-filter-pill');
+  pills.forEach(function(p) {
+    p.classList.toggle('active', p.getAttribute('data-filter') === filter);
+  });
+  // Re-render with stored full list
+  _renderConsumerApptList(window._consumerApptsAll || consumerAppts || []);
+}
+
 function _renderConsumerApptList(appts) {
   var section = document.getElementById('consumerApptSection');
   var list    = document.getElementById('consumerApptList');
   if (!section || !list) return;
 
-  // Show all appointments (upcoming + past/cancelled)
-  if (appts.length === 0) {
-    section.style.display = 'block';
-    showInlineEmpty(list, 'No appointments yet.', 'Book your first session below.', { icon: 'calendar' });
+  // Store full list so filter can re-render without refetching
+  window._consumerApptsAll = appts;
+
+  // Categorize each appointment
+  var buckets = { upcoming: [], completed: [], cancelled: [] };
+  appts.forEach(function(a) {
+    var raw = a._rawStatus || a.status;
+    if (raw === 'cancelled_by_member' || raw === 'cancelled_by_clinician' || raw === 'cancelled') {
+      buckets.cancelled.push(a);
+    } else if (raw === 'completed') {
+      buckets.completed.push(a);
+    } else {
+      buckets.upcoming.push(a);
+    }
+  });
+
+  // Update pill counts (optional: lightly show counts)
+  var pills = document.querySelectorAll('#consumerApptFilters .cappt-filter-pill');
+  pills.forEach(function(p) {
+    var f = p.getAttribute('data-filter');
+    var count = (buckets[f] || []).length;
+    var base = p.getAttribute('data-label') || p.textContent.replace(/\s*\(\d+\)$/, '').trim();
+    if (!p.getAttribute('data-label')) p.setAttribute('data-label', base);
+    p.textContent = count > 0 ? base + ' (' + count + ')' : base;
+  });
+
+  var filtered = buckets[_consumerApptFilter] || [];
+
+  section.style.display = 'block';
+  if (filtered.length === 0) {
+    var emptyMessages = {
+      upcoming: { title: 'No upcoming appointments.', sub: 'Book your next visit below.' },
+      completed: { title: 'No completed appointments yet.', sub: 'Past visits will appear here.' },
+      cancelled: { title: 'No cancelled appointments.', sub: 'Anything you cancel will show up here.' }
+    };
+    var msg = emptyMessages[_consumerApptFilter] || emptyMessages.upcoming;
+    showInlineEmpty(list, msg.title, msg.sub, { icon: 'calendar' });
     return;
   }
-  section.style.display = 'block';
   list.innerHTML = '';
-  appts.forEach(function(a) {
+  filtered.forEach(function(a) {
     var rawSt = a._rawStatus || a.status;
     var isCancelled = rawSt === 'cancelled_by_member' || rawSt === 'cancelled_by_clinician' || rawSt === 'cancelled';
     var isPast      = !isCancelled && rawSt === 'completed';

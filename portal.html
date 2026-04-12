@@ -8616,16 +8616,32 @@ function populatePortal(user, consultation, greeting) {
     var reviewDate = consultation.created_at ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '—';
     document.getElementById('protoReviewed').textContent = 'Reviewed ' + reviewDate;
 
-    // Compounds
+    // Compounds — show compound names only (actual doses live in the Prescription card)
     var tagsEl = document.getElementById('compoundTags');
     tagsEl.innerHTML = '';
     proto.compounds.forEach(function(c) {
+      // Strip hardcoded dose suffixes so we're not inventing numbers
+      var nameOnly = String(c).replace(/\s+\d+(\.\d+)?\s*(mcg|mg|iu|ug|units?)\b/gi, '').trim();
       var span = document.createElement('span');
       span.className = 'compound-tag';
-      span.textContent = c;
+      span.textContent = nameOnly || c;
       tagsEl.appendChild(span);
     });
-    document.getElementById('compoundsNote').textContent = proto.note;
+    // Note — prefer the clinician's actual timing_instructions from the evaluation;
+    // fall back to the protocol-level note only if the clinician didn't specify anything.
+    var clinicianTiming = (consultation.data && consultation.data.timing_instructions)
+      || consultation.timing_instructions
+      || window._protoTimingInstructions
+      || null;
+    var noteEl = document.getElementById('compoundsNote');
+    if (clinicianTiming && clinicianTiming.trim()) {
+      noteEl.textContent = clinicianTiming;
+      noteEl.style.display = '';
+    } else {
+      // No real clinician instructions — hide the note rather than show made-up text
+      noteEl.textContent = '';
+      noteEl.style.display = 'none';
+    }
 
     // ── Prescription Details (from clinician's evaluation) ──
     var rxDose = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : '—';

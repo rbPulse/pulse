@@ -134,6 +134,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .proto-category-badge{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.25);color:var(--green);padding:3px 10px;border-radius:999px;}
 .proto-reviewed{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.06em;color:var(--grey2);}
 
+/* Protocol status pill */
+.proto-status-pill{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(58,122,92,0.1);border:1px solid rgba(58,122,92,0.25);color:var(--green);padding:3px 10px;border-radius:999px;font-weight:600;}
+
+/* Prescription details grid */
+.proto-rx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.proto-rx-item{display:flex;flex-direction:column;gap:4px;}
+.proto-rx-label{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);font-weight:600;}
+.proto-rx-value{font-family:'Inter',sans-serif;font-size:15px;color:#fff;font-weight:600;letter-spacing:-0.01em;}
+
+/* Progress card */
+.proto-progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.proto-progress-phase{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#fff;letter-spacing:-0.01em;}
+.proto-progress-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--grey2);margin-top:2px;}
+.proto-progress-pct{font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:var(--green);letter-spacing:-0.02em;}
+.proto-progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-bottom:18px;}
+.proto-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .4s ease;}
+.proto-progress-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding-top:16px;border-top:1px solid var(--border);}
+.proto-progress-stat{text-align:left;}
+.proto-progress-stat-val{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.01em;line-height:1;margin-bottom:4px;}
+.proto-progress-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--grey2);font-weight:500;}
+
+/* Clinician notes */
+.proto-notes-body{font-family:'Inter',sans-serif;font-size:14px;color:var(--grey);line-height:1.7;}
+
+/* Actions card */
+.proto-actions-card{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.proto-actions-text{font-family:'Inter',sans-serif;font-size:14px;color:var(--grey);line-height:1.55;flex:1;}
+.proto-actions-btns{display:flex;gap:10px;flex-shrink:0;}
+
 .compounds-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .compounds-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:14px;}
 .compounds-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
@@ -1229,6 +1258,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .proto-header-card { padding: 18px 16px; }
   .compounds-card { padding: 18px 16px; }
   .timeline-card { padding: 18px 16px; }
+  .proto-rx-grid{grid-template-columns:1fr 1fr;gap:16px;}
+  .proto-progress-stats{grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .proto-actions-card{flex-direction:column;align-items:stretch;}
+  .proto-actions-btns{flex-direction:column;}
+  .proto-actions-btns .btn-green,.proto-actions-btns .btn-ghost{width:100%;text-align:center;}
   .proto-name { font-size: clamp(18px, 5vw, 24px); }
   .tl-title { font-size: 13px; }
   .tl-body { font-size: 12px; }
@@ -1714,6 +1748,19 @@ body.member-mode .empty-sub{color:var(--m-text2);font-family:'Inter',sans-serif;
 
 /* ── Protocol tab ── */
 body.member-mode .proto-header-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);box-shadow:var(--m-shadow);}
+body.member-mode .proto-name{color:var(--m-text);}
+body.member-mode .proto-status-pill{background:var(--m-green-tint);border-color:var(--m-green-border);color:#2F6F55;}
+body.member-mode .proto-rx-label{color:var(--m-text3);}
+body.member-mode .proto-rx-value{color:var(--m-text);}
+body.member-mode .proto-progress-phase{color:var(--m-text);}
+body.member-mode .proto-progress-sub{color:var(--m-text3);}
+body.member-mode .proto-progress-pct{color:#2F6F55;}
+body.member-mode .proto-progress-bar{background:rgba(20,20,20,0.06);}
+body.member-mode .proto-progress-stats{border-top-color:var(--m-border);}
+body.member-mode .proto-progress-stat-val{color:var(--m-text);}
+body.member-mode .proto-progress-stat-lbl{color:var(--m-text3);}
+body.member-mode .proto-notes-body{color:var(--m-text2);}
+body.member-mode .proto-actions-text{color:var(--m-text2);}
 body.member-mode .proto-name{color:var(--m-text);font-family:'Inter',sans-serif;letter-spacing:-0.01em;}
 body.member-mode .proto-category-badge{background:var(--m-green-tint);border-color:var(--m-green-border);color:#2F6F55;}
 body.member-mode .compounds-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);box-shadow:var(--m-shadow);}
@@ -2868,14 +2915,15 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
 
           <!-- Pulse brand card -->
-          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:160px;background:radial-gradient(circle at 50% 50%,#1a3d2e 0%,#122b20 40%,#0a1a13 75%,#060f0a 100%);border:1px solid rgba(58,122,92,0.15);box-shadow:var(--m-shadow,0 2px 8px rgba(20,20,20,0.04));position:relative;overflow:hidden;">
-            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(58,122,92,0.12),transparent 55%);pointer-events:none;"></div>
-            <div style="position:relative;z-index:1;">
-              <div style="width:90px;height:90px;border:2px solid #3a7a5c;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(58,122,92,0.8),0 0 24px rgba(58,122,92,0.4);animation:heartbeatGlow 2.4s ease-in-out infinite;">
-                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" style="overflow:visible;">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#3a7a5c" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 4px rgba(58,122,92,0.8));animation:heartbeatStroke 2.4s ease-in-out infinite;"/>
+          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:160px;background:radial-gradient(circle at 50% 50%,#0d1812 0%,#080e0b 55%,#050908 100%);border:1px solid rgba(58,122,92,0.12);box-shadow:var(--m-shadow,0 2px 8px rgba(20,20,20,0.04));position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(58,122,92,0.08),transparent 60%);pointer-events:none;"></div>
+            <div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px;">
+              <div style="width:56px;height:56px;border:2px solid #3a7a5c;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(58,122,92,0.3);">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#3a7a5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                 </svg>
               </div>
+              <span style="font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:0.08em;">PULSE</span>
             </div>
           </div>
           <!-- Hidden element for JS compat -->
@@ -2912,52 +2960,88 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="proto-meta">
               <span class="proto-category-badge" id="protoCategoryBadge">—</span>
               <span class="proto-reviewed" id="protoReviewed">—</span>
+              <span class="proto-status-pill" id="protoStatusPill">Active</span>
             </div>
           </div>
 
+          <!-- Prescription Details (the actual rx from the clinician) -->
+          <div class="p-card" id="protoRxCard">
+            <div class="compounds-label">Prescription</div>
+            <div class="proto-rx-grid">
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Dose</div>
+                <div class="proto-rx-value" id="protoRxDose">—</div>
+              </div>
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Frequency</div>
+                <div class="proto-rx-value" id="protoRxFreq">—</div>
+              </div>
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Timing</div>
+                <div class="proto-rx-value" id="protoRxTiming">—</div>
+              </div>
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Duration</div>
+                <div class="proto-rx-value" id="protoRxDuration">—</div>
+              </div>
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Start date</div>
+                <div class="proto-rx-value" id="protoRxStart">—</div>
+              </div>
+              <div class="proto-rx-item">
+                <div class="proto-rx-label">Est. completion</div>
+                <div class="proto-rx-value" id="protoRxEnd">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress -->
+          <div class="p-card" id="protoProgressCard">
+            <div class="compounds-label">Progress</div>
+            <div class="proto-progress-header">
+              <div>
+                <div class="proto-progress-phase" id="protoProgressPhase">Week 1 of 8</div>
+                <div class="proto-progress-sub" id="protoProgressSub">—</div>
+              </div>
+              <div class="proto-progress-pct" id="protoProgressPct">0%</div>
+            </div>
+            <div class="proto-progress-bar"><div class="proto-progress-fill" id="protoProgressFill" style="width:0%;"></div></div>
+            <div class="proto-progress-stats">
+              <div class="proto-progress-stat">
+                <div class="proto-progress-stat-val" id="protoStatLogged">—</div>
+                <div class="proto-progress-stat-lbl">Doses logged</div>
+              </div>
+              <div class="proto-progress-stat">
+                <div class="proto-progress-stat-val" id="protoStatRemaining">—</div>
+                <div class="proto-progress-stat-lbl">Days remaining</div>
+              </div>
+              <div class="proto-progress-stat">
+                <div class="proto-progress-stat-val" id="protoStatRate">—</div>
+                <div class="proto-progress-stat-lbl">On-time rate</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compounds -->
           <div class="compounds-card">
             <div class="compounds-label">Compounds</div>
             <div class="compounds-tags" id="compoundTags"></div>
             <div class="compounds-note" id="compoundsNote">—</div>
           </div>
 
-          <div class="timeline-card">
-            <div class="timeline-label">30 · 60 · 90 Day Timeline</div>
-            <div class="timeline-track">
-              <div class="timeline-milestone">
-                <div class="tl-dot first"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-                <div>
-                  <div class="tl-day">Day 1</div>
-                  <div class="tl-title">Kit ships.</div>
-                  <div class="tl-body">Your pre-filled pods and injector pen are dispatched with your protocol guide.</div>
-                </div>
-              </div>
-              <div class="timeline-milestone">
-                <div class="tl-dot"></div>
-                <div>
-                  <div class="tl-day">Day 30</div>
-                  <div class="tl-title">First window.</div>
-                  <div class="tl-body">Early indicators of recovery, energy, and sleep quality typically emerge in weeks 2–4.</div>
-                </div>
-              </div>
-              <div class="timeline-milestone">
-                <div class="tl-dot"></div>
-                <div>
-                  <div class="tl-day">Day 60</div>
-                  <div class="tl-title">Adaptation phase.</div>
-                  <div class="tl-body">Compound levels stabilize. Most users report the clearest changes in this window.</div>
-                </div>
-              </div>
-              <div class="timeline-milestone">
-                <div class="tl-dot"></div>
-                <div>
-                  <div class="tl-day">Day 90+</div>
-                  <div class="tl-title">Protocol review.</div>
-                  <div class="tl-body">Your clinician reviews progress and adjusts dosing or compounds for the next cycle.</div>
-                </div>
-              </div>
+          <!-- Clinician notes (optional, only shown if present) -->
+          <div class="p-card" id="protoNotesCard" style="display:none;">
+            <div class="compounds-label">Clinician Notes</div>
+            <div class="proto-notes-body" id="protoNotesBody">—</div>
+          </div>
+
+          <!-- Actions -->
+          <div class="p-card proto-actions-card">
+            <div class="proto-actions-text">Questions about your protocol or need an adjustment?</div>
+            <div class="proto-actions-btns">
+              <button class="btn-green" onclick="switchTab('messages')">Message Clinician</button>
+              <button class="btn-ghost" onclick="switchTab('tracker')">View Log</button>
             </div>
-            <div class="timeline-note">Timeline begins when your kit ships.</div>
           </div>
         </div>
       </div>
@@ -8530,6 +8614,59 @@ function populatePortal(user, consultation, greeting) {
       tagsEl.appendChild(span);
     });
     document.getElementById('compoundsNote').textContent = proto.note;
+
+    // ── Prescription Details (from clinician's evaluation) ──
+    var rxDose = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : '—';
+    var rxFreq = _normalizeFreqLabel(window._protoFreq, _parseFreqPerDay(window._protoFreq)) || '—';
+    var rxTiming = window._protoTiming || 'Not specified';
+    var rxDurWeeks = parseInt(window._protoDuration || proto.cycle) || null;
+    var rxDuration = rxDurWeeks ? rxDurWeeks + ' weeks' : 'Not specified';
+    var rxStartDate = consultation.created_at ? new Date(consultation.created_at) : null;
+    var rxStart = rxStartDate ? rxStartDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—';
+    var rxEnd = '—';
+    if (rxStartDate && rxDurWeeks) {
+      var endDate = new Date(rxStartDate); endDate.setDate(endDate.getDate() + rxDurWeeks * 7);
+      rxEnd = endDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    }
+    var el = function(id){ return document.getElementById(id); };
+    if (el('protoRxDose')) el('protoRxDose').textContent = rxDose;
+    if (el('protoRxFreq')) el('protoRxFreq').textContent = rxFreq;
+    if (el('protoRxTiming')) el('protoRxTiming').textContent = rxTiming;
+    if (el('protoRxDuration')) el('protoRxDuration').textContent = rxDuration;
+    if (el('protoRxStart')) el('protoRxStart').textContent = rxStart;
+    if (el('protoRxEnd')) el('protoRxEnd').textContent = rxEnd;
+
+    // ── Progress ──
+    if (rxStartDate && rxDurWeeks) {
+      var totalDays = rxDurWeeks * 7;
+      var daysSince = Math.floor((Date.now() - rxStartDate.getTime()) / 86400000) + 1;
+      var currentWeek = Math.min(rxDurWeeks, Math.max(1, Math.ceil(daysSince / 7)));
+      var pct = Math.min(100, Math.max(0, Math.round((daysSince / totalDays) * 100)));
+      var daysRemaining = Math.max(0, totalDays - daysSince);
+      if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + rxDurWeeks;
+      if (el('protoProgressSub')) el('protoProgressSub').textContent = daysSince + ' days in';
+      if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
+      if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
+      if (el('protoStatRemaining')) el('protoStatRemaining').textContent = daysRemaining + 'd';
+      if (el('protoStatLogged')) el('protoStatLogged').textContent = loggedDates.length;
+      // On-time rate
+      var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+      var scheduled = Math.max(1, Math.round(daysSince * freqPerDay));
+      var rate = Math.min(100, Math.round((loggedDates.length / scheduled) * 100));
+      if (el('protoStatRate')) el('protoStatRate').textContent = rate + '%';
+    }
+
+    // ── Clinician Notes ──
+    var clinicianNotes = (consultation.data && consultation.data.clinician_notes) || consultation.clinician_notes || null;
+    var notesCard = el('protoNotesCard');
+    if (notesCard) {
+      if (clinicianNotes && clinicianNotes.trim()) {
+        notesCard.style.display = '';
+        if (el('protoNotesBody')) el('protoNotesBody').textContent = clinicianNotes;
+      } else {
+        notesCard.style.display = 'none';
+      }
+    }
 
   } else if (hasPendingReview) {
     // ── Consultation submitted, awaiting clinician review ──

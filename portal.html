@@ -4141,10 +4141,13 @@ RESOURCES_MAP['generic'] = {
 };
 
 // ── Role resolution ──
-// Priority: user_metadata.role → URL param (preview only) → default 'consumer'
-// To set a real role: update user.user_metadata via Supabase admin API
-// e.g. supabase.auth.admin.updateUserById(uid, { user_metadata: { role: 'clinician' } })
+// Priority: SUPER_ADMIN_EMAILS → profiles.role → user_metadata.role → URL param (preview) → 'consumer'
+var SUPER_ADMIN_EMAILS = ['lichtensteinryan@gmail.com'];
 function resolveRole(user) {
+  // Super admin email allowlist (works for Google OAuth users without metadata)
+  if (user && user.email && SUPER_ADMIN_EMAILS.indexOf(user.email.toLowerCase()) !== -1) {
+    return 'super_admin';
+  }
   // In preview mode, URL ?role= param always wins
   if (PREVIEW_MODE) {
     var urlRole = new URLSearchParams(window.location.search).get('role');
@@ -4458,6 +4461,12 @@ function setSidebarIdentity(displayName, roleLabel, isClinicianRole) {
 function initPortal(user) {
   currentUserId    = user.id;
   currentUserEmail = user.email || null;
+
+  // Super admin email shortcut — send directly to admin portal
+  if (user && user.email && SUPER_ADMIN_EMAILS.indexOf(user.email.toLowerCase()) !== -1) {
+    window.location.href = 'admin.html';
+    return;
+  }
 
   // First check profiles.role to get the real role
   if (!PREVIEW_MODE) {

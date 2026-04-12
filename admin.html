@@ -750,17 +750,41 @@ db.auth.getSession().then(function(r) {
   currentUserId = user.id;
   currentUserEmail = user.email;
 
+  // Super admin email allowlist (bypasses profiles.role check)
+  var SUPER_ADMIN_EMAILS = ['lichtensteinryan@gmail.com'];
+  var isSuperAdminEmail = user.email && SUPER_ADMIN_EMAILS.indexOf(user.email.toLowerCase()) !== -1;
+
   // Check role
   db.from('profiles').select('role, admin_role, display_name').eq('user_id', currentUserId).limit(1)
     .then(function(pr) {
-      if (!pr.data || !pr.data.length || (pr.data[0].role !== 'admin' && pr.data[0].role !== 'super_admin')) {
+      var profile = (pr.data && pr.data.length > 0) ? pr.data[0] : null;
+      var isAdmin = profile && (profile.role === 'admin' || profile.role === 'super_admin');
+      if (!isSuperAdminEmail && !isAdmin) {
         // Not an admin — redirect
         window.location.href = 'portal.html';
         return;
       }
-      currentAdminRole = pr.data[0].admin_role || pr.data[0].role;
-      initAdmin(user, pr.data[0]);
+      // Super admin email override — ensure profile reflects admin role
+      if (isSuperAdminEmail && !isAdmin) {
+        db.from('profiles').upsert({
+          user_id: currentUserId,
+          email: user.email,
+          role: 'super_admin',
+          admin_role: 'super_admin',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' }).then(function(){}).catch(function(){});
+        profile = profile || {};
+        profile.role = 'super_admin';
+        profile.admin_role = 'super_admin';
+      }
+      currentAdminRole = profile.admin_role || profile.role || 'super_admin';
+      initAdmin(user, profile);
     }).catch(function() {
+      if (isSuperAdminEmail) {
+        currentAdminRole = 'super_admin';
+        initAdmin(user, { role: 'super_admin', admin_role: 'super_admin' });
+        return;
+      }
       window.location.href = 'portal.html';
     });
 }).catch(function() {

@@ -2972,9 +2972,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="m-mobile-overview" id="mMobileOverview">
           <!-- ─── 1. TODAY HERO CARD ─── -->
           <div class="mo-hero">
-            <div class="mo-hero-eyebrow">Today</div>
-            <div class="mo-hero-proto" id="moProtoName">Your Protocol</div>
-            <div class="mo-hero-dose" id="moDoseAmount">—</div>
+            <div class="mo-hero-eyebrow">Your Protocol</div>
+            <!-- Visual swap: protocol name now occupies the big slot, dose sits above it -->
+            <div class="mo-hero-proto" id="moDoseAmount">—</div>
+            <div class="mo-hero-dose" id="moProtoName">Your Protocol</div>
             <div class="mo-hero-meta" id="moDoseMeta">—</div>
             <button class="mo-hero-cta" id="moHeroCta" onclick="logDose()">Log Dose</button>
             <div class="mo-hero-stats">
@@ -8663,9 +8664,9 @@ function _refreshOverviewData() {
   if (el) el.textContent = op.doseDesc || (freqPlain || '—');
   el = document.getElementById('moDoseMeta');
   if (el) {
+    // Dose cadence only — week/phase already shown in the stats row below.
     var parts = [];
     if (freqPlain && op.doseDesc) parts.push(freqPlain);
-    if (phaseStr) parts.push(phaseStr);
     el.textContent = parts.length ? parts.join(' · ') : (op.doseDesc ? '' : 'Dose scheduled');
   }
   el = document.getElementById('moHeroCta');

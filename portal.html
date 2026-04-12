@@ -3215,25 +3215,47 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               </div>
             </div>
           </div>
+          <div class="settings-section">
+            <div class="settings-section-lbl">Contact</div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Phone Number</label>
+              <input class="settings-input" id="settingsPhone" type="tel" placeholder="(555) 555-5555" inputmode="tel" autocomplete="tel" onblur="saveConsumerSettings()"/>
+            </div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Street Address</label>
+              <input class="settings-input" id="settingsStreet" type="text" placeholder="123 Main St" autocomplete="street-address" onblur="saveConsumerSettings()"/>
+            </div>
+            <div class="settings-field" style="margin-bottom:12px;">
+              <label class="settings-field-lbl">Apt / Suite <span style="opacity:0.4;font-size:9px;">(optional)</span></label>
+              <input class="settings-input" id="settingsApt" type="text" placeholder="Apt 4B" autocomplete="address-line2" onblur="saveConsumerSettings()"/>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label class="settings-field-lbl">City</label>
+                <input class="settings-input" id="settingsCity" type="text" placeholder="New York" autocomplete="address-level2" onblur="saveConsumerSettings()"/>
+              </div>
+              <div class="settings-field">
+                <label class="settings-field-lbl">State</label>
+                <input class="settings-input" id="settingsState" type="text" placeholder="NY" maxlength="2" autocomplete="address-level1" onblur="saveConsumerSettings()"/>
+              </div>
+            </div>
+            <div class="settings-field" style="margin-top:12px;">
+              <label class="settings-field-lbl">ZIP Code</label>
+              <input class="settings-input" id="settingsZip" type="text" placeholder="10001" inputmode="numeric" autocomplete="postal-code" onblur="saveConsumerSettings()"/>
+            </div>
+          </div>
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px;">
             <button class="btn-green" onclick="saveConsumerSettings()">Save Changes</button>
             <span id="consumerSettingsSaved" style="display:none;font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
           </div>
         </div>
         <div class="p-card" style="margin-top:4px;">
-          <div class="settings-section">
+          <div class="settings-section" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
             <div class="settings-section-lbl">Notifications</div>
             <div class="settings-toggle-row">
               <span class="settings-toggle-text">Email me when my clinician replies</span>
               <label class="toggle-switch"><input type="checkbox" id="consumerNotifyMessages" checked onchange="saveConsumerSettings()"/><span class="toggle-track"></span></label>
             </div>
-          </div>
-        </div>
-        <div class="p-card" style="margin-top:4px;">
-          <div class="settings-section" style="border-bottom:none;margin-bottom:0;padding-bottom:0;">
-            <div class="settings-section-lbl">Session</div>
-            <div style="font-size:13px;color:var(--grey);margin-bottom:16px;line-height:1.65;">Sign out of your Pulse member account.</div>
-            <button class="btn-ghost" onclick="doSignOut()">Sign Out</button>
           </div>
         </div>
       </div>
@@ -4857,6 +4879,8 @@ function _continuePortalInit(user, role) {
     var settingsEmailEl = document.getElementById('settingsEmail');
     if (settingsNameEl) settingsNameEl.value = _memberDisplayName;
     if (settingsEmailEl) settingsEmailEl.value = user.email || '';
+    // Load saved contact info (phone + address) from profiles/consultation
+    if (typeof _loadConsumerContactSettings === 'function') _loadConsumerContactSettings();
 
     // Show skeleton loading state on overview stat cards while consultation query runs
     (function() {
@@ -11321,12 +11345,23 @@ async function saveConsumerSettings() {
   var nameEl  = document.getElementById('settingsDisplayName');
   var savedEl = document.getElementById('consumerSettingsSaved');
   var nmEl    = document.getElementById('consumerNotifyMessages');
+  var phoneEl = document.getElementById('settingsPhone');
+  var streetEl = document.getElementById('settingsStreet');
+  var aptEl = document.getElementById('settingsApt');
+  var cityEl = document.getElementById('settingsCity');
+  var stateEl = document.getElementById('settingsState');
+  var zipEl = document.getElementById('settingsZip');
   var newName = nameEl ? nameEl.value.trim() : '';
   if (!newName || !currentUserId) return;
   _memberDisplayName = newName;
-  // Phase 17: sync notify_messages preference in memory
   if (nmEl) _memberNotifyMessages = nmEl.checked;
   setSidebarIdentity(_memberDisplayName, 'Member', false);
+  var phone = phoneEl ? phoneEl.value.trim() : '';
+  var street = streetEl ? streetEl.value.trim() : '';
+  var apt = aptEl ? aptEl.value.trim() : '';
+  var city = cityEl ? cityEl.value.trim() : '';
+  var state = stateEl ? stateEl.value.trim().toUpperCase() : '';
+  var zip = zipEl ? zipEl.value.trim() : '';
   try {
     var nameParts = newName.split(' ');
     var fName = nameParts[0] || '';
@@ -11337,14 +11372,81 @@ async function saveConsumerSettings() {
       last_name:       lName || null,
       display_name:    newName,
       notify_messages: _memberNotifyMessages,
+      phone_number:    phone || null,
+      street_address:  street || null,
+      apt_suite:       apt || null,
+      city:            city || null,
+      state:           state || null,
+      zip_code:        zip || null,
       updated_at:      new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (r.error) throw r.error;
+
+    // Also sync to consultation.data so downstream queries (prescribing,
+    // clinician view, intake review) see the updated contact info.
+    try {
+      var cRes = await db.from('consultations').select('id, data').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1);
+      if (cRes.data && cRes.data.length) {
+        var c = cRes.data[0];
+        var d = c.data || {};
+        d.phone_number = phone || null;
+        d.street = street || null;
+        d.apt = apt || null;
+        d.city = city || null;
+        d.state = state || null;
+        d.zip = zip || null;
+        d.first_name = fName || d.first_name;
+        d.last_name = lName || d.last_name;
+        await db.from('consultations').update({ data: d }).eq('id', c.id);
+      }
+    } catch(e2) { /* non-fatal */ }
+
+    // Update in-memory copy used by overview and clinician card
+    if (window._memberProfile) {
+      window._memberProfile.phone_number = phone;
+      window._memberProfile.street_address = street;
+      window._memberProfile.city = city;
+      window._memberProfile.state = state;
+      window._memberProfile.zip_code = zip;
+    }
   } catch(e) { /* non-fatal */ }
   if (savedEl) {
     savedEl.style.display = 'inline';
     setTimeout(function(){ savedEl.style.display = 'none'; }, 2400);
   }
+}
+
+// Load the member's saved contact info into the settings form
+function _loadConsumerContactSettings() {
+  if (!currentUserId || PREVIEW_MODE) return;
+  db.from('profiles').select('phone_number, street_address, apt_suite, city, state, zip_code').eq('user_id', currentUserId).maybeSingle()
+    .then(function(res) {
+      if (!res || !res.data) return;
+      var p = res.data;
+      var set = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+      set('settingsPhone', p.phone_number);
+      set('settingsStreet', p.street_address);
+      set('settingsApt', p.apt_suite);
+      set('settingsCity', p.city);
+      set('settingsState', p.state);
+      set('settingsZip', p.zip_code);
+    }).catch(function(){});
+  // Fallback: also read from the consultation.data if profiles doesn't have it
+  db.from('consultations').select('data').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1)
+    .then(function(res) {
+      if (!res || !res.data || !res.data.length) return;
+      var d = res.data[0].data || {};
+      var fallbackSet = function(id, val) {
+        var el = document.getElementById(id);
+        if (el && !el.value && val) el.value = val;
+      };
+      fallbackSet('settingsPhone', d.phone_number || d.phone);
+      fallbackSet('settingsStreet', d.street);
+      fallbackSet('settingsApt', d.apt);
+      fallbackSet('settingsCity', d.city);
+      fallbackSet('settingsState', d.state);
+      fallbackSet('settingsZip', d.zip);
+    }).catch(function(){});
 }
 
 // ── SUPPORT REQUEST ──

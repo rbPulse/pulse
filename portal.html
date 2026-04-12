@@ -8256,6 +8256,8 @@ function _normalizeFreqLabel(rawFreq, dosesPerDay) {
 // ── Refresh overview with real dose log data ──
 // Called from populatePortal AND from loadDoseLogs (after logging)
 function _refreshOverviewData() {
+  // Always refresh protocol progress first so it reflects the latest loggedDates
+  if (typeof _refreshProtoProgress === 'function') _refreshProtoProgress();
   var op = window._overviewProto;
   if (!op) return;
   var el;
@@ -8377,6 +8379,40 @@ function _refreshOverviewData() {
 
   // ── Upcoming card — ONLY non-duplicate events ──
   el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
+}
+
+// Recalculates and renders the My Protocol "Progress" card stats.
+// Called from populatePortal and from _refreshOverviewData so it always
+// reflects the latest loggedDates (which loads async after portal init).
+function _refreshProtoProgress() {
+  var el = function(id){ return document.getElementById(id); };
+  var start = window._protoRxStartDate || null;
+  var weeks = window._protoRxDurWeeks || null;
+  if (!start || !weeks) return;
+  var totalDays = weeks * 7;
+  var daysSince = Math.floor((Date.now() - start.getTime()) / 86400000) + 1;
+  var currentWeek = Math.min(weeks, Math.max(1, Math.ceil(daysSince / 7)));
+  var pct = Math.min(100, Math.max(0, Math.round((daysSince / totalDays) * 100)));
+  var daysRemaining = Math.max(0, totalDays - daysSince);
+  if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + weeks;
+  if (el('protoProgressSub')) el('protoProgressSub').textContent = daysSince + ' days in';
+  if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
+  if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
+  if (el('protoStatRemaining')) el('protoStatRemaining').textContent = daysRemaining + 'd';
+  // Count logged doses since protocol start
+  var loggedSinceStart = 0;
+  if (typeof loggedDates !== 'undefined' && loggedDates && loggedDates.length) {
+    loggedDates.forEach(function(d) {
+      var dd = new Date(d + 'T00:00:00');
+      if (dd >= start) loggedSinceStart++;
+    });
+  }
+  if (el('protoStatLogged')) el('protoStatLogged').textContent = loggedSinceStart;
+  // On-time rate — same methodology as the Log page
+  var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+  var scheduled = Math.max(1, Math.round(daysSince * freqPerDay));
+  var rate = Math.min(100, Math.round((loggedSinceStart / scheduled) * 100));
+  if (el('protoStatRate')) el('protoStatRate').textContent = rate + '%';
 }
 
 // Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
@@ -8720,25 +8756,11 @@ function populatePortal(user, consultation, greeting) {
     if (el('protoRxStart')) el('protoRxStart').textContent = rxStart;
     if (el('protoRxEnd')) el('protoRxEnd').textContent = rxEnd;
 
-    // ── Progress ──
-    if (rxStartDate && rxDurWeeks) {
-      var totalDays = rxDurWeeks * 7;
-      var daysSince = Math.floor((Date.now() - rxStartDate.getTime()) / 86400000) + 1;
-      var currentWeek = Math.min(rxDurWeeks, Math.max(1, Math.ceil(daysSince / 7)));
-      var pct = Math.min(100, Math.max(0, Math.round((daysSince / totalDays) * 100)));
-      var daysRemaining = Math.max(0, totalDays - daysSince);
-      if (el('protoProgressPhase')) el('protoProgressPhase').textContent = 'Week ' + currentWeek + ' of ' + rxDurWeeks;
-      if (el('protoProgressSub')) el('protoProgressSub').textContent = daysSince + ' days in';
-      if (el('protoProgressPct')) el('protoProgressPct').textContent = pct + '%';
-      if (el('protoProgressFill')) el('protoProgressFill').style.width = pct + '%';
-      if (el('protoStatRemaining')) el('protoStatRemaining').textContent = daysRemaining + 'd';
-      if (el('protoStatLogged')) el('protoStatLogged').textContent = loggedDates.length;
-      // On-time rate
-      var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
-      var scheduled = Math.max(1, Math.round(daysSince * freqPerDay));
-      var rate = Math.min(100, Math.round((loggedDates.length / scheduled) * 100));
-      if (el('protoStatRate')) el('protoStatRate').textContent = rate + '%';
-    }
+    // Store rx start/duration for _refreshProtoProgress() to use after
+    // dose_logs finish loading asynchronously.
+    window._protoRxStartDate = rxStartDate || null;
+    window._protoRxDurWeeks = rxDurWeeks || null;
+    _refreshProtoProgress();
 
     // ── Clinician Notes ──
     var clinicianNotes = (consultation.data && consultation.data.clinician_notes) || consultation.clinician_notes || null;

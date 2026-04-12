@@ -3145,8 +3145,8 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
       <!-- ── PROTOCOL TAB ── -->
       <div class="portal-tab" id="tab-protocol">
-        <div class="tab-eyebrow">Your Protocol</div>
-        <div class="tab-title">Your prescribed protocol.</div>
+        <div class="tab-eyebrow">Designed for you</div>
+        <div class="tab-title" id="protoTabTitle">Your peptide protocol.</div>
         <!-- Empty state (shown by default, hidden when consultation loaded) -->
         <div id="protoEmpty" class="empty-state">
           <div class="empty-title">No protocol on file.</div>
@@ -8818,6 +8818,16 @@ function populatePortal(user, consultation, greeting) {
   // Greeting
   document.getElementById('greetingLine').textContent = greeting + ' ' + displayName + '.';
   document.getElementById('greetingSub').textContent = 'Welcome to your Pulse member portal.';
+
+  // Protocol tab title — personalize with the member's first name.
+  // Falls back to "Your peptide protocol." if first name isn't available.
+  var _protoTitleEl = document.getElementById('protoTabTitle');
+  if (_protoTitleEl) {
+    var _ptFirst = (firstName || '').trim();
+    _protoTitleEl.textContent = _ptFirst
+      ? (_ptFirst + "'s peptide protocol.")
+      : 'Your peptide protocol.';
+  }
 
   // Pre-populate resources tab content (generic fallback shown when no protocol assigned yet)
   initResourcesTab();

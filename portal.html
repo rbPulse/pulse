@@ -480,11 +480,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cappt-filter-pill{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid rgba(20,20,20,0.1);background:transparent;color:rgba(20,20,20,0.5);cursor:pointer;transition:all .15s;}
 .cappt-filter-pill:hover{border-color:rgba(20,20,20,0.22);color:rgba(20,20,20,0.75);}
 .cappt-filter-pill.active{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.3);color:#2F6F55;}
-.cappt-filter-select{display:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;padding:8px 32px 8px 28px;border-radius:999px;border:1px solid rgba(47,111,85,0.3);background:rgba(47,111,85,0.08) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232F6F55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 12px center;color:#2F6F55;cursor:pointer;-webkit-appearance:none;appearance:none;outline:none;text-align:center;text-align-last:center;}
-.cappt-filter-select option{text-align:center;color:#111;}
+/* ═══ CUSTOM PORTAL DROPDOWN ═══ */
+.pd-dropdown{position:relative;display:block;}
+.cappt-filter-dd{display:none;}
+.pd-dropdown-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.02em;padding:10px 16px;border-radius:999px;border:1px solid rgba(47,111,85,0.28);background:rgba(47,111,85,0.06);color:#2F6F55;cursor:pointer;outline:none;transition:all .15s;}
+.pd-dropdown-toggle:hover{background:rgba(47,111,85,0.1);border-color:rgba(47,111,85,0.4);}
+.pd-dropdown.open .pd-dropdown-toggle{background:rgba(47,111,85,0.12);border-color:rgba(47,111,85,0.45);}
+.pd-dropdown-value{flex:1;text-align:center;color:#2F6F55;}
+.pd-dropdown-chevron{color:#2F6F55;transition:transform .2s;flex-shrink:0;}
+.pd-dropdown.open .pd-dropdown-chevron{transform:rotate(180deg);}
+.pd-dropdown-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#FBFAF6;border:1px solid rgba(20,20,20,0.08);border-radius:14px;box-shadow:0 12px 32px rgba(20,20,20,0.12),0 2px 8px rgba(20,20,20,0.04);padding:6px;z-index:50;opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s,transform .15s;}
+.pd-dropdown.open .pd-dropdown-menu{opacity:1;transform:translateY(0);pointer-events:auto;}
+.pd-dropdown-option{display:block;width:100%;text-align:left;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;letter-spacing:0.01em;padding:10px 14px;border-radius:8px;background:none;border:none;color:#1a1a1a;cursor:pointer;transition:background .1s;}
+.pd-dropdown-option:hover{background:rgba(47,111,85,0.06);}
+.pd-dropdown-option.active{background:rgba(47,111,85,0.1);color:#2F6F55;font-weight:600;}
+
 @media(max-width:600px){
   .consumer-appt-filters{display:none;}
-  .cappt-filter-select{display:block;}
+  .cappt-filter-dd{display:block;min-width:160px;}
 }
 .consumer-appt-row:last-child{border-bottom:none;}
 .consumer-appt-row:hover{background:rgba(255,255,255,0.025);}
@@ -876,11 +889,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   }
 }
 
-/* ── 14F: NOTIFICATION PANEL — FULL WIDTH MINUS PADDING ON MOBILE ────────── */
-@media(max-width:480px) {
+/* ── 14F: NOTIFICATION PANEL — FIXED POSITIONING ON MOBILE ─────────────── */
+@media(max-width:600px) {
   .notif-panel {
-    width: calc(100vw - 32px);
-    right: -8px;
+    position: fixed;
+    top: 60px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
   }
 }
 
@@ -2611,7 +2629,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
 <!-- NAV -->
 <nav id="portal-nav" style="display:none;">
-  <a href="index.html" class="nav-brand">
+  <a href="#" class="nav-brand" onclick="event.preventDefault();_portalGoHome();">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
     <span class="nav-name">PULSE</span>
   </a>
@@ -3146,11 +3164,17 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <button class="cappt-filter-pill" data-filter="completed" onclick="_filterConsumerAppts('completed')">Completed</button>
                 <button class="cappt-filter-pill" data-filter="cancelled" onclick="_filterConsumerAppts('cancelled')">Cancelled</button>
               </div>
-              <select class="cappt-filter-select" id="consumerApptFilterSelect" onchange="_filterConsumerAppts(this.value)">
-                <option value="upcoming">Upcoming</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <div class="pd-dropdown cappt-filter-dd" id="consumerApptFilterDD" data-value="upcoming">
+                <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('consumerApptFilterDD')">
+                  <span class="pd-dropdown-value">Upcoming</span>
+                  <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="pd-dropdown-menu">
+                  <button type="button" class="pd-dropdown-option" data-value="upcoming" onclick="_pdSelect('consumerApptFilterDD','upcoming','Upcoming',_filterConsumerAppts)">Upcoming</button>
+                  <button type="button" class="pd-dropdown-option" data-value="completed" onclick="_pdSelect('consumerApptFilterDD','completed','Completed',_filterConsumerAppts)">Completed</button>
+                  <button type="button" class="pd-dropdown-option" data-value="cancelled" onclick="_pdSelect('consumerApptFilterDD','cancelled','Cancelled',_filterConsumerAppts)">Cancelled</button>
+                </div>
+              </div>
             </div>
             <div id="consumerApptList" style="max-height:360px;overflow-y:auto;"></div>
           </div>
@@ -3162,9 +3186,13 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
           <div class="settings-field" style="margin-bottom:16px;">
             <label class="settings-field-lbl">Appointment Type</label>
-            <select class="book-select" id="bookType">
-              <option value="">Select type</option>
-            </select>
+            <div class="pd-dropdown book-type-dd" id="bookType" data-value="">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('bookType')">
+                <span class="pd-dropdown-value">Select type</span>
+                <svg class="pd-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu" id="bookTypeMenu"></div>
+            </div>
           </div>
           <!-- Clinician is auto-assigned on confirm -->
 
@@ -7485,14 +7513,19 @@ function initConsumerBooking() {
   _selectedBookingSlot = null;
   resetBookConfirm();
 
-  // Populate appointment-type select — exclude "Initial Consult" for active members
-  var typeEl = document.getElementById('bookType');
-  if (typeEl && typeEl.options.length <= 1) {
-    var isActive = window._memberPurchaseComplete;
+  // Populate appointment-type dropdown — exclude "Initial Consult" for active members
+  var typeEl  = document.getElementById('bookType');
+  var typeMenu = document.getElementById('bookTypeMenu');
+  if (typeEl && typeMenu && !typeMenu.children.length) {
     APPT_TYPES.forEach(function(t) {
       if (t === 'Initial Consult') return; // Members in portal have already completed intake
-      var o = document.createElement('option'); o.value = t; o.textContent = t;
-      typeEl.appendChild(o);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pd-dropdown-option';
+      btn.setAttribute('data-value', t);
+      btn.textContent = t;
+      btn.onclick = function() { _pdSelect('bookType', t, t); };
+      typeMenu.appendChild(btn);
     });
   }
   // Clinician is auto-assigned on booking confirm (no dropdown needed)
@@ -7913,7 +7946,12 @@ function confirmBooking() {
     if (bookingCard) bookingCard.innerHTML = '';
     resetBookConfirm();
     document.getElementById('bookTimeSection').style.display = 'none';
-    var t = document.getElementById('bookType'); if (t) t.value = '';
+    var t = document.getElementById('bookType');
+    if (t) {
+      t.setAttribute('data-value', '');
+      var tv = t.querySelector('.pd-dropdown-value'); if (tv) tv.textContent = 'Select type';
+      t.querySelectorAll('.pd-dropdown-option.active').forEach(function(o){o.classList.remove('active');});
+    }
 
     // Show success confirmation inline in the card
     var confirmCardArea = document.getElementById('bookConfirmCard');
@@ -7942,7 +7980,7 @@ function confirmBooking() {
     consumerAppts.unshift({
       id: 'ca' + Date.now(),
       clinician: 'Dr. Sarah Chen',
-      type: document.getElementById('bookType').value || 'Appointment',
+      type: (document.getElementById('bookType') && document.getElementById('bookType').getAttribute('data-value')) || 'Appointment',
       date: dateLabel,
       time: timeStr,
       dur:  _bookSlotDur + ' min',
@@ -8026,9 +8064,17 @@ function _filterConsumerAppts(filter) {
   pills.forEach(function(p) {
     p.classList.toggle('active', p.getAttribute('data-filter') === filter);
   });
-  // Sync dropdown (mobile)
-  var sel = document.getElementById('consumerApptFilterSelect');
-  if (sel && sel.value !== filter) sel.value = filter;
+  // Sync custom dropdown (mobile)
+  var dd = document.getElementById('consumerApptFilterDD');
+  if (dd && dd.getAttribute('data-value') !== filter) {
+    var labelMap = { upcoming:'Upcoming', completed:'Completed', cancelled:'Cancelled' };
+    dd.setAttribute('data-value', filter);
+    var valEl = dd.querySelector('.pd-dropdown-value');
+    if (valEl) valEl.textContent = labelMap[filter] || filter;
+    dd.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
+      opt.classList.toggle('active', opt.getAttribute('data-value') === filter);
+    });
+  }
   // Re-render with stored full list
   _renderConsumerApptList(window._consumerApptsAll || consumerAppts || []);
 }
@@ -11060,6 +11106,13 @@ document.addEventListener('visibilitychange', function() {
 var CL_TABS = ['cl-overview','cl-schedule','cl-appointments','cl-patients','cl-messages','cl-settings'];
 var CONSUMER_TABS = ['overview','protocol','tracker','appointments','messages','resources','settings'];
 
+// Navigate to the default tab for the active role when the PULSE logo is clicked.
+function _portalGoHome() {
+  var isClinician = window._userRole === 'clinician' || window._userRole === 'admin';
+  switchTab(isClinician ? 'cl-overview' : 'overview');
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+}
+
 function switchTab(name) {
   var isClinician = CL_TABS.indexOf(name) !== -1;
   var set = isClinician ? CL_TABS : CONSUMER_TABS;
@@ -11846,6 +11899,48 @@ function closeNotifPanel() {
   var panel = document.getElementById('notifPanel');
   if (panel) panel.classList.remove('open');
 }
+
+// ═══ CUSTOM PORTAL DROPDOWN ═══
+// Lightweight replacement for native <select> to match portal styling.
+// Usage:
+//   <div class="pd-dropdown" id="myDD" data-value="...">
+//     <button onclick="_pdToggle('myDD')">...</button>
+//     <div class="pd-dropdown-menu">
+//       <button onclick="_pdSelect('myDD','val','Label', optionalCallback)">Label</button>
+//     </div>
+//   </div>
+function _pdToggle(id) {
+  var dd = document.getElementById(id);
+  if (!dd) return;
+  var wasOpen = dd.classList.contains('open');
+  // Close any other open pd-dropdowns
+  document.querySelectorAll('.pd-dropdown.open').forEach(function(el) {
+    if (el !== dd) el.classList.remove('open');
+  });
+  dd.classList.toggle('open', !wasOpen);
+}
+
+function _pdSelect(id, value, label, callback) {
+  var dd = document.getElementById(id);
+  if (!dd) return;
+  dd.setAttribute('data-value', value);
+  var valEl = dd.querySelector('.pd-dropdown-value');
+  if (valEl) valEl.textContent = label;
+  dd.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
+    opt.classList.toggle('active', opt.getAttribute('data-value') === String(value));
+  });
+  dd.classList.remove('open');
+  if (typeof callback === 'function') {
+    try { callback(value); } catch (e) { console.error('pd dropdown callback failed', e); }
+  }
+}
+
+// Close pd-dropdowns on outside click
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.pd-dropdown.open').forEach(function(dd) {
+    if (!dd.contains(e.target)) dd.classList.remove('open');
+  });
+});
 
 function _notifTimeAgo(iso) {
   if (!iso) return '';

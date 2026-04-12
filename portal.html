@@ -3091,15 +3091,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
       <!-- ── RESOURCES TAB ── -->
       <div class="portal-tab" id="tab-resources">
         <div class="tab-eyebrow">Resources</div>
-        <div class="tab-title">Your protocol library.</div>
+        <div class="tab-title">Everything you need to know.</div>
 
-        <!-- Empty state: shown when no protocol assigned yet -->
-        <div id="resourcesNoProto" style="display:none;">
-          <div class="p-card" style="padding:44px 32px;">
-            <div class="inline-empty-title">No protocol assigned yet.</div>
-            <div class="inline-empty-sub">Your resources will appear here once your protocol is assigned.</div>
-          </div>
-        </div>
+        <!-- Empty state kept for compat but hidden — the library is always available -->
+        <div id="resourcesNoProto" style="display:none;"></div>
 
         <!-- Resource cards: shown when protocol is assigned (populated by initResourcesTab) -->
         <div id="resourcesContent"></div><!-- end resourcesContent -->
@@ -10566,32 +10561,81 @@ function sendConsumerMessage() {
 }
 
 // ── Tab switching ──
-// ── RESOURCES TAB (Phase 10) ──
+// ── RESOURCES TAB — Generalized member education library ──
+// This page is NOT protocol-specific. Protocol details live in the Protocol tab.
+// This is the general knowledge base every Pulse member should have access to.
+var RESOURCES_LIBRARY = {
+  gettingStarted: {
+    title: 'Getting Started with Pulse',
+    sections: [
+      { heading: 'What are peptides?', body: 'Peptides are short chains of amino acids that signal your body to perform specific functions — from deeper sleep and faster recovery to improved metabolism. Unlike supplements, they work at the cellular signaling level.' },
+      { heading: 'How Pulse protocols work', body: 'Every Pulse protocol is prescribed by a licensed clinician after reviewing your intake and goals. Your pods arrive pre-filled and ready to use with the Pulse pen — no mixing, no measuring, no guesswork.' },
+      { heading: 'Your clinician relationship', body: 'Your clinician reviews your progress through monthly check-ins and is always available through the Messages tab. Any protocol adjustments happen here — this is a care relationship, not a one-time purchase.' },
+      { heading: 'When to expect results', body: 'Results vary by protocol and individual biology. Most members notice meaningful shifts within 2–4 weeks of consistent dosing. Your clinician will help you track progress and titrate as needed.' }
+    ]
+  },
+  administration: {
+    title: 'Administration & Safety',
+    steps: [
+      'Wash your hands thoroughly with soap and water before handling any materials.',
+      'Inspect the pod and pen — confirm the solution is clear and the expiration date is valid.',
+      'Clean the injection site (abdomen or outer thigh) with an alcohol swab. Let dry for 10 seconds.',
+      'Load the pod into the pen and dial to your prescribed dose.',
+      'Pinch a fold of skin, insert the needle at a 90° angle, and depress the plunger slowly.',
+      'Hold for 5 seconds before withdrawing, then apply gentle pressure to the site.',
+      'Dispose of used materials in the provided sharps container.',
+      'Log your dose in the Tracker tab to maintain your schedule.'
+    ]
+  },
+  storage: {
+    title: 'Storage & Handling',
+    sections: [
+      { heading: 'Refrigeration', body: 'Store all pods refrigerated at 2–8°C (36–46°F). Do not freeze. Keep away from direct light and heat. A dedicated medication container in the fridge is ideal.' },
+      { heading: 'Travel', body: 'For short trips, pods can be kept in an insulated cooler with ice packs for up to 24 hours. For longer travel, contact your clinician in advance to coordinate.' },
+      { heading: 'Expiration', body: 'Each pod has an expiration date. Never use expired product. If you have unused pods approaching expiration, contact support to arrange replacement.' },
+      { heading: 'Damaged or exposed pods', body: 'If a pod has been left unrefrigerated for more than 4 hours, exposed to light for extended periods, or appears cloudy, discolored, or damaged, do not use it. Contact your clinician for replacement guidance.' }
+    ]
+  },
+  safety: {
+    title: 'Safety & Side Effects',
+    sections: [
+      { heading: 'Common side effects', body: 'Mild redness, itching, or bruising at the injection site is common and typically resolves within 24 hours. Some members experience mild fatigue or headache during the first week as the body adjusts.' },
+      { heading: 'When to contact your clinician', body: 'Contact your clinician through the Messages tab if you experience persistent redness, swelling, rash, unusual fatigue, mood changes, or any symptom that concerns you.' },
+      { heading: 'Emergency situations', body: 'If you experience severe allergic reaction (difficulty breathing, severe swelling, hives), chest pain, or other emergency symptoms, call 911 immediately. Do not wait to message your clinician.' },
+      { heading: 'Interactions', body: 'Always inform your Pulse clinician about any medications, supplements, or medical conditions — especially if anything changes during your protocol. This information directly affects prescribing decisions.' }
+    ]
+  },
+  faq: [
+    { q: 'What if I miss a dose?', a: 'Log it in the Tracker as soon as you remember by tapping the missed day. If it has been more than 24 hours, skip the missed dose and continue with your next scheduled dose — do not double up. Message your clinician if you miss multiple doses.' },
+    { q: 'Can I drink alcohol on my protocol?', a: 'Moderate alcohol consumption is generally acceptable for most protocols, but it can reduce effectiveness and affect sleep quality. Discuss your specific protocol with your clinician.' },
+    { q: 'Can I exercise while on a protocol?', a: 'Yes — in fact, most protocols work synergistically with exercise. Avoid injecting into a muscle you plan to train intensely within the next 2 hours to prevent localized discomfort.' },
+    { q: 'Can I combine Pulse with other supplements?', a: 'Most supplements are compatible, but always disclose what you\'re taking to your clinician. Certain combinations may amplify or reduce peptide effects.' },
+    { q: 'How do I know if my protocol is working?', a: 'Most members see meaningful changes within 2–4 weeks. Track your sleep, energy, recovery, or specific goals in the Tracker tab. Your monthly check-in is designed to assess progress and make adjustments.' },
+    { q: 'Can I travel with my peptides?', a: 'Yes. Keep pods refrigerated in an insulated cooler for trips up to 24 hours. For longer travel, international trips, or flights, contact support in advance to plan.' },
+    { q: 'How do I request a protocol change?', a: 'Message your clinician with details about how you\'re feeling and what you\'d like to adjust. Protocol changes are always clinically reviewed and require clinician approval.' },
+    { q: 'What happens when my protocol ends?', a: 'Near the end of your protocol cycle, your clinician will reach out to discuss results and next steps — whether that\'s continuing, switching to a new protocol, or taking a break.' }
+  ]
+};
+
 function initResourcesTab() {
-  var proto = window._userProto;
-  var resData = proto ? RESOURCES_MAP[proto] : null;
   var noProtoEl = document.getElementById('resourcesNoProto');
   var contentEl = document.getElementById('resourcesContent');
 
-  // Always hide the static empty-state placeholder — we render generic content instead
+  // Hide the protocol-dependent empty state — the library is generic and always available
   if (noProtoEl) noProtoEl.style.display = 'none';
   if (contentEl) contentEl.style.display = '';
 
-  // Fall back to generic resources when no protocol is assigned yet
-  var resKey = proto || 'generic';
-  resData = resData || RESOURCES_MAP['generic'];
+  // Only render once per session (library is static)
+  if (contentEl && contentEl.getAttribute('data-res-rendered') === '1') return;
+  if (contentEl) contentEl.setAttribute('data-res-rendered', '1');
 
-  // Only render once per proto (avoid duplicating cards on repeated tab visits)
-  if (contentEl && contentEl.getAttribute('data-res-proto') === resKey) return;
-  if (contentEl) contentEl.setAttribute('data-res-proto', resKey);
-
-  // Build HTML
+  var lib = RESOURCES_LIBRARY;
   var html = '';
 
-  // Card 1 — Protocol Guide (expandable sections)
+  // Card 1 — Getting Started
   html += '<div class="res-card">';
-  html += '<div class="res-card-title">' + escapeHtml(resData.guide.title) + '</div>';
-  resData.guide.sections.forEach(function(s) {
+  html += '<div class="res-card-title">' + escapeHtml(lib.gettingStarted.title) + '</div>';
+  lib.gettingStarted.sections.forEach(function(s) {
     html += '<details class="res-faq-item">';
     html += '<summary>' + escapeHtml(s.heading) + '</summary>';
     html += '<div class="res-faq-body">' + escapeHtml(s.body) + '</div>';
@@ -10599,20 +10643,42 @@ function initResourcesTab() {
   });
   html += '</div>';
 
-  // Card 2 — Administration Guide (always expanded)
+  // Card 2 — Administration Guide
   html += '<div class="res-card">';
-  html += '<div class="res-card-title">Administration Guide</div>';
+  html += '<div class="res-card-title">' + escapeHtml(lib.administration.title) + '</div>';
   html += '<ol class="res-steps-list">';
-  resData.injectionGuide.steps.forEach(function(step) {
+  lib.administration.steps.forEach(function(step) {
     html += '<li>' + escapeHtml(step) + '</li>';
   });
   html += '</ol>';
   html += '</div>';
 
-  // Card 3 — FAQ
+  // Card 3 — Storage & Handling
+  html += '<div class="res-card">';
+  html += '<div class="res-card-title">' + escapeHtml(lib.storage.title) + '</div>';
+  lib.storage.sections.forEach(function(s) {
+    html += '<details class="res-faq-item">';
+    html += '<summary>' + escapeHtml(s.heading) + '</summary>';
+    html += '<div class="res-faq-body">' + escapeHtml(s.body) + '</div>';
+    html += '</details>';
+  });
+  html += '</div>';
+
+  // Card 4 — Safety & Side Effects
+  html += '<div class="res-card">';
+  html += '<div class="res-card-title">' + escapeHtml(lib.safety.title) + '</div>';
+  lib.safety.sections.forEach(function(s) {
+    html += '<details class="res-faq-item">';
+    html += '<summary>' + escapeHtml(s.heading) + '</summary>';
+    html += '<div class="res-faq-body">' + escapeHtml(s.body) + '</div>';
+    html += '</details>';
+  });
+  html += '</div>';
+
+  // Card 5 — Common Questions
   html += '<div class="res-card">';
   html += '<div class="res-card-title">Common Questions</div>';
-  resData.faq.forEach(function(item) {
+  lib.faq.forEach(function(item) {
     html += '<details class="res-faq-item">';
     html += '<summary>' + escapeHtml(item.q) + '</summary>';
     html += '<div class="res-faq-body">' + escapeHtml(item.a) + '</div>';
@@ -10620,7 +10686,7 @@ function initResourcesTab() {
   });
   html += '</div>';
 
-  // Card 4 — Contact Support
+  // Card 6 — Contact Support
   html += '<div class="res-card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">';
   html += '<div style="font-size:14px;color:var(--grey);line-height:1.6;">Have a question not answered here?</div>';
   html += '<button class="btn-green" onclick="switchTab(\'messages\')">Message Your Clinician</button>';

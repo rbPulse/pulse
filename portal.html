@@ -8487,7 +8487,7 @@ function _refreshOverviewData() {
   var freqPlain = _normalizeFreqLabel(op.freqRaw, dosesPerDay);
 
   // ── HERO LEFT ──
-  el = document.getElementById('mHeroTitle'); if (el) el.textContent = op.displayName + ' Protocol';
+  el = document.getElementById('mHeroTitle'); if (el) el.textContent = op.displayName;
   el = document.getElementById('mHeroSub');
   if (el) el.textContent = op.doseDesc || 'Dose scheduled';
   el = document.getElementById('mHeroDose');
@@ -8531,7 +8531,7 @@ function _refreshOverviewData() {
 
   // ── MOBILE OVERVIEW — sync all data to the mobile layout ──
   // 1. Today Hero
-  el = document.getElementById('moProtoName'); if (el) el.textContent = op.displayName + ' Protocol';
+  el = document.getElementById('moProtoName'); if (el) el.textContent = op.displayName;
   el = document.getElementById('moDoseAmount');
   if (el) el.textContent = op.doseDesc || (freqPlain || '—');
   el = document.getElementById('moDoseMeta');
@@ -8880,9 +8880,11 @@ function populatePortal(user, consultation, greeting) {
     // Protocol tab
     document.getElementById('protoEmpty').style.display = 'none';
     document.getElementById('protoContent').style.display = 'block';
-    // Show just the category + 'Protocol' (e.g. 'Sleep Protocol') instead of
-    // the marketing composite name like 'Sleep + Recovery Protocol'
-    var cleanName = (proto.category ? proto.category + ' Protocol' : proto.name);
+    // Show the raw clinician-assigned protocol name(s) — e.g. "Sleep" —
+    // without appending the word "Protocol" (the card label already says it).
+    var cleanName = (window._allProtoNames && window._allProtoNames.length > 0)
+      ? window._allProtoNames.join(', ')
+      : (proto.name || '').replace(/\s*Protocol\s*$/i, '').trim() || proto.name;
     document.getElementById('protoName').textContent = cleanName;
     document.getElementById('protoCategoryBadge').textContent = proto.category;
 

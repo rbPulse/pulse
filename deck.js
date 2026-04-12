@@ -1,160 +1,47 @@
-// ===== PULSE DECK — Slide Navigation & Interactions =====
-
+// ═══ PULSE INVESTOR DECK — Slide Navigation ═══
 (function() {
-    'use strict';
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
 
-    const deck = document.getElementById('deck');
-    const slides = document.querySelectorAll('.slide');
-    const progressBar = document.getElementById('progressBar');
-    const currentSlideEl = document.getElementById('currentSlide');
-    const dots = document.querySelectorAll('.slide-dot');
-    const keyboardHint = document.getElementById('keyboardHint');
+  var totalEl = document.getElementById('totalSlides');
+  var currentEl = document.getElementById('currentSlide');
+  var progressBar = document.getElementById('progressBar');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
 
-    const totalSlides = slides.length;
-    let activeIndex = 0;
-    let isScrolling = false;
-    let scrollTimeout;
+  if (totalEl) totalEl.textContent = String(total).padStart(2, '0');
 
-    // ===== Initialize first slide =====
-    slides[0].classList.add('active');
-    updateUI(0);
+  function go(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    if (currentEl) currentEl.textContent = String(current + 1).padStart(2, '0');
+    if (progressBar) progressBar.style.width = ((current + 1) / total * 100) + '%';
+  }
 
-    // ===== Detect active slide on scroll =====
-    deck.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            const scrollPos = deck.scrollTop;
-            const viewHeight = window.innerHeight;
+  function next() { go(Math.min(current + 1, total - 1)); }
+  function prev() { go(Math.max(current - 1, 0)); }
 
-            let newIndex = Math.round(scrollPos / viewHeight);
-            newIndex = Math.max(0, Math.min(newIndex, totalSlides - 1));
+  if (prevBtn) prevBtn.addEventListener('click', prev);
+  if (nextBtn) nextBtn.addEventListener('click', next);
 
-            if (newIndex !== activeIndex) {
-                slides[activeIndex].classList.remove('active');
-                activeIndex = newIndex;
-                slides[activeIndex].classList.add('active');
-                updateUI(activeIndex);
-            }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+  });
 
-            isScrolling = false;
-        }, 80);
+  // Touch swipe
+  var touchStartX = 0;
+  document.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { if (dx < 0) next(); else prev(); }
+  });
 
-        // Hide keyboard hint after first scroll
-        if (keyboardHint) {
-            keyboardHint.classList.add('hidden');
-        }
-    }, { passive: true });
-
-    // ===== Keyboard navigation =====
-    document.addEventListener('keydown', (e) => {
-        if (isScrolling) return;
-
-        let targetIndex = activeIndex;
-
-        switch(e.key) {
-            case 'ArrowDown':
-            case 'PageDown':
-            case ' ':
-                e.preventDefault();
-                targetIndex = Math.min(activeIndex + 1, totalSlides - 1);
-                break;
-            case 'ArrowUp':
-            case 'PageUp':
-                e.preventDefault();
-                targetIndex = Math.max(activeIndex - 1, 0);
-                break;
-            case 'Home':
-                e.preventDefault();
-                targetIndex = 0;
-                break;
-            case 'End':
-                e.preventDefault();
-                targetIndex = totalSlides - 1;
-                break;
-        }
-
-        if (targetIndex !== activeIndex) {
-            goToSlide(targetIndex);
-        }
-    });
-
-    // ===== Dot navigation =====
-    dots.forEach(dot => {
-        dot.addEventListener('click', () => {
-            const slideIndex = parseInt(dot.dataset.slide);
-            goToSlide(slideIndex);
-        });
-    });
-
-    // ===== Navigate to slide =====
-    function goToSlide(index) {
-        if (isScrolling || index === activeIndex) return;
-        isScrolling = true;
-
-        slides[activeIndex].classList.remove('active');
-        activeIndex = index;
-        slides[activeIndex].classList.add('active');
-
-        deck.scrollTo({
-            top: index * window.innerHeight,
-            behavior: 'smooth'
-        });
-
-        updateUI(index);
-
-        // Reset scrolling lock
-        setTimeout(() => { isScrolling = false; }, 600);
-    }
-
-    // ===== Update progress, counter, dots =====
-    function updateUI(index) {
-        // Progress bar
-        const progress = ((index + 1) / totalSlides) * 100;
-        progressBar.style.width = progress + '%';
-
-        // Counter
-        currentSlideEl.textContent = String(index + 1).padStart(2, '0');
-
-        // Dots
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === index);
-        });
-    }
-
-    // ===== Handle resize =====
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            deck.scrollTo({
-                top: activeIndex * window.innerHeight,
-                behavior: 'auto'
-            });
-        }, 150);
-    });
-
-    // ===== Touch swipe support =====
-    let touchStartY = 0;
-    let touchEndY = 0;
-
-    deck.addEventListener('touchstart', (e) => {
-        touchStartY = e.changedTouches[0].screenY;
-    }, { passive: true });
-
-    deck.addEventListener('touchend', (e) => {
-        touchEndY = e.changedTouches[0].screenY;
-        const diff = touchStartY - touchEndY;
-
-        // Only handle deliberate swipes (> 50px)
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) {
-                // Swipe up - next slide
-                goToSlide(Math.min(activeIndex + 1, totalSlides - 1));
-            } else {
-                // Swipe down - prev slide
-                goToSlide(Math.max(activeIndex - 1, 0));
-            }
-        }
-    }, { passive: true });
-
+  // Init
+  go(0);
 })();

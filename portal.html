@@ -1535,11 +1535,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;transition:border-color .2s;cursor:pointer;overflow:hidden;}
 .cl-attn-card:hover{border-color:rgba(255,255,255,0.12);}
 .cl-attn-card.overdue{border-left:3px solid rgba(255,130,130,0.6);}
-.cl-attn-card-header{display:flex;align-items:center;gap:12px;padding:16px 20px;}
+.cl-attn-card-header{display:flex;align-items:center;gap:12px;padding:12px 18px;}
 .cl-attn-card-avatar{width:32px;height:32px;border-radius:50%;background:rgba(58,122,92,0.12);border:1px solid rgba(58,122,92,0.25);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--green);flex-shrink:0;text-transform:uppercase;}
-.cl-attn-card-info{flex:1;min-width:0;}
-.cl-attn-card-name{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#FFFFFF;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
-.cl-attn-card-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;display:flex;align-items:center;gap:0;flex-wrap:wrap;}
+.cl-attn-card-info{flex:1;min-width:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.cl-attn-card-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#FFFFFF;margin-bottom:0;display:inline-flex;align-items:center;gap:8px;}
+.cl-attn-card-meta{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:#A1A1AA;display:inline-flex;align-items:center;gap:0;flex-wrap:wrap;}
 .cl-attn-card-meta > span{white-space:nowrap;}
 .cl-attn-card-meta > span:not(:last-child)::after{content:'\00B7';margin:0 10px;color:#71717A;font-weight:700;}
 .cl-attn-card-msg{font-size:11px;color:var(--grey2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
@@ -1600,7 +1600,29 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .crw-btn-grn{background:#22C55E;color:#FFFFFF;}
 .crw-btn-red{background:transparent;border:1px solid rgba(239,68,68,0.3);color:#EF4444;}
 .crw-btn-blu{background:transparent;border:1px solid rgba(59,130,246,0.3);color:#3B82F6;}
-.crw-msg-hdr{padding:14px 20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#8A8A96;border-bottom:1px solid #2A2A30;background:#0D0D0F;}
+.crw-msg-hdr{padding:14px 20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#8A8A96;border-bottom:1px solid #2A2A30;background:#0D0D0F;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.crw-msg-hdr-title{flex:1;}
+.crw-msg-expand-btn{background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:4px 6px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;}
+.crw-msg-expand-btn:hover{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.18);}
+.crw-msg-expand-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+
+/* ── Expanded clinician messaging modal ────────────────────────────── */
+.attn-msg-modal-overlay{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s;}
+.attn-msg-modal-overlay.open{opacity:1;pointer-events:all;}
+.attn-msg-modal{width:min(640px,100%);height:min(80vh,780px);background:#111113;border:1px solid #1F1F23;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);transform:translateY(8px);transition:transform .2s;}
+.attn-msg-modal-overlay.open .attn-msg-modal{transform:translateY(0);}
+.attn-msg-modal-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px;border-bottom:1px solid #2A2A30;background:#0D0D0F;flex-shrink:0;}
+.attn-msg-modal-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#fff;letter-spacing:-0.01em;}
+.attn-msg-modal-sub{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#8A8A96;margin-top:2px;}
+.attn-msg-modal-close{background:transparent;border:none;color:#8A8A96;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;border-radius:6px;transition:color .15s,background .15s;}
+.attn-msg-modal-close:hover{color:#fff;background:rgba(255,255,255,0.05);}
+.attn-msg-modal-list{flex:1 1 auto;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.attn-msg-modal-comp{display:flex;gap:12px;padding:16px 20px;border-top:1px solid #1F1F23;background:#0D0D0F;flex-shrink:0;}
+.attn-msg-modal-in{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;font-family:'Inter',sans-serif;font-size:13px;color:#fff;outline:none;resize:none;min-height:40px;max-height:140px;line-height:1.5;transition:border-color .2s;}
+.attn-msg-modal-in:focus{border-color:rgba(58,122,92,0.5);}
+.attn-msg-modal-in::placeholder{color:rgba(255,255,255,0.3);}
+.attn-msg-modal-send{background:var(--green);border:none;border-radius:8px;padding:0 20px;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#000;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .15s;}
+.attn-msg-modal-send:hover{opacity:0.85;}
 .crw-msg-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;}
 .crw-msg-empty{text-align:center;padding:48px 20px;color:#71717A;font-size:13px;font-weight:500;line-height:1.5;}
 .crw-msg-block{max-width:75%;}
@@ -2521,6 +2543,17 @@ body.clinician-mode .cl-attention-empty{font-family:'Inter',sans-serif !importan
 body.clinician-mode #clAttentionSection{background:linear-gradient(135deg,#2E6A52 0%,#234A3B 50%,#1A342A 100%);border-radius:12px;padding:20px;margin-bottom:20px;}
 body.clinician-mode #clAttentionSection .cl-attention-title{color:#FFFFFF !important;font-size:13px;font-weight:600;letter-spacing:0.06em;margin-top:0;}
 body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,255,255,0.08) !important;border:1px solid rgba(255,255,255,0.1) !important;color:rgba(255,255,255,0.6) !important;}
+/* Header row with title + sort control */
+.cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.cl-attn-sort{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.65);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:999px;padding:6px 14px 6px 16px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.65)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;transition:background-color .15s,border-color .15s;}
+.cl-attn-sort:hover{background-color:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.22);}
+.cl-attn-sort option{color:#1a1a1a;background:#fff;}
+/* Cap visible list to ~10 rows; anything beyond scrolls inside the card.
+   Each row is ~56px (header padding 12×2 + 20px content + 10px bottom gap). */
+.cl-attn-list{max-height:560px;overflow-y:auto;padding-right:4px;}
+.cl-attn-list::-webkit-scrollbar{width:6px;}
+.cl-attn-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.18);border-radius:4px;}
+.cl-attn-list::-webkit-scrollbar-track{background:transparent;}
 body.clinician-mode #clAttentionSection .cl-attn-card{background:var(--cl-high);border:1px solid var(--cl-border);}
 body.clinician-mode #clAttentionSection .cl-attn-card:hover{border-color:rgba(0,0,0,0.1);box-shadow:var(--cl-shadow-mid);}
 body.clinician-mode #clAttentionSection .cl-attn-card-name{color:var(--cl-text);}
@@ -6088,11 +6121,29 @@ async function loadWeeklySchedule() {
 }
 
 // ── Clinician Attention Cards ──
+// Preferred sort order: 'risk' (high > moderate > low, then oldest first) or
+// 'submission' (oldest first, overdue pinned to top). Persisted in memory so
+// re-renders (polling, card toggle) don't reset the clinician's choice.
+var _clAttnSort = 'submission';
+function _setClAttnSort(val) {
+  _clAttnSort = val === 'risk' ? 'risk' : 'submission';
+  loadAttentionCards();
+}
+
 async function loadAttentionCards() {
   // Don't refresh if a card is expanded (user is interacting)
   if (document.querySelector('.cl-attn-card.expanded')) return;
   var container = document.getElementById('clAttentionSection');
   if (!container || !currentUserId || PREVIEW_MODE) return;
+
+  // Shared header markup for the Open Reviews card (title + sort select)
+  var _hdr = '<div class="cl-attn-header-row">' +
+               '<div class="cl-attention-title">Open Reviews</div>' +
+               '<select class="cl-attn-sort" onchange="_setClAttnSort(this.value)" aria-label="Sort open reviews">' +
+                 '<option value="submission"' + (_clAttnSort === 'submission' ? ' selected' : '') + '>Sort by Submission</option>' +
+                 '<option value="risk"' + (_clAttnSort === 'risk' ? ' selected' : '') + '>Sort by Risk</option>' +
+               '</select>' +
+             '</div>';
 
   try {
     // Get all open consultations (any status that isn't decided or withdrawn)
@@ -6105,7 +6156,7 @@ async function loadAttentionCards() {
     var consultations = res.data || [];
 
     if (!consultations.length) {
-      container.innerHTML = '<div class="cl-attention-title">Open Reviews</div>' +
+      container.innerHTML = _hdr +
         '<div class="cl-attention-empty">No open reviews. You\'re all caught up!</div>';
       return;
     }
@@ -6131,9 +6182,19 @@ async function loadAttentionCards() {
       }
     });
 
-    // Sort: overdue (24h+) first, then by oldest submission
+    // Sort according to the clinician's preference.
+    //   submission: overdue first, then oldest created_at (default)
+    //   risk:       high > moderate > low > none, then oldest within a tier
     var now = Date.now();
+    var RISK_ORDER = { high_risk: 0, moderate_risk: 1, low_risk: 2 };
     consultations.sort(function(a, b) {
+      if (_clAttnSort === 'risk') {
+        var aR = (a.risk_status in RISK_ORDER) ? RISK_ORDER[a.risk_status] : 3;
+        var bR = (b.risk_status in RISK_ORDER) ? RISK_ORDER[b.risk_status] : 3;
+        if (aR !== bR) return aR - bR;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      // submission
       var aOverdue = (now - new Date(a.created_at).getTime()) >= 86400000;
       var bOverdue = (now - new Date(b.created_at).getTime()) >= 86400000;
       if (aOverdue && !bOverdue) return -1;
@@ -6141,8 +6202,8 @@ async function loadAttentionCards() {
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
-    // Build HTML
-    var html = '<div class="cl-attention-title">Open Reviews</div>';
+    // Build HTML — wrap the rows in a scrollable list capped at 10 visible rows
+    var html = _hdr + '<div class="cl-attn-list">';
 
     consultations.forEach(function(c) {
       var profile = profileMap[c.user_id] || {};
@@ -6195,11 +6256,12 @@ async function loadAttentionCards() {
       '</div>';
     });
 
+    html += '</div>'; // close .cl-attn-list
     container.innerHTML = html;
 
   } catch(e) {
     console.warn('[Pulse] attention cards failed:', e);
-    container.innerHTML = '<div class="cl-attention-title">Open Reviews</div>' +
+    container.innerHTML = _hdr +
       '<div class="cl-attention-empty">Unable to load. Please refresh.</div>';
   }
 }
@@ -6440,7 +6502,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       '</div>'+
       '<div class="crw-right">'+
         '<div class="crw-right-msg" id="attn-msg-'+consultId+'">'+
-          '<div class="crw-msg-hdr">Patient Communication</div>'+
+          '<div class="crw-msg-hdr">'+
+            '<span class="crw-msg-hdr-title">Patient Communication</span>'+
+            '<button class="crw-msg-expand-btn" onclick="_openAttnMsgModal(\''+consultId+'\',\''+userId+'\',\''+escapeAttr(patientName)+'\')" title="Expand thread" aria-label="Expand thread">'+
+              '<svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'+
+            '</button>'+
+          '</div>'+
           '<div class="crw-msg-list" id="attn-msg-list-'+consultId+'">'+
             '<div class="crw-msg-empty">No messages yet.<br>Send a message to start the conversation.</div>'+
           '</div>'+
@@ -6544,7 +6611,7 @@ async function _refreshAttnMsgs(consultId, userId) {
 
     var wasAtBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 30;
 
-    listEl.innerHTML = msgs.map(function(m) {
+    var renderedHtml = msgs.map(function(m) {
       var isClinician = m.sender_role === 'clinician';
       var cls = isClinician ? 'from-clinician' : 'from-patient';
       var name = m.sender_name || (isClinician ? 'Clinician' : 'Patient');
@@ -6555,7 +6622,18 @@ async function _refreshAttnMsgs(consultId, userId) {
       '</div>';
     }).join('');
 
+    listEl.innerHTML = renderedHtml;
     if (wasAtBottom) listEl.scrollTop = listEl.scrollHeight;
+
+    // Mirror into the expanded modal when it's open for this same consult
+    if (_attnMsgModalState && _attnMsgModalState.consultId === consultId) {
+      var modalList = document.getElementById('attnMsgModalList');
+      if (modalList) {
+        var modalAtBottom = modalList.scrollHeight - modalList.scrollTop - modalList.clientHeight < 40;
+        modalList.innerHTML = renderedHtml;
+        if (modalAtBottom) modalList.scrollTop = modalList.scrollHeight;
+      }
+    }
 
     // Mark consumer messages as read
     var unread = msgs.filter(function(m) { return m.sender_role === 'consumer' && !m.read; });
@@ -6631,6 +6709,99 @@ function _attnTimeAgo(dateStr) {
   var hrs = Math.floor(mins / 60);
   if (hrs < 24) return hrs + 'h ago';
   return Math.floor(hrs / 24) + 'd ago';
+}
+
+// ═══ Expanded clinician messaging modal ═══
+// Clicking the expand icon on any .crw-msg-hdr opens a larger overlay view
+// of the same thread so clinicians can see more history while composing a
+// reply. The modal reuses _refreshAttnMsgs (which writes to both the inline
+// list AND the modal list when present) and _sendAttnMsg (which reads from
+// whichever input has focus / content).
+var _attnMsgModalState = { consultId: null, userId: null };
+
+function _ensureAttnMsgModal() {
+  if (document.getElementById('attnMsgModal')) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'attn-msg-modal-overlay';
+  overlay.id = 'attnMsgModal';
+  overlay.onclick = function(e) {
+    if (e.target === overlay) _closeAttnMsgModal();
+  };
+  overlay.innerHTML =
+    '<div class="attn-msg-modal" role="dialog" aria-modal="true" aria-label="Expanded patient thread">' +
+      '<div class="attn-msg-modal-hdr">' +
+        '<div>' +
+          '<div class="attn-msg-modal-title" id="attnMsgModalTitle">Patient</div>' +
+          '<div class="attn-msg-modal-sub">Patient Communication</div>' +
+        '</div>' +
+        '<button class="attn-msg-modal-close" onclick="_closeAttnMsgModal()" aria-label="Close">&times;</button>' +
+      '</div>' +
+      '<div class="attn-msg-modal-list" id="attnMsgModalList"></div>' +
+      '<div class="attn-msg-modal-comp">' +
+        '<textarea class="attn-msg-modal-in" id="attnMsgModalInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendAttnMsgFromModal();}" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,140)+\'px\';"></textarea>' +
+        '<button class="attn-msg-modal-send" onclick="_sendAttnMsgFromModal()">Send</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) _closeAttnMsgModal();
+  });
+}
+
+function _openAttnMsgModal(consultId, userId, patientName) {
+  _ensureAttnMsgModal();
+  _attnMsgModalState.consultId = consultId;
+  _attnMsgModalState.userId = userId;
+  var overlay = document.getElementById('attnMsgModal');
+  var titleEl = document.getElementById('attnMsgModalTitle');
+  if (titleEl) titleEl.textContent = patientName || 'Patient';
+  // Mirror the current inline list into the modal list so the user sees
+  // instant content — then a fresh refresh replaces it with latest data.
+  var inlineList = document.getElementById('attn-msg-list-' + consultId);
+  var modalList = document.getElementById('attnMsgModalList');
+  if (inlineList && modalList) modalList.innerHTML = inlineList.innerHTML;
+  overlay.classList.add('open');
+  // Fresh fetch + scroll to bottom
+  if (typeof _refreshAttnMsgs === 'function') _refreshAttnMsgs(consultId, userId);
+  requestAnimationFrame(function() {
+    if (modalList) modalList.scrollTop = modalList.scrollHeight;
+    var inp = document.getElementById('attnMsgModalInput');
+    if (inp) inp.focus();
+  });
+}
+
+function _closeAttnMsgModal() {
+  var overlay = document.getElementById('attnMsgModal');
+  if (overlay) overlay.classList.remove('open');
+  _attnMsgModalState.consultId = null;
+  _attnMsgModalState.userId = null;
+  var inp = document.getElementById('attnMsgModalInput');
+  if (inp) { inp.value = ''; inp.style.height = ''; }
+}
+
+async function _sendAttnMsgFromModal() {
+  var state = _attnMsgModalState;
+  if (!state.consultId || !state.userId) return;
+  var modalIn = document.getElementById('attnMsgModalInput');
+  var inlineIn = document.getElementById('attn-msg-input-' + state.consultId);
+  if (!modalIn) return;
+  var text = modalIn.value.trim();
+  if (!text) return;
+  // Push text into the inline input so the existing _sendAttnMsg pipeline
+  // handles DB insert, optimistic UI, and notifications exactly once.
+  if (inlineIn) {
+    inlineIn.value = text;
+    if (typeof _sendAttnMsg === 'function') await _sendAttnMsg(state.consultId);
+  }
+  modalIn.value = '';
+  modalIn.style.height = '';
+  // Sync modal list from inline list after send
+  var inlineList = document.getElementById('attn-msg-list-' + state.consultId);
+  var modalList = document.getElementById('attnMsgModalList');
+  if (inlineList && modalList) {
+    modalList.innerHTML = inlineList.innerHTML;
+    modalList.scrollTop = modalList.scrollHeight;
+  }
 }
 
 async function loadLiveConsultsSection() {

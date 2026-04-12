@@ -1549,9 +1549,20 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-body{display:none;padding:0;border-top:1px solid var(--border);}
 .cl-attn-card.expanded .cl-attn-card-body{display:block;}
 /* ── Clinician Review Workspace ── */
-.crw{display:grid;grid-template-columns:1fr 380px;gap:0;font-family:'Inter',sans-serif;position:relative;}
-.crw-left{padding:32px;background:#0B0B0C;position:relative;min-width:0;}
-.crw-right{display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;align-self:stretch;min-width:340px;}
+.crw{display:grid;grid-template-columns:1fr 380px;grid-template-areas:"left right" "bottom bottom";gap:0;font-family:'Inter',sans-serif;position:relative;}
+.crw-left{grid-area:left;padding:32px;background:#0B0B0C;position:relative;min-width:0;}
+.crw-right{grid-area:right;display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;min-width:340px;}
+.crw-bottom{grid-area:bottom;padding:0 32px 24px;background:#0B0B0C;}
+/* Wide prescribed / declined outcome card — stretches across both columns
+   so the rows can sit in a horizontal grid instead of stacking vertically. */
+.crw-outcome{border-radius:12px;padding:20px 24px;margin-top:16px;}
+.crw-outcome-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
+.crw-outcome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px 24px;}
+.crw-outcome-cell{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.crw-outcome-lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.4);}
+.crw-outcome-val{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:#fff;word-break:break-word;}
+.crw-outcome-notes{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);}
+.crw-outcome-notes .crw-outcome-lbl{margin-bottom:6px;}
 .crw-right-msg{flex:none;display:flex;flex-direction:column;overflow:hidden;margin-bottom:16px;}
 .crw-right-details{flex:none;border:1px solid #2A2A30;border-radius:10px;padding:16px 20px;overflow:visible;background:#0D0D0F;margin:0;}
 .crw-right-details .crw-det-grid{grid-template-columns:1fr 1fr;}
@@ -1608,7 +1619,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .crw-msg-btn{background:#22C55E;border:none;border-radius:8px;height:40px;padding:0 16px;margin-left:0;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#FFFFFF;cursor:pointer;transition:opacity .15s;}
 .crw-msg-btn:hover{opacity:0.85;}
 @media(max-width:1200px){.crw{grid-template-columns:1fr 340px;}.crw-right{min-width:340px;}}
-@media(max-width:900px){.crw{grid-template-columns:1fr;}.crw-right{border-left:none;border-top:1px solid #1F1F23;max-height:500px;}.crw-det-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:900px){.crw{grid-template-columns:1fr;grid-template-areas:"left" "right" "bottom";}.crw-right{border-left:none;border-top:1px solid #1F1F23;max-height:500px;}.crw-det-grid{grid-template-columns:1fr 1fr;}.crw-bottom{padding:0 20px 20px;}}
 .cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
 /* ── Consult Reminder Popup ── */
 .consult-reminder-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:crFadeIn .25s ease;}
@@ -2700,6 +2711,16 @@ body.clinician-mode .portal-main div[style*="color:var(--grey2)"]{color:#111111 
 /* ── FORCE OVERRIDE: eliminate ALL remaining dark backgrounds ── */
 body.clinician-mode .crw-left{background:var(--cl-high) !important;}
 body.clinician-mode .crw-right{background:var(--cl-high) !important;border-left:1px solid var(--cl-border) !important;}
+body.clinician-mode .crw-bottom{background:var(--cl-high) !important;padding:0 24px 20px !important;}
+body.clinician-mode .crw-outcome{border:1px solid var(--cl-border) !important;background:var(--cl-mid) !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+body.clinician-mode .crw-outcome.crw-outcome-prescribed{border:2px solid rgba(29,185,84,0.45) !important;background:rgba(29,185,84,0.04) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-declined{border:2px solid rgba(229,62,62,0.45) !important;background:rgba(229,62,62,0.04) !important;}
+body.clinician-mode .crw-outcome-title{color:var(--cl-text2) !important;border-bottom-color:rgba(0,0,0,0.08) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-prescribed .crw-outcome-title{color:#1DB954 !important;border-bottom-color:rgba(29,185,84,0.2) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-declined .crw-outcome-title{color:#E53E3E !important;border-bottom-color:rgba(229,62,62,0.2) !important;}
+body.clinician-mode .crw-outcome-lbl{color:var(--cl-text3) !important;}
+body.clinician-mode .crw-outcome-val{color:var(--cl-text) !important;}
+body.clinician-mode .crw-outcome-notes{border-top-color:rgba(0,0,0,0.06) !important;}
 body.clinician-mode .crw-right-msg{background:var(--cl-high) !important;flex:1 !important;margin-bottom:12px !important;display:flex !important;flex-direction:column !important;max-height:400px !important;overflow:hidden !important;}
 /* ── CRW right column fix ── */
 body.clinician-mode .crw-right-details{background:var(--cl-mid) !important;border:1px solid rgba(0,0,0,0.14) !important;border-radius:10px !important;overflow:visible !important;max-height:none !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
@@ -6313,8 +6334,57 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var consultReviewStatus = res.data[0].review_status || 'pending_review';
     var pCls='crw-btn crw-btn-grn',dCls='crw-btn crw-btn-red',cCls='crw-btn crw-btn-blu';
 
+    // Once a decision has been made (prescribed or declined), the Submitted
+    // timing + Overdue flag are no longer meaningful and get hidden.
+    var isDecided = (consultReviewStatus === 'prescribed' || consultReviewStatus === 'not_prescribed');
+
     // Detail field
     function _df(l,v){return '<div><div class="crw-det-lbl">'+l+'</div><div class="crw-det-val">'+escapeHtml(v)+'</div></div>';}
+
+    // Build the wide outcome block (Prescribed / Declined) separately from the
+    // crw-left column so it can stretch across both columns below the review.
+    function _outcomeCell(lbl, val) {
+      if (!val && val !== 0) return '';
+      return '<div class="crw-outcome-cell"><div class="crw-outcome-lbl">'+escapeHtml(lbl)+'</div><div class="crw-outcome-val">'+escapeHtml(val)+'</div></div>';
+    }
+    var bottomHtml = '';
+    if (consultReviewStatus === 'prescribed') {
+      var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+      var protoAssigned = consultRow.protocol_assigned || d.assigned_protocol || d.protocol_assigned || 'Not specified';
+      var evalDate = (consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      var _da = consultRow.dose_amount || _le.dose_amount || d.dose_amount || '';
+      var _du = consultRow.dose_unit || _le.dose_unit || d.dose_unit || '';
+      var doseInfo = [_da, _du].filter(Boolean).join(' ') || '—';
+      var freqInfo = consultRow.frequency || _le.frequency || d.frequency || '—';
+      var timingInfo = consultRow.timing || _le.timing || d.timing || '';
+      var durInfo = consultRow.duration || _le.duration || d.duration || '—';
+      var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
+      bottomHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
+        '<div class="crw-outcome-title">Prescribed</div>'+
+        '<div class="crw-outcome-grid">'+
+          _outcomeCell('Protocol', protoAssigned)+
+          _outcomeCell('Dose', doseInfo)+
+          _outcomeCell('Frequency', freqInfo)+
+          (timingInfo ? _outcomeCell('Timing', timingInfo) : '')+
+          _outcomeCell('Duration', durInfo)+
+          _outcomeCell('Evaluated', evalDate)+
+        '</div>'+
+        (otherNotes ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Notes</div><div class="crw-outcome-val">'+escapeHtml(otherNotes)+'</div></div>' : '')+
+      '</div>';
+    } else if (consultReviewStatus === 'not_prescribed') {
+      var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+      var declineReason = consultRow.no_prescription_reason || _le2.no_prescription_reason || d.no_prescription_reason || 'No reason provided';
+      var declineNotes = consultRow.session_notes || consultRow.other_notes || _le2.session_notes || _le2.other_notes || d.session_notes || d.clinician_notes || '';
+      var evalDate2 = (consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      bottomHtml = '<div class="crw-outcome crw-outcome-declined">'+
+        '<div class="crw-outcome-title">Declined</div>'+
+        '<div class="crw-outcome-grid">'+
+          _outcomeCell('Reason', declineReason)+
+          _outcomeCell('Evaluated', evalDate2)+
+        '</div>'+
+        (declineNotes ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Notes</div><div class="crw-outcome-val">'+escapeHtml(declineNotes)+'</div></div>' : '')+
+      '</div>';
+    }
 
     // HTML
     var html='<div class="crw">'+
@@ -6325,9 +6395,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<span>'+escapeHtml(d.sex||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           (heightStr&&heightStr!=='\u2014'?'<span>'+escapeHtml(heightStr)+'</span><span class="crw-meta-sep">\u00B7</span>':'')+
           (d.current_weight?'<span>'+escapeHtml(d.current_weight)+' lbs</span><span class="crw-meta-sep">\u00B7</span>':'')+
-          '<span>'+escapeHtml(d.state||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
-          '<span>Submitted '+subRel+'</span>'+
-          (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')+
+          '<span>'+escapeHtml(d.state||'\u2014')+'</span>'+
+          (isDecided ? '' : (
+            '<span class="crw-meta-sep">\u00B7</span>'+
+            '<span>Submitted '+subRel+'</span>'+
+            (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')
+          ))+
         '</div>'+
         riskHtml+
         '<div class="crw-section">'+
@@ -6346,56 +6419,22 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
         '</div>'+
         (function(){
-          // Post-decision: show outcome card instead of action buttons
-          if (consultReviewStatus === 'prescribed') {
-            // Read from top-level consultation columns first, fall back to JSONB data
-            var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
-            var protoAssigned = consultRow.protocol_assigned || d.assigned_protocol || d.protocol_assigned || 'Not specified';
-            var evalDate = (consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-            var _da = consultRow.dose_amount || _le.dose_amount || d.dose_amount || '';
-            var _du = consultRow.dose_unit || _le.dose_unit || d.dose_unit || '';
-            var doseInfo = [_da, _du].filter(Boolean).join(' ') || '—';
-            var freqInfo = consultRow.frequency || _le.frequency || d.frequency || '—';
-            var timingInfo = consultRow.timing || _le.timing || d.timing || '';
-            var durInfo = consultRow.duration || _le.duration || d.duration || '—';
-            var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
-            return '<div class="crw-section" style="border:2px solid #1DB954;background:rgba(29,185,84,0.04);">'+
-              '<div class="crw-section-title" style="color:#1DB954;border-bottom-color:rgba(29,185,84,0.15);">Prescribed</div>'+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Protocol</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(protoAssigned)+'</div></div>'+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Dose</div><div class="crw-clin-val">'+escapeHtml(doseInfo)+'</div></div>'+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Frequency</div><div class="crw-clin-val">'+escapeHtml(freqInfo)+'</div></div>'+
-              (timingInfo ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Timing</div><div class="crw-clin-val">'+escapeHtml(timingInfo)+'</div></div>' : '')+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Duration</div><div class="crw-clin-val">'+escapeHtml(durInfo)+'</div></div>'+
-              (otherNotes ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Notes</div><div class="crw-clin-val">'+escapeHtml(otherNotes)+'</div></div>' : '')+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Evaluated</div><div class="crw-clin-val">'+escapeHtml(evalDate)+'</div></div>'+
-            '</div>';
-          } else if (consultReviewStatus === 'not_prescribed') {
-            var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
-            var declineReason = consultRow.no_prescription_reason || _le2.no_prescription_reason || d.no_prescription_reason || 'No reason provided';
-            var declineNotes = consultRow.session_notes || consultRow.other_notes || _le2.session_notes || _le2.other_notes || d.session_notes || d.clinician_notes || '';
-            var evalDate2 = (consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-            return '<div class="crw-section" style="border:2px solid #E53E3E;background:rgba(229,62,62,0.04);">'+
-              '<div class="crw-section-title" style="color:#E53E3E;border-bottom-color:rgba(229,62,62,0.15);">Declined</div>'+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Reason</div><div class="crw-clin-val" style="font-weight:600;">'+escapeHtml(declineReason)+'</div></div>'+
-              (declineNotes ? '<div class="crw-clin-row"><div class="crw-clin-lbl">Notes</div><div class="crw-clin-val">'+escapeHtml(declineNotes)+'</div></div>' : '')+
-              '<div class="crw-clin-row"><div class="crw-clin-lbl">Evaluated</div><div class="crw-clin-val">'+escapeHtml(evalDate2)+'</div></div>'+
-            '</div>';
-          } else {
-            // Pre-decision: show action buttons
-            return '<div class="crw-actions">'+
-              '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
-              '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
-              (function(){
-                if (consultReviewStatus === 'live_consult_requested') {
-                  return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
-                } else if (consultReviewStatus === 'live_consult_scheduled') {
-                  return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
-                } else {
-                  return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
-                }
-              })()+
-            '</div>';
-          }
+          // Pre-decision only: show action buttons. Prescribed/declined render
+          // in the full-width .crw-bottom row below both columns.
+          if (isDecided) return '';
+          return '<div class="crw-actions">'+
+            '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
+            '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
+            (function(){
+              if (consultReviewStatus === 'live_consult_requested') {
+                return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(59,130,246,0.3);color:rgba(120,160,255,0.7);cursor:default;opacity:0.8;">Consult Requested</span>';
+              } else if (consultReviewStatus === 'live_consult_scheduled') {
+                return '<span class="crw-btn" style="background:transparent;border:1px solid rgba(58,122,92,0.3);color:rgba(120,200,150,0.7);cursor:default;opacity:0.8;">Consult Scheduled</span>';
+              } else {
+                return '<button class="'+cCls+'" onclick="_attnRequestLive(\''+consultId+'\',\''+userId+'\')">Request Live Consult</button>';
+              }
+            })()+
+          '</div>';
         })()+
         '<div id="attn-action-area-'+consultId+'"></div>'+
       '</div>'+
@@ -6423,6 +6462,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>'+
         '</div>'+
       '</div>'+
+      (bottomHtml ? '<div class="crw-bottom">'+bottomHtml+'</div>' : '')+
     '</div>';
 
     bodyEl.innerHTML=html;

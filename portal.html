@@ -240,8 +240,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cal-icon{display:none;align-items:center;justify-content:center;margin-top:4px;}
 .cal-icon svg{width:22px;height:22px;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;}
 .cal-num{font-size:13px;font-weight:600;line-height:1;}
-.streak-row{display:flex;align-items:center;gap:32px;padding-top:18px;border-top:1px solid var(--border);}
-.streak-block{text-align:left;}
+.streak-row{display:flex;align-items:center;justify-content:center;gap:56px;padding-top:22px;margin-top:20px;border-top:1px solid var(--border);}
+.streak-block{text-align:center;}
 .streak-num{font-family:'Inter',sans-serif;font-size:20px;font-weight:500;color:#fff;line-height:1;}
 .streak-lbl{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-top:4px;}
 
@@ -3096,7 +3096,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             </div>
             <div class="streak-block">
               <div class="streak-num" id="consistencyNum">—</div>
-              <div class="streak-lbl">Monthly Rate</div>
+              <div class="streak-lbl">On-Time Rate</div>
             </div>
             <div class="streak-block">
               <div class="streak-num" id="totalLogged">—</div>
@@ -11099,18 +11099,26 @@ function renderCalendar() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Stats
+  // Stats — On-time rate spans the ENTIRE protocol period, not just this month
   var streak = calcStreak(loggedDates);
-  var daysInMonth = lastDay.getDate();
-  var activeDays = 0; var loggedInMonth = 0;
-  for (var i = 1; i <= daysInMonth; i++) {
-    var checkDate = new Date(_trackerYear, _trackerMonth, i);
-    if (checkDate > today) break;
-    if (protoStart && checkDate < protoStart) continue;
-    activeDays++;
-    if (loggedSet.has(localDateStr(checkDate))) loggedInMonth++;
+  var rate = 0;
+  if (protoStart) {
+    var daysSinceStart = Math.floor((today.getTime() - protoStart.getTime()) / 86400000) + 1;
+    if (daysSinceStart > 0) {
+      // Count logged doses since protoStart
+      var loggedSincePeriod = 0;
+      loggedDates.forEach(function(d) {
+        var dd = new Date(d + 'T00:00:00');
+        if (dd >= protoStart && dd <= today) loggedSincePeriod++;
+      });
+      // Factor in frequency per day (from prescribed evaluation)
+      var freqPerDay = _parseFreqPerDay(window._protoFreq) || 1;
+      var scheduled = Math.max(1, Math.round(daysSinceStart * freqPerDay));
+      rate = Math.min(100, Math.round((loggedSincePeriod / scheduled) * 100));
+    }
+  } else if (loggedDates.length > 0) {
+    rate = 100; // no protocol start known — show 100% if logged
   }
-  var rate = activeDays > 0 ? Math.round((loggedInMonth / activeDays) * 100) : 0;
 
   var el = function(id){ return document.getElementById(id); };
   if (el('streakNum')) el('streakNum').textContent = streak;

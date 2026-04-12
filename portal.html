@@ -196,9 +196,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cal-cell.missed .cal-num{color:rgba(180,60,50,0.7);}
 .cal-cell.missed:hover{background:rgba(200,80,70,0.14);border-color:rgba(200,80,70,0.35);}
 /* Missed hover tooltip */
-.cal-cell.missed .cal-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:500;white-space:nowrap;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
-.cal-cell.missed .cal-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a1a;}
-.cal-cell.missed:hover .cal-tooltip{display:block;}
+.cal-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:500;white-space:nowrap;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.cal-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a1a;}
+.cal-cell.missed:hover .cal-tooltip,.cal-cell.today-pending:hover .cal-tooltip{display:block;}
 /* Disabled (before protocol) */
 .cal-cell.disabled{background:rgba(0,0,0,0.02);border-color:transparent;color:rgba(0,0,0,0.12);cursor:default;}
 /* Empty (outside month) */
@@ -10600,7 +10600,7 @@ function renderCalendar() {
     } else if (isToday && !isLogged) {
       // Today, not yet logged — pulsing, clickable
       cell.className = 'cal-cell today-pending';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#2F6F55" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span>';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#2F6F55" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span><div class="cal-tooltip">Log dose</div>';
       cell.onclick = function() { logDose(); };
     } else if (isLogged) {
       // Past day, logged — solid green

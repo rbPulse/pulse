@@ -174,14 +174,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .log-card-logged{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.1em;color:var(--green);}
 .cal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .cal-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
-.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
-.cal-dow{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.2);text-align:center;padding-bottom:4px;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.cal-cell{aspect-ratio:1;border-radius:5px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:9px;color:rgba(255,255,255,0.22);transition:background .15s;}
-.cal-cell.logged{background:rgba(58,122,92,0.25);border-color:rgba(58,122,92,0.4);color:rgba(100,200,150,0.85);}
-.cal-cell.today{border-color:rgba(255,255,255,0.24);color:rgba(255,255,255,0.55);}
-.cal-cell.today.logged{border-color:rgba(58,122,92,0.65);}
-.cal-cell.empty{background:transparent;border-color:transparent;color:transparent;}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
+.cal-dow{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.04em;color:rgba(0,0,0,0.3);text-align:center;padding-bottom:6px;font-weight:500;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-cell{aspect-ratio:1;border-radius:8px;background:var(--m-card,#FBFAF6);border:1px solid var(--m-border,rgba(0,0,0,0.06));display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--m-text,#1a1a1a);transition:all .15s;position:relative;cursor:default;}
+.cal-cell.logged{background:#2F6F55;border-color:#2F6F55;color:#fff;}
+.cal-cell.logged .cal-check{display:block;}
+.cal-check{display:none;font-size:9px;margin-top:2px;opacity:0.7;}
+.cal-cell.today{border-color:#2F6F55;border-width:2px;}
+.cal-cell.today.logged{border-color:#245a45;}
+.cal-cell.missed{background:var(--m-card,#FBFAF6);border:1px dashed rgba(200,80,80,0.3);cursor:pointer;}
+.cal-cell.missed:hover{background:rgba(200,80,80,0.04);border-color:rgba(200,80,80,0.5);}
+.cal-cell.missed .cal-miss{display:block;}
+.cal-miss{display:none;font-size:7px;color:rgba(200,80,80,0.5);margin-top:1px;}
+.cal-cell.disabled{background:transparent;border-color:transparent;color:rgba(0,0,0,0.12);cursor:default;}
+.cal-cell.empty{background:transparent;border-color:transparent;color:transparent;cursor:default;}
+.cal-cell.future{background:var(--m-bg2,#F5F4EF);border-color:rgba(0,0,0,0.04);color:rgba(0,0,0,0.2);}
 .streak-row{display:flex;align-items:center;gap:32px;padding-top:18px;border-top:1px solid var(--border);}
 .streak-block{text-align:left;}
 .streak-num{font-family:'Inter',sans-serif;font-size:20px;font-weight:500;color:#fff;line-height:1;}
@@ -2776,17 +2784,19 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
         </div>
 
-        <!-- Calendar -->
+        <!-- Month Calendar -->
         <div class="cal-card">
-          <div class="cal-label">Last 28 Days</div>
-          <div class="cal-scroll-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <button onclick="_trackerNavMonth(-1)" style="background:none;border:1px solid var(--m-border,rgba(0,0,0,0.08));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">←</button>
+            <div id="trackerMonthLabel" style="font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:0.02em;"></div>
+            <button onclick="_trackerNavMonth(1)" style="background:none;border:1px solid var(--m-border,rgba(0,0,0,0.08));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">→</button>
+          </div>
           <div class="cal-dow-row">
-            <div class="cal-dow">S</div><div class="cal-dow">M</div><div class="cal-dow">T</div>
-            <div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div>
-            <div class="cal-dow">S</div>
+            <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+            <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div>
+            <div class="cal-dow">Sa</div>
           </div>
           <div class="cal-grid" id="calGrid"></div>
-          </div><!-- end cal-scroll-wrap -->
           <div class="streak-row">
             <div class="streak-block">
               <div class="streak-num" id="streakNum">—</div>
@@ -2794,7 +2804,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             </div>
             <div class="streak-block">
               <div class="streak-num" id="consistencyNum">—</div>
-              <div class="streak-lbl">28-Day Rate</div>
+              <div class="streak-lbl">Monthly Rate</div>
             </div>
             <div class="streak-block">
               <div class="streak-num" id="totalLogged">—</div>
@@ -8089,6 +8099,7 @@ function populatePortal(user, consultation, greeting) {
       window._protoFreq = _le.frequency || consultation.frequency || d.frequency || null;
       window._protoTiming = _le.timing || consultation.timing || d.timing || null;
       window._protoDuration = _le.duration || consultation.duration || d.duration || null;
+      window._protoStartDate = consultation.created_at || null;
     } else if (assignedProtoStr === 'no prescription' || (!purchaseDone && rxGiven === false)) {
       hasPendingReview = false;
       proto = null;
@@ -10504,83 +10515,109 @@ async function loadDoseLogs() {
   }
 }
 
+var _trackerMonth = new Date().getMonth();
+var _trackerYear = new Date().getFullYear();
+
+function _trackerNavMonth(dir) {
+  _trackerMonth += dir;
+  if (_trackerMonth > 11) { _trackerMonth = 0; _trackerYear++; }
+  if (_trackerMonth < 0) { _trackerMonth = 11; _trackerYear--; }
+  renderCalendar();
+}
+
 function renderCalendar() {
   var grid = document.getElementById('calGrid');
   if (!grid) return;
   grid.innerHTML = '';
 
-  // Show tracker empty state when no doses logged yet
-  var trackerEmpty = document.getElementById('trackerEmpty');
-  if (loggedDates.length === 0) {
-    if (!trackerEmpty) {
-      var calCard = grid.closest('.cal-card');
-      if (calCard) {
-        var emp = document.createElement('div');
-        emp.id = 'trackerEmpty';
-        emp.className = 'cl-empty';
-        emp.innerHTML = '<div style="margin-bottom:10px;">' + _emptyIcons.clipboard + '</div>' +
-          '<div class="inline-empty-title">No doses logged yet.</div>' +
-          '<div class="inline-empty-sub">Tap "Log Dose" above to start tracking your protocol.</div>';
-        calCard.appendChild(emp);
-      }
-    }
-  } else {
-    if (trackerEmpty) trackerEmpty.remove();
-  }
-
   var today = new Date(); today.setHours(0,0,0,0);
   var todayStr = localDateStr(today);
-
-  // Window = last 28 days
-  var windowStart = new Date(today); windowStart.setDate(windowStart.getDate() - 27);
-
-  // Grid starts on the Sunday on or before windowStart
-  var gridStart = new Date(windowStart); gridStart.setDate(gridStart.getDate() - gridStart.getDay());
-
-  // Grid ends on the Saturday on or after today
-  var gridEnd = new Date(today); gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
-
   var loggedSet = new Set(loggedDates);
+
+  // Determine prescription start date
+  var protoStart = null;
+  if (window._protoStartDate) {
+    protoStart = new Date(window._protoStartDate); protoStart.setHours(0,0,0,0);
+  }
+
+  // Month label
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var labelEl = document.getElementById('trackerMonthLabel');
+  if (labelEl) labelEl.textContent = monthNames[_trackerMonth] + ' ' + _trackerYear;
+
+  // First and last day of month
+  var firstDay = new Date(_trackerYear, _trackerMonth, 1);
+  var lastDay = new Date(_trackerYear, _trackerMonth + 1, 0);
+
+  // Grid starts on Sunday before first day
+  var gridStart = new Date(firstDay); gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  // Grid ends on Saturday after last day
+  var gridEnd = new Date(lastDay); gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
 
   var d = new Date(gridStart);
   while (d <= gridEnd) {
     var dStr = localDateStr(d);
-    var inWindow = d >= windowStart && d <= today;
     var cell = document.createElement('div');
+    var inMonth = d.getMonth() === _trackerMonth && d.getFullYear() === _trackerYear;
+    var isPast = d < today;
+    var isToday = dStr === todayStr;
+    var isLogged = loggedSet.has(dStr);
+    var beforeProto = protoStart && d < protoStart;
+    var isFuture = d > today;
 
-    if (!inWindow) {
+    if (!inMonth) {
       cell.className = 'cal-cell empty';
+    } else if (beforeProto) {
+      cell.className = 'cal-cell disabled';
+      cell.textContent = d.getDate();
+    } else if (isFuture) {
+      cell.className = 'cal-cell future';
+      cell.textContent = d.getDate();
+    } else if (isLogged) {
+      cell.className = 'cal-cell logged';
+      if (isToday) cell.classList.add('today');
+      cell.innerHTML = d.getDate() + '<span class="cal-check">✓</span>';
+    } else if (isPast || isToday) {
+      // Missed dose day (past, not logged)
+      if (isToday) {
+        cell.className = 'cal-cell today';
+        cell.textContent = d.getDate();
+      } else {
+        cell.className = 'cal-cell missed';
+        cell.innerHTML = d.getDate() + '<span class="cal-miss">+ log</span>';
+        (function(dateStr) {
+          cell.onclick = function() { _logPastDose(dateStr); };
+        })(dStr);
+      }
     } else {
       cell.className = 'cal-cell';
-      if (loggedSet.has(dStr)) cell.classList.add('logged');
-      if (dStr === todayStr) cell.classList.add('today');
       cell.textContent = d.getDate();
     }
     grid.appendChild(cell);
     d.setDate(d.getDate() + 1);
   }
 
-  // Streak — use shared calcStreak utility
+  // Stats
   var streak = calcStreak(loggedDates);
-
-  // 28-day consistency
-  var logged28 = 0;
-  for (var i = 0; i < 28; i++) {
-    var c = new Date(today); c.setDate(c.getDate() - i);
-    if (loggedSet.has(localDateStr(c))) logged28++;
+  var daysInMonth = lastDay.getDate();
+  var activeDays = 0; var loggedInMonth = 0;
+  for (var i = 1; i <= daysInMonth; i++) {
+    var checkDate = new Date(_trackerYear, _trackerMonth, i);
+    if (checkDate > today) break;
+    if (protoStart && checkDate < protoStart) continue;
+    activeDays++;
+    if (loggedSet.has(localDateStr(checkDate))) loggedInMonth++;
   }
+  var rate = activeDays > 0 ? Math.round((loggedInMonth / activeDays) * 100) : 0;
 
   var el = function(id){ return document.getElementById(id); };
   if (el('streakNum')) el('streakNum').textContent = streak;
-  if (el('consistencyNum')) el('consistencyNum').textContent = Math.round((logged28/28)*100) + '%';
+  if (el('consistencyNum')) el('consistencyNum').textContent = rate + '%';
   if (el('totalLogged')) el('totalLogged').textContent = loggedDates.length;
 
-  // Overview streak stat card
   _syncStreakToOverview(streak);
-  // Legacy tile (hidden)
   if (el('streakTile') && streak > 0) el('streakTile').style.display = '';
 
-  // Keep Next Dose card in sync (may run after populatePortal if dose_logs load late)
   if (window._userProto) {
     var nextDoseEl2 = el('ovNextDose');
     var nextDoseSubEl2 = el('ovNextDoseSub');
@@ -10588,6 +10625,22 @@ function renderCalendar() {
     if (nextDoseEl2) nextDoseEl2.textContent = loggedTodayNow ? 'Today \u2713' : 'Tomorrow';
     if (nextDoseSubEl2) nextDoseSubEl2.textContent = loggedTodayNow ? 'Dose logged' : 'Next scheduled dose';
   }
+}
+
+async function _logPastDose(dateStr) {
+  if (!currentUserId || PREVIEW_MODE) return;
+  try {
+    var res = await db.from('dose_logs').upsert({
+      user_id: currentUserId,
+      protocol: window._userProto || null,
+      dose_date: dateStr,
+      logged_at: new Date().toISOString()
+    }, { onConflict: 'user_id,dose_date' });
+    if (res.error) { showToast('Failed to log dose.'); return; }
+    if (loggedDates.indexOf(dateStr) === -1) loggedDates.push(dateStr);
+    renderCalendar();
+    showToast('Dose logged for ' + new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) + '.');
+  } catch(e) { showToast('Failed to log dose.'); }
 }
 
 function checkTodayLogged() {

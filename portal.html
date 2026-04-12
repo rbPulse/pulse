@@ -1271,9 +1271,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     overflow-y: auto;
   }
   .msg-compose-row { padding-top: 8px; gap: 8px; align-items: flex-end; }
-  /* Tighten the eyebrow/title above the card so more room is left for bubbles */
+  /* Tighten the eyebrow/title above the card so more room is left for bubbles.
+     Keep the title at the same 22px as other member tabs for uniformity. */
   #tab-messages .tab-eyebrow { margin-bottom: 4px; font-size: 10px; }
-  #tab-messages .tab-title { margin-bottom: 10px; font-size: 20px; }
+  #tab-messages .tab-title { margin-bottom: 10px; font-size: 22px; }
 }
 
 /* ── 31J: RESOURCES TAB — CARD PADDING REDUCTION ────────────────────────────
@@ -1747,6 +1748,12 @@ body.member-mode .portal-main{max-width:1080px;padding:40px 48px;}
 /* ── Cards (global) ── */
 body.member-mode .p-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);padding:28px;box-shadow:var(--m-shadow);}
 body.member-mode .p-card-sm{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius-sm);padding:20px;box-shadow:var(--m-shadow);}
+/* Unify card corner radii in member mode: large cards → --m-radius (20px),
+   smaller inline cards/stats → --m-radius-sm (14px). Removes the 12/14/16/20
+   mix that made cards feel like they came from different systems. */
+body.member-mode .mo-card{border-radius:var(--m-radius-sm);}
+body.member-mode .ov-stat,
+body.member-mode .stat-tile{border-radius:var(--m-radius-sm);}
 
 /* ── Tab headers ── */
 body.member-mode .tab-eyebrow{color:#2F6F55;font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.25em;font-weight:400;}
@@ -1816,8 +1823,11 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 
 /* ── Forms/inputs ── */
 body.member-mode .settings-input{background:var(--m-bg);border:1px solid var(--m-border);color:var(--m-text);font-family:'Inter',sans-serif;border-radius:var(--m-radius-btn);}
+body.member-mode .settings-input[readonly]{opacity:0.55;cursor:not-allowed;background:var(--m-bg2,#f2ede3);}
+body.member-mode .settings-input[readonly]:focus{border-color:var(--m-border);box-shadow:none;}
+.settings-field-optional{font-family:'Inter',sans-serif;font-size:9px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;opacity:0.4;margin-left:4px;}
 body.member-mode .settings-input:focus{border-color:var(--m-green);box-shadow:0 0 0 3px rgba(70,185,122,0.08);}
-body.member-mode .settings-section-lbl{color:var(--m-text);font-family:'Inter',sans-serif;font-size:15px;font-weight:600;}
+/* .settings-section-lbl inherits the unified "card eyebrow" styles above */
 body.member-mode .settings-field label{color:var(--m-text2);font-family:'Inter',sans-serif;}
 body.member-mode .filter-bar{gap:8px;}
 body.member-mode .filter-pill{background:var(--m-card);border:1px solid var(--m-border);color:var(--m-text2);font-family:'Inter',sans-serif;font-size:13px;letter-spacing:0;text-transform:none;border-radius:999px;padding:8px 18px;transition:all .2s;}
@@ -1825,9 +1835,23 @@ body.member-mode .filter-pill:hover{border-color:var(--m-green-border);color:var
 body.member-mode .filter-pill.active{background:var(--m-green-tint);border-color:var(--m-green-border);color:#2F6F55;font-weight:500;}
 
 /* ── Buttons ── */
-body.member-mode .btn-green{background:#2F6F55;color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;border-radius:999px;padding:14px 32px;box-shadow:0 0 16px rgba(34,77,58,0.15);transition:all .25s;}
-body.member-mode .btn-green:hover{background:var(--m-green);box-shadow:0 0 24px rgba(70,185,122,0.25);}
-body.member-mode .btn-ghost{border:1px solid var(--m-border);color:var(--m-text2);font-family:'Inter',sans-serif;font-size:13px;letter-spacing:0;text-transform:none;border-radius:999px;background:var(--m-card);padding:12px 24px;transition:all .2s;}
+/* Primary/secondary member-mode buttons share the same padding, font-size,
+   letter-spacing and uppercase treatment so they visually line up as a pair. */
+body.member-mode .btn-green,
+body.member-mode .btn-ghost{
+  font-family:'Inter',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  border-radius:999px;
+  padding:13px 28px;
+  transition:all .25s;
+  cursor:pointer;
+}
+body.member-mode .btn-green{background:#2F6F55;color:#fff;border:1px solid #2F6F55;box-shadow:0 0 16px rgba(34,77,58,0.15);}
+body.member-mode .btn-green:hover{background:var(--m-green);border-color:var(--m-green);box-shadow:0 0 24px rgba(70,185,122,0.25);}
+body.member-mode .btn-ghost{background:var(--m-card);color:var(--m-text2);border:1px solid var(--m-border);}
 body.member-mode .btn-ghost:hover{border-color:var(--m-green-border);color:#2F6F55;background:var(--m-green-tint);}
 
 /* ── Misc overrides ── */
@@ -1861,7 +1885,32 @@ body.member-mode .proto-actions-text{color:var(--m-text2);}
 body.member-mode .proto-name{color:var(--m-text);font-family:'Inter',sans-serif;letter-spacing:-0.01em;}
 body.member-mode .proto-category-badge{background:var(--m-green-tint);border-color:var(--m-green-border);color:#2F6F55;}
 body.member-mode .compounds-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);box-shadow:var(--m-shadow);}
-body.member-mode .compounds-label{color:var(--m-text3);font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.15em;}
+/* Unified "card eyebrow" in member mode — every section header inside a card
+   (compounds-label, settings-section-lbl, mo-card-lbl) renders identically so
+   "Prescription" / "Your Appointments" / "Profile" read as peers. */
+body.member-mode .compounds-label,
+body.member-mode .settings-section-lbl,
+body.member-mode .mo-card-lbl{
+  color:var(--m-text2);
+  font-family:'Inter',sans-serif;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+/* Reusable "card header" — used for the person/entity block at the top of a
+   card (e.g. the Messages clinician row). Shared sizing across tabs so these
+   sub-headers feel consistent. */
+.card-header-row{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--m-border,rgba(0,0,0,0.06));}
+.card-header-title{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--m-text,#1a1a1a);letter-spacing:-0.01em;margin-bottom:2px;line-height:1.2;}
+.card-header-sub{font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:var(--m-text3,rgba(0,0,0,0.45));letter-spacing:0;}
+.card-header-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--m-text,#1a1a1a);letter-spacing:0.02em;}
+/* Shared calendar month-nav row (used by Tracker + Book-a-visit) */
+.calendar-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.calendar-nav-btn{background:none;border:1px solid var(--m-border,rgba(0,0,0,0.08));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;font-family:'Inter',sans-serif;transition:border-color .2s,background .2s;}
+.calendar-nav-btn:hover{border-color:var(--m-green-border,rgba(47,111,85,0.35));background:var(--m-green-tint,rgba(47,111,85,0.06));}
+.calendar-month-label{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:0.02em;color:var(--m-text,#1a1a1a);}
 body.member-mode .inline-empty-title{color:var(--m-text) !important;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;}
 body.member-mode .inline-empty-sub{color:var(--m-text3) !important;font-family:'Inter',sans-serif;font-size:13px;margin-top:6px;}
 body.member-mode .cl-empty{color:var(--m-text2);}
@@ -2120,15 +2169,18 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
   /* Hide legacy desktop-style cards on mobile */
   body.member-mode #tab-overview .m-hero{display:none !important;}
   body.member-mode #tab-overview .m-grid{display:none !important;}
-  /* Tighten tab header on mobile overview */
-  body.member-mode #tab-overview .tab-eyebrow{margin-bottom:4px;font-size:10px;}
-  body.member-mode #tab-overview .tab-title{font-size:22px;margin-bottom:18px;}
+  /* ── Unified member-mode tab header on mobile ───────────────────────── */
+  /* Every member tab's eyebrow/title renders at the same size regardless of
+     which tab you're on — fixes the prior 20px/22px drift. */
+  body.member-mode .portal-tab .tab-eyebrow{margin-bottom:4px;font-size:10px;}
+  body.member-mode .portal-tab .tab-title{font-size:22px;margin-bottom:18px;}
+  body.member-mode #tab-overview .tab-title{margin-bottom:18px;}
 
   /* ── Settings tab mobile compaction ─────────────────────────────────── */
   /* Remove the outer p-card "frame" so the inner settings-section sections are
      the only visible cards — prevents the nested double-card look. */
-  body.member-mode #tab-settings .tab-eyebrow{margin-bottom:3px !important;font-size:9px !important;letter-spacing:0.22em;}
-  body.member-mode #tab-settings .tab-title{font-size:20px !important;margin-bottom:14px !important;}
+  body.member-mode #tab-settings .tab-eyebrow{margin-bottom:4px !important;font-size:10px !important;letter-spacing:0.22em;}
+  body.member-mode #tab-settings .tab-title{font-size:22px !important;margin-bottom:14px !important;}
   body.member-mode #tab-settings .p-card{
     background:transparent !important;
     border:none !important;
@@ -3093,6 +3145,8 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
       <!-- ── PROTOCOL TAB ── -->
       <div class="portal-tab" id="tab-protocol">
+        <div class="tab-eyebrow">Your Protocol</div>
+        <div class="tab-title">Your prescribed protocol.</div>
         <!-- Empty state (shown by default, hidden when consultation loaded) -->
         <div id="protoEmpty" class="empty-state">
           <div class="empty-title">No protocol on file.</div>
@@ -3103,7 +3157,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <!-- Protocol content (hidden until loaded) -->
         <div id="protoContent" style="display:none;">
           <div class="proto-header-card">
-            <div class="tab-eyebrow">Your Protocol</div>
             <div class="proto-name" id="protoName">—</div>
             <div class="proto-meta">
               <span class="proto-prescribed" id="protoReviewed">—</span>
@@ -3216,10 +3269,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
         <!-- Month Calendar -->
         <div class="cal-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <button onclick="_trackerNavMonth(-1)" style="background:none;border:1px solid var(--m-border,rgba(0,0,0,0.08));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">←</button>
-            <div id="trackerMonthLabel" style="font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:0.02em;"></div>
-            <button onclick="_trackerNavMonth(1)" style="background:none;border:1px solid var(--m-border,rgba(0,0,0,0.08));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">→</button>
+          <div class="calendar-nav-row">
+            <button class="calendar-nav-btn" onclick="_trackerNavMonth(-1)">←</button>
+            <div id="trackerMonthLabel" class="calendar-month-label"></div>
+            <button class="calendar-nav-btn" onclick="_trackerNavMonth(1)">→</button>
           </div>
           <div class="cal-dow-row">
             <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
@@ -3295,10 +3348,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div style="margin-bottom:18px;">
             <div class="settings-field-lbl" style="margin-bottom:10px;">Select a Date</div>
             <div id="bookCalendarWrap" style="margin-bottom:16px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <button id="bookCalPrev" onclick="_bookCalNav(-1)" style="background:none;border:1px solid var(--m-border,rgba(20,20,20,0.06));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">←</button>
-                <span id="bookCalMonth" style="font-size:15px;font-weight:600;"></span>
-                <button id="bookCalNext" onclick="_bookCalNav(1)" style="background:none;border:1px solid var(--m-border,rgba(20,20,20,0.06));border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;color:inherit;">→</button>
+              <div class="calendar-nav-row">
+                <button id="bookCalPrev" class="calendar-nav-btn" onclick="_bookCalNav(-1)">←</button>
+                <span id="bookCalMonth" class="calendar-month-label"></span>
+                <button id="bookCalNext" class="calendar-nav-btn" onclick="_bookCalNav(1)">→</button>
               </div>
               <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:4px;" id="bookCalHdr"></div>
               <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;" id="bookCalGrid"></div>
@@ -3329,11 +3382,11 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="tab-title">Your care team.</div>
         <div class="p-card">
           <div class="thread-view active" id="consumerThreadView">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+            <div class="card-header-row">
               <div id="msgClAvatar" class="m-cl-avatar" style="width:42px;height:42px;">Dr</div>
               <div>
-                <div id="careTeamName" style="font-size:16px;font-weight:600;margin-bottom:3px;">Your Clinician</div>
-                <div id="careTeamSub" style="font-size:13px;opacity:0.55;">Your Clinician</div>
+                <div id="careTeamName" class="card-header-title">Your Clinician</div>
+                <div id="careTeamSub" class="card-header-sub">Your Clinician</div>
               </div>
             </div>
             <div class="msg-bubbles" id="consumerMsgBubbles"></div>
@@ -3371,7 +3424,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               </div>
               <div class="settings-field">
                 <label class="settings-field-lbl">Email</label>
-                <input class="settings-input" id="settingsEmail" type="email" readonly style="opacity:0.5;cursor:not-allowed;"/>
+                <input class="settings-input" id="settingsEmail" type="email" readonly/>
               </div>
             </div>
           </div>
@@ -3386,7 +3439,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <input class="settings-input" id="settingsStreet" type="text" placeholder="123 Main St" autocomplete="street-address" onblur="saveConsumerSettings()"/>
             </div>
             <div class="settings-field" style="margin-bottom:12px;">
-              <label class="settings-field-lbl">Apt / Suite <span style="opacity:0.4;font-size:9px;">(optional)</span></label>
+              <label class="settings-field-lbl">Apt / Suite <span class="settings-field-optional">(optional)</span></label>
               <input class="settings-input" id="settingsApt" type="text" placeholder="Apt 4B" autocomplete="address-line2" onblur="saveConsumerSettings()"/>
             </div>
             <div class="settings-grid">

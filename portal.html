@@ -475,10 +475,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .book-confirm-title{font-size:13px;font-weight:500;color:#2c2c2c;margin-bottom:3px;}
 .book-confirm-meta{font-family:'Inter',sans-serif;font-size:10px;color:#6b6b6b;line-height:1.6;}
 .consumer-appt-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:transparent;border:none;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.consumer-appt-filter-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
 .consumer-appt-filters{display:flex;gap:6px;flex-wrap:wrap;}
 .cappt-filter-pill{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid rgba(20,20,20,0.1);background:transparent;color:rgba(20,20,20,0.5);cursor:pointer;transition:all .15s;}
 .cappt-filter-pill:hover{border-color:rgba(20,20,20,0.22);color:rgba(20,20,20,0.75);}
 .cappt-filter-pill.active{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.3);color:#2F6F55;}
+.cappt-filter-select{display:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:8px 32px 8px 14px;border-radius:999px;border:1px solid rgba(47,111,85,0.3);background:rgba(47,111,85,0.08) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232F6F55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 12px center;color:#2F6F55;cursor:pointer;-webkit-appearance:none;appearance:none;outline:none;}
+@media(max-width:600px){
+  .consumer-appt-filters{display:none;}
+  .cappt-filter-select{display:block;}
+}
 .consumer-appt-row:last-child{border-bottom:none;}
 .consumer-appt-row:hover{background:rgba(255,255,255,0.025);}
 .consumer-appt-name{font-size:13px;font-weight:500;color:#fff;margin-bottom:2px;}
@@ -3128,13 +3134,18 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <!-- Your appointments (populated by JS, hidden when empty) -->
         <div id="consumerApptSection" style="display:none;">
           <div class="p-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+            <div class="consumer-appt-filter-row">
               <div class="compounds-label" style="margin-bottom:0;">Your Appointments</div>
               <div class="consumer-appt-filters" id="consumerApptFilters">
                 <button class="cappt-filter-pill active" data-filter="upcoming" onclick="_filterConsumerAppts('upcoming')">Upcoming</button>
                 <button class="cappt-filter-pill" data-filter="completed" onclick="_filterConsumerAppts('completed')">Completed</button>
                 <button class="cappt-filter-pill" data-filter="cancelled" onclick="_filterConsumerAppts('cancelled')">Cancelled</button>
               </div>
+              <select class="cappt-filter-select" id="consumerApptFilterSelect" onchange="_filterConsumerAppts(this.value)">
+                <option value="upcoming">Upcoming</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
             </div>
             <div id="consumerApptList" style="max-height:360px;overflow-y:auto;"></div>
           </div>
@@ -8010,6 +8021,9 @@ function _filterConsumerAppts(filter) {
   pills.forEach(function(p) {
     p.classList.toggle('active', p.getAttribute('data-filter') === filter);
   });
+  // Sync dropdown (mobile)
+  var sel = document.getElementById('consumerApptFilterSelect');
+  if (sel && sel.value !== filter) sel.value = filter;
   // Re-render with stored full list
   _renderConsumerApptList(window._consumerApptsAll || consumerAppts || []);
 }
@@ -8092,10 +8106,11 @@ function _renderConsumerApptList(appts) {
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
       '<div class="consumer-appt-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:0;">' +
-        '<div style="display:flex;align-items:center;width:100%;gap:12px;">' +
+        '<div style="display:flex;align-items:flex-start;width:100%;gap:12px;">' +
           '<div style="flex:1;min-width:0;">' +
             '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
-            '<div class="consumer-appt-meta">' + escapeHtml(a.date) + ' · ' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
+            '<div class="consumer-appt-meta">' + escapeHtml(a.date) + '</div>' +
+            '<div class="consumer-appt-meta consumer-appt-meta-sub">' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
           '</div>' +
           '<span class="appt-badge ' + statusClass + '">' + statusLabel + '</span>' +
         '</div>' +

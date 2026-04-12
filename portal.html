@@ -2973,10 +2973,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <!-- ─── 1. TODAY HERO CARD ─── -->
           <div class="mo-hero">
             <div class="mo-hero-eyebrow">Your Protocol</div>
-            <!-- Visual swap: protocol name now occupies the big slot, dose sits above it -->
-            <div class="mo-hero-proto" id="moDoseAmount">—</div>
             <div class="mo-hero-dose" id="moProtoName">Your Protocol</div>
             <div class="mo-hero-meta" id="moDoseMeta">—</div>
+            <!-- Legacy hidden element kept for JS compat; dose is now rendered in moDoseMeta -->
+            <div class="mo-hero-proto" id="moDoseAmount" style="display:none;"></div>
             <button class="mo-hero-cta" id="moHeroCta" onclick="logDose()">Log Dose</button>
             <div class="mo-hero-stats">
               <div class="mo-stat">
@@ -8664,10 +8664,11 @@ function _refreshOverviewData() {
   if (el) el.textContent = op.doseDesc || (freqPlain || '—');
   el = document.getElementById('moDoseMeta');
   if (el) {
-    // Dose cadence only — week/phase already shown in the stats row below.
+    // Cadence · dose — week/phase already shown in the stats row below.
     var parts = [];
-    if (freqPlain && op.doseDesc) parts.push(freqPlain);
-    el.textContent = parts.length ? parts.join(' · ') : (op.doseDesc ? '' : 'Dose scheduled');
+    if (freqPlain) parts.push(freqPlain);
+    if (op.doseDesc) parts.push(op.doseDesc);
+    el.textContent = parts.length ? parts.join(' · ') : 'Dose scheduled';
   }
   el = document.getElementById('moHeroCta');
   if (el) {

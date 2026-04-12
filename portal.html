@@ -177,22 +177,38 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
 .cal-dow{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.04em;color:rgba(0,0,0,0.3);text-align:center;padding-bottom:6px;font-weight:500;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
-.cal-cell{aspect-ratio:1;border-radius:8px;background:var(--m-card,#FBFAF6);border:1px solid var(--m-border,rgba(0,0,0,0.06));display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--m-text,#1a1a1a);transition:all .15s;position:relative;cursor:default;}
-.cal-cell.logged{background:#2F6F55;border-color:#2F6F55;color:#fff;}
-.cal-cell.logged .cal-check{display:block;}
-.cal-check{display:none;font-size:9px;margin-top:2px;opacity:0.7;}
-.cal-cell.today{border-color:#2F6F55;border-width:2px;}
-.cal-cell.today.logged{border-color:#245a45;}
-.cal-cell.missed{background:var(--m-card,#FBFAF6);border:1.5px solid rgba(200,100,80,0.25);cursor:pointer;position:relative;}
-.cal-cell.missed:hover{background:rgba(47,111,85,0.06);border-color:#2F6F55;}
-.cal-cell.missed .cal-miss{display:flex;}
-.cal-miss{display:none;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(200,100,80,0.12);margin-top:3px;}
-.cal-miss svg{width:10px;height:10px;stroke:rgba(200,100,80,0.6);stroke-width:2;}
-.cal-cell.missed:hover .cal-miss{background:rgba(47,111,85,0.15);}
-.cal-cell.missed:hover .cal-miss svg{stroke:#2F6F55;}
+/* Calendar cell states */
+.cal-cell{aspect-ratio:1;border-radius:10px;background:var(--m-card,#FBFAF6);border:1.5px solid var(--m-border,rgba(0,0,0,0.06));display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--m-text,#1a1a1a);transition:all .15s;position:relative;cursor:default;}
+/* Logged: solid green, checkmark */
+.cal-cell.logged{background:#2F6F55;border-color:#256b4a;color:#fff;box-shadow:0 2px 8px rgba(47,111,85,0.2);}
+.cal-cell.logged .cal-icon{display:flex;}
+.cal-cell.logged .cal-num{color:#fff;}
+/* Today not logged: pulsing green border, clear call to action */
+.cal-cell.today-pending{border:2.5px solid #2F6F55;background:rgba(47,111,85,0.06);cursor:pointer;animation:cal-pulse 2s ease-in-out infinite;}
+.cal-cell.today-pending .cal-icon{display:flex;}
+.cal-cell.today-pending:hover{background:rgba(47,111,85,0.12);}
+@keyframes cal-pulse{0%,100%{box-shadow:0 0 0 0 rgba(47,111,85,0);}50%{box-shadow:0 0 0 6px rgba(47,111,85,0.12);}}
+/* Today logged */
+.cal-cell.today-done{background:#2F6F55;border:2.5px solid #1d5a3e;color:#fff;box-shadow:0 2px 12px rgba(47,111,85,0.3);}
+.cal-cell.today-done .cal-icon{display:flex;}
+/* Missed: red tint background */
+.cal-cell.missed{background:rgba(200,80,70,0.08);border-color:rgba(200,80,70,0.2);cursor:pointer;}
+.cal-cell.missed .cal-num{color:rgba(180,60,50,0.7);}
+.cal-cell.missed:hover{background:rgba(200,80,70,0.14);border-color:rgba(200,80,70,0.35);}
+/* Missed hover tooltip */
+.cal-cell.missed .cal-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:500;white-space:nowrap;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.cal-cell.missed .cal-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a1a;}
+.cal-cell.missed:hover .cal-tooltip{display:block;}
+/* Disabled (before protocol) */
 .cal-cell.disabled{background:rgba(0,0,0,0.02);border-color:transparent;color:rgba(0,0,0,0.12);cursor:default;}
+/* Empty (outside month) */
 .cal-cell.empty{background:transparent;border-color:transparent;color:transparent;cursor:default;}
-.cal-cell.future{background:var(--m-card,#FBFAF6);border-color:var(--m-border,rgba(0,0,0,0.06));color:rgba(0,0,0,0.25);}
+/* Future days */
+.cal-cell.future{background:var(--m-card,#FBFAF6);border-color:var(--m-border,rgba(0,0,0,0.06));color:rgba(0,0,0,0.2);}
+/* Shared icon container */
+.cal-icon{display:none;align-items:center;justify-content:center;margin-top:2px;}
+.cal-icon svg{width:14px;height:14px;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;}
+.cal-num{font-size:13px;font-weight:600;line-height:1;}
 .streak-row{display:flex;align-items:center;gap:32px;padding-top:18px;border-top:1px solid var(--border);}
 .streak-block{text-align:left;}
 .streak-num{font-family:'Inter',sans-serif;font-size:20px;font-weight:500;color:#fff;line-height:1;}
@@ -10576,30 +10592,33 @@ function renderCalendar() {
       cell.className = 'cal-cell empty';
     } else if (beforeProto) {
       cell.className = 'cal-cell disabled';
-      cell.textContent = d.getDate();
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
+    } else if (isToday && isLogged) {
+      // Today, dose logged — green with gold border
+      cell.className = 'cal-cell today-done';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
+    } else if (isToday && !isLogged) {
+      // Today, not yet logged — pulsing, clickable
+      cell.className = 'cal-cell today-pending';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#2F6F55" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span>';
+      cell.onclick = function() { logDose(); };
+    } else if (isLogged) {
+      // Past day, logged — solid green
+      cell.className = 'cal-cell logged';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
+    } else if (isPast) {
+      // Past day, missed — red tint, hover tooltip
+      cell.className = 'cal-cell missed';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><div class="cal-tooltip">Log dose</div>';
+      (function(dateStr) {
+        cell.onclick = function() { _logPastDose(dateStr); };
+      })(dStr);
     } else if (isFuture) {
       cell.className = 'cal-cell future';
-      cell.textContent = d.getDate();
-    } else if (isLogged) {
-      cell.className = 'cal-cell logged';
-      if (isToday) cell.classList.add('today');
-      cell.innerHTML = d.getDate() + '<span class="cal-check">✓</span>';
-    } else if (isPast || isToday) {
-      // Missed dose day (past, not logged)
-      if (isToday) {
-        cell.className = 'cal-cell today';
-        cell.textContent = d.getDate();
-      } else {
-        cell.className = 'cal-cell missed';
-        cell.innerHTML = d.getDate() + '<span class="cal-miss"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>';
-        cell.title = 'Click to log dose';
-        (function(dateStr) {
-          cell.onclick = function() { _logPastDose(dateStr); };
-        })(dStr);
-      }
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
     } else {
       cell.className = 'cal-cell';
-      cell.textContent = d.getDate();
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
     }
     grid.appendChild(cell);
     d.setDate(d.getDate() + 1);

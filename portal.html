@@ -183,13 +183,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cal-check{display:none;font-size:9px;margin-top:2px;opacity:0.7;}
 .cal-cell.today{border-color:#2F6F55;border-width:2px;}
 .cal-cell.today.logged{border-color:#245a45;}
-.cal-cell.missed{background:var(--m-card,#FBFAF6);border:1px dashed rgba(200,80,80,0.3);cursor:pointer;}
-.cal-cell.missed:hover{background:rgba(200,80,80,0.04);border-color:rgba(200,80,80,0.5);}
-.cal-cell.missed .cal-miss{display:block;}
-.cal-miss{display:none;font-size:7px;color:rgba(200,80,80,0.5);margin-top:1px;}
-.cal-cell.disabled{background:transparent;border-color:transparent;color:rgba(0,0,0,0.12);cursor:default;}
+.cal-cell.missed{background:var(--m-card,#FBFAF6);border:1.5px solid rgba(200,100,80,0.25);cursor:pointer;position:relative;}
+.cal-cell.missed:hover{background:rgba(47,111,85,0.06);border-color:#2F6F55;}
+.cal-cell.missed .cal-miss{display:flex;}
+.cal-miss{display:none;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(200,100,80,0.12);margin-top:3px;}
+.cal-miss svg{width:10px;height:10px;stroke:rgba(200,100,80,0.6);stroke-width:2;}
+.cal-cell.missed:hover .cal-miss{background:rgba(47,111,85,0.15);}
+.cal-cell.missed:hover .cal-miss svg{stroke:#2F6F55;}
+.cal-cell.disabled{background:rgba(0,0,0,0.02);border-color:transparent;color:rgba(0,0,0,0.12);cursor:default;}
 .cal-cell.empty{background:transparent;border-color:transparent;color:transparent;cursor:default;}
-.cal-cell.future{background:var(--m-bg2,#F5F4EF);border-color:rgba(0,0,0,0.04);color:rgba(0,0,0,0.2);}
+.cal-cell.future{background:var(--m-card,#FBFAF6);border-color:var(--m-border,rgba(0,0,0,0.06));color:rgba(0,0,0,0.25);}
 .streak-row{display:flex;align-items:center;gap:32px;padding-top:18px;border-top:1px solid var(--border);}
 .streak-block{text-align:left;}
 .streak-num{font-family:'Inter',sans-serif;font-size:20px;font-weight:500;color:#fff;line-height:1;}
@@ -10534,10 +10537,14 @@ function renderCalendar() {
   var todayStr = localDateStr(today);
   var loggedSet = new Set(loggedDates);
 
-  // Determine prescription start date
+  // Determine prescription start date (use evaluation date, consultation date, or earliest logged dose)
   var protoStart = null;
   if (window._protoStartDate) {
     protoStart = new Date(window._protoStartDate); protoStart.setHours(0,0,0,0);
+  } else if (loggedDates.length > 0) {
+    // Fallback: use earliest logged dose date
+    var sorted = loggedDates.slice().sort();
+    protoStart = new Date(sorted[0] + 'T00:00:00');
   }
 
   // Month label
@@ -10584,7 +10591,8 @@ function renderCalendar() {
         cell.textContent = d.getDate();
       } else {
         cell.className = 'cal-cell missed';
-        cell.innerHTML = d.getDate() + '<span class="cal-miss">+ log</span>';
+        cell.innerHTML = d.getDate() + '<span class="cal-miss"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>';
+        cell.title = 'Click to log dose';
         (function(dateStr) {
           cell.onclick = function() { _logPastDose(dateStr); };
         })(dStr);

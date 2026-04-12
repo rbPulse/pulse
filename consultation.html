@@ -1441,6 +1441,11 @@ function quizGoTo(step) {
 
   var goingForward = step > _quizStep;
 
+  // Scroll to top immediately before transitioning
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
   // Animate out
   oldEl.style.opacity = '0';
   oldEl.style.transform = goingForward ? 'translateX(-20px)' : 'translateX(20px)';
@@ -1465,7 +1470,10 @@ function quizGoTo(step) {
     _quizStep = step;
     if (step === 6) populateQuizSummary();
     updateQuizProgress();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll again after content change in case layout shifted
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, 200);
 }
 

@@ -2573,6 +2573,8 @@ body.clinician-mode #clAttentionSection .cl-attention-title{color:#FFFFFF !impor
 body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,255,255,0.08) !important;border:1px solid rgba(255,255,255,0.1) !important;color:rgba(255,255,255,0.6) !important;}
 /* Header row with title + sort control */
 .cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.cl-attn-sort-wrap{display:inline-flex;align-items:center;gap:8px;}
+.cl-attn-sort-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.55);}
 /* Cap visible list to ~10 rows; anything beyond scrolls inside the card.
    Each row is ~56px (header padding 12×2 + 20px content + 10px bottom gap). */
 .cl-attn-list{max-height:560px;overflow-y:auto;padding-right:4px;}
@@ -6146,12 +6148,18 @@ async function loadWeeklySchedule() {
 }
 
 // ── Clinician Attention Cards ──
-// Preferred sort order: 'risk' (high > moderate > low, then oldest first) or
-// 'submission' (oldest first, overdue pinned to top). Persisted in memory so
-// re-renders (polling, card toggle) don't reset the clinician's choice.
-var _clAttnSort = 'submission';
+// Sort modes: 'submission_earliest' | 'submission_latest' | 'risk_highest' | 'risk_lowest'
+// Default is 'submission_earliest' (oldest first, with overdue pinned to top).
+var _clAttnSort = 'submission_earliest';
+var _clAttnSortLabels = {
+  'submission_earliest': 'Earliest date',
+  'submission_latest':   'Latest date',
+  'risk_highest':        'Highest risk',
+  'risk_lowest':         'Lowest risk'
+};
 function _setClAttnSort(val) {
-  _clAttnSort = val === 'risk' ? 'risk' : 'submission';
+  if (!(val in _clAttnSortLabels)) val = 'submission_earliest';
+  _clAttnSort = val;
   loadAttentionCards();
 }
 
@@ -6162,17 +6170,27 @@ async function loadAttentionCards() {
   if (!container || !currentUserId || PREVIEW_MODE) return;
 
   // Shared header markup for the Open Reviews card (title + custom dropdown)
-  var _sortLabel = _clAttnSort === 'risk' ? 'Sort by Risk' : 'Sort by Submission';
+  var _sortLabel = _clAttnSortLabels[_clAttnSort] || 'Earliest date';
+  function _optHtml(val) {
+    var lbl = _clAttnSortLabels[val];
+    var active = _clAttnSort === val ? ' active' : '';
+    return '<button type="button" class="pd-dropdown-option' + active + '" data-value="' + val + '" onclick="_pdSelect(\'clAttnSortDD\',\'' + val + '\',\'' + lbl + '\',_setClAttnSort)">' + lbl + '</button>';
+  }
   var _hdr = '<div class="cl-attn-header-row">' +
                '<div class="cl-attention-title">Open Reviews</div>' +
-               '<div class="pd-dropdown pd-dropdown-on-dark" id="clAttnSortDD" data-value="' + _clAttnSort + '">' +
-                 '<button type="button" class="pd-dropdown-toggle" onclick="_pdToggle(\'clAttnSortDD\')">' +
-                   '<span class="pd-dropdown-value">' + _sortLabel + '</span>' +
-                   '<svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
-                 '</button>' +
-                 '<div class="pd-dropdown-menu">' +
-                   '<button type="button" class="pd-dropdown-option' + (_clAttnSort === 'submission' ? ' active' : '') + '" data-value="submission" onclick="_pdSelect(\'clAttnSortDD\',\'submission\',\'Sort by Submission\',_setClAttnSort)">Sort by Submission</button>' +
-                   '<button type="button" class="pd-dropdown-option' + (_clAttnSort === 'risk' ? ' active' : '') + '" data-value="risk" onclick="_pdSelect(\'clAttnSortDD\',\'risk\',\'Sort by Risk\',_setClAttnSort)">Sort by Risk</button>' +
+               '<div class="cl-attn-sort-wrap">' +
+                 '<span class="cl-attn-sort-label">Sort by</span>' +
+                 '<div class="pd-dropdown pd-dropdown-on-dark" id="clAttnSortDD" data-value="' + _clAttnSort + '">' +
+                   '<button type="button" class="pd-dropdown-toggle" onclick="_pdToggle(\'clAttnSortDD\')">' +
+                     '<span class="pd-dropdown-value">' + _sortLabel + '</span>' +
+                     '<svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+                   '</button>' +
+                   '<div class="pd-dropdown-menu">' +
+                     _optHtml('submission_latest') +
+                     _optHtml('submission_earliest') +
+                     _optHtml('risk_highest') +
+                     _optHtml('risk_lowest') +
+                   '</div>' +
                  '</div>' +
                '</div>' +
              '</div>';
@@ -6215,23 +6233,37 @@ async function loadAttentionCards() {
     });
 
     // Sort according to the clinician's preference.
-    //   submission: overdue first, then oldest created_at (default)
-    //   risk:       high > moderate > low > none, then oldest within a tier
+    //   submission_earliest (default): oldest created_at first, overdue pinned on top
+    //   submission_latest:             newest created_at first
+    //   risk_highest:                  high > moderate > low > none, oldest within tier
+    //   risk_lowest:                   low > moderate > high > none, oldest within tier
     var now = Date.now();
-    var RISK_ORDER = { high_risk: 0, moderate_risk: 1, low_risk: 2 };
+    var RISK_ORDER_HIGH = { high_risk: 0, moderate_risk: 1, low_risk: 2 };
+    var RISK_ORDER_LOW  = { low_risk: 0, moderate_risk: 1, high_risk: 2 };
     consultations.sort(function(a, b) {
-      if (_clAttnSort === 'risk') {
-        var aR = (a.risk_status in RISK_ORDER) ? RISK_ORDER[a.risk_status] : 3;
-        var bR = (b.risk_status in RISK_ORDER) ? RISK_ORDER[b.risk_status] : 3;
-        if (aR !== bR) return aR - bR;
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      var aT = new Date(a.created_at).getTime();
+      var bT = new Date(b.created_at).getTime();
+      if (_clAttnSort === 'submission_latest') {
+        return bT - aT; // newest first
       }
-      // submission
-      var aOverdue = (now - new Date(a.created_at).getTime()) >= 86400000;
-      var bOverdue = (now - new Date(b.created_at).getTime()) >= 86400000;
+      if (_clAttnSort === 'risk_highest') {
+        var aRH = (a.risk_status in RISK_ORDER_HIGH) ? RISK_ORDER_HIGH[a.risk_status] : 3;
+        var bRH = (b.risk_status in RISK_ORDER_HIGH) ? RISK_ORDER_HIGH[b.risk_status] : 3;
+        if (aRH !== bRH) return aRH - bRH;
+        return aT - bT;
+      }
+      if (_clAttnSort === 'risk_lowest') {
+        var aRL = (a.risk_status in RISK_ORDER_LOW) ? RISK_ORDER_LOW[a.risk_status] : 3;
+        var bRL = (b.risk_status in RISK_ORDER_LOW) ? RISK_ORDER_LOW[b.risk_status] : 3;
+        if (aRL !== bRL) return aRL - bRL;
+        return aT - bT;
+      }
+      // submission_earliest (default): overdue first, then oldest
+      var aOverdue = (now - aT) >= 86400000;
+      var bOverdue = (now - bT) >= 86400000;
       if (aOverdue && !bOverdue) return -1;
       if (!aOverdue && bOverdue) return 1;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return aT - bT;
     });
 
     // Build HTML — wrap the rows in a scrollable list capped at 10 visible rows

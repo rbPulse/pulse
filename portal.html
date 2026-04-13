@@ -2815,6 +2815,11 @@ body.clinician-mode .cl-ft-cols-messages{grid-template-columns:minmax(0,1.4fr) m
 body.clinician-mode .cl-ft-cols-live{grid-template-columns:minmax(0,1.4fr) minmax(0,1.4fr) 120px 130px;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
+/* Weekly schedule card (clinician overview) — compact 4-col grid:
+     Day | Time | Patient · Type | [Join/Countdown] */
+body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.85fr) minmax(0,0.7fr) minmax(0,1.6fr) 120px;}
+body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
+body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 
 /* ── Recently evaluated ── */
 body.clinician-mode .cl-recent-row{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;margin-bottom:6px;padding:10px 14px;}
@@ -6620,74 +6625,77 @@ async function loadWeeklySchedule() {
       profileMap[p.user_id] = p.display_name || ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.email || 'Unknown';
     });
 
-    // Group by day
-    var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    var dayGroups = {};
+    // Filter out past and flatten to a single chronological list
+    var SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var upcoming = appts.filter(function(a) {
+      return new Date(a.scheduled_at).getTime() >= Date.now();
+    });
+    if (!upcoming.length) {
+      showInlineEmpty(container, 'No live consults scheduled.', 'Upcoming consults with your patients will appear here.', { icon: 'clipboard' });
+      return;
+    }
 
-    appts.forEach(function(a) {
-      var dt = new Date(a.scheduled_at);
-      var dayKey = dt.toDateString();
-      if (!dayGroups[dayKey]) dayGroups[dayKey] = { date: dt, appts: [] };
-      dayGroups[dayKey].appts.push(a);
+    // Flat table header (matches Open Reviews card style)
+    var html =
+      '<div class="cl-ft-header cl-ft-cols-weekly">' +
+        '<div class="cl-ft-col-static">Day</div>' +
+        '<div class="cl-ft-col-static">Time</div>' +
+        '<div class="cl-ft-col-static">Patient</div>' +
+        '<div class="cl-ft-col-static" style="text-align:right;"></div>' +
+      '</div>' +
+      '<div class="cl-ft-list">';
+
+    upcoming.forEach(function(a) {
+      var aDt = new Date(a.scheduled_at);
+      var isToday = aDt.toDateString() === now.toDateString();
+      var dayLabel = isToday ? 'Today' : (SHORT_DAYS[aDt.getDay()] + ', ' + (aDt.getMonth() + 1) + '/' + aDt.getDate());
+      var timeStr  = aDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var patientName = profileMap[a.consumer_id] || 'Unknown';
+      var apptType = a.appointment_type || '';
+
+      var nowMs = Date.now();
+      var fiveMinBefore = aDt.getTime() - 5 * 60 * 1000;
+      var sixtyMinAfter = aDt.getTime() + 60 * 60 * 1000;
+      var canJoin = nowMs >= fiveMinBefore && nowMs <= sixtyMinAfter;
+
+      var actionHtml = '';
+      if (canJoin) {
+        actionHtml = '<button onclick="event.stopPropagation();_joinClinicianSession(\'' + a.id + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:7px 16px;border-radius:999px;border:1px solid #1DB954;background:#1DB954;color:#fff !important;cursor:pointer;">Join</button>';
+      } else {
+        var diff = aDt.getTime() - nowMs;
+        var days = Math.floor(diff / 86400000);
+        var hrs = Math.floor((diff % 86400000) / 3600000);
+        var mins = Math.floor((diff % 3600000) / 60000);
+        var countdown = days > 0 ? ('in ' + days + 'd ' + hrs + 'h') : (hrs > 0 ? ('in ' + hrs + 'h ' + mins + 'm') : ('in ' + mins + 'm'));
+        actionHtml = '<span style="display:inline-flex;align-items:center;gap:5px;font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:6px 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.02);color:var(--cl-text2,rgba(0,0,0,0.65));">' +
+          '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
+          escapeHtml(countdown) +
+          '</span>';
+      }
+
+      // Patient column = name + type (type muted, separated by middot)
+      var nameHtml = escapeHtml(patientName);
+      if (apptType) {
+        nameHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">·</span>' +
+          '<span style="color:var(--cl-text3,rgba(0,0,0,0.5));font-weight:500;">' + escapeHtml(apptType) + '</span>';
+      }
+
+      // Day cell — highlight today in green to call it out
+      var dayCellColor = isToday ? 'var(--cl-green,#1DB954)' : 'var(--cl-text2)';
+      var dayCellWeight = isToday ? '600' : '500';
+
+      html +=
+        '<div class="cl-ft-row-wrap">' +
+          '<div class="cl-ft-row cl-ft-cols-weekly">' +
+            '<div class="cl-ft-cell" style="color:' + dayCellColor + ' !important;font-weight:' + dayCellWeight + ' !important;">' + escapeHtml(dayLabel) + '</div>' +
+            '<div class="cl-ft-cell-name">' + escapeHtml(timeStr) + '</div>' +
+            '<div class="cl-ft-cell">' + nameHtml + '</div>' +
+            '<div style="text-align:right;">' + actionHtml + '</div>' +
+          '</div>' +
+        '</div>';
     });
 
-    var html = '';
-    Object.keys(dayGroups).sort(function(a, b) { return dayGroups[a].date - dayGroups[b].date; }).forEach(function(dayKey) {
-      var group = dayGroups[dayKey];
-      var dt = group.date;
-      var isToday = dt.toDateString() === now.toDateString();
-      var dayLabel = SHORT_DAYS[dt.getDay()] + ', ' + (dt.getMonth() + 1) + '/' + dt.getDate();
-
-      html += '<div style="margin-bottom:8px;' + (isToday ? 'background:rgba(58,122,92,0.05);border-radius:8px;padding:10px 12px;margin:-10px -12px 8px;' : '') + '">';
-      html += '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.02em;color:' + (isToday ? 'var(--cl-green,#1DB954)' : 'var(--cl-text2,rgba(0,0,0,0.6))') + ';margin-bottom:2px;">' + dayLabel + (isToday ? ' · Today' : '') + '</div>';
-
-      group.appts.forEach(function(a) {
-        if (new Date(a.scheduled_at).getTime() < Date.now()) return; // skip past
-        var aDt = new Date(a.scheduled_at);
-        var timeStr = aDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        var patientName = profileMap[a.consumer_id] || 'Unknown';
-        var nowMs = Date.now();
-        var fiveMinBefore = aDt.getTime() - 5 * 60 * 1000;
-        var sixtyMinAfter = aDt.getTime() + 60 * 60 * 1000;
-        var canJoin = nowMs >= fiveMinBefore && nowMs <= sixtyMinAfter;
-
-        var joinHtml = '';
-        if (canJoin) {
-          joinHtml = '<button onclick="event.stopPropagation();_joinClinicianSession(\'' + a.id + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:7px 16px;border-radius:999px;border:1px solid #1DB954;background:#1DB954;color:#fff !important;cursor:pointer;">Join</button>';
-        } else {
-          var diff = aDt.getTime() - nowMs;
-          var days = Math.floor(diff / 86400000);
-          var hrs = Math.floor((diff % 86400000) / 3600000);
-          var mins = Math.floor((diff % 3600000) / 60000);
-          var countdown = days > 0 ? ('in ' + days + 'd ' + hrs + 'h') : (hrs > 0 ? ('in ' + hrs + 'h ' + mins + 'm') : ('in ' + mins + 'm'));
-          // Readable countdown pill with a clock glyph — matches the Join pill
-          // dimensions so the column stays visually aligned.
-          joinHtml = '<span style="display:inline-flex;align-items:center;gap:5px;font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:6px 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.02);color:var(--cl-text2,rgba(0,0,0,0.65));">' +
-            '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
-            escapeHtml(countdown) +
-            '</span>';
-        }
-
-        var apptType = a.appointment_type || '';
-        // Patient name + type on one inline line, separated by a middot.
-        // Keeps the row visually quiet and matches the text scale of the
-        // rest of the card instead of introducing a competing pill chip.
-        var nameHtml = escapeHtml(patientName);
-        if (apptType) {
-          nameHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">·</span>' +
-            '<span style="color:var(--cl-text3,rgba(0,0,0,0.5));font-weight:500;">' + escapeHtml(apptType) + '</span>';
-        }
-        html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;' + (group.appts.indexOf(a) < group.appts.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
-        html += '<span style="font-size:12px;font-weight:600;color:var(--cl-text,#111);min-width:65px;flex-shrink:0;">' + timeStr + '</span>';
-        html += '<span style="font-size:12px;color:var(--cl-text,#111);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nameHtml + '</span>';
-        html += joinHtml;
-        html += '</div>';
-      });
-
-      html += '</div>';
-    });
-
+    html += '</div>';
     container.innerHTML = html;
   } catch(e) {
     console.warn('[Pulse] weekly schedule failed:', e);

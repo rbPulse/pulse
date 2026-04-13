@@ -2616,7 +2616,8 @@ body.clinician-mode #clRecentlyEvaluated:not(:empty){background:var(--cl-high);b
 body.clinician-mode .cl-two-col{gap:16px;}
 body.clinician-mode .cl-two-col > *{background:var(--cl-high) !important;border:1px solid var(--cl-border) !important;border-radius:12px !important;padding:16px !important;box-shadow:0 1px 3px rgba(0,0,0,0.04) !important;}
 body.clinician-mode .cl-two-col *{font-family:'Inter',sans-serif !important;}
-body.clinician-mode .cl-two-col .compounds-label{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
+body.clinician-mode .cl-two-col .compounds-label,
+body.clinician-mode #clWeeklyScheduleCard .compounds-label{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
 body.clinician-mode .cl-two-col > div > div:first-child{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
 body.clinician-mode .cl-live-card{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;box-shadow:none;padding:12px 16px;}
 body.clinician-mode .cl-live-card-name{color:var(--cl-text);font-family:'Inter',sans-serif;}
@@ -2815,9 +2816,9 @@ body.clinician-mode .cl-ft-cols-messages{grid-template-columns:minmax(0,1.4fr) m
 body.clinician-mode .cl-ft-cols-live{grid-template-columns:minmax(0,1.4fr) minmax(0,1.4fr) 120px 130px;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
-/* Weekly schedule card (clinician overview) — compact 4-col grid:
-     Day | Time | Patient · Type | [Join/Countdown] */
-body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.85fr) minmax(0,0.7fr) minmax(0,1.6fr) 120px;}
+/* Weekly schedule card (clinician overview) — 5-col grid with sortable
+   column headers: Day | Time | Patient | Type | Action */
+body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.75fr) minmax(0,0.65fr) minmax(0,1.3fr) minmax(0,0.95fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 /* Live Consults page (clinician tab) — 5-col flat table:
@@ -6586,6 +6587,36 @@ async function _loadClOverviewStats() {
 }
 
 // ── Clinician Weekly Schedule (overview card) ──
+// Sort modes for the weekly schedule flat table:
+//   day_earliest / day_latest     — sort by scheduled_at asc / desc
+//   time_earliest / time_latest   — sort by time-of-day asc / desc
+//   patient_az / patient_za       — by patient name
+//   type_az / type_za             — by appointment type
+var _clWeeklySort = 'day_earliest';
+var _clWeeklyValidSort = {
+  day_earliest:1, day_latest:1,
+  time_earliest:1, time_latest:1,
+  patient_az:1, patient_za:1,
+  type_az:1, type_za:1
+};
+var _clWeeklyColConfig = {
+  day:     ['day_earliest', 'day_latest'],
+  time:    ['time_earliest', 'time_latest'],
+  patient: ['patient_az', 'patient_za'],
+  type:    ['type_az', 'type_za']
+};
+var _clWeeklySortDir = {
+  day_earliest:'up', day_latest:'down',
+  time_earliest:'up', time_latest:'down',
+  patient_az:'up', patient_za:'down',
+  type_az:'up', type_za:'down'
+};
+function _setClWeeklySort(val) {
+  if (!_clWeeklyValidSort[val]) val = 'day_earliest';
+  _clWeeklySort = val;
+  loadWeeklySchedule();
+}
+
 async function loadWeeklySchedule() {
   var container = document.getElementById('clWeeklySchedule');
   if (!container || !currentUserId || PREVIEW_MODE) return;
@@ -6635,13 +6666,44 @@ async function loadWeeklySchedule() {
       return;
     }
 
-    // Flat table header (matches Open Reviews card style)
+    // Attach derived sort helpers once so sort() can key off them cheaply
+    upcoming.forEach(function(a) {
+      var dt = new Date(a.scheduled_at);
+      a._dayMs   = dt.getTime();
+      // time-of-day (hours*60 + minutes) so sorting by time ignores date
+      a._tod     = dt.getHours() * 60 + dt.getMinutes();
+      a._pname   = (profileMap[a.consumer_id] || 'Unknown').toLowerCase();
+      a._type    = (a.appointment_type || '').toLowerCase();
+    });
+
+    // Sort according to the clinician's preference
+    upcoming.sort(function(a, b) {
+      switch (_clWeeklySort) {
+        case 'day_latest':     return b._dayMs - a._dayMs;
+        case 'time_earliest':  if (a._tod !== b._tod) return a._tod - b._tod; return a._dayMs - b._dayMs;
+        case 'time_latest':    if (a._tod !== b._tod) return b._tod - a._tod; return a._dayMs - b._dayMs;
+        case 'patient_az':     if (a._pname !== b._pname) return a._pname.localeCompare(b._pname); return a._dayMs - b._dayMs;
+        case 'patient_za':     if (a._pname !== b._pname) return b._pname.localeCompare(a._pname); return a._dayMs - b._dayMs;
+        case 'type_az':        if (a._type !== b._type) return a._type.localeCompare(b._type); return a._dayMs - b._dayMs;
+        case 'type_za':        if (a._type !== b._type) return b._type.localeCompare(a._type); return a._dayMs - b._dayMs;
+        case 'day_earliest':
+        default:               return a._dayMs - b._dayMs;
+      }
+    });
+
+    // Sortable column header builder
+    var _wh = function(label, col) {
+      return _clFtColHeader(label, col, _clWeeklySort, _clWeeklyColConfig, _clWeeklySortDir, '_setClWeeklySort');
+    };
+
+    // Flat table header — matches Open Reviews card (sortable column headers)
     var html =
       '<div class="cl-ft-header cl-ft-cols-weekly">' +
-        '<div class="cl-ft-col-static">Day</div>' +
-        '<div class="cl-ft-col-static">Time</div>' +
-        '<div class="cl-ft-col-static">Patient</div>' +
-        '<div class="cl-ft-col-static" style="text-align:right;"></div>' +
+        '<div>' + _wh('Day', 'day') + '</div>' +
+        '<div>' + _wh('Time', 'time') + '</div>' +
+        '<div>' + _wh('Patient', 'patient') + '</div>' +
+        '<div>' + _wh('Type', 'type') + '</div>' +
+        '<div style="text-align:right;"></div>' +
       '</div>' +
       '<div class="cl-ft-list">';
 
@@ -6651,7 +6713,7 @@ async function loadWeeklySchedule() {
       var dayLabel = isToday ? 'Today' : (SHORT_DAYS[aDt.getDay()] + ', ' + (aDt.getMonth() + 1) + '/' + aDt.getDate());
       var timeStr  = aDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       var patientName = profileMap[a.consumer_id] || 'Unknown';
-      var apptType = a.appointment_type || '';
+      var apptType = a.appointment_type || '—';
 
       var nowMs = Date.now();
       var fiveMinBefore = aDt.getTime() - 5 * 60 * 1000;
@@ -6673,23 +6735,18 @@ async function loadWeeklySchedule() {
           '</span>';
       }
 
-      // Patient column = name + type (type muted, separated by middot)
-      var nameHtml = escapeHtml(patientName);
-      if (apptType) {
-        nameHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">·</span>' +
-          '<span style="color:var(--cl-text3,rgba(0,0,0,0.5));font-weight:500;">' + escapeHtml(apptType) + '</span>';
-      }
-
-      // Day cell — highlight today in green to call it out
-      var dayCellColor = isToday ? 'var(--cl-green,#1DB954)' : 'var(--cl-text2)';
-      var dayCellWeight = isToday ? '600' : '500';
+      // 'Today' gets the day column in green for emphasis
+      var dayCellStyle = isToday
+        ? ' style="color:var(--cl-green,#1DB954) !important;font-weight:600 !important;"'
+        : '';
 
       html +=
         '<div class="cl-ft-row-wrap">' +
           '<div class="cl-ft-row cl-ft-cols-weekly">' +
-            '<div class="cl-ft-cell" style="color:' + dayCellColor + ' !important;font-weight:' + dayCellWeight + ' !important;">' + escapeHtml(dayLabel) + '</div>' +
-            '<div class="cl-ft-cell-name">' + escapeHtml(timeStr) + '</div>' +
-            '<div class="cl-ft-cell">' + nameHtml + '</div>' +
+            '<div class="cl-ft-cell"' + dayCellStyle + '>' + escapeHtml(dayLabel) + '</div>' +
+            '<div class="cl-ft-cell">' + escapeHtml(timeStr) + '</div>' +
+            '<div class="cl-ft-cell-name">' + escapeHtml(patientName) + '</div>' +
+            '<div class="cl-ft-cell">' + escapeHtml(apptType) + '</div>' +
             '<div style="text-align:right;">' + actionHtml + '</div>' +
           '</div>' +
         '</div>';

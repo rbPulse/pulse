@@ -9072,13 +9072,19 @@ function confirmBooking() {
 
   // Auto-assign clinician: round-robin among eligible clinicians available at this slot
   var _assignedClId = _portalAutoAssignClinician(scheduledAt);
-  db.from('appointments').insert({
+  // Read selected appointment type from the custom dropdown (falls back to
+  // the raw value on the element if the dropdown markup is missing).
+  var _bookTypeEl = document.getElementById('bookType');
+  var _apptType = (_bookTypeEl && _bookTypeEl.getAttribute('data-value')) || (_bookTypeEl && _bookTypeEl.value) || null;
+  var _insertRow = {
     consumer_id: currentUserId,
     clinician_id: _assignedClId,
     scheduled_at: scheduledAt.toISOString(),
     duration_minutes: _bookSlotDur,
     status: 'pending'
-  }).select('id').single()
+  };
+  if (_apptType) _insertRow.appointment_type = _apptType;
+  db.from('appointments').insert(_insertRow).select('id').single()
     .then(function(res) {
       if (res && res.error) throw res.error;
       if (btn) { btn.disabled = false; btn.textContent = 'Confirm Appointment'; }
@@ -9107,24 +9113,46 @@ function _loadAndRenderConsumerAppts() {
     .order('scheduled_at', { ascending: true })
     .then(function(res) {
       if (res.error) throw res.error;
-      var rows = (res.data || []).map(function(a) {
-        var dt = new Date(a.scheduled_at);
-        var MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var DAY_NAMES2 = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        return {
-          id: a.id,
-          _id: a.id,
-          clinician: 'Your Clinician',
-          type: 'Appointment',
-          date: DAY_NAMES2[dt.getDay()] + ', ' + MONTHS2[dt.getMonth()] + ' ' + dt.getDate(),
-          time: dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }),
-          dur: (a.duration_minutes || 30) + ' min',
-          status: a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status,
-          _rawStatus: a.status,
-          scheduled_at: a.scheduled_at
-        };
+      var data = res.data || [];
+      // Collect distinct clinician_ids so we can join their names in one
+      // profiles query (instead of N lookups per row).
+      var clIds = [];
+      var seen = {};
+      data.forEach(function(a) {
+        if (a.clinician_id && !seen[a.clinician_id]) { seen[a.clinician_id] = true; clIds.push(a.clinician_id); }
       });
-      _renderConsumerApptList(rows);
+      var profilePromise = clIds.length
+        ? db.from('profiles').select('user_id, first_name, last_name, display_name').in('user_id', clIds)
+        : Promise.resolve({ data: [] });
+      return profilePromise.then(function(pr) {
+        var clMap = {};
+        (pr.data || []).forEach(function(p) {
+          var last = (p.last_name || '').trim();
+          var first = (p.first_name || '').trim();
+          var label = last ? ('Dr. ' + last) : (first ? ('Dr. ' + first) : (p.display_name || 'Your Clinician'));
+          // If the name doesn't already start with 'Dr.', prepend it
+          if (!/^dr\.?\s/i.test(label) && (last || first)) label = 'Dr. ' + (last || first);
+          clMap[p.user_id] = label;
+        });
+        var rows = data.map(function(a) {
+          var dt = new Date(a.scheduled_at);
+          var MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          var DAY_NAMES2 = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          return {
+            id: a.id,
+            _id: a.id,
+            clinician: (a.clinician_id && clMap[a.clinician_id]) || 'Your Clinician',
+            type: a.appointment_type || 'Appointment',
+            date: DAY_NAMES2[dt.getDay()] + ', ' + MONTHS2[dt.getMonth()] + ' ' + dt.getDate(),
+            time: dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }),
+            dur: (a.duration_minutes || 30) + ' min',
+            status: a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status,
+            _rawStatus: a.status,
+            scheduled_at: a.scheduled_at
+          };
+        });
+        _renderConsumerApptList(rows);
+      });
     })
     .catch(function(err) {
       handleSupabaseError(err, 'consumer appointments load');
@@ -9231,12 +9259,22 @@ function _renderConsumerApptList(appts) {
         '</div>';
     }
 
+    // Headline reads as '{Appointment Type} with Dr. {Last Name}' once both
+    // bits of data are present. Falls back gracefully if either is missing:
+    //   '{type}' alone, or '{clinician}' alone.
+    var _typeLabel = (a.type && a.type !== 'Appointment') ? a.type : '';
+    var _clLabel   = a.clinician && a.clinician !== 'Your Clinician' ? a.clinician : (a.clinician || '');
+    var headline;
+    if (_typeLabel && _clLabel) headline = _typeLabel + ' with ' + _clLabel;
+    else if (_typeLabel)        headline = _typeLabel;
+    else                        headline = _clLabel || 'Appointment';
+
     var wrapper = document.createElement('div');
     wrapper.innerHTML =
       '<div class="consumer-appt-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:0;">' +
         '<div style="display:flex;align-items:flex-start;width:100%;gap:12px;">' +
           '<div style="flex:1;min-width:0;">' +
-            '<div class="consumer-appt-name">' + escapeHtml(a.clinician) + '</div>' +
+            '<div class="consumer-appt-name">' + escapeHtml(headline) + '</div>' +
             '<div class="consumer-appt-meta">' + escapeHtml(a.date) + '</div>' +
             '<div class="consumer-appt-meta consumer-appt-meta-sub">' + escapeHtml(a.time) + ' · ' + escapeHtml(a.dur) + '</div>' +
           '</div>' +

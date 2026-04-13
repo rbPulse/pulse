@@ -4240,6 +4240,13 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-week"  onclick="_filterClApptsByDate('week',this)">This Week</div>
           <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-month" onclick="_filterClApptsByDate('month',this)">This Month</div>
         </div>
+        <div class="filter-bar" id="clApptTypeFilters" style="margin-top:6px;">
+          <div class="filter-pill active" style="font-size:11px;padding:4px 12px;" id="flt-type-all"     onclick="_filterClApptsByType('all',this)">All Types</div>
+          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-initial" onclick="_filterClApptsByType('Initial Consult',this)">Initial Consult</div>
+          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-review"  onclick="_filterClApptsByType('Protocol Review',this)">Protocol Review</div>
+          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-followup"onclick="_filterClApptsByType('Follow-up',this)">Follow-up</div>
+          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-checkin" onclick="_filterClApptsByType('Check-in',this)">Check-in</div>
+        </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>
         </div>
@@ -6590,7 +6597,7 @@ async function loadWeeklySchedule() {
 
   try {
     var res = await db.from('appointments')
-      .select('id, consumer_id, scheduled_at, duration_minutes, status')
+      .select('id, consumer_id, scheduled_at, duration_minutes, status, appointment_type')
       .eq('clinician_id', currentUserId)
       .gte('scheduled_at', new Date().toISOString())
       .lte('scheduled_at', sunday.toISOString())
@@ -6662,9 +6669,14 @@ async function loadWeeklySchedule() {
             '</span>';
         }
 
-        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;' + (group.appts.indexOf(a) < group.appts.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
-        html += '<span style="font-size:12px;color:#fff;min-width:65px;">' + timeStr + '</span>';
-        html += '<span style="font-size:12px;color:var(--grey);flex:1;">' + escapeHtml(patientName) + '</span>';
+        var apptType = a.appointment_type || '';
+        var typeChipHtml = apptType
+          ? '<span style="display:inline-flex;align-items:center;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--cl-text2,rgba(0,0,0,0.55));background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);padding:4px 10px;border-radius:999px;white-space:nowrap;flex-shrink:0;">' + escapeHtml(apptType) + '</span>'
+          : '';
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;' + (group.appts.indexOf(a) < group.appts.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
+        html += '<span style="font-size:12px;color:#fff;min-width:65px;flex-shrink:0;">' + timeStr + '</span>';
+        html += '<span style="font-size:12px;color:var(--grey);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(patientName) + '</span>';
+        html += typeChipHtml;
         html += joinHtml;
         html += '</div>';
       });
@@ -8072,6 +8084,7 @@ var _clAppointments = [];
 var _clApptRows = null;
 
 var _clApptDateFilter = 'all';
+var _clApptTypeFilter = 'all';
 
 function _filterClApptsByDate(range, pillEl) {
   _clApptDateFilter = range;
@@ -8080,6 +8093,17 @@ function _filterClApptsByDate(range, pillEl) {
     if (p) p.classList.toggle('active', f === range);
   });
   // Re-apply current filter with date range
+  if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
+}
+
+function _filterClApptsByType(type, pillEl) {
+  _clApptTypeFilter = type;
+  // Sync active pill state
+  var idMap = { 'all':'flt-type-all', 'Initial Consult':'flt-type-initial', 'Protocol Review':'flt-type-review', 'Follow-up':'flt-type-followup', 'Check-in':'flt-type-checkin' };
+  Object.keys(idMap).forEach(function(k) {
+    var p = document.getElementById(idMap[k]);
+    if (p) p.classList.toggle('active', k === type);
+  });
   if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
 }
 
@@ -8157,6 +8181,7 @@ function _loadClApptsQuery(filter) {
               _id: a.id, date: dateLabel, time: timeLabel, fullTimeStr: fullTimeStr,
               scheduledAt: dt, isPast: isPast, isToday: isToday,
               patient: displayName, initials: initials, type: 'Live Consult',
+              appointmentType: a.appointment_type || '',
           dur: (a.duration_minutes || 30) + ' min',
           status: displayStatus,
           _rawStatus: a.status,
@@ -8220,6 +8245,12 @@ function _applyClApptFilter(rows, filter) {
     filtered = filtered.slice().sort(function(a,b){ return b.scheduledAt - a.scheduledAt; });
   } else {
     filtered = rows;
+  }
+  // Apply appointment type sub-filter across all primary filter modes.
+  if (_clApptTypeFilter && _clApptTypeFilter !== 'all') {
+    filtered = filtered.filter(function(a) {
+      return (a.appointmentType || '') === _clApptTypeFilter;
+    });
   }
   renderApptList('clApptList', filtered, 'clinician');
 }
@@ -8539,10 +8570,19 @@ function renderApptList(elId, appts, role) {
         }
       }
     }
+    // Appointment type chip — small pill next to the stage label on the
+    // patient line. Only renders when the row has a type on file.
+    var apptTypeChipHtml = '';
+    if (a.appointmentType) {
+      apptTypeChipHtml = '<span style="display:inline-flex;align-items:center;margin-left:10px;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--cl-text2,rgba(0,0,0,0.55));background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);padding:3px 9px;border-radius:999px;">' + escapeHtml(a.appointmentType) + '</span>';
+    }
     wrapper.innerHTML =
       '<div class="appt-row">' +
         '<div class="appt-info">' +
-          '<div class="appt-patient">' + escapeHtml(displayName) + (stageLabel ? '<span style="margin-left:10px;font-size:12px;">' + stageLabel + '</span>' : '') + '</div>' +
+          '<div class="appt-patient">' + escapeHtml(displayName) +
+            (stageLabel ? '<span style="margin-left:10px;font-size:12px;">' + stageLabel + '</span>' : '') +
+            apptTypeChipHtml +
+          '</div>' +
           '<div class="appt-type-text">' + escapeHtml(timeLabel) +
             (a.dur ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.dur) : '') +
             (statusLabel ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + statusLabel : '') +
@@ -9140,6 +9180,11 @@ function _loadAndRenderConsumerAppts() {
           if (!/^dr\.?\s/i.test(label) && (last || first)) label = 'Dr. ' + (last || first);
           clMap[p.user_id] = label;
         });
+        // Sensible fallback for legacy rows that were inserted before the
+        // appointment_type column existed (or before we started writing it):
+        // pending-review members get 'Initial Consult', active members get
+        // 'Follow-up'. Either way the card headline always has a real type.
+        var _defaultType = window._memberPurchaseComplete ? 'Follow-up' : 'Initial Consult';
         var rows = data.map(function(a) {
           var dt = new Date(a.scheduled_at);
           var MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -9148,7 +9193,7 @@ function _loadAndRenderConsumerAppts() {
             id: a.id,
             _id: a.id,
             clinician: (a.clinician_id && clMap[a.clinician_id]) || 'Your Clinician',
-            type: a.appointment_type || 'Appointment',
+            type: a.appointment_type || _defaultType,
             date: DAY_NAMES2[dt.getDay()] + ', ' + MONTHS2[dt.getMonth()] + ' ' + dt.getDate(),
             time: dt.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }),
             dur: (a.duration_minutes || 30) + ' min',
@@ -9265,15 +9310,14 @@ function _renderConsumerApptList(appts) {
         '</div>';
     }
 
-    // Headline reads as '{Appointment Type} with Dr. {Last Name}' once both
-    // bits of data are present. Falls back gracefully if either is missing:
-    //   '{type}' alone, or '{clinician}' alone.
-    var _typeLabel = (a.type && a.type !== 'Appointment') ? a.type : '';
-    var _clLabel   = a.clinician && a.clinician !== 'Your Clinician' ? a.clinician : (a.clinician || '');
-    var headline;
-    if (_typeLabel && _clLabel) headline = _typeLabel + ' with ' + _clLabel;
-    else if (_typeLabel)        headline = _typeLabel;
-    else                        headline = _clLabel || 'Appointment';
+    // Headline reads '{Appointment Type} with {Clinician}' (e.g.
+    // 'Protocol Review with Dr. Clinician'). Both fields are always
+    // populated by _loadAndRenderConsumerAppts — the type defaults to
+    // 'Initial Consult' / 'Follow-up' depending on member state, and the
+    // clinician defaults to 'Your Clinician' if no profile match.
+    var _typeLabel = a.type || 'Appointment';
+    var _clLabel   = a.clinician || 'Your Clinician';
+    var headline = _typeLabel + ' with ' + _clLabel;
 
     var wrapper = document.createElement('div');
     wrapper.innerHTML =

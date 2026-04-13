@@ -2575,18 +2575,108 @@ body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,
 .cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
 .cl-attn-sort-wrap{display:inline-flex;align-items:center;gap:10px;}
 .cl-attn-sort-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.65);}
+
+/* ── Open Reviews — flat list with clickable column headers ───────────── */
+#clAttentionSection .cl-attn-card{
+  background:transparent !important;
+  border:none !important;
+  border-left:3px solid transparent !important;
+  border-bottom:1px solid rgba(255,255,255,0.08) !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  margin-bottom:0 !important;
+  overflow:visible !important;
+  transition:background .15s;
+  position:relative;
+}
+#clAttentionSection .cl-attn-card:last-child{border-bottom:none !important;}
+#clAttentionSection .cl-attn-card:hover{background:rgba(255,255,255,0.04) !important;}
+#clAttentionSection .cl-attn-card.rail-red{border-left-color:#EF4444 !important;}
+#clAttentionSection .cl-attn-card.rail-yellow{border-left-color:#EAB308 !important;}
+#clAttentionSection .cl-attn-card.rail-green{border-left-color:#22C55E !important;}
+/* Grid layout reused by the header row and every patient row */
+#clAttentionSection .cl-attn-cols{
+  display:grid;
+  grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,0.95fr) minmax(0,0.85fr) 22px;
+  gap:14px;
+  align-items:center;
+}
+#clAttentionSection .cl-attn-list-header{
+  padding:10px 14px 10px 17px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  margin-bottom:2px;
+  user-select:none;
+}
+#clAttentionSection .cl-attn-col-btn{
+  background:none;
+  border:none;
+  padding:4px 0;
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.5);
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  text-align:left;
+  transition:color .15s;
+}
+#clAttentionSection .cl-attn-col-btn:hover{color:rgba(255,255,255,0.85);}
+#clAttentionSection .cl-attn-col-btn.active{color:#fff;}
+#clAttentionSection .cl-attn-col-btn svg{width:10px;height:10px;flex-shrink:0;}
+#clAttentionSection .cl-attn-col-static{
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.5);
+}
+/* Row cells */
+#clAttentionSection .cl-attn-row{padding:13px 14px;cursor:pointer;}
+#clAttentionSection .cl-attn-row-name{
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+#clAttentionSection .cl-attn-row-cell{
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:rgba(255,255,255,0.72);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+#clAttentionSection .cl-attn-row-risk{font-weight:600;}
+#clAttentionSection .cl-attn-row-risk.low{color:#22C55E;}
+#clAttentionSection .cl-attn-row-risk.moderate{color:#EAB308;}
+#clAttentionSection .cl-attn-row-risk.high{color:#EF4444;}
+#clAttentionSection .cl-attn-row-status{
+  color:#EF4444;font-weight:600;font-size:11px;letter-spacing:0.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#clAttentionSection .cl-attn-row-chev{
+  color:rgba(255,255,255,0.35);font-size:14px;text-align:right;transition:transform .2s;
+}
+#clAttentionSection .cl-attn-card.expanded .cl-attn-row-chev{transform:rotate(90deg);}
+#clAttentionSection .cl-attn-card-body{padding:0 !important;}
 /* Cap visible list to ~10 rows; anything beyond scrolls inside the card.
    Each row is ~56px (header padding 12×2 + 20px content + 10px bottom gap). */
 .cl-attn-list{max-height:560px;overflow-y:auto;padding-right:4px;}
 .cl-attn-list::-webkit-scrollbar{width:6px;}
 .cl-attn-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.18);border-radius:4px;}
 .cl-attn-list::-webkit-scrollbar-track{background:transparent;}
-body.clinician-mode #clAttentionSection .cl-attn-card{background:var(--cl-high);border:1px solid var(--cl-border);}
-body.clinician-mode #clAttentionSection .cl-attn-card:hover{border-color:rgba(0,0,0,0.1);box-shadow:var(--cl-shadow-mid);}
-body.clinician-mode #clAttentionSection .cl-attn-card-name{color:var(--cl-text);}
-body.clinician-mode #clAttentionSection .cl-attn-card-meta{color:var(--cl-text2);}
-body.clinician-mode #clAttentionSection .cl-attn-card-meta > span:not(:last-child)::after{color:rgba(0,0,0,0.2);}
-body.clinician-mode #clAttentionSection .cl-attn-card-chevron{color:rgba(0,0,0,0.2);}
+/* Open Reviews uses the flat-row layout above; override the old card look */
+body.clinician-mode #clAttentionSection .cl-attn-card{background:transparent !important;border:none !important;border-left:3px solid transparent !important;border-bottom:1px solid rgba(255,255,255,0.08) !important;box-shadow:none !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card:last-child{border-bottom:none !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card:hover{background:rgba(255,255,255,0.04) !important;box-shadow:none !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card.rail-red{border-left-color:#EF4444 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card.rail-yellow{border-left-color:#EAB308 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card.rail-green{border-left-color:#22C55E !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-name{color:#fff !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-cell{color:rgba(255,255,255,0.72) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-btn{color:rgba(255,255,255,0.55) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-btn.active{color:#fff !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-static{color:rgba(255,255,255,0.55) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-list-header{border-bottom:1px solid rgba(255,255,255,0.1) !important;}
 
 /* ── Recently evaluated ── */
 body.clinician-mode .cl-recent-row{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;margin-bottom:6px;padding:10px 14px;}
@@ -6148,17 +6238,30 @@ async function loadWeeklySchedule() {
 }
 
 // ── Clinician Attention Cards ──
-// Sort modes: 'submission_earliest' | 'submission_latest' | 'risk_highest' | 'risk_lowest'
+// Sort modes (6): name_az | name_za | submission_earliest | submission_latest
+//                 | risk_highest | risk_lowest
 // Default is 'submission_earliest' (oldest first, with overdue pinned to top).
 var _clAttnSort = 'submission_earliest';
-var _clAttnSortLabels = {
-  'submission_earliest': 'Earliest submission',
-  'submission_latest':   'Latest submission',
-  'risk_highest':        'Highest risk',
-  'risk_lowest':         'Lowest risk'
+var _clAttnValidSort = {
+  name_az: 1, name_za: 1,
+  submission_earliest: 1, submission_latest: 1,
+  risk_highest: 1, risk_lowest: 1
+};
+// Each clickable column header maps a visible column to the pair of modes
+// it toggles between (primary = first click, secondary = subsequent click).
+var _clAttnColConfig = {
+  name:       ['name_az', 'name_za'],
+  submission: ['submission_earliest', 'submission_latest'],
+  risk:       ['risk_highest', 'risk_lowest']
+};
+// Direction per mode — drives the up/down arrow on the active column header.
+var _clAttnSortDir = {
+  name_az: 'up',   name_za: 'down',
+  submission_earliest: 'up', submission_latest: 'down',
+  risk_lowest: 'up', risk_highest: 'down'
 };
 function _setClAttnSort(val) {
-  if (!(val in _clAttnSortLabels)) val = 'submission_earliest';
+  if (!_clAttnValidSort[val]) val = 'submission_earliest';
   _clAttnSort = val;
   loadAttentionCards();
 }
@@ -6169,30 +6272,31 @@ async function loadAttentionCards() {
   var container = document.getElementById('clAttentionSection');
   if (!container || !currentUserId || PREVIEW_MODE) return;
 
-  // Shared header markup for the Open Reviews card (title + custom dropdown)
-  var _sortLabel = _clAttnSortLabels[_clAttnSort] || 'Earliest submission';
-  function _optHtml(val) {
-    var lbl = _clAttnSortLabels[val];
-    var active = _clAttnSort === val ? ' active' : '';
-    return '<button type="button" class="pd-dropdown-option' + active + '" data-value="' + val + '" onclick="_pdSelect(\'clAttnSortDD\',\'' + val + '\',\'' + lbl + '\',_setClAttnSort)">' + lbl + '</button>';
+  // Shared header markup: card title + clickable column headers for sort.
+  // Columns: Patient (sort by name) | Submitted | Risk | Status | chevron
+  function _colHeaderBtn(label, col) {
+    var modes = _clAttnColConfig[col];
+    var isActive = _clAttnSort === modes[0] || _clAttnSort === modes[1];
+    var nextMode = isActive
+      ? (_clAttnSort === modes[0] ? modes[1] : modes[0])
+      : modes[0];
+    var arrow = '';
+    if (isActive) {
+      var dir = _clAttnSortDir[_clAttnSort];
+      var points = dir === 'up' ? '6 15 12 9 18 15' : '6 9 12 15 18 9';
+      arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + points + '"/></svg>';
+    }
+    return '<button type="button" class="cl-attn-col-btn' + (isActive ? ' active' : '') + '" onclick="_setClAttnSort(\'' + nextMode + '\')">' + label + arrow + '</button>';
   }
   var _hdr = '<div class="cl-attn-header-row">' +
                '<div class="cl-attention-title">Open Reviews</div>' +
-               '<div class="cl-attn-sort-wrap">' +
-                 '<span class="cl-attn-sort-label">Sort by</span>' +
-                 '<div class="pd-dropdown pd-dropdown-on-dark" id="clAttnSortDD" data-value="' + _clAttnSort + '">' +
-                   '<button type="button" class="pd-dropdown-toggle" onclick="_pdToggle(\'clAttnSortDD\')">' +
-                     '<span class="pd-dropdown-value">' + _sortLabel + '</span>' +
-                     '<svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
-                   '</button>' +
-                   '<div class="pd-dropdown-menu">' +
-                     _optHtml('submission_latest') +
-                     _optHtml('submission_earliest') +
-                     _optHtml('risk_highest') +
-                     _optHtml('risk_lowest') +
-                   '</div>' +
-                 '</div>' +
-               '</div>' +
+             '</div>' +
+             '<div class="cl-attn-list-header cl-attn-cols">' +
+               '<div>' + _colHeaderBtn('Patient', 'name') + '</div>' +
+               '<div>' + _colHeaderBtn('Submitted', 'submission') + '</div>' +
+               '<div>' + _colHeaderBtn('Risk', 'risk') + '</div>' +
+               '<div class="cl-attn-col-static">Status</div>' +
+               '<div></div>' +
              '</div>';
 
   try {
@@ -6232,20 +6336,30 @@ async function loadAttentionCards() {
       }
     });
 
+    // Precompute display names on each consultation so name-sort has data
+    // (profileMap is required — we already awaited it above).
+    consultations.forEach(function(c) {
+      var p = profileMap[c.user_id] || {};
+      var cd = c.data || {};
+      var fromConsult = ((cd.first_name || '') + ' ' + (cd.last_name || '')).trim();
+      var fromProfile = ((p.first_name || '') + ' ' + (p.last_name || '')).trim();
+      c._displayName = fromConsult || fromProfile || p.display_name || p.email || 'Unknown';
+    });
+
     // Sort according to the clinician's preference.
-    //   submission_earliest (default): oldest created_at first, overdue pinned on top
-    //   submission_latest:             newest created_at first
-    //   risk_highest:                  high > moderate > low > none, oldest within tier
-    //   risk_lowest:                   low > moderate > high > none, oldest within tier
     var now = Date.now();
     var RISK_ORDER_HIGH = { high_risk: 0, moderate_risk: 1, low_risk: 2 };
     var RISK_ORDER_LOW  = { low_risk: 0, moderate_risk: 1, high_risk: 2 };
     consultations.sort(function(a, b) {
       var aT = new Date(a.created_at).getTime();
       var bT = new Date(b.created_at).getTime();
-      if (_clAttnSort === 'submission_latest') {
-        return bT - aT; // newest first
+      if (_clAttnSort === 'name_az' || _clAttnSort === 'name_za') {
+        var cmp = (a._displayName || '').toLowerCase().localeCompare((b._displayName || '').toLowerCase());
+        if (_clAttnSort === 'name_za') cmp = -cmp;
+        if (cmp !== 0) return cmp;
+        return aT - bT;
       }
+      if (_clAttnSort === 'submission_latest') return bT - aT;
       if (_clAttnSort === 'risk_highest') {
         var aRH = (a.risk_status in RISK_ORDER_HIGH) ? RISK_ORDER_HIGH[a.risk_status] : 3;
         var bRH = (b.risk_status in RISK_ORDER_HIGH) ? RISK_ORDER_HIGH[b.risk_status] : 3;
@@ -6270,14 +6384,7 @@ async function loadAttentionCards() {
     var html = _hdr + '<div class="cl-attn-list">';
 
     consultations.forEach(function(c) {
-      var profile = profileMap[c.user_id] || {};
-      var consultData = c.data || {};
-      var consultFullName = ((consultData.first_name || '') + ' ' + (consultData.last_name || '')).trim();
-      var profileFullName = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim();
-      var name = consultFullName || profileFullName || profile.display_name || profile.email || 'Unknown';
-      var initial = name.charAt(0).toUpperCase();
-      var lastMsg = lastMsgMap[c.user_id];
-      var unread = unreadMap[c.user_id] || 0;
+      var name = c._displayName || 'Unknown';
 
       // Time since submission
       var submittedMs = new Date(c.created_at).getTime();
@@ -6285,36 +6392,36 @@ async function loadAttentionCards() {
       var timeStr = hoursAgo < 1 ? 'Just now' : hoursAgo < 24 ? hoursAgo + 'h ago' : Math.floor(hoursAgo / 24) + 'd ago';
       var isOverdue = hoursAgo >= 24;
 
-      // Status chip removed from clinician view
-
-      var unreadDot = unread > 0 ? '<span class="cl-attn-unread-dot"></span>' : '';
-
-      // Header metadata — match expanded card format
-      var cd = consultData;
-      var headerMetaSpans = '';
-
-      // Risk label for header
-      var riskLabel = '';
+      // Risk tier → cell text + class
       var rs = c.risk_status || '';
-      if (rs === 'high_risk') riskLabel = '<span style="color:#EF4444;font-weight:600;">High Risk</span>';
-      else if (rs === 'moderate_risk') riskLabel = '<span style="color:#EAB308;font-weight:600;">Moderate Risk</span>';
-      else if (rs === 'low_risk') riskLabel = '<span style="color:#22C55E;font-weight:500;">Low Risk</span>';
+      var riskClass = '', riskText = '—';
+      if (rs === 'high_risk')        { riskClass = 'high';     riskText = 'High';     }
+      else if (rs === 'moderate_risk'){ riskClass = 'moderate'; riskText = 'Moderate'; }
+      else if (rs === 'low_risk')    { riskClass = 'low';      riskText = 'Low';      }
 
-      html += '<div class="cl-attn-card' + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
-        '<div class="cl-attn-card-header" onclick="toggleAttentionCard(this.parentElement)" style="cursor:pointer;">' +
-          '<div class="cl-attn-card-info">' +
-            '<div class="cl-attn-card-name">' + escapeHtml(name) + ' ' + unreadDot + '</div>' +
-            '<div class="cl-attn-card-meta">' +
-              headerMetaSpans +
-              '<span>Submitted ' + timeStr + '</span>' +
-              (riskLabel ? riskLabel : '') +
-              (isOverdue ? '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>' : '') +
-            '</div>' +
-          '</div>' +
-          '<div class="cl-attn-card-chevron">\u203A</div>' +
+      // Left-rail color: overdue always wins, otherwise follow risk tier.
+      var railClass = '';
+      if (isOverdue)                   railClass = 'rail-red';
+      else if (riskClass === 'high')   railClass = 'rail-red';
+      else if (riskClass === 'moderate') railClass = 'rail-yellow';
+      else if (riskClass === 'low')    railClass = 'rail-green';
+
+      var statusCell = isOverdue
+        ? '<div class="cl-attn-row-status">\u26A0 Overdue</div>'
+        : '<div></div>';
+      var riskCell = rs
+        ? '<div class="cl-attn-row-cell cl-attn-row-risk ' + riskClass + '">' + riskText + ' Risk</div>'
+        : '<div class="cl-attn-row-cell">—</div>';
+
+      html += '<div class="cl-attn-card ' + railClass + (isOverdue ? ' overdue' : '') + '" data-consult-id="' + c.id + '" data-user-id="' + c.user_id + '">' +
+        '<div class="cl-attn-row cl-attn-cols" onclick="toggleAttentionCard(this.parentElement)">' +
+          '<div class="cl-attn-row-name">' + escapeHtml(name) + '</div>' +
+          '<div class="cl-attn-row-cell">Submitted ' + timeStr + '</div>' +
+          riskCell +
+          statusCell +
+          '<div class="cl-attn-row-chev">\u203A</div>' +
         '</div>' +
         '<div class="cl-attn-card-body" id="attn-body-' + c.id + '" onclick="event.stopPropagation()">' +
-          '<!-- Expanded content loaded in Phase B -->' +
           '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading intake details...</div>' +
         '</div>' +
       '</div>';

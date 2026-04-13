@@ -6639,8 +6639,8 @@ async function loadWeeklySchedule() {
       var isToday = dt.toDateString() === now.toDateString();
       var dayLabel = SHORT_DAYS[dt.getDay()] + ', ' + (dt.getMonth() + 1) + '/' + dt.getDate();
 
-      html += '<div style="margin-bottom:14px;' + (isToday ? 'background:rgba(58,122,92,0.05);border-radius:8px;padding:10px 12px;margin:-10px -12px 14px;' : '') + '">';
-      html += '<div style="font-family:\'Inter\',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:' + (isToday ? 'var(--green)' : 'var(--grey2)') + ';margin-bottom:8px;">' + dayLabel + (isToday ? ' \u00B7 Today' : '') + '</div>';
+      html += '<div style="margin-bottom:8px;' + (isToday ? 'background:rgba(58,122,92,0.05);border-radius:8px;padding:10px 12px;margin:-10px -12px 8px;' : '') + '">';
+      html += '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.02em;color:' + (isToday ? 'var(--cl-green,#1DB954)' : 'var(--cl-text2,rgba(0,0,0,0.6))') + ';margin-bottom:2px;">' + dayLabel + (isToday ? ' · Today' : '') + '</div>';
 
       group.appts.forEach(function(a) {
         if (new Date(a.scheduled_at).getTime() < Date.now()) return; // skip past
@@ -6670,13 +6670,17 @@ async function loadWeeklySchedule() {
         }
 
         var apptType = a.appointment_type || '';
-        var typeChipHtml = apptType
-          ? '<span style="display:inline-flex;align-items:center;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--cl-text2,rgba(0,0,0,0.55));background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);padding:4px 10px;border-radius:999px;white-space:nowrap;flex-shrink:0;">' + escapeHtml(apptType) + '</span>'
-          : '';
+        // Patient name + type on one inline line, separated by a middot.
+        // Keeps the row visually quiet and matches the text scale of the
+        // rest of the card instead of introducing a competing pill chip.
+        var nameHtml = escapeHtml(patientName);
+        if (apptType) {
+          nameHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">·</span>' +
+            '<span style="color:var(--cl-text3,rgba(0,0,0,0.5));font-weight:500;">' + escapeHtml(apptType) + '</span>';
+        }
         html += '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;' + (group.appts.indexOf(a) < group.appts.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
-        html += '<span style="font-size:12px;color:#fff;min-width:65px;flex-shrink:0;">' + timeStr + '</span>';
-        html += '<span style="font-size:12px;color:var(--grey);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(patientName) + '</span>';
-        html += typeChipHtml;
+        html += '<span style="font-size:12px;font-weight:600;color:var(--cl-text,#111);min-width:65px;flex-shrink:0;">' + timeStr + '</span>';
+        html += '<span style="font-size:12px;color:var(--cl-text,#111);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nameHtml + '</span>';
         html += joinHtml;
         html += '</div>';
       });

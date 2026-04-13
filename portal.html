@@ -2776,7 +2776,7 @@ body.clinician-mode .cl-recent-outcome{font-family:'Inter',sans-serif;font-size:
    the thread + compose on the left, the full patient detail on the right. */
 body.clinician-mode #tab-cl-messages .thread-view.active{
   display:grid !important;
-  grid-template-columns:minmax(0,1.6fr) 440px;
+  grid-template-columns:minmax(0,6fr) minmax(0,4fr);
   grid-template-areas:"header header" "thread detail";
   gap:0 28px;
   align-items:stretch;
@@ -2805,12 +2805,14 @@ body.clinician-mode #tab-cl-messages .ct-patient-body{
   max-height:calc(100vh - 220px);
 }
 /* Inside .ct-patient-body, collapse the CRW 2-col grid to a single column
-   (no need for the embedded messaging card since the clinician is already
-   in the thread view on the left) and hide the inner Patient Communication
-   card entirely. */
+   (clinician is already in the thread view on the left). Hide ONLY the
+   inner Patient Communication card — keep the Patient Details card
+   (email / phone / address / DOB) visible at the bottom. */
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw{grid-template-columns:1fr !important;}
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw-left{padding:0 !important;background:transparent !important;border:none !important;}
-body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:none !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:flex !important;border-left:none !important;background:transparent !important;min-width:0 !important;padding:16px 0 0 !important;margin-top:16px !important;border-top:1px solid var(--cl-border) !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right-msg{display:none !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right-details{margin-top:0 !important;}
 /* Responsive fallback — under 1200px, stack the patient detail below the thread */
 @media(max-width:1200px){
   body.clinician-mode #tab-cl-messages .thread-view.active{

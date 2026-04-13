@@ -9076,6 +9076,12 @@ function confirmBooking() {
   // the raw value on the element if the dropdown markup is missing).
   var _bookTypeEl = document.getElementById('bookType');
   var _apptType = (_bookTypeEl && _bookTypeEl.getAttribute('data-value')) || (_bookTypeEl && _bookTypeEl.value) || null;
+  // If the member hasn't been prescribed + activated yet, every appointment
+  // they book is still considered an 'Initial Consult' regardless of what
+  // they picked in the dropdown.
+  if (!window._memberPurchaseComplete) {
+    _apptType = 'Initial Consult';
+  }
   var _insertRow = {
     consumer_id: currentUserId,
     clinician_id: _assignedClId,
@@ -9343,6 +9349,7 @@ async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durati
                 scheduled_at: tryDate.toISOString(),
                 duration_minutes: 20,
                 status: 'confirmed',
+                appointment_type: 'Check-in',
                 notes: 'monthly_checkin|Month ' + i + ' check-in'
               });
               bookedTimes.add(key); // Block this slot for subsequent months
@@ -9363,6 +9370,7 @@ async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durati
           scheduled_at: fallback.toISOString(),
           duration_minutes: 20,
           status: 'confirmed',
+          appointment_type: 'Check-in',
           notes: 'monthly_checkin|Month ' + i + ' check-in'
         });
       }
@@ -13533,13 +13541,18 @@ function _confirmReschedule() {
     // Get assigned clinician
     var clId = null;
     if (consultation && consultation.assigned_clinician_id) clId = consultation.assigned_clinician_id;
-    return db.from('appointments').insert({
+    // Preserve the original appointment's type when rescheduling. Pending
+    // members still booking during intake fall back to 'Initial Consult'.
+    var _rescheduleType = _p15ReschedType || (window._memberPurchaseComplete ? null : 'Initial Consult');
+    var _rescheduleRow = {
       consumer_id: currentUserId,
       clinician_id: clId,
       scheduled_at: d.toISOString(),
       duration_minutes: APPT_DURATION,
       status: 'pending'
-    });
+    };
+    if (_rescheduleType) _rescheduleRow.appointment_type = _rescheduleType;
+    return db.from('appointments').insert(_rescheduleRow);
   }).then(function() {
     _loadAndRenderConsumerAppts();
     showToast('Appointment rescheduled. Confirmation sent to your email.');

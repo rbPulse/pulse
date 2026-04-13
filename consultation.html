@@ -2577,13 +2577,16 @@ async function submitReviewBooking() {
     var session = (await window._sbClient.auth.getSession()).data.session;
     if (!session) return;
 
-    // Create appointment with the assigned clinician
+    // Create appointment with the assigned clinician. This path only runs
+    // during the pre-prescription intake flow, so the appointment is always
+    // an Initial Consult.
     var aInsert = await window._sbClient.from('appointments').insert({
       consumer_id: session.user.id,
       clinician_id: _reviewBookingClinicianId,
       scheduled_at: selectedDate.toISOString(),
       duration_minutes: 30,
-      status: 'pending'
+      status: 'pending',
+      appointment_type: 'Initial Consult'
     }).select('id');
 
     if (aInsert.error) {

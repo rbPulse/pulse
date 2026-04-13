@@ -2823,14 +2823,13 @@ body.clinician-mode #tab-cl-messages .ct-patient-body{
   max-height:calc(100vh - 220px);
 }
 /* Inside .ct-patient-body, collapse the CRW 2-col grid to a single column
-   (clinician is already in the thread view on the left). Hide ONLY the
-   inner Patient Communication card — keep the Patient Details card
-   (email / phone / address / DOB) visible at the bottom. */
+   (clinician is already in the thread view on the left). Hide the entire
+   right column — messaging card is redundant with the thread, and the
+   Patient Details card (email / phone / address / DOB) adds noise below
+   Session Notes in this context. */
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw{grid-template-columns:1fr !important;}
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw-left{padding:0 !important;background:transparent !important;border:none !important;}
-body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:flex !important;border-left:none !important;background:transparent !important;min-width:0 !important;padding:16px 0 0 !important;margin-top:16px !important;border-top:1px solid var(--cl-border) !important;}
-body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right-msg{display:none !important;}
-body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right-details{margin-top:0 !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:none !important;}
 /* Responsive fallback — under 1200px, stack the patient detail below the thread */
 @media(max-width:1200px){
   body.clinician-mode #tab-cl-messages .thread-view.active{

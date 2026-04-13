@@ -9563,8 +9563,10 @@ function _renderConsumerApptList(appts) {
     var statusClass, statusLabel;
     if (isCancelled) { statusClass = 'cancelled'; statusLabel = 'Cancelled'; }
     else if (isPast) { statusClass = 'completed'; statusLabel = 'Completed'; }
-    else if (rawSt === 'confirmed') { statusClass = 'confirmed'; statusLabel = 'Confirmed'; }
-    else { statusClass = 'pending'; statusLabel = 'Pending'; }
+    // Any upcoming appointment is effectively confirmed — the clinician
+    // approval gate is gone, so 'pending' rows from the old booking
+    // flow still render as 'Confirmed' to the member.
+    else { statusClass = 'confirmed'; statusLabel = 'Confirmed'; }
 
     var safeId   = escapeAttr(a.id || '');
     var safeType = escapeAttr(a.type || 'Appointment');

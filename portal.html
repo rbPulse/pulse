@@ -4295,8 +4295,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="tab-eyebrow">Consultations</div>
         <div class="tab-title">Your live consult schedule.</div>
         <div class="filter-bar cl-appt-filter-row">
-          <div class="filter-pill active" id="flt-requested"  onclick="filterClAppts('requested',this)">Requested</div>
-          <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
+          <div class="filter-pill active" id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
           <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
           <!-- Secondary filters wrapper — always right-aligned regardless of
                which primary status tab is active. Date dropdown collapses
@@ -6174,7 +6173,7 @@ function initClinicianPortal(user, role, greeting) {
   initClSchedule();
 
   // Live Consults tab
-  filterClAppts('requested');
+  filterClAppts('scheduled');
 
   // Patients tab
   initClPatients();
@@ -8302,7 +8301,7 @@ function saveAvailability() {
 }
 
 // ── CLINICIAN LIVE CONSULTS FILTER ──
-var _clApptFilter = 'requested';
+var _clApptFilter = 'scheduled';
 // Module-level cache of fetched appointments (Phase 23)
 var _clAppointments = [];
 // Loaded real appointment rows from DB (or mock); shared across filters
@@ -12829,7 +12828,7 @@ function switchTab(name) {
   if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
   if (name === 'resources')        { initResourcesTab(); }
   if (name === 'cl-schedule')      { initClSchedule(); }
-  if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'requested'); }
+  if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'scheduled'); }
   if (name === 'cl-patients')      { _myPatientIds = null; initClPatients(); }
   if (name === 'cl-overview')       { _startClOverviewPoll(); loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); loadWeeklySchedule(); }
   else                              { _stopClOverviewPoll(); }
@@ -14528,7 +14527,7 @@ function _leaveClinicianSession() {
   if (_clSessionApptId) {
     _showEvaluationForm(_clSessionApptId);
   } else {
-    if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'requested');
+    if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'scheduled');
     switchTab('cl-overview');
   }
 }
@@ -15018,7 +15017,7 @@ async function _submitEvaluation(apptId) {
         if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
         if (typeof loadAttentionCards === 'function') loadAttentionCards();
       } else {
-        if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'requested');
+        if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'scheduled');
         switchTab('cl-overview');
       }
     }, 1500);

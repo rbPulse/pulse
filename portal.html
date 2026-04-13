@@ -2820,6 +2820,10 @@ body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparen
 body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.85fr) minmax(0,0.7fr) minmax(0,1.6fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
+/* Live Consults page (clinician tab) — 5-col flat table:
+     Patient | Scheduled | Duration | Type | Actions */
+body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1.2fr) minmax(0,1.2fr) 70px minmax(0,0.9fr) 220px;}
+body.clinician-mode .cl-ft-cols-clappts .cl-ft-row-wrap{cursor:pointer;}
 
 /* ── Recently evaluated ── */
 body.clinician-mode .cl-recent-row{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;margin-bottom:6px;padding:10px 14px;}
@@ -4138,18 +4142,14 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <!-- Recently Evaluated — Phase A4 -->
         <div id="clRecentlyEvaluated"></div>
 
-        <div class="cl-two-col">
-          <div class="p-card" style="margin-bottom:0;">
-            <div class="compounds-label" style="margin-bottom:12px;">Recent Activity</div>
-            <div id="clRecentActivity"></div>
-          </div>
-          <div class="p-card" style="margin-bottom:0;">
-            <div class="compounds-label" style="margin-bottom:12px;">This Week's Live Consults</div>
-            <div id="clWeeklySchedule">
-              <!-- Populated by JS -->
-            </div>
+        <div class="p-card" id="clWeeklyScheduleCard" style="margin-bottom:0;">
+          <div class="compounds-label" style="margin-bottom:12px;">This Week's Live Consults</div>
+          <div id="clWeeklySchedule">
+            <!-- Populated by JS -->
           </div>
         </div>
+        <!-- Recent Activity card removed — activity surfaces on the Open Reviews table and Patients tab -->
+        <div id="clRecentActivity" style="display:none;"></div>
       </div>
 
       <!-- ── CLINICIAN SCHEDULE ── -->
@@ -8537,71 +8537,110 @@ function renderApptList(elId, appts, role) {
     return;
   }
   el.innerHTML = '';
+
+  // Clinician path — flat table with column headers matching Open Reviews
+  // and the Patients tab. Consumer path keeps the card-based layout below.
+  if (role === 'clinician') {
+    var header =
+      '<div class="cl-ft-header cl-ft-cols-clappts">' +
+        '<div class="cl-ft-col-static">Patient</div>' +
+        '<div class="cl-ft-col-static">Scheduled</div>' +
+        '<div class="cl-ft-col-static">Duration</div>' +
+        '<div class="cl-ft-col-static">Type</div>' +
+        '<div class="cl-ft-col-static" style="text-align:right;">Actions</div>' +
+      '</div>' +
+      '<div class="cl-ft-list">';
+
+    var body = '';
+    appts.forEach(function(a) {
+      var displayName = a.patient || '—';
+      var rawSt = a._rawStatus || a.status;
+      var canJoinRow = rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
+      var _btnBase = 'font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:8px 14px;border-radius:999px;cursor:pointer;transition:all .15s;';
+
+      // Action buttons (only when the row is actionable)
+      var actionHtml = '';
+      if (canJoinRow) {
+        actionHtml =
+          '<button style="' + _btnBase + 'background:transparent;color:var(--cl-text2,rgba(0,0,0,0.65));border:1px solid rgba(0,0,0,0.14);margin-right:8px;" onclick="event.stopPropagation();_openClRescheduleModal(\'' + escapeAttr(a._id || '') + '\')">Reschedule</button>' +
+          '<button style="' + _btnBase + 'background:#1DB954;color:#fff;border:1px solid #1DB954;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>';
+      } else if (rawSt === 'completed') {
+        actionHtml = '<span style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--cl-text3,rgba(0,0,0,0.45));">Completed</span>';
+      } else if (rawSt === 'cancelled' || rawSt === 'cancelled_by_member' || rawSt === 'cancelled_by_clinician') {
+        actionHtml = '<span style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#EF4444;">Cancelled</span>';
+      } else if (rawSt === 'live_consult_requested') {
+        actionHtml = '<span style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#3B82F6;">Requested</span>';
+      }
+
+      // Patient stage label
+      var stageLabel = '';
+      if (_clPatientRows && a.consumerId) {
+        for (var _pi = 0; _pi < _clPatientRows.length; _pi++) {
+          if (_clPatientRows[_pi].id === a.consumerId) {
+            var _rs = _clPatientRows[_pi].review_status;
+            var _ps = _clPatientRows[_pi].purchase_status;
+            if (_rs === 'prescribed' && _ps === 'completed') stageLabel = '<span style="margin-left:8px;color:#22C55E;font-weight:600;font-size:11px;">Active</span>';
+            else if (_rs === 'prescribed') stageLabel = '<span style="margin-left:8px;color:#B17B08;font-weight:600;font-size:11px;">Awaiting</span>';
+            else if (_rs === 'not_prescribed') stageLabel = '<span style="margin-left:8px;color:#EF4444;font-weight:600;font-size:11px;">Not Rx</span>';
+            else stageLabel = '<span style="margin-left:8px;color:rgba(0,0,0,0.45);font-weight:500;font-size:11px;">Pending</span>';
+            break;
+          }
+        }
+      }
+
+      // Scheduled column = date · time
+      var dateStr = a.date || '';
+      var timeStr = a.time || '';
+      var scheduledHtml = escapeHtml(dateStr) + (timeStr ? '<span style="margin:0 6px;color:rgba(0,0,0,0.25);">·</span>' + escapeHtml(timeStr) : '');
+
+      body +=
+        '<div class="cl-ft-row-wrap" data-appt-id="' + escapeAttr(a._id || '') + '">' +
+          '<div class="cl-ft-row cl-ft-cols-clappts">' +
+            '<div class="cl-ft-cell-name">' + escapeHtml(displayName) + stageLabel + '</div>' +
+            '<div class="cl-ft-cell">' + scheduledHtml + '</div>' +
+            '<div class="cl-ft-cell">' + escapeHtml(a.dur || '—') + '</div>' +
+            '<div class="cl-ft-cell">' + escapeHtml(a.appointmentType || '—') + '</div>' +
+            '<div style="text-align:right;display:flex;align-items:center;justify-content:flex-end;">' + actionHtml + '</div>' +
+          '</div>' +
+        '</div>';
+    });
+
+    el.innerHTML = header + body + '</div>';
+
+    // Row clicks open the detail panel (buttons swallow the event via stopPropagation)
+    el.querySelectorAll('.cl-ft-row-wrap').forEach(function(row, idx) {
+      row.addEventListener('click', function(e) {
+        if (e.target.closest('button, a, input, textarea, select')) return;
+        toggleApptDetail(appts[idx], 'clinician', row);
+      });
+    });
+    return;
+  }
+
+  // Consumer path — existing card layout (unchanged)
   appts.forEach(function(a) {
     var wrapper = document.createElement('div');
     var timeLabel = a.fullTimeStr || (a.date ? a.date + ' · ' + a.time : a.time);
-    var displayName = role === 'consumer' ? (a.clinician || 'Dr. Sarah Chen') : (a.patient || '—');
-    var initials = role === 'consumer' ? 'SC' : (a.initials || '?');
+    var displayName = a.clinician || 'Dr. Sarah Chen';
     var rawSt = a._rawStatus || a.status;
-    var canJoinRow = role === 'clinician' && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
-    // Unified pill styling for both actions — same size, shape, typography.
-    var _btnBase = 'font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:9px 18px;border-radius:999px;cursor:pointer;margin-left:10px;transition:all .15s;';
-    var rescheduleBtnHtml = canJoinRow
-      ? '<button style="' + _btnBase + 'background:transparent;color:var(--cl-text2,rgba(0,0,0,0.65));border:1px solid rgba(0,0,0,0.14);" onclick="event.stopPropagation();_openClRescheduleModal(\'' + escapeAttr(a._id || '') + '\')">Reschedule</button>'
-      : '';
-    var joinBtnHtml = canJoinRow
-      ? '<button style="' + _btnBase + 'background:#1DB954;color:#fff;border:1px solid #1DB954;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
-      : '';
-    // Don't render the generic 'Pending'/'Confirmed' appt-status chip in the
-    // clinician view — the fact that it's on the clinician's schedule implies
-    // it's already in their queue, so the chip just duplicates state. Still
-    // surface Cancelled / Completed for historical rows.
     var statusLabel = '';
-    if (role === 'clinician') {
-      if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
-      else if (rawSt === 'cancelled' || rawSt === 'cancelled_by_member' || rawSt === 'cancelled_by_clinician') statusLabel = '<span style="color:#EF4444;font-weight:600;">Cancelled</span>';
-      else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
-    } else {
-      if (rawSt === 'confirmed') statusLabel = '<span style="color:#22C55E;font-weight:600;">Confirmed</span>';
-      else if (rawSt === 'pending') statusLabel = '<span style="color:#EAB308;font-weight:600;">Pending</span>';
-      else if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
-      else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
-    }
-    // Patient stage label (from cached patient data)
-    var stageLabel = '';
-    if (role === 'clinician' && _clPatientRows && a.consumerId) {
-      for (var _pi = 0; _pi < _clPatientRows.length; _pi++) {
-        if (_clPatientRows[_pi].id === a.consumerId) {
-          var _rs = _clPatientRows[_pi].review_status;
-          var _ps = _clPatientRows[_pi].purchase_status;
-          if (_rs === 'prescribed' && _ps === 'completed') stageLabel = '<span style="color:#22C55E;font-weight:600;">Active</span>';
-          else if (_rs === 'prescribed') stageLabel = '<span style="color:#EAB308;font-weight:600;">Awaiting Activation</span>';
-          else if (_rs === 'not_prescribed') stageLabel = '<span style="color:#EF4444;font-weight:600;">Not Prescribed</span>';
-          else stageLabel = '<span style="color:#A1A1AA;font-weight:500;">Pending Review</span>';
-          break;
-        }
-      }
-    }
-    // Appointment type sits inline in the meta line after the time and
-    // duration, separated by middots. Quieter than a pill chip and
-    // keeps the header row clean.
+    if (rawSt === 'confirmed') statusLabel = '<span style="color:#22C55E;font-weight:600;">Confirmed</span>';
+    else if (rawSt === 'pending') statusLabel = '<span style="color:#EAB308;font-weight:600;">Pending</span>';
+    else if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
+    else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
     wrapper.innerHTML =
       '<div class="appt-row">' +
         '<div class="appt-info">' +
-          '<div class="appt-patient">' + escapeHtml(displayName) +
-            (stageLabel ? '<span style="margin-left:10px;font-size:12px;">' + stageLabel + '</span>' : '') +
-          '</div>' +
+          '<div class="appt-patient">' + escapeHtml(displayName) + '</div>' +
           '<div class="appt-type-text">' + escapeHtml(timeLabel) +
             (a.dur ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.dur) : '') +
             (a.appointmentType ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.appointmentType) : '') +
             (statusLabel ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + statusLabel : '') +
           '</div>' +
         '</div>' +
-        rescheduleBtnHtml +
-        joinBtnHtml +
         '<div style="color:var(--grey2);font-size:14px;flex-shrink:0;">\u203A</div>' +
       '</div>';
-    wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,.appt-detail-panel,textarea,button,input,select,a')) return; toggleApptDetail(a, role || 'clinician', wrapper); };
+    wrapper.onclick = function(e){ if(e.target.closest('.patient-detail-panel,.appt-detail-panel,textarea,button,input,select,a')) return; toggleApptDetail(a, role || 'consumer', wrapper); };
     el.appendChild(wrapper);
   });
 }

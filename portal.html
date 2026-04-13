@@ -8574,21 +8574,18 @@ function renderApptList(elId, appts, role) {
         }
       }
     }
-    // Appointment type chip — small pill next to the stage label on the
-    // patient line. Only renders when the row has a type on file.
-    var apptTypeChipHtml = '';
-    if (a.appointmentType) {
-      apptTypeChipHtml = '<span style="display:inline-flex;align-items:center;margin-left:10px;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--cl-text2,rgba(0,0,0,0.55));background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);padding:3px 9px;border-radius:999px;">' + escapeHtml(a.appointmentType) + '</span>';
-    }
+    // Appointment type sits inline in the meta line after the time and
+    // duration, separated by middots. Quieter than a pill chip and
+    // keeps the header row clean.
     wrapper.innerHTML =
       '<div class="appt-row">' +
         '<div class="appt-info">' +
           '<div class="appt-patient">' + escapeHtml(displayName) +
             (stageLabel ? '<span style="margin-left:10px;font-size:12px;">' + stageLabel + '</span>' : '') +
-            apptTypeChipHtml +
           '</div>' +
           '<div class="appt-type-text">' + escapeHtml(timeLabel) +
             (a.dur ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.dur) : '') +
+            (a.appointmentType ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + escapeHtml(a.appointmentType) : '') +
             (statusLabel ? '<span style="margin:0 6px;color:#71717A;">\u00B7</span>' + statusLabel : '') +
           '</div>' +
         '</div>' +

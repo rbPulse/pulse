@@ -2779,9 +2779,9 @@ body.clinician-mode #tab-cl-messages .thread-view.active{
   grid-template-columns:minmax(0,6fr) minmax(0,4fr);
   grid-template-areas:"header header" "thread detail";
   gap:0 28px;
-  /* align-items:start so each column sizes to its own content — the left
-     column no longer inherits the right column's tall patient-detail height
-     and stop stretching into empty space below the compose row. */
+  /* Each column sizes to its own content. The left column's explicit height
+     is locked to the right column's rendered height via _syncThreadHeights
+     so compose row + action buttons always line up at the same y. */
   align-items:start;
 }
 body.clinician-mode #tab-cl-messages .thread-header{
@@ -2804,15 +2804,16 @@ body.clinician-mode #tab-cl-messages .ct-thread-body{
   flex-direction:column;
   min-width:0;
   min-height:0;
+  /* max-height is set in JS (_syncThreadHeights) to match the right
+     column's rendered height so the left column is never taller. */
+  overflow:hidden;
 }
-/* Bubbles take natural height up to a viewport cap, then scroll internally.
-   This keeps the thread card compact for short conversations (few bubbles =
-   short card, no empty whitespace) while preventing a 500-message thread
-   from pushing the compose row off-screen. */
+/* Bubbles fill the remaining space inside the (height-capped) thread body
+   and scroll internally. Compose row sits below them at natural height. */
 body.clinician-mode #tab-cl-messages .msg-bubbles{
-  flex:0 1 auto !important;
-  max-height:calc(100vh - 340px) !important;
-  min-height:120px !important;
+  flex:1 1 0 !important;
+  max-height:none !important;
+  min-height:0 !important;
   overflow-y:auto !important;
   margin-bottom:14px !important;
 }
@@ -11528,22 +11529,56 @@ function _loadThreadPatientPanel(patientId) {
   if (!el) return;
   if (!patientId || PREVIEW_MODE) {
     el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:40px 24px;text-align:center;">Patient details unavailable in preview mode.</div>';
+    _syncThreadHeights();
     return;
   }
   el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">Loading patient…</div>';
+  _syncThreadHeights();
   db.from('consultations').select('id').eq('user_id', patientId).order('created_at', { ascending: false }).limit(1)
     .then(function(r) {
       if (!r.data || !r.data.length) {
         el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">No consultation on file.</div>';
+        _syncThreadHeights();
         return;
       }
       var consultId = r.data[0].id;
       _activePatientUserId = patientId;
       _activePatientConsultId = consultId;
       _loadAttentionCardBody(el, consultId, patientId);
+      // Sync a moment after render so the patient detail has laid out
+      setTimeout(_syncThreadHeights, 50);
+      setTimeout(_syncThreadHeights, 300);
     }).catch(function() {
       el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">Failed to load patient detail.</div>';
+      _syncThreadHeights();
     });
+}
+
+// Keeps the left (messaging) column's height locked to the right (patient
+// detail) column so the compose row and the action buttons always land on
+// the same y position, and the left column is never taller than the right.
+var _threadHeightObserver = null;
+function _syncThreadHeights() {
+  var threadBody = document.querySelector('#tab-cl-messages .ct-thread-body');
+  var detailBody = document.querySelector('#tab-cl-messages .ct-patient-body');
+  if (!threadBody || !detailBody) return;
+  var h = detailBody.offsetHeight;
+  if (h > 0) {
+    threadBody.style.height = h + 'px';
+    threadBody.style.maxHeight = h + 'px';
+  }
+  // Set up / refresh the observer that tracks detail content changes
+  if (typeof ResizeObserver !== 'undefined') {
+    if (_threadHeightObserver) _threadHeightObserver.disconnect();
+    _threadHeightObserver = new ResizeObserver(function() {
+      var hh = detailBody.offsetHeight;
+      if (hh > 0) {
+        threadBody.style.height = hh + 'px';
+        threadBody.style.maxHeight = hh + 'px';
+      }
+    });
+    _threadHeightObserver.observe(detailBody);
+  }
 }
 
 function _populateThreadMeta(threadId) {
@@ -11723,6 +11758,10 @@ function closeClThread() {
   if (_activePatientConsultId && typeof _stopAttnMsgPoll === 'function') {
     _stopAttnMsgPoll(_activePatientConsultId);
   }
+  // Disconnect the height observer + release the locked height on the left column
+  if (_threadHeightObserver) { _threadHeightObserver.disconnect(); _threadHeightObserver = null; }
+  var threadBody = document.querySelector('#tab-cl-messages .ct-thread-body');
+  if (threadBody) { threadBody.style.height = ''; threadBody.style.maxHeight = ''; }
   var panel = document.getElementById('clThreadPatientPanel');
   if (panel) panel.innerHTML = '';
   if (PREVIEW_MODE) {

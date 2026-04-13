@@ -2854,9 +2854,15 @@ body.clinician-mode .cl-ft-cols-weekly{
 }
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
-/* Live Consults page (clinician tab) — 5-col flat table:
-     Patient | Scheduled | Duration | Type | Actions */
-body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 100px minmax(0,1fr) 220px;}
+/* Live Consults page (clinician tab) — flat table:
+     Patient | Scheduled | Duration | Type | (spacer) | Actions
+   Auto-sized meta columns + 28px gap so every gap is visually uniform;
+   the flexible spacer column absorbs remaining width and pushes Actions
+   to the far right. */
+body.clinician-mode .cl-ft-cols-clappts{
+  grid-template-columns:auto auto auto auto minmax(0,1fr) 220px !important;
+  gap:28px !important;
+}
 body.clinician-mode .cl-ft-cols-clappts .cl-ft-row-wrap{cursor:pointer;}
 
 /* ── Recently evaluated ── */
@@ -8703,6 +8709,7 @@ function renderApptList(elId, appts, role) {
         '<div class="cl-ft-col-static">Scheduled</div>' +
         '<div class="cl-ft-col-static">Duration</div>' +
         '<div class="cl-ft-col-static">Type</div>' +
+        '<div></div>' + // flex spacer
         '<div class="cl-ft-col-static" style="text-align:right;">Actions</div>' +
       '</div>' +
       '<div class="cl-ft-list">';
@@ -8740,6 +8747,7 @@ function renderApptList(elId, appts, role) {
             '<div class="cl-ft-cell">' + scheduledHtml + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.dur || '—') + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.appointmentType || '—') + '</div>' +
+            '<div></div>' + // flex spacer
             '<div style="text-align:right;display:flex;align-items:center;justify-content:flex-end;">' + actionHtml + '</div>' +
           '</div>' +
         '</div>';

@@ -2891,7 +2891,7 @@ body.clinician-mode .portal-main .crw-msg-btn,
 body.clinician-mode .portal-main .msg-send-btn{color:#fff !important;}
 /* Fix text inside CRW cards loaded in appointment details */
 body.clinician-mode .portal-main .crw-msg-hdr{color:rgba(0,0,0,0.45) !important;}
-body.clinician-mode .portal-main .crw-section-title{color:rgba(0,0,0,0.45) !important;}
+/* .crw-section-title color is set by the flat-detail rules later in the stylesheet */
 body.clinician-mode .portal-main .crw-lbl{color:rgba(0,0,0,0.45) !important;}
 body.clinician-mode .portal-main .crw-det-lbl{color:rgba(0,0,0,0.45) !important;}
 body.clinician-mode .portal-main .adp-close{color:#111111 !important;}
@@ -2952,9 +2952,160 @@ body.clinician-mode .crw-right-details .crw-det-lbl{color:var(--cl-text3) !impor
 body.clinician-mode .crw-right-details .crw-det-val{color:var(--cl-text) !important;}
 body.clinician-mode .crw-actions{background:var(--cl-high) !important;border-top:1px solid var(--cl-border) !important;}
 body.clinician-mode .crw-divider{background:var(--cl-border) !important;}
-body.clinician-mode .crw-section{background:var(--cl-mid) !important;border:1px solid var(--cl-border) !important;}
-body.clinician-mode .crw-section-title{border-bottom-color:var(--cl-border) !important;}
-body.clinician-mode .crw-clin-row{border-bottom:1px solid rgba(0,0,0,0.04) !important;}
+
+/* ═══ Patient detail body — flat to match the new clinical table style ═══ */
+/* Duplicate header hidden — the row above already shows name + overdue chip */
+body.clinician-mode .crw-name{display:none !important;}
+/* Demographics line sits at top of body in muted tone (no Submitted / Overdue
+   chips — those are in the collapsed row above) */
+body.clinician-mode .crw-meta{
+  color:var(--cl-text2) !important;
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  margin:0 0 14px !important;
+}
+/* Risk block — kept as a visual alert, tightened to match table typography */
+body.clinician-mode .crw-risk{
+  border-radius:10px !important;
+  padding:12px 14px !important;
+  margin:0 0 18px !important;
+  border-width:1px !important;
+}
+body.clinician-mode .crw-risk-high{background:rgba(239,68,68,0.08) !important;border:1px solid rgba(239,68,68,0.35) !important;}
+body.clinician-mode .crw-risk-mod{background:rgba(234,179,8,0.1) !important;border:1px solid rgba(234,179,8,0.4) !important;}
+body.clinician-mode .crw-risk-low{background:rgba(34,197,94,0.08) !important;border:1px solid rgba(34,197,94,0.35) !important;}
+body.clinician-mode .crw-risk-title{
+  font-family:'Inter',sans-serif !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  letter-spacing:0.16em !important;
+  text-transform:uppercase !important;
+  margin-bottom:6px !important;
+}
+body.clinician-mode .crw-risk-high .crw-risk-title{color:#EF4444 !important;}
+body.clinician-mode .crw-risk-mod  .crw-risk-title{color:#B17B08 !important;}
+body.clinician-mode .crw-risk-low  .crw-risk-title{color:#15803D !important;}
+body.clinician-mode .crw-risk-body,
+body.clinician-mode .crw-risk-list,
+body.clinician-mode .crw-risk-list li{
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  color:var(--cl-text) !important;
+  line-height:1.55 !important;
+}
+body.clinician-mode .crw-risk-list{margin:4px 0 0 !important;padding:0 !important;list-style:none !important;}
+body.clinician-mode .crw-risk-list li{padding:2px 0 !important;}
+body.clinician-mode .crw-risk-list li::before{content:'•  ' !important;opacity:0.5 !important;}
+/* Flatten sections: no box, just a thin bottom divider between sections */
+body.clinician-mode .crw-section{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  padding:14px 0 !important;
+  margin:0 !important;
+  border-bottom:1px solid rgba(0,0,0,0.06) !important;
+}
+body.clinician-mode .crw-section:last-of-type{border-bottom:none !important;}
+body.clinician-mode .crw-section-title{
+  font-family:'Inter',sans-serif !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  letter-spacing:0.18em !important;
+  text-transform:uppercase !important;
+  color:var(--cl-text2) !important;
+  margin:0 0 10px !important;
+  padding:0 !important;
+  border:none !important;
+}
+body.clinician-mode .crw-val{
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  color:var(--cl-text) !important;
+  line-height:1.5 !important;
+}
+/* Clinical Summary rows — flat label/value with thin dividers */
+body.clinician-mode .crw-clin-row{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  padding:10px 0 !important;
+  border-bottom:1px solid rgba(0,0,0,0.05) !important;
+  gap:12px !important;
+}
+body.clinician-mode .crw-clin-row:first-child{padding-top:0 !important;}
+body.clinician-mode .crw-clin-row:last-child{border-bottom:none !important;padding-bottom:0 !important;}
+body.clinician-mode .crw-clin-lbl{
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  color:var(--cl-text2) !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+  min-width:0 !important;
+  flex-shrink:0 !important;
+}
+body.clinician-mode .crw-clin-val{
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:600 !important;
+  color:var(--cl-text) !important;
+  text-align:right !important;
+  flex:1 !important;
+}
+/* Session notes textarea — flat styling */
+body.clinician-mode .crw-notes-input{
+  width:100%;
+  background:var(--cl-inner,#F2F4F3) !important;
+  border:1px solid rgba(0,0,0,0.08) !important;
+  border-radius:10px !important;
+  color:#111 !important;
+  font-family:'Inter',sans-serif !important;
+  font-size:13px !important;
+  font-weight:400 !important;
+  padding:12px 14px !important;
+  resize:vertical;
+  min-height:80px;
+  outline:none;
+  line-height:1.55 !important;
+  transition:border-color .2s;
+}
+body.clinician-mode .crw-notes-input::placeholder{color:rgba(0,0,0,0.35) !important;}
+body.clinician-mode .crw-notes-input:focus{border-color:#1DB954 !important;}
+/* Action row — unified pill buttons */
+body.clinician-mode .crw-actions{
+  background:transparent !important;
+  border-top:1px solid rgba(0,0,0,0.06) !important;
+  padding:16px 0 0 !important;
+  margin-top:16px !important;
+  gap:12px !important;
+  justify-content:flex-start !important;
+  position:static !important;
+}
+body.clinician-mode .crw-btn{
+  font-family:'Inter',sans-serif !important;
+  font-size:11px !important;
+  font-weight:600 !important;
+  letter-spacing:0.12em !important;
+  text-transform:uppercase !important;
+  border-radius:999px !important;
+  padding:12px 24px !important;
+  height:auto !important;
+  cursor:pointer;
+  transition:all .2s;
+  border:1px solid transparent !important;
+}
+body.clinician-mode .crw-btn-grn{background:#2F6F55 !important;color:#fff !important;border-color:#2F6F55 !important;}
+body.clinician-mode .crw-btn-grn:hover{background:#3a7a5c !important;border-color:#3a7a5c !important;}
+body.clinician-mode .crw-btn-red{background:#E53E3E !important;color:#fff !important;border-color:#E53E3E !important;}
+body.clinician-mode .crw-btn-red:hover{background:#C53030 !important;border-color:#C53030 !important;}
+body.clinician-mode .crw-btn-blu{background:transparent !important;color:var(--cl-text2) !important;border:1px solid rgba(0,0,0,0.14) !important;}
+body.clinician-mode .crw-btn-blu:hover{border-color:rgba(0,0,0,0.28) !important;color:var(--cl-text) !important;background:rgba(0,0,0,0.02) !important;}
+/* Legacy .crw-section / .crw-section-title / .crw-clin-row overrides removed
+   — the flat detail-body rules earlier in this stylesheet now own these. */
 body.clinician-mode .crw-msg-comp{background:var(--cl-high) !important;border-top:1px solid var(--cl-border) !important;}
 body.clinician-mode .crw-msg-in{background:var(--cl-high) !important;border:1px solid rgba(0,0,0,0.08) !important;color:var(--cl-text) !important;height:66px !important;resize:none !important;overflow-y:auto !important;}
 body.clinician-mode .crw-msg-hdr{background:var(--cl-high) !important;color:var(--cl-text3) !important;border-bottom:1px solid var(--cl-border) !important;padding:10px 16px !important;}
@@ -6709,18 +6860,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // HTML
     var html='<div class="crw">'+
       '<div class="crw-left">'+
-        '<div class="crw-name">'+escapeHtml(patientName)+'</div>'+
         '<div class="crw-meta">'+
           '<span>'+ageStr+' yrs</span><span class="crw-meta-sep">\u00B7</span>'+
           '<span>'+escapeHtml(d.sex||'\u2014')+'</span><span class="crw-meta-sep">\u00B7</span>'+
           (heightStr&&heightStr!=='\u2014'?'<span>'+escapeHtml(heightStr)+'</span><span class="crw-meta-sep">\u00B7</span>':'')+
           (d.current_weight?'<span>'+escapeHtml(d.current_weight)+' lbs</span><span class="crw-meta-sep">\u00B7</span>':'')+
           '<span>'+escapeHtml(d.state||'\u2014')+'</span>'+
-          (isDecided ? '' : (
-            '<span class="crw-meta-sep">\u00B7</span>'+
-            '<span>Submitted '+subRel+'</span>'+
-            (isOverdue?'<span class="crw-meta-sep">\u00B7</span><span class="crw-overdue">\u26A0 Overdue</span>':'')
-          ))+
         '</div>'+
         riskHtml+
         '<div class="crw-section">'+
@@ -6732,11 +6877,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           clinHtml+
         '</div>'+
         '<div class="crw-section" id="attn-notes-section-'+consultId+'">'+
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2A2A30;">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
             '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
-            '<span id="attn-notes-saved-'+consultId+'" style="display:none;font-family:\'Inter\',sans-serif;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>'+
+            '<span id="attn-notes-saved-'+consultId+'" style="display:none;font-family:\'Inter\',sans-serif;font-size:8px;color:rgba(0,0,0,0.3);">Saved</span>'+
           '</div>'+
-          '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
+          '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" class="crw-notes-input" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
         '</div>'+
         (function(){
           // Pre-decision only: show action buttons. Prescribed/declined render

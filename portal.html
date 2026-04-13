@@ -2772,13 +2772,64 @@ body.clinician-mode .cl-recent-name{color:var(--cl-text);font-family:'Inter',san
 body.clinician-mode .cl-recent-outcome{font-family:'Inter',sans-serif;font-size:12px;border-radius:999px;padding:4px 10px;}
 
 /* ── Messages tab (clinician) ── */
-body.clinician-mode .thread-header{border-bottom:1px solid var(--cl-border);padding:10px 0 14px;margin-bottom:12px;gap:14px !important;}
-body.clinician-mode .thread-back{color:var(--cl-text2);font-family:'Inter',sans-serif;font-size:10px !important;font-weight:600 !important;letter-spacing:0.12em !important;text-transform:uppercase !important;}
-body.clinician-mode .thread-back:hover{color:var(--cl-text);}
-body.clinician-mode .thread-who{color:var(--cl-text) !important;font-family:'Inter',sans-serif !important;font-weight:600 !important;font-size:14px !important;letter-spacing:-0.01em !important;}
-body.clinician-mode #clThreadMeta{font-family:'Inter',sans-serif !important;font-size:13px !important;font-weight:500 !important;color:var(--cl-text2) !important;}
-body.clinician-mode #clThreadViewPatient{font-family:'Inter',sans-serif !important;font-size:10px !important;font-weight:600 !important;letter-spacing:0.12em !important;text-transform:uppercase !important;padding:8px 18px !important;border-radius:999px !important;border:1px solid var(--cl-border) !important;background:transparent !important;color:var(--cl-text2) !important;}
-body.clinician-mode #clThreadViewPatient:hover{border-color:var(--cl-green) !important;color:var(--cl-green) !important;background:rgba(29,185,84,0.04) !important;}
+/* When a thread is active, the conversation area splits into two columns:
+   the thread + compose on the left, the full patient detail on the right. */
+body.clinician-mode #tab-cl-messages .thread-view.active{
+  display:grid !important;
+  grid-template-columns:minmax(0,1.6fr) 440px;
+  grid-template-areas:"header header" "thread detail";
+  gap:0 28px;
+  align-items:stretch;
+}
+body.clinician-mode #tab-cl-messages .thread-header{
+  grid-area:header;
+  border-bottom:1px solid var(--cl-border);
+  padding:10px 0 14px;
+  margin-bottom:18px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+body.clinician-mode #tab-cl-messages .ct-thread-body{
+  grid-area:thread;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+body.clinician-mode #tab-cl-messages .ct-patient-body{
+  grid-area:detail;
+  min-width:0;
+  padding-left:28px;
+  border-left:1px solid var(--cl-border);
+  overflow-y:auto;
+  max-height:calc(100vh - 220px);
+}
+/* Inside .ct-patient-body, collapse the CRW 2-col grid to a single column
+   (no need for the embedded messaging card since the clinician is already
+   in the thread view on the left) and hide the inner Patient Communication
+   card entirely. */
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw{grid-template-columns:1fr !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-left{padding:0 !important;background:transparent !important;border:none !important;}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:none !important;}
+/* Responsive fallback — under 1200px, stack the patient detail below the thread */
+@media(max-width:1200px){
+  body.clinician-mode #tab-cl-messages .thread-view.active{
+    grid-template-columns:1fr;
+    grid-template-areas:"header" "thread" "detail";
+    gap:18px;
+  }
+  body.clinician-mode #tab-cl-messages .ct-patient-body{
+    padding-left:0;
+    border-left:none;
+    border-top:1px solid var(--cl-border);
+    padding-top:18px;
+    max-height:none;
+  }
+}
+body.clinician-mode .thread-back{color:var(--cl-text2) !important;font-family:'Inter',sans-serif !important;font-size:10px !important;font-weight:600 !important;letter-spacing:0.12em !important;text-transform:uppercase !important;background:none !important;border:none !important;cursor:pointer !important;display:inline-flex !important;align-items:center !important;gap:4px !important;}
+body.clinician-mode .thread-back:hover{color:var(--cl-text) !important;}
+body.clinician-mode .thread-back svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+body.clinician-mode .thread-who{color:var(--cl-text) !important;font-family:'Inter',sans-serif !important;font-weight:600 !important;font-size:15px !important;letter-spacing:-0.01em !important;}
 /* Bubbles area — flat, no card background */
 body.clinician-mode .msg-bubbles{background:transparent !important;border:none !important;padding:4px 0 !important;}
 body.clinician-mode .msg-compose-input{background:#F2F4F3 !important;border:1px solid rgba(0,0,0,0.08) !important;color:var(--cl-text) !important;font-family:'Inter',sans-serif;border-radius:10px;font-size:14px;}
@@ -4096,19 +4147,22 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
           <!-- Conversation view -->
           <div class="thread-view" id="clThreadView">
-            <div class="thread-header" style="flex-wrap:wrap;gap:8px 12px;">
+            <div class="thread-header">
               <button class="thread-back" onclick="closeClThread()">
                 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
                 Back
               </button>
-              <span class="thread-who" id="clThreadWho" style="font-family:'Inter',sans-serif;font-size:16px;font-weight:600;"></span>
-              <span id="clThreadMeta" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;"></span>
-              <button class="adp-btn" id="clThreadViewPatient" style="margin-left:auto;border-color:rgba(58,122,92,0.4);color:var(--green);font-size:9px;padding:5px 14px;display:none;" onclick="viewPatientFromThread()">View Patient</button>
+              <span class="thread-who" id="clThreadWho"></span>
             </div>
-            <div class="msg-bubbles" id="clMsgBubbles"></div>
-            <div class="msg-compose-row">
-              <textarea class="msg-compose-input" id="clMsgInput" rows="1" placeholder="Message..." oninput="_autoResizeMsgInput(this)" onkeydown="_msgInputKeydown(event, sendClMessage)"></textarea>
-              <button class="msg-send-btn" onclick="sendClMessage()">Send</button>
+            <div class="ct-thread-body">
+              <div class="msg-bubbles" id="clMsgBubbles"></div>
+              <div class="msg-compose-row">
+                <textarea class="msg-compose-input" id="clMsgInput" rows="1" placeholder="Message..." oninput="_autoResizeMsgInput(this)" onkeydown="_msgInputKeydown(event, sendClMessage)"></textarea>
+                <button class="msg-send-btn" onclick="sendClMessage()">Send</button>
+              </div>
+            </div>
+            <div class="ct-patient-body" id="clThreadPatientPanel">
+              <div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:40px 24px;text-align:center;">Select a thread to see patient details…</div>
             </div>
           </div>
         </div>
@@ -11419,30 +11473,30 @@ function renderClThreadList() {
   }
 }
 
-function _loadThreadPatientCard(patientId) {
-  var el = document.getElementById('clThreadPatientCard');
+// Loads the full patient detail into the right column of the messages
+// thread view. Reuses _loadAttentionCardBody so it always matches the
+// rendering used on the Patients tab and Open Reviews.
+function _loadThreadPatientPanel(patientId) {
+  var el = document.getElementById('clThreadPatientPanel');
   if (!el) return;
-  if (!patientId || PREVIEW_MODE) { el.style.display = 'none'; return; }
-  // Find consultation ID for this patient
+  if (!patientId || PREVIEW_MODE) {
+    el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:40px 24px;text-align:center;">Patient details unavailable in preview mode.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">Loading patient…</div>';
   db.from('consultations').select('id').eq('user_id', patientId).order('created_at', { ascending: false }).limit(1)
     .then(function(r) {
-      if (!r.data || !r.data.length) { el.style.display = 'none'; return; }
-      var consultId = r.data[0].id;
-      el.style.display = 'block';
-      el.innerHTML =
-        '<details style="border:1px solid rgba(0,0,0,0.12);border-radius:10px;overflow:hidden;">' +
-          '<summary style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;list-style:none;font-family:\'Inter\',sans-serif;font-size:12px;color:rgba(0,0,0,0.45);">' +
-            '<span>Patient details</span><span>\u25BE</span>' +
-          '</summary>' +
-          '<div id="clThreadPatientBody" style="border-top:1px solid rgba(0,0,0,0.08);max-height:400px;overflow-y:auto;"></div>' +
-        '</details>';
-      var body = document.getElementById('clThreadPatientBody');
-      if (body) {
-        _activePatientUserId = patientId;
-        _activePatientConsultId = consultId;
-        _loadAttentionCardBody(body, consultId, patientId);
+      if (!r.data || !r.data.length) {
+        el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">No consultation on file.</div>';
+        return;
       }
-    }).catch(function() { el.style.display = 'none'; });
+      var consultId = r.data[0].id;
+      _activePatientUserId = patientId;
+      _activePatientConsultId = consultId;
+      _loadAttentionCardBody(el, consultId, patientId);
+    }).catch(function() {
+      el.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:24px 0;">Failed to load patient detail.</div>';
+    });
 }
 
 function _populateThreadMeta(threadId) {
@@ -11486,8 +11540,7 @@ function _openClThreadMock(threadId) {
   if (threadView) threadView.classList.add('active');
   // Tab title stays 'Patient messages.' — the thread-header row owns the patient name
   if (whoEl) whoEl.textContent = thread.patient;
-  _showViewPatientBtn(thread.patientId || null);
-  _populateThreadMeta(thread.patientId || null);
+  _loadThreadPatientPanel(thread.patientId || null);
 
   renderClBubbles(thread);
 }
@@ -11507,8 +11560,7 @@ function _openClThreadReal(threadId) {
   var cached = _clThreadCache[threadId];
   var label = cached ? cached.patientLabel : threadId.slice(0, 8).toUpperCase();
   if (whoEl) whoEl.textContent = label;
-  _showViewPatientBtn(threadId);
-  _populateThreadMeta(threadId);
+  _loadThreadPatientPanel(threadId);
 
   // Load messages for this thread
   db.from('messages')
@@ -11620,7 +11672,12 @@ function renderClBubbles(thread) {
 function closeClThread() {
   if (_clMsgPollTimer) { clearInterval(_clMsgPollTimer); _clMsgPollTimer = null; }
   _activeClThreadId = null;
-  _showViewPatientBtn(null);
+  // Stop any attention-card poller started by the embedded patient detail
+  if (_activePatientConsultId && typeof _stopAttnMsgPoll === 'function') {
+    _stopAttnMsgPoll(_activePatientConsultId);
+  }
+  var panel = document.getElementById('clThreadPatientPanel');
+  if (panel) panel.innerHTML = '';
   if (PREVIEW_MODE) {
     _renderClThreadListMock();
   } else {

@@ -2817,8 +2817,8 @@ body.clinician-mode .cl-ft-cols-live{grid-template-columns:minmax(0,1.4fr) minma
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
 /* Weekly schedule card (clinician overview) — 5-col grid with sortable
-   column headers: Day | Time | Patient | Type | Action */
-body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.75fr) minmax(0,0.65fr) minmax(0,1.3fr) minmax(0,0.95fr) 120px;}
+   column headers: Type | Day | Time | Patient | Action */
+body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.95fr) minmax(0,0.75fr) minmax(0,0.65fr) minmax(0,1.3fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 /* Live Consults page (clinician tab) — 5-col flat table:
@@ -6699,10 +6699,10 @@ async function loadWeeklySchedule() {
     // Flat table header — matches Open Reviews card (sortable column headers)
     var html =
       '<div class="cl-ft-header cl-ft-cols-weekly">' +
+        '<div>' + _wh('Type', 'type') + '</div>' +
         '<div>' + _wh('Day', 'day') + '</div>' +
         '<div>' + _wh('Time', 'time') + '</div>' +
         '<div>' + _wh('Patient', 'patient') + '</div>' +
-        '<div>' + _wh('Type', 'type') + '</div>' +
         '<div style="text-align:right;"></div>' +
       '</div>' +
       '<div class="cl-ft-list">';
@@ -6743,10 +6743,10 @@ async function loadWeeklySchedule() {
       html +=
         '<div class="cl-ft-row-wrap">' +
           '<div class="cl-ft-row cl-ft-cols-weekly">' +
+            '<div class="cl-ft-cell">' + escapeHtml(apptType) + '</div>' +
             '<div class="cl-ft-cell"' + dayCellStyle + '>' + escapeHtml(dayLabel) + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(timeStr) + '</div>' +
             '<div class="cl-ft-cell-name">' + escapeHtml(patientName) + '</div>' +
-            '<div class="cl-ft-cell">' + escapeHtml(apptType) + '</div>' +
             '<div style="text-align:right;">' + actionHtml + '</div>' +
           '</div>' +
         '</div>';

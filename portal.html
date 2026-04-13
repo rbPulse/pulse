@@ -2829,17 +2829,26 @@ body.clinician-mode #tab-cl-messages .ct-patient-body{
   overflow-y:auto;
   max-height:calc(100vh - 220px);
 }
-/* Action buttons wrap + shrink inside the narrow right column so 'Request
-   Live Consult' doesn't split into a 3-line stack that overflows. */
+/* Action buttons in the narrow right column: Prescribe + Decline share the
+   top row 50/50, Request Live Consult is a full-width secondary below. */
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw-actions{
+  display:flex !important;
   flex-wrap:wrap !important;
-  gap:8px !important;
+  gap:10px !important;
 }
 body.clinician-mode #tab-cl-messages .ct-patient-body .crw-btn{
-  padding:10px 16px !important;
+  padding:11px 16px !important;
   font-size:10px !important;
   letter-spacing:0.1em !important;
   white-space:nowrap !important;
+}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-btn-grn,
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-btn-red{
+  flex:1 1 calc(50% - 5px) !important;
+  min-width:0 !important;
+}
+body.clinician-mode #tab-cl-messages .ct-patient-body .crw-btn-blu{
+  flex:0 0 100% !important;
 }
 /* Inside .ct-patient-body, collapse the CRW 2-col grid to a single column
    (clinician is already in the thread view on the left). Hide the entire

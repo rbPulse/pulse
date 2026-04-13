@@ -1577,20 +1577,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cl-attn-card-body{display:none;padding:0;border-top:1px solid var(--border);}
 .cl-attn-card.expanded .cl-attn-card-body{display:block;}
 /* ── Clinician Review Workspace ── */
-.crw{display:grid;grid-template-columns:1fr 380px;grid-template-areas:"left right" "bottom bottom";gap:0;font-family:'Inter',sans-serif;position:relative;}
-.crw-left{grid-area:left;padding:32px;background:#0B0B0C;position:relative;min-width:0;}
-.crw-right{grid-area:right;display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;min-width:340px;}
-.crw-bottom{grid-area:bottom;padding:0 32px 24px;background:#0B0B0C;}
-/* Wide prescribed / declined outcome card — stretches across both columns
-   so the rows can sit in a horizontal grid instead of stacking vertically. */
-.crw-outcome{border-radius:12px;padding:20px 24px;margin-top:16px;}
-.crw-outcome-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
-.crw-outcome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px 24px;}
-.crw-outcome-cell{display:flex;flex-direction:column;gap:4px;min-width:0;}
-.crw-outcome-lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-.crw-outcome-val{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:#fff;word-break:break-word;}
-.crw-outcome-notes{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);}
-.crw-outcome-notes .crw-outcome-lbl{margin-bottom:6px;}
+.crw{display:grid;grid-template-columns:1fr 380px;gap:0;font-family:'Inter',sans-serif;position:relative;}
+.crw-left{padding:32px;background:#0B0B0C;position:relative;min-width:0;}
+.crw-right{display:flex;flex-direction:column;background:#111113;border-left:1px solid #1F1F23;min-width:340px;}
+/* Prescribed / declined outcome box — sits at the top of .crw-left in place
+   of the Risk box for already-decided patients. */
+.crw-outcome{border-radius:10px;padding:12px 14px;margin:0 0 18px;}
+.crw-outcome-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);}
+.crw-outcome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 18px;}
+.crw-outcome-cell{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.crw-outcome-lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);}
+.crw-outcome-val{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#fff;word-break:break-word;line-height:1.35;}
+.crw-outcome-notes{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);}
+.crw-outcome-notes .crw-outcome-lbl{margin-bottom:4px;}
 .crw-right-msg{flex:none;display:flex;flex-direction:column;overflow:hidden;margin-bottom:16px;}
 .crw-right-details{flex:none;border:1px solid #2A2A30;border-radius:10px;padding:16px 20px;overflow:visible;background:#0D0D0F;margin:0;}
 .crw-right-details .crw-det-grid{grid-template-columns:1fr 1fr;}
@@ -1689,7 +1688,7 @@ body.clinician-mode .attn-msg-modal-list .crw-msg-time{color:var(--cl-text3) !im
 .crw-msg-btn{background:#22C55E;border:none;border-radius:8px;height:40px;padding:0 16px;margin-left:0;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#FFFFFF;cursor:pointer;transition:opacity .15s;}
 .crw-msg-btn:hover{opacity:0.85;}
 @media(max-width:1200px){.crw{grid-template-columns:1fr 340px;}.crw-right{min-width:340px;}}
-@media(max-width:900px){.crw{grid-template-columns:1fr;grid-template-areas:"left" "right" "bottom";}.crw-right{border-left:none;border-top:1px solid #1F1F23;max-height:500px;}.crw-det-grid{grid-template-columns:1fr 1fr;}.crw-bottom{padding:0 20px 20px;}}
+@media(max-width:900px){.crw{grid-template-columns:1fr;}.crw-right{border-left:none;border-top:1px solid #1F1F23;max-height:500px;}.crw-det-grid{grid-template-columns:1fr 1fr;}}
 .cl-attn-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
 /* ── Consult Reminder Popup ── */
 .consult-reminder-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:crFadeIn .25s ease;}
@@ -2950,16 +2949,19 @@ body.clinician-mode .portal-main div[style*="color:var(--grey2)"]{color:#111111 
 /* ── FORCE OVERRIDE: eliminate ALL remaining dark backgrounds ── */
 body.clinician-mode .crw-left{background:var(--cl-high) !important;}
 body.clinician-mode .crw-right{background:var(--cl-high) !important;border-left:1px solid var(--cl-border) !important;}
-body.clinician-mode .crw-bottom{background:var(--cl-high) !important;padding:0 24px 20px !important;}
-body.clinician-mode .crw-outcome{border:1px solid var(--cl-border) !important;background:var(--cl-mid) !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
-body.clinician-mode .crw-outcome.crw-outcome-prescribed{border:2px solid rgba(29,185,84,0.45) !important;background:rgba(29,185,84,0.04) !important;}
-body.clinician-mode .crw-outcome.crw-outcome-declined{border:2px solid rgba(229,62,62,0.45) !important;background:rgba(229,62,62,0.04) !important;}
-body.clinician-mode .crw-outcome-title{color:var(--cl-text2) !important;border-bottom-color:rgba(0,0,0,0.08) !important;}
-body.clinician-mode .crw-outcome.crw-outcome-prescribed .crw-outcome-title{color:#1DB954 !important;border-bottom-color:rgba(29,185,84,0.2) !important;}
+/* Outcome box — sized to match the Risk box now that it sits at the top
+   of .crw-left instead of spanning a separate full-width row. */
+body.clinician-mode .crw-outcome{border-radius:10px !important;padding:12px 14px !important;margin:0 0 18px !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+body.clinician-mode .crw-outcome.crw-outcome-prescribed{border:1px solid rgba(29,185,84,0.4) !important;background:rgba(29,185,84,0.06) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-declined{border:1px solid rgba(229,62,62,0.4) !important;background:rgba(229,62,62,0.06) !important;}
+body.clinician-mode .crw-outcome-title{font-family:'Inter',sans-serif !important;font-size:10px !important;font-weight:700 !important;letter-spacing:0.16em !important;text-transform:uppercase !important;margin:0 0 10px !important;padding:0 0 8px !important;border-bottom:1px solid rgba(0,0,0,0.06) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-prescribed .crw-outcome-title{color:#17a34a !important;border-bottom-color:rgba(29,185,84,0.2) !important;}
 body.clinician-mode .crw-outcome.crw-outcome-declined .crw-outcome-title{color:#E53E3E !important;border-bottom-color:rgba(229,62,62,0.2) !important;}
-body.clinician-mode .crw-outcome-lbl{color:var(--cl-text3) !important;}
-body.clinician-mode .crw-outcome-val{color:var(--cl-text) !important;}
-body.clinician-mode .crw-outcome-notes{border-top-color:rgba(0,0,0,0.06) !important;}
+body.clinician-mode .crw-outcome-grid{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(130px,1fr)) !important;gap:10px 18px !important;}
+body.clinician-mode .crw-outcome-lbl{color:var(--cl-text3) !important;font-family:'Inter',sans-serif !important;font-size:9px !important;font-weight:600 !important;letter-spacing:0.12em !important;text-transform:uppercase !important;}
+body.clinician-mode .crw-outcome-val{color:var(--cl-text) !important;font-family:'Inter',sans-serif !important;font-size:13px !important;font-weight:600 !important;word-break:break-word !important;line-height:1.35 !important;}
+body.clinician-mode .crw-outcome-notes{margin-top:10px !important;padding-top:8px !important;border-top:1px solid rgba(0,0,0,0.06) !important;}
+body.clinician-mode .crw-outcome-notes .crw-outcome-lbl{margin-bottom:4px !important;}
 body.clinician-mode .crw-right-msg{background:var(--cl-high) !important;flex:1 !important;margin-bottom:12px !important;display:flex !important;flex-direction:column !important;max-height:400px !important;overflow:hidden !important;}
 /* ── CRW right column fix ── */
 body.clinician-mode .crw-right-details{background:var(--cl-mid) !important;border:1px solid rgba(0,0,0,0.14) !important;border-radius:10px !important;overflow:visible !important;max-height:none !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
@@ -6832,13 +6834,14 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // Detail field
     function _df(l,v){return '<div><div class="crw-det-lbl">'+l+'</div><div class="crw-det-val">'+escapeHtml(v)+'</div></div>';}
 
-    // Build the wide outcome block (Prescribed / Declined) separately from the
-    // crw-left column so it can stretch across both columns below the review.
+    // For decided patients (prescribed / declined), the Risk box is replaced
+    // at the top of the left column with a compact outcome box that mirrors
+    // the risk box layout. No separate bottom row.
     function _outcomeCell(lbl, val) {
       if (!val && val !== 0) return '';
       return '<div class="crw-outcome-cell"><div class="crw-outcome-lbl">'+escapeHtml(lbl)+'</div><div class="crw-outcome-val">'+escapeHtml(val)+'</div></div>';
     }
-    var bottomHtml = '';
+    var outcomeTopHtml = '';
     if (consultReviewStatus === 'prescribed') {
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
       var protoAssigned = consultRow.protocol_assigned || d.assigned_protocol || d.protocol_assigned || 'Not specified';
@@ -6850,7 +6853,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var timingInfo = consultRow.timing || _le.timing || d.timing || '';
       var durInfo = consultRow.duration || _le.duration || d.duration || '—';
       var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
-      bottomHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
+      outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
         '<div class="crw-outcome-title">Prescribed</div>'+
         '<div class="crw-outcome-grid">'+
           _outcomeCell('Protocol', protoAssigned)+
@@ -6867,7 +6870,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var declineReason = consultRow.no_prescription_reason || _le2.no_prescription_reason || d.no_prescription_reason || 'No reason provided';
       var declineNotes = consultRow.session_notes || consultRow.other_notes || _le2.session_notes || _le2.other_notes || d.session_notes || d.clinician_notes || '';
       var evalDate2 = (consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-      bottomHtml = '<div class="crw-outcome crw-outcome-declined">'+
+      outcomeTopHtml = '<div class="crw-outcome crw-outcome-declined">'+
         '<div class="crw-outcome-title">Declined</div>'+
         '<div class="crw-outcome-grid">'+
           _outcomeCell('Reason', declineReason)+
@@ -6878,9 +6881,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     }
 
     // HTML
-    var html='<div class="crw">'+
+    // Top alert: for decided patients, show the outcome box (Prescribed /
+    // Declined) in place of Risk. Pending patients still see Risk at top.
+    var topAlertHtml = isDecided ? outcomeTopHtml : riskHtml;
+    var html='<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
       '<div class="crw-left">'+
-        riskHtml+
+        topAlertHtml+
         '<div class="crw-section">'+
           '<div class="crw-section-title">Demographics</div>'+
           '<div class="crw-val">'+
@@ -6954,7 +6960,6 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>'+
         '</div>'+
       '</div>'+
-      (bottomHtml ? '<div class="crw-bottom">'+bottomHtml+'</div>' : '')+
     '</div>';
 
     bodyEl.innerHTML=html;
@@ -10302,12 +10307,14 @@ function _checkPendingPatientOpen() {
     if (_clPatientRows[i].id === targetId) { patient = _clPatientRows[i]; break; }
   }
   if (!patient) return;
-  var el = document.getElementById('clPatientList');
+  // The Patients tab now renders rows inside a .cl-ft-list wrapper using
+  // .cl-ft-row-wrap for each row, so look inside the inner list element.
+  var el = document.getElementById('clPatientFlatList') || document.getElementById('clPatientList');
   if (!el) return;
-  var rows = el.children;
+  var rows = el.querySelectorAll('.cl-ft-row-wrap');
   for (var j = 0; j < rows.length; j++) {
-    var nameEl = rows[j].querySelector('.cl-attn-card-name');
-    if (nameEl && nameEl.textContent === patient.name) {
+    var nameEl = rows[j].querySelector('.cl-ft-cell-name');
+    if (nameEl && nameEl.textContent.trim() === patient.name) {
       togglePatientDetail(patient, rows[j]);
       rows[j].scrollIntoView({ behavior: 'smooth', block: 'start' });
       break;

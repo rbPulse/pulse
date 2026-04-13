@@ -2843,9 +2843,15 @@ body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
 /* Weekly schedule card (clinician overview) — 5-col grid with sortable
    column headers: Type | Day | Time | Patient | Action.
-   Fixed-width columns for the meta data so the gap between each is
-   uniform (14px via .cl-ft-row gap); Patient column flexes to fill. */
-body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:140px 120px 90px minmax(0,1fr) 120px;}
+   Auto-sized meta columns (Type/Day/Time) so each cell shrinks to
+   content width — this makes the gap between columns visually uniform
+   (28px via the explicit gap override below) regardless of content
+   length. Patient column takes the remaining width; Action column
+   stays fixed at 120px on the right. */
+body.clinician-mode .cl-ft-cols-weekly{
+  grid-template-columns:auto auto auto minmax(0,1fr) 120px !important;
+  gap:28px !important;
+}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 /* Live Consults page (clinician tab) — 5-col flat table:

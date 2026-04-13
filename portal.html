@@ -2778,8 +2778,13 @@ body.clinician-mode #tab-cl-messages .thread-view.active{
   display:grid !important;
   grid-template-columns:minmax(0,6fr) minmax(0,4fr);
   grid-template-areas:"header header" "thread detail";
+  grid-template-rows:auto 1fr;
   gap:0 28px;
   align-items:stretch;
+  /* Cap the thread card height so neither column can push the page taller.
+     Both bubble list + patient detail overflow internally within this box. */
+  height:calc(100vh - 220px);
+  min-height:520px;
 }
 body.clinician-mode #tab-cl-messages .thread-header{
   grid-area:header;

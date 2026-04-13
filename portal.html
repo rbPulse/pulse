@@ -6725,15 +6725,20 @@ async function loadWeeklySchedule() {
     var upcoming = appts.filter(function(a) {
       return new Date(a.scheduled_at).getTime() >= Date.now();
     });
-    // Apply the type column filter (if any)
+    // If there are no real upcoming appointments at all, show the full
+    // empty-state card without headers.
+    if (!upcoming.length) {
+      showInlineEmpty(container, 'No live consults scheduled.', 'Upcoming consults with your patients will appear here.', { icon: 'clipboard' });
+      return;
+    }
+    // Apply the type column filter. If the filter empties the list, we
+    // still want the header row + filterable Type dropdown to render so
+    // the clinician can clear the filter — only the BODY goes empty.
+    var hadDataBeforeFilter = upcoming.length > 0;
     if (_clWeeklyTypeFilter && _clWeeklyTypeFilter !== 'all') {
       upcoming = upcoming.filter(function(a) {
         return (a.appointment_type || '') === _clWeeklyTypeFilter;
       });
-    }
-    if (!upcoming.length) {
-      showInlineEmpty(container, 'No live consults scheduled.', 'Upcoming consults with your patients will appear here.', { icon: 'clipboard' });
-      return;
     }
 
     // Attach derived sort helpers once so sort() can key off them cheaply
@@ -6815,6 +6820,16 @@ async function loadWeeklySchedule() {
         '<div class="cl-ft-col-static" style="text-align:right;">Session</div>' +
       '</div>' +
       '<div class="cl-ft-list">';
+
+    // If the filter empties the list, render an inline no-match state
+    // INSIDE the list area so the sortable/filterable headers above
+    // stay visible and the clinician can clear the filter.
+    if (hadDataBeforeFilter && upcoming.length === 0) {
+      html += '<div style="padding:32px 16px;text-align:center;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--cl-text3,rgba(0,0,0,0.4));">No ' + escapeHtml(_clWeeklyTypeFilter) + ' appointments this week.</div>';
+      html += '</div>';
+      container.innerHTML = html;
+      return;
+    }
 
     upcoming.forEach(function(a) {
       var aDt = new Date(a.scheduled_at);

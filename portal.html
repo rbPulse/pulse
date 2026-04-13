@@ -2817,8 +2817,10 @@ body.clinician-mode .cl-ft-cols-live{grid-template-columns:minmax(0,1.4fr) minma
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
 /* Weekly schedule card (clinician overview) — 5-col grid with sortable
-   column headers: Type | Day | Time | Patient | Action */
-body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,0.95fr) minmax(0,0.75fr) minmax(0,0.65fr) minmax(0,1.3fr) 120px;}
+   column headers: Type | Day | Time | Patient | Action.
+   Fixed-width columns for the meta data so the gap between each is
+   uniform (14px via .cl-ft-row gap); Patient column flexes to fill. */
+body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:140px 120px 90px minmax(0,1fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 /* Live Consults page (clinician tab) — 5-col flat table:
@@ -4235,23 +4237,37 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
       <div class="portal-tab" id="tab-cl-appointments">
         <div class="tab-eyebrow">Live Consults</div>
         <div class="tab-title">Video consultations requested for patients.</div>
-        <div class="filter-bar">
+        <div class="filter-bar cl-appt-filter-row">
           <div class="filter-pill active" id="flt-requested"  onclick="filterClAppts('requested',this)">Requested</div>
           <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
           <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
-        </div>
-        <div class="filter-bar" id="clApptDateFilters" style="display:none;margin-top:6px;">
-          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-all"   onclick="_filterClApptsByDate('all',this)">All</div>
-          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-today" onclick="_filterClApptsByDate('today',this)">Today</div>
-          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-week"  onclick="_filterClApptsByDate('week',this)">This Week</div>
-          <div class="filter-pill" style="font-size:11px;padding:4px 12px;opacity:0.7;" id="flt-date-month" onclick="_filterClApptsByDate('month',this)">This Month</div>
-        </div>
-        <div class="filter-bar" id="clApptTypeFilters" style="margin-top:6px;">
-          <div class="filter-pill active" style="font-size:11px;padding:4px 12px;" id="flt-type-all"     onclick="_filterClApptsByType('all',this)">All Types</div>
-          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-initial" onclick="_filterClApptsByType('Initial Consult',this)">Initial Consult</div>
-          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-review"  onclick="_filterClApptsByType('Protocol Review',this)">Protocol Review</div>
-          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-followup"onclick="_filterClApptsByType('Follow-up',this)">Follow-up</div>
-          <div class="filter-pill"        style="font-size:11px;padding:4px 12px;" id="flt-type-checkin" onclick="_filterClApptsByType('Check-in',this)">Check-in</div>
+          <!-- Secondary filters pushed to the right. Date dropdown collapses
+               when the primary status is not 'Upcoming'. -->
+          <div class="pd-dropdown cl-appt-flt-dd" id="clApptDateDD" data-value="all" style="display:none;margin-left:auto;">
+            <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptDateDD')">
+              <span class="pd-dropdown-value">All dates</span>
+              <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pd-dropdown-menu">
+              <button type="button" class="pd-dropdown-option active" data-value="all"   onclick="_pdSelect('clApptDateDD','all','All dates',function(v){_filterClApptsByDate('all');})">All dates</button>
+              <button type="button" class="pd-dropdown-option"        data-value="today" onclick="_pdSelect('clApptDateDD','today','Today',function(v){_filterClApptsByDate('today');})">Today</button>
+              <button type="button" class="pd-dropdown-option"        data-value="week"  onclick="_pdSelect('clApptDateDD','week','This week',function(v){_filterClApptsByDate('week');})">This week</button>
+              <button type="button" class="pd-dropdown-option"        data-value="month" onclick="_pdSelect('clApptDateDD','month','This month',function(v){_filterClApptsByDate('month');})">This month</button>
+            </div>
+          </div>
+          <div class="pd-dropdown cl-appt-flt-dd" id="clApptTypeDD" data-value="all">
+            <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptTypeDD')">
+              <span class="pd-dropdown-value">All types</span>
+              <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pd-dropdown-menu">
+              <button type="button" class="pd-dropdown-option active" data-value="all"              onclick="_pdSelect('clApptTypeDD','all','All types',function(v){_filterClApptsByType('all');})">All types</button>
+              <button type="button" class="pd-dropdown-option"        data-value="Initial Consult"  onclick="_pdSelect('clApptTypeDD','Initial Consult','Initial Consult',function(v){_filterClApptsByType('Initial Consult');})">Initial Consult</button>
+              <button type="button" class="pd-dropdown-option"        data-value="Protocol Review"  onclick="_pdSelect('clApptTypeDD','Protocol Review','Protocol Review',function(v){_filterClApptsByType('Protocol Review');})">Protocol Review</button>
+              <button type="button" class="pd-dropdown-option"        data-value="Follow-up"        onclick="_pdSelect('clApptTypeDD','Follow-up','Follow-up',function(v){_filterClApptsByType('Follow-up');})">Follow-up</button>
+              <button type="button" class="pd-dropdown-option"        data-value="Check-in"         onclick="_pdSelect('clApptTypeDD','Check-in','Check-in',function(v){_filterClApptsByType('Check-in');})">Check-in</button>
+            </div>
+          </div>
         </div>
         <div class="p-card">
           <div class="appt-list" id="clApptList"></div>

@@ -2843,26 +2843,16 @@ body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparent !important;}
 /* Weekly schedule card (clinician overview) — 5-col grid with sortable
    column headers: Type | Day | Time | Patient | Action.
-   Auto-sized meta columns (Type/Day/Time) so each cell shrinks to
-   content width — this makes the gap between columns visually uniform
-   (28px via the explicit gap override below) regardless of content
-   length. Patient column takes the remaining width; Action column
-   stays fixed at 120px on the right. */
-body.clinician-mode .cl-ft-cols-weekly{
-  grid-template-columns:auto auto auto minmax(0,1fr) 120px !important;
-  gap:28px !important;
-}
+   Equal fr columns so every column has the same width and the gap
+   between adjacent cells is uniform. Same approach as Open Reviews. */
+body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
-/* Live Consults page (clinician tab) — flat table:
-     Patient | Scheduled | Duration | Type | (spacer) | Actions
-   Auto-sized meta columns + 28px gap so every gap is visually uniform;
-   the flexible spacer column absorbs remaining width and pushes Actions
-   to the far right. */
-body.clinician-mode .cl-ft-cols-clappts{
-  grid-template-columns:auto auto auto auto minmax(0,1fr) 220px !important;
-  gap:28px !important;
-}
+/* Live Consults page (clinician tab) — 5-col flat table:
+     Patient | Scheduled | Duration | Type | Actions
+   Equal fr columns so every data column has the same width and
+   the gap between adjacent cells is uniform. Actions fixed at 220px. */
+body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 220px;}
 body.clinician-mode .cl-ft-cols-clappts .cl-ft-row-wrap{cursor:pointer;}
 
 /* ── Recently evaluated ── */
@@ -8288,14 +8278,18 @@ function filterClAppts(filter, pillEl) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
-  // Show date filters only for Upcoming tab
-  var dateFilters = document.getElementById('clApptDateFilters');
-  if (dateFilters) dateFilters.style.display = (filter === 'scheduled') ? 'flex' : 'none';
-  // Reset date filter pills
-  ['all','today','week','month'].forEach(function(f) {
-    var p = document.getElementById('flt-date-' + f);
-    if (p) p.classList.toggle('active', f === 'all');
-  });
+  // Show the Date dropdown only for the 'Upcoming' tab. Reset its value
+  // back to 'All dates' whenever the primary filter changes.
+  var dateDD = document.getElementById('clApptDateDD');
+  if (dateDD) {
+    dateDD.style.display = (filter === 'scheduled') ? 'inline-block' : 'none';
+    dateDD.setAttribute('data-value', 'all');
+    var dv = dateDD.querySelector('.pd-dropdown-value');
+    if (dv) dv.textContent = 'All dates';
+    dateDD.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
+      opt.classList.toggle('active', opt.getAttribute('data-value') === 'all');
+    });
+  }
   if (PREVIEW_MODE || !currentUserId) {
     _applyClApptFilter(ALL_APPTS, filter);
     return;
@@ -8709,7 +8703,6 @@ function renderApptList(elId, appts, role) {
         '<div class="cl-ft-col-static">Scheduled</div>' +
         '<div class="cl-ft-col-static">Duration</div>' +
         '<div class="cl-ft-col-static">Type</div>' +
-        '<div></div>' + // flex spacer
         '<div class="cl-ft-col-static" style="text-align:right;">Actions</div>' +
       '</div>' +
       '<div class="cl-ft-list">';
@@ -8747,7 +8740,6 @@ function renderApptList(elId, appts, role) {
             '<div class="cl-ft-cell">' + scheduledHtml + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.dur || '—') + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.appointmentType || '—') + '</div>' +
-            '<div></div>' + // flex spacer
             '<div style="text-align:right;display:flex;align-items:center;justify-content:flex-end;">' + actionHtml + '</div>' +
           '</div>' +
         '</div>';

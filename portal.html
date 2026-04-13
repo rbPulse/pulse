@@ -9134,13 +9134,31 @@ function confirmBooking() {
     clinician_id: _assignedClId,
     scheduled_at: scheduledAt.toISOString(),
     duration_minutes: _bookSlotDur,
-    status: 'pending',
+    // Auto-confirm: the member booked into the clinician's published
+    // availability window so there's nothing left for the clinician to
+    // approve. 'pending' is reserved for paths that genuinely need
+    // clinician review (intake before assignment).
+    status: 'confirmed',
     appointment_type: _apptType
   };
   db.from('appointments').insert(_insertRow).select('id').single()
     .then(function(res) {
       if (res && res.error) throw res.error;
       if (btn) { btn.disabled = false; btn.textContent = 'Confirm Appointment'; }
+      // Notify the assigned clinician that a new appointment landed on their
+      // calendar. Best-effort — failure here shouldn't block the booking.
+      if (_assignedClId) {
+        try {
+          var _notifWho = _memberDisplayName || 'A patient';
+          var _notifDt  = new Date(scheduledAt).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+          createNotification(
+            _assignedClId,
+            'appt_confirmed',
+            _notifWho + ' booked a ' + (_apptType || 'visit') + ' on ' + _notifDt + '.',
+            'cl-appointments'
+          );
+        } catch (nErr) { /* non-blocking */ }
+      }
       onSuccess(res.data ? res.data.id : null);
     })
     .catch(function(err) {
@@ -13592,18 +13610,40 @@ function _confirmReschedule() {
     // Get assigned clinician
     var clId = null;
     if (consultation && consultation.assigned_clinician_id) clId = consultation.assigned_clinician_id;
-    // Preserve the original appointment's type when rescheduling. Pending
-    // members still booking during intake fall back to 'Initial Consult'.
-    var _rescheduleType = _p15ReschedType || (window._memberPurchaseComplete ? null : 'Initial Consult');
+    // Always write a real type. Priority: the original appt's type → a
+    // sensible default based on member state.
+    var _rescheduleType = _p15ReschedType || (window._memberPurchaseComplete ? 'Follow-up' : 'Initial Consult');
     var _rescheduleRow = {
       consumer_id: currentUserId,
       clinician_id: clId,
       scheduled_at: d.toISOString(),
       duration_minutes: APPT_DURATION,
-      status: 'pending'
+      // Auto-confirm: reschedules go into clinician availability windows,
+      // so there's nothing for the clinician to approve manually.
+      status: 'confirmed',
+      appointment_type: _rescheduleType
     };
-    if (_rescheduleType) _rescheduleRow.appointment_type = _rescheduleType;
+    // Remember details for the post-insert notification below
+    window._lastRescheduleNotifPayload = {
+      clId: clId, type: _rescheduleType, when: d
+    };
     return db.from('appointments').insert(_rescheduleRow);
+  }).then(function() {
+    // Notify the clinician about the reschedule landing on their calendar.
+    try {
+      var p = window._lastRescheduleNotifPayload;
+      if (p && p.clId) {
+        var _notifWho = _memberDisplayName || 'A patient';
+        var _notifDt  = new Date(p.when).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+        createNotification(
+          p.clId,
+          'appt_rescheduled',
+          _notifWho + ' rescheduled their ' + (p.type || 'visit') + ' to ' + _notifDt + '.',
+          'cl-appointments'
+        );
+      }
+    } catch (nErr) { /* non-blocking */ }
+    window._lastRescheduleNotifPayload = null;
   }).then(function() {
     _loadAndRenderConsumerAppts();
     showToast('Appointment rescheduled. Confirmation sent to your email.');

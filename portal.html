@@ -2453,12 +2453,56 @@ body.clinician-mode .p-card{background:var(--cl-high);border:1px solid var(--cl-
 body.clinician-mode .p-card-sm{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
 
 /* ── Stat tiles (overview metric cards — PRIMARY) ── */
-body.clinician-mode .cl-stat-grid{gap:12px;}
 body.clinician-mode .cl-stat-tile{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:12px;padding:18px;box-shadow:var(--cl-shadow-mid);}
+/* Generic fallback (stat cards outside the overview tab still use these) */
+body.clinician-mode .cl-stat-grid{gap:12px;}
 body.clinician-mode .cl-stat-card{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:12px;padding:18px;box-shadow:var(--cl-shadow-mid);}
 body.clinician-mode .cl-stat-card:hover{border-color:rgba(0,0,0,0.08);}
 body.clinician-mode .cl-stat-num{color:var(--cl-text);font-family:'Inter',sans-serif;font-size:28px;font-weight:600;}
 body.clinician-mode .cl-stat-lbl{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;}
+/* ── Overview stat grid: unified green hero strip ──
+   The Unread Messages + Open Reviews tiles live inside a single rounded
+   container with a green gradient background, radial glow, and a vertical
+   divider between the two stats. */
+body.clinician-mode #tab-cl-overview .cl-stat-grid{
+  gap:0 !important;
+  background:linear-gradient(135deg,#2E6A52 0%,#234A3B 50%,#1A342A 100%) !important;
+  border:1px solid rgba(255,255,255,0.06) !important;
+  border-radius:14px !important;
+  padding:0 !important;
+  margin-bottom:22px !important;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(34,77,58,0.22),0 2px 8px rgba(0,0,0,0.08);
+}
+body.clinician-mode #tab-cl-overview .cl-stat-grid::before{
+  content:'';
+  position:absolute;
+  top:-40%;
+  right:-15%;
+  width:360px;
+  height:360px;
+  background:radial-gradient(circle,rgba(74,186,130,0.14),transparent 60%);
+  pointer-events:none;
+}
+body.clinician-mode #tab-cl-overview .cl-stat-card{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  padding:24px 28px !important;
+  position:relative;
+  transition:background .2s;
+}
+body.clinician-mode #tab-cl-overview .cl-stat-card:not(:last-child){
+  border-right:1px solid rgba(255,255,255,0.12) !important;
+}
+body.clinician-mode #tab-cl-overview .cl-stat-card:hover{
+  background:rgba(255,255,255,0.04) !important;
+}
+body.clinician-mode #tab-cl-overview .cl-stat-num{color:#fff !important;font-family:'Inter',sans-serif !important;font-size:34px !important;font-weight:600 !important;letter-spacing:-0.02em !important;line-height:1 !important;}
+body.clinician-mode #tab-cl-overview .cl-stat-label{color:rgba(255,255,255,0.6) !important;font-family:'Inter',sans-serif !important;font-size:11px !important;font-weight:500 !important;letter-spacing:0.12em !important;text-transform:uppercase !important;margin-top:8px !important;}
+body.clinician-mode #tab-cl-overview #clStatPastDue{color:rgba(255,180,75,0.9) !important;font-family:'Inter',sans-serif !important;font-size:10px !important;font-weight:600 !important;letter-spacing:0.08em !important;margin-top:6px !important;}
 
 /* ── Attention cards (patient list rows) ── */
 body.clinician-mode .cl-attn-card{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:10px;margin-bottom:10px;box-shadow:none;overflow:hidden;transition:box-shadow .2s,border-color .2s;}
@@ -2586,10 +2630,12 @@ body.clinician-mode #clRecentlyEvaluated *{font-family:'Inter',sans-serif;}
 body.clinician-mode .cl-live-section div[style*="text-align:center"],
 body.clinician-mode .cl-attention-empty{font-family:'Inter',sans-serif !important;font-size:14px !important;}
 
-/* ── Open Reviews section — green hero-style ── */
-body.clinician-mode #clAttentionSection{background:linear-gradient(135deg,#2E6A52 0%,#234A3B 50%,#1A342A 100%);border-radius:12px;padding:20px;margin-bottom:20px;}
-body.clinician-mode #clAttentionSection .cl-attention-title{color:#FFFFFF !important;font-size:13px;font-weight:600;letter-spacing:0.06em;margin-top:0;}
-body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,255,255,0.08) !important;border:1px solid rgba(255,255,255,0.1) !important;color:rgba(255,255,255,0.6) !important;}
+/* ── Open Reviews section — white card treatment ──
+   (Flipped from the green hero style. The green hero now lives on the
+   stat grid at the top of the overview.) */
+body.clinician-mode #clAttentionSection{background:var(--cl-high) !important;border:1px solid var(--cl-border) !important;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:var(--cl-shadow-mid,0 1px 3px rgba(0,0,0,0.04));}
+body.clinician-mode #clAttentionSection .cl-attention-title{color:var(--cl-text) !important;font-size:10px !important;font-weight:700 !important;letter-spacing:0.18em !important;text-transform:uppercase !important;margin-top:0;}
+body.clinician-mode #clAttentionSection .cl-attention-empty{background:var(--cl-inner,#F2F4F3) !important;border:1px solid rgba(0,0,0,0.06) !important;color:var(--cl-text3) !important;}
 /* Header row with title + sort control */
 .cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
 .cl-attn-sort-wrap{display:inline-flex;align-items:center;gap:10px;}
@@ -2690,22 +2736,26 @@ body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,
 /* Open Reviews uses the flat-row layout above; override the old card look */
 body.clinician-mode #clAttentionSection .cl-attn-card{background:transparent !important;border:none !important;border-left:3px solid transparent !important;border-bottom:1px solid rgba(255,255,255,0.08) !important;box-shadow:none !important;}
 body.clinician-mode #clAttentionSection .cl-attn-card:last-child{border-bottom:none !important;}
-body.clinician-mode #clAttentionSection .cl-attn-card:hover{background:rgba(255,255,255,0.04) !important;box-shadow:none !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card{border-bottom:1px solid rgba(0,0,0,0.06) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-card:hover{background:rgba(0,0,0,0.025) !important;box-shadow:none !important;}
 body.clinician-mode #clAttentionSection .cl-attn-card.rail-red{border-left-color:#EF4444 !important;}
 body.clinician-mode #clAttentionSection .cl-attn-card.rail-yellow{border-left-color:#EAB308 !important;}
 body.clinician-mode #clAttentionSection .cl-attn-card.rail-green{border-left-color:#22C55E !important;}
-body.clinician-mode #clAttentionSection .cl-attn-row-name{color:#fff !important;}
-body.clinician-mode #clAttentionSection .cl-attn-row-cell{color:rgba(255,255,255,0.72) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-name{color:var(--cl-text) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-cell{color:var(--cl-text2) !important;}
 /* Risk tier colors need to beat the generic row-cell override above */
 body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.low{color:#22C55E !important;}
-body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.moderate{color:#EAB308 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.moderate{color:#B17B08 !important;}
 body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.high{color:#EF4444 !important;}
 body.clinician-mode #clAttentionSection .cl-attn-row-status.overdue{color:#EF4444 !important;}
-body.clinician-mode #clAttentionSection .cl-attn-row-status.pending{color:rgba(255,255,255,0.55) !important;}
-body.clinician-mode #clAttentionSection .cl-attn-col-btn{color:rgba(255,255,255,0.55) !important;}
-body.clinician-mode #clAttentionSection .cl-attn-col-btn.active{color:#fff !important;}
-body.clinician-mode #clAttentionSection .cl-attn-col-static{color:rgba(255,255,255,0.55) !important;}
-body.clinician-mode #clAttentionSection .cl-attn-list-header{border-bottom:1px solid rgba(255,255,255,0.1) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-status.pending{color:var(--cl-text3) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-chev{color:rgba(0,0,0,0.25) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-btn{color:var(--cl-text3) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-btn:hover{color:var(--cl-text) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-btn.active{color:var(--cl-text) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-col-static{color:var(--cl-text3) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-list-header{border-bottom:1px solid rgba(0,0,0,0.08) !important;}
+body.clinician-mode #clAttentionSection .cl-attn-list::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.18) !important;}
 
 /* ═══ CLINICIAN FLAT TABLE — shared by Patients, Messages, Live Consults ═══
    Light-theme equivalent of the Open Reviews flat-row layout. Each page keeps

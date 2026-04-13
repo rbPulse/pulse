@@ -9112,24 +9112,31 @@ function confirmBooking() {
 
   // Auto-assign clinician: round-robin among eligible clinicians available at this slot
   var _assignedClId = _portalAutoAssignClinician(scheduledAt);
-  // Read selected appointment type from the custom dropdown (falls back to
-  // the raw value on the element if the dropdown markup is missing).
+  // Resolve the appointment type. Priority:
+  //   1. Unprescribed members are ALWAYS an 'Initial Consult', regardless
+  //      of what the dropdown says (they haven't been prescribed a protocol
+  //      yet, so any other type would be misleading).
+  //   2. Dropdown selection (data-value, set by _pdSelect).
+  //   3. Fallback for prescribed members who didn't pick a type: 'Follow-up'.
+  //   appointment_type is ALWAYS written — never dropped from the insert.
   var _bookTypeEl = document.getElementById('bookType');
-  var _apptType = (_bookTypeEl && _bookTypeEl.getAttribute('data-value')) || (_bookTypeEl && _bookTypeEl.value) || null;
-  // If the member hasn't been prescribed + activated yet, every appointment
-  // they book is still considered an 'Initial Consult' regardless of what
-  // they picked in the dropdown.
+  var _pickedType = (_bookTypeEl && _bookTypeEl.getAttribute('data-value')) || (_bookTypeEl && _bookTypeEl.value) || '';
+  var _apptType;
   if (!window._memberPurchaseComplete) {
     _apptType = 'Initial Consult';
+  } else if (_pickedType) {
+    _apptType = _pickedType;
+  } else {
+    _apptType = 'Follow-up';
   }
   var _insertRow = {
     consumer_id: currentUserId,
     clinician_id: _assignedClId,
     scheduled_at: scheduledAt.toISOString(),
     duration_minutes: _bookSlotDur,
-    status: 'pending'
+    status: 'pending',
+    appointment_type: _apptType
   };
-  if (_apptType) _insertRow.appointment_type = _apptType;
   db.from('appointments').insert(_insertRow).select('id').single()
     .then(function(res) {
       if (res && res.error) throw res.error;

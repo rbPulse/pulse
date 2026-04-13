@@ -2840,6 +2840,10 @@ body.clinician-mode #tab-cl-messages .thread-header-left{
   border-bottom:1px solid var(--cl-border);
   display:flex;
   align-items:center;
+  /* Both header cells stretch to the taller of the two so the bottom
+     border runs continuously across the whole header row instead of
+     stepping where the big hero name sits. */
+  align-self:stretch;
 }
 body.clinician-mode #tab-cl-messages .thread-header-hero{
   grid-area:hero;
@@ -2850,6 +2854,7 @@ body.clinician-mode #tab-cl-messages .thread-header-hero{
   justify-content:center;
   text-align:center;
   min-width:0;
+  align-self:stretch;
 }
 body.clinician-mode #tab-cl-messages .thread-hero-name{
   font-family:'Inter',sans-serif !important;
@@ -8980,8 +8985,18 @@ function confirmBooking() {
     if (timeParts[3].toUpperCase() === 'PM' && hours !== 12) hours += 12;
     if (timeParts[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
   }
-  var scheduledAt = new Date(dateStr);
-  scheduledAt.setHours(hours, mins, 0, 0);
+  // Build the Date in LOCAL time from the YYYY-MM-DD parts. Using
+  // new Date(dateStr) was parsing as UTC midnight, which in any timezone
+  // west of UTC would shift the subsequent setHours onto the previous
+  // calendar date (bug: 'Apr 13' became 'Apr 12').
+  var dateParts = (dateStr || '').split('-');
+  var scheduledAt;
+  if (dateParts.length === 3) {
+    scheduledAt = new Date(parseInt(dateParts[0],10), parseInt(dateParts[1],10)-1, parseInt(dateParts[2],10), hours, mins, 0, 0);
+  } else {
+    scheduledAt = new Date(dateStr);
+    scheduledAt.setHours(hours, mins, 0, 0);
+  }
 
   function onSuccess(apptId) {
     // Remove booking UI, show confirmation card

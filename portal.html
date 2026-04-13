@@ -4268,31 +4268,35 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill active" id="flt-requested"  onclick="filterClAppts('requested',this)">Requested</div>
           <div class="filter-pill"        id="flt-scheduled"  onclick="filterClAppts('scheduled',this)">Upcoming</div>
           <div class="filter-pill"        id="flt-completed"  onclick="filterClAppts('completed',this)">Completed</div>
-          <!-- Secondary filters pushed to the right. Date dropdown collapses
-               when the primary status is not 'Upcoming'. -->
-          <div class="pd-dropdown cl-appt-flt-dd" id="clApptDateDD" data-value="all" style="display:none;margin-left:auto;">
-            <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptDateDD')">
-              <span class="pd-dropdown-value">All dates</span>
-              <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="pd-dropdown-menu">
-              <button type="button" class="pd-dropdown-option active" data-value="all"   onclick="_pdSelect('clApptDateDD','all','All dates',function(v){_filterClApptsByDate('all');})">All dates</button>
-              <button type="button" class="pd-dropdown-option"        data-value="today" onclick="_pdSelect('clApptDateDD','today','Today',function(v){_filterClApptsByDate('today');})">Today</button>
-              <button type="button" class="pd-dropdown-option"        data-value="week"  onclick="_pdSelect('clApptDateDD','week','This week',function(v){_filterClApptsByDate('week');})">This week</button>
-              <button type="button" class="pd-dropdown-option"        data-value="month" onclick="_pdSelect('clApptDateDD','month','This month',function(v){_filterClApptsByDate('month');})">This month</button>
+          <!-- Secondary filters wrapper — always right-aligned regardless of
+               which primary status tab is active. Date dropdown collapses
+               (display:none) when the status is not 'Upcoming', but the
+               wrapper keeps the Type dropdown pinned to the far right. -->
+          <div class="cl-appt-flt-secondary" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+            <div class="pd-dropdown cl-appt-flt-dd" id="clApptDateDD" data-value="all" style="display:none;">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptDateDD')">
+                <span class="pd-dropdown-value">All dates</span>
+                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu">
+                <button type="button" class="pd-dropdown-option active" data-value="all"   onclick="_pdSelect('clApptDateDD','all','All dates',function(v){_filterClApptsByDate('all');})">All dates</button>
+                <button type="button" class="pd-dropdown-option"        data-value="today" onclick="_pdSelect('clApptDateDD','today','Today',function(v){_filterClApptsByDate('today');})">Today</button>
+                <button type="button" class="pd-dropdown-option"        data-value="week"  onclick="_pdSelect('clApptDateDD','week','This week',function(v){_filterClApptsByDate('week');})">This week</button>
+                <button type="button" class="pd-dropdown-option"        data-value="month" onclick="_pdSelect('clApptDateDD','month','This month',function(v){_filterClApptsByDate('month');})">This month</button>
+              </div>
             </div>
-          </div>
-          <div class="pd-dropdown cl-appt-flt-dd" id="clApptTypeDD" data-value="all">
-            <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptTypeDD')">
-              <span class="pd-dropdown-value">All types</span>
-              <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="pd-dropdown-menu">
-              <button type="button" class="pd-dropdown-option active" data-value="all"              onclick="_pdSelect('clApptTypeDD','all','All types',function(v){_filterClApptsByType('all');})">All types</button>
-              <button type="button" class="pd-dropdown-option"        data-value="Initial Consult"  onclick="_pdSelect('clApptTypeDD','Initial Consult','Initial Consult',function(v){_filterClApptsByType('Initial Consult');})">Initial Consult</button>
-              <button type="button" class="pd-dropdown-option"        data-value="Protocol Review"  onclick="_pdSelect('clApptTypeDD','Protocol Review','Protocol Review',function(v){_filterClApptsByType('Protocol Review');})">Protocol Review</button>
-              <button type="button" class="pd-dropdown-option"        data-value="Follow-up"        onclick="_pdSelect('clApptTypeDD','Follow-up','Follow-up',function(v){_filterClApptsByType('Follow-up');})">Follow-up</button>
-              <button type="button" class="pd-dropdown-option"        data-value="Check-in"         onclick="_pdSelect('clApptTypeDD','Check-in','Check-in',function(v){_filterClApptsByType('Check-in');})">Check-in</button>
+            <div class="pd-dropdown cl-appt-flt-dd" id="clApptTypeDD" data-value="all">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clApptTypeDD')">
+                <span class="pd-dropdown-value">All types</span>
+                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu">
+                <button type="button" class="pd-dropdown-option active" data-value="all"              onclick="_pdSelect('clApptTypeDD','all','All types',function(v){_filterClApptsByType('all');})">All types</button>
+                <button type="button" class="pd-dropdown-option"        data-value="Initial Consult"  onclick="_pdSelect('clApptTypeDD','Initial Consult','Initial Consult',function(v){_filterClApptsByType('Initial Consult');})">Initial Consult</button>
+                <button type="button" class="pd-dropdown-option"        data-value="Protocol Review"  onclick="_pdSelect('clApptTypeDD','Protocol Review','Protocol Review',function(v){_filterClApptsByType('Protocol Review');})">Protocol Review</button>
+                <button type="button" class="pd-dropdown-option"        data-value="Follow-up"        onclick="_pdSelect('clApptTypeDD','Follow-up','Follow-up',function(v){_filterClApptsByType('Follow-up');})">Follow-up</button>
+                <button type="button" class="pd-dropdown-option"        data-value="Check-in"         onclick="_pdSelect('clApptTypeDD','Check-in','Check-in',function(v){_filterClApptsByType('Check-in');})">Check-in</button>
+              </div>
             </div>
           </div>
         </div>

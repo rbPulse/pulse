@@ -2854,8 +2854,12 @@ body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparen
    Equal fr columns so every column has the same width and the gap
    between adjacent cells is uniform. Same approach as Open Reviews. */
 body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr) 120px;}
-body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
-body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
+body.clinician-mode .cl-weekly-row{cursor:pointer;}
+body.clinician-mode .cl-weekly-row:hover{background:rgba(0,0,0,0.02) !important;}
+/* Inline patient detail (matches Open Reviews expand behavior) */
+body.clinician-mode .cl-weekly-row > .cl-attn-card-body{display:none;padding:0 !important;background:var(--cl-high) !important;border-top:1px solid var(--cl-border) !important;}
+body.clinician-mode .cl-weekly-row.expanded > .cl-attn-card-body{display:block;}
+body.clinician-mode .cl-weekly-row.expanded{background:rgba(0,0,0,0.015) !important;}
 /* Consultations page (clinician tab) — 5-col flat table:
      Patient | Scheduled | Duration | Type | Actions
    Patient column has a hard max so long names wrap to 2 lines instead
@@ -6896,13 +6900,16 @@ async function loadWeeklySchedule() {
         : '';
 
       html +=
-        '<div class="cl-ft-row-wrap">' +
+        '<div class="cl-ft-row-wrap cl-weekly-row" data-user-id="' + escapeAttr(a.consumer_id || '') + '" onclick="_toggleWeeklyRowDetail(this, event)">' +
           '<div class="cl-ft-row cl-ft-cols-weekly">' +
             '<div class="cl-ft-cell">' + escapeHtml(apptType) + '</div>' +
             '<div class="cl-ft-cell"' + dayCellStyle + '>' + escapeHtml(dayLabel) + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(timeStr) + '</div>' +
             '<div class="cl-ft-cell-name">' + escapeHtml(patientName) + '</div>' +
             '<div style="display:flex;align-items:center;justify-content:center;">' + actionHtml + '</div>' +
+          '</div>' +
+          '<div class="cl-attn-card-body" onclick="event.stopPropagation()">' +
+            '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:16px 0;">Loading patient details…</div>' +
           '</div>' +
         '</div>';
     });
@@ -7150,6 +7157,50 @@ function toggleAttentionCard(cardEl) {
       var userId = cardEl.dataset.userId;
       _loadAttentionCardBody(body, consultId, userId);
     }
+  }
+}
+
+// Weekly schedule row → expand inline patient detail (mirrors Open Reviews).
+async function _toggleWeeklyRowDetail(rowWrap, e) {
+  if (!rowWrap) return;
+  // Ignore clicks on action buttons / links inside the row
+  if (e && e.target) {
+    var t = e.target;
+    if (t.closest && (t.closest('button') || t.closest('a'))) return;
+  }
+  var wasExpanded = rowWrap.classList.contains('expanded');
+  // Collapse any other expanded weekly row
+  document.querySelectorAll('.cl-weekly-row.expanded').forEach(function(r) {
+    if (r !== rowWrap) r.classList.remove('expanded');
+  });
+  if (wasExpanded) {
+    rowWrap.classList.remove('expanded');
+    return;
+  }
+  rowWrap.classList.add('expanded');
+  var body = rowWrap.querySelector('.cl-attn-card-body');
+  if (!body || body.dataset.loaded === 'true') return;
+  var userId = rowWrap.dataset.userId;
+  if (!userId) {
+    body.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:16px 0;">No patient record linked.</div>';
+    return;
+  }
+  // Resolve the patient's most recent consultation id, then hand off to the
+  // canonical detail renderer used by Open Reviews / Patients / Messages.
+  try {
+    var consultId = null;
+    if (typeof db !== 'undefined' && db && db.from) {
+      var res = await db.from('consultations')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (res && res.data && res.data.length) consultId = res.data[0].id;
+    }
+    _loadAttentionCardBody(body, consultId, userId);
+  } catch (err) {
+    console.warn('[Pulse] weekly row detail failed:', err);
+    body.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:16px 0;">Unable to load patient details.</div>';
   }
 }
 

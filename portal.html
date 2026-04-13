@@ -2654,7 +2654,9 @@ body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,
 #clAttentionSection .cl-attn-row-risk.low{color:#22C55E;}
 #clAttentionSection .cl-attn-row-risk.moderate{color:#EAB308;}
 #clAttentionSection .cl-attn-row-risk.high{color:#EF4444;}
-#clAttentionSection .cl-attn-row-status{color:#EF4444;font-weight:600;letter-spacing:0.01em;}
+#clAttentionSection .cl-attn-row-status{font-weight:600;letter-spacing:0.01em;}
+#clAttentionSection .cl-attn-row-status.overdue{color:#EF4444;}
+#clAttentionSection .cl-attn-row-status.pending{color:rgba(255,255,255,0.55);font-weight:500;}
 #clAttentionSection .cl-attn-row-chev{
   color:rgba(255,255,255,0.35);font-size:14px;text-align:right;transition:transform .2s;
 }
@@ -2675,6 +2677,12 @@ body.clinician-mode #clAttentionSection .cl-attn-card.rail-yellow{border-left-co
 body.clinician-mode #clAttentionSection .cl-attn-card.rail-green{border-left-color:#22C55E !important;}
 body.clinician-mode #clAttentionSection .cl-attn-row-name{color:#fff !important;}
 body.clinician-mode #clAttentionSection .cl-attn-row-cell{color:rgba(255,255,255,0.72) !important;}
+/* Risk tier colors need to beat the generic row-cell override above */
+body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.low{color:#22C55E !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.moderate{color:#EAB308 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-cell.cl-attn-row-risk.high{color:#EF4444 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-status.overdue{color:#EF4444 !important;}
+body.clinician-mode #clAttentionSection .cl-attn-row-status.pending{color:rgba(255,255,255,0.55) !important;}
 body.clinician-mode #clAttentionSection .cl-attn-col-btn{color:rgba(255,255,255,0.55) !important;}
 body.clinician-mode #clAttentionSection .cl-attn-col-btn.active{color:#fff !important;}
 body.clinician-mode #clAttentionSection .cl-attn-col-static{color:rgba(255,255,255,0.55) !important;}
@@ -6409,8 +6417,8 @@ async function loadAttentionCards() {
       else if (riskClass === 'low')    railClass = 'rail-green';
 
       var statusCell = isOverdue
-        ? '<div class="cl-attn-row-status">\u26A0 Overdue</div>'
-        : '<div></div>';
+        ? '<div class="cl-attn-row-status overdue">\u26A0 Overdue</div>'
+        : '<div class="cl-attn-row-status pending">Pending</div>';
       var riskCell = rs
         ? '<div class="cl-attn-row-cell cl-attn-row-risk ' + riskClass + '">' + riskText + ' Risk</div>'
         : '<div class="cl-attn-row-cell">—</div>';

@@ -2827,26 +2827,41 @@ body.clinician-mode .cl-recent-outcome{font-family:'Inter',sans-serif;font-size:
 body.clinician-mode #tab-cl-messages .thread-view.active{
   display:grid !important;
   grid-template-columns:minmax(0,6fr) minmax(0,4fr);
-  grid-template-areas:"header header" "thread detail";
+  grid-template-areas:"back hero" "thread detail";
   gap:0 28px;
   /* Each column sizes to its own content. The left column's explicit height
      is locked to the right column's rendered height via _syncThreadHeights
      so compose row + action buttons always line up at the same y. */
   align-items:start;
 }
-body.clinician-mode #tab-cl-messages .thread-header{
-  grid-area:header;
+body.clinician-mode #tab-cl-messages .thread-header-left{
+  grid-area:back;
+  padding:14px 0 18px;
   border-bottom:1px solid var(--cl-border);
-  padding:10px 0 14px;
-  margin-bottom:18px;
   display:flex;
   align-items:center;
-  gap:22px;
 }
-/* Subtle vertical divider between Back button and patient name */
-body.clinician-mode #tab-cl-messages .thread-header .thread-back{
-  padding-right:22px;
-  border-right:1px solid var(--cl-border);
+body.clinician-mode #tab-cl-messages .thread-header-hero{
+  grid-area:hero;
+  padding:14px 0 18px 28px;
+  border-bottom:1px solid var(--cl-border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  min-width:0;
+}
+body.clinician-mode #tab-cl-messages .thread-hero-name{
+  font-family:'Inter',sans-serif !important;
+  font-size:26px !important;
+  font-weight:700 !important;
+  color:var(--cl-text) !important;
+  letter-spacing:-0.02em !important;
+  line-height:1.1 !important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
 }
 body.clinician-mode #tab-cl-messages .ct-thread-body{
   grid-area:thread;
@@ -2913,8 +2928,21 @@ body.clinician-mode #tab-cl-messages .ct-patient-body .crw-right{display:none !i
 @media(max-width:1200px){
   body.clinician-mode #tab-cl-messages .thread-view.active{
     grid-template-columns:1fr;
-    grid-template-areas:"header" "thread" "detail";
-    gap:18px;
+    grid-template-areas:"back" "hero" "thread" "detail";
+    gap:8px;
+  }
+  body.clinician-mode #tab-cl-messages .thread-header-left{
+    padding:10px 0;
+    border-bottom:none;
+  }
+  body.clinician-mode #tab-cl-messages .thread-header-hero{
+    padding:0 0 14px;
+    border-bottom:1px solid var(--cl-border);
+    justify-content:flex-start;
+    text-align:left;
+  }
+  body.clinician-mode #tab-cl-messages .thread-hero-name{
+    font-size:22px !important;
   }
   body.clinician-mode #tab-cl-messages .ct-patient-body{
     padding-left:0;
@@ -4245,12 +4273,14 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
           <!-- Conversation view -->
           <div class="thread-view" id="clThreadView">
-            <div class="thread-header">
+            <div class="thread-header-left">
               <button class="thread-back" onclick="closeClThread()">
                 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
                 Back
               </button>
-              <span class="thread-who" id="clThreadWho"></span>
+            </div>
+            <div class="thread-header-hero">
+              <span class="thread-hero-name" id="clThreadWho"></span>
             </div>
             <div class="ct-thread-body">
               <div class="msg-bubbles" id="clMsgBubbles"></div>

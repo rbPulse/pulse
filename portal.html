@@ -4362,6 +4362,18 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
       <div class="portal-tab" id="tab-cl-messages">
         <div class="tab-eyebrow">Messages</div>
         <div class="tab-title" id="clMsgTitle">Patient messages.</div>
+        <!-- Thread-list filter bar: search + state pills. Hidden when a
+             thread is open (toggled by _openClThread / closeClThread). -->
+        <div class="filter-bar" id="clMsgFilterBar" style="gap:14px;align-items:center;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;max-width:360px;">
+            <input type="search" id="clMsgSearch" placeholder="Search patients…"
+              style="width:100%;box-sizing:border-box;background:var(--cl-inner,#F2F4F3);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:10px 16px;color:var(--cl-text,#111);font-family:'Inter',sans-serif;font-size:13px;outline:none;"
+              oninput="_searchClMessages(this.value)">
+          </div>
+          <div class="filter-pill active" id="mflt-all"            onclick="_filterClMessages('all',this)">All</div>
+          <div class="filter-pill"        id="mflt-unread"         onclick="_filterClMessages('unread',this)">Unread</div>
+          <div class="filter-pill"        id="mflt-needs_response" onclick="_filterClMessages('needs_response',this)">Needs response</div>
+        </div>
         <div class="p-card">
           <!-- Thread list -->
           <div class="thread-list-wrap" id="clThreadListWrap">
@@ -9193,7 +9205,7 @@ function _onBookSlotPick(pill, dateStr, timeStr, dateLabel) {
   var metaEl  = document.getElementById('bookConfirmMeta');
   var btn     = document.getElementById('bookConfirmBtn');
   if (titleEl) titleEl.textContent = 'Book ' + dateLabel + ' at ' + timeStr + '?';
-  if (metaEl)  metaEl.textContent  = _bookSlotDur + ' min · Pending confirmation from your clinician';
+  if (metaEl)  metaEl.textContent  = _bookSlotDur + ' min appointment';
   if (card)    card.classList.add('show');
   if (btn)     btn.style.display = 'inline-block';
 }
@@ -9313,12 +9325,11 @@ function confirmBooking() {
     if (confirmCardArea) {
       confirmCardArea.classList.add('show');
       confirmCardArea.innerHTML =
-        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
           '<div>' +
             '<div class="book-confirm-label">Appointment Requested</div>' +
             '<div class="book-confirm-title">' + escapeHtml(dateLabel) + ' at ' + escapeHtml(timeStr) + '</div>' +
-            '<div class="book-confirm-meta">Pending confirmation from your clinician.</div>' +
           '</div>' +
         '</div>';
     }
@@ -11876,21 +11887,56 @@ function _setClMsgSort(val) {
   _renderClThreadListFromCache();
 }
 
+// Messages thread-list search + filter state (Option A)
+var _clMsgSearch = '';
+var _clMsgThreadFilter = 'all'; // 'all' | 'unread' | 'needs_response'
+function _searchClMessages(q) {
+  _clMsgSearch = (q || '').trim().toLowerCase();
+  _renderClThreadListFromCache();
+}
+function _filterClMessages(filter, pillEl) {
+  _clMsgThreadFilter = filter || 'all';
+  ['all','unread','needs_response'].forEach(function(f) {
+    var p = document.getElementById('mflt-' + f);
+    if (p) p.classList.toggle('active', f === _clMsgThreadFilter);
+  });
+  _renderClThreadListFromCache();
+}
+
 function _renderClThreadListFromCache() {
   var listWrap = document.getElementById('clThreadListWrap');
   var threadView = document.getElementById('clThreadView');
   var titleEl = document.getElementById('clMsgTitle');
+  var filterBar = document.getElementById('clMsgFilterBar');
   if (listWrap) listWrap.style.display = 'block';
   if (threadView) threadView.classList.remove('active');
   if (titleEl) titleEl.textContent = 'Patient messages.';
+  if (filterBar) filterBar.style.display = 'flex';
 
   var el = document.getElementById('clMsgList');
   if (!el) return;
 
   var threads = Object.values(_clThreadCache);
+  var hadThreads = threads.length > 0;
+
+  if (!hadThreads) {
+    showInlineEmpty(el, 'No messages yet.', 'Messages from members will appear here.', { icon: 'message' });
+    return;
+  }
+
+  // Apply search + filter
+  threads = threads.filter(function(t) {
+    if (_clMsgSearch && (t.patientLabel || '').toLowerCase().indexOf(_clMsgSearch) === -1) return false;
+    if (_clMsgThreadFilter === 'unread' && !(t.unread > 0)) return false;
+    if (_clMsgThreadFilter === 'needs_response' && !t.needsResponse) return false;
+    return true;
+  });
 
   if (threads.length === 0) {
-    showInlineEmpty(el, 'No messages yet.', 'Messages from members will appear here.', { icon: 'message' });
+    var emptyMsg = _clMsgSearch
+      ? 'No patients match “' + _clMsgSearch + '”.'
+      : (_clMsgThreadFilter === 'unread' ? 'No unread threads.' : (_clMsgThreadFilter === 'needs_response' ? 'No threads waiting on you.' : 'No threads.'));
+    el.innerHTML = '<div style="padding:32px 16px;text-align:center;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--cl-text3,rgba(0,0,0,0.4));">' + escapeHtml(emptyMsg) + '</div>';
     return;
   }
 
@@ -12085,7 +12131,9 @@ function _openClThreadMock(threadId) {
   var listWrap = document.getElementById('clThreadListWrap');
   var threadView = document.getElementById('clThreadView');
   var whoEl = document.getElementById('clThreadWho');
+  var filterBar = document.getElementById('clMsgFilterBar');
   if (listWrap) listWrap.style.display = 'none';
+  if (filterBar) filterBar.style.display = 'none';
   if (threadView) threadView.classList.add('active');
   // Tab title stays 'Patient messages.' — the thread-header row owns the patient name
   if (whoEl) whoEl.textContent = thread.patient;
@@ -12101,7 +12149,9 @@ function _openClThreadReal(threadId) {
   var listWrap = document.getElementById('clThreadListWrap');
   var threadView = document.getElementById('clThreadView');
   var whoEl = document.getElementById('clThreadWho');
+  var filterBar = document.getElementById('clMsgFilterBar');
   if (listWrap) listWrap.style.display = 'none';
+  if (filterBar) filterBar.style.display = 'none';
   if (threadView) threadView.classList.add('active');
 
   // Use cached label while loading — tab title stays 'Patient messages.',

@@ -501,7 +501,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 @media(max-width:480px){.book-type-dd{display:block;width:100%;max-width:none;}}
 
 /* Dark-on-green variant — used inside the clinician Open Reviews hero card. */
-.pd-dropdown.pd-dropdown-on-dark{display:inline-block;min-width:200px;}
+.pd-dropdown.pd-dropdown-on-dark{display:inline-block;min-width:0;}
 .pd-dropdown.pd-dropdown-on-dark .pd-dropdown-toggle{
   background:rgba(255,255,255,0.08);
   border:1px solid rgba(255,255,255,0.16);
@@ -2573,8 +2573,8 @@ body.clinician-mode #clAttentionSection .cl-attention-title{color:#FFFFFF !impor
 body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,255,255,0.08) !important;border:1px solid rgba(255,255,255,0.1) !important;color:rgba(255,255,255,0.6) !important;}
 /* Header row with title + sort control */
 .cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
-.cl-attn-sort-wrap{display:inline-flex;align-items:center;gap:8px;}
-.cl-attn-sort-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.55);}
+.cl-attn-sort-wrap{display:inline-flex;align-items:center;gap:10px;}
+.cl-attn-sort-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.7);}
 /* Cap visible list to ~10 rows; anything beyond scrolls inside the card.
    Each row is ~56px (header padding 12×2 + 20px content + 10px bottom gap). */
 .cl-attn-list{max-height:560px;overflow-y:auto;padding-right:4px;}
@@ -6152,8 +6152,8 @@ async function loadWeeklySchedule() {
 // Default is 'submission_earliest' (oldest first, with overdue pinned to top).
 var _clAttnSort = 'submission_earliest';
 var _clAttnSortLabels = {
-  'submission_earliest': 'Earliest date',
-  'submission_latest':   'Latest date',
+  'submission_earliest': 'Earliest submission',
+  'submission_latest':   'Latest submission',
   'risk_highest':        'Highest risk',
   'risk_lowest':         'Lowest risk'
 };
@@ -6170,7 +6170,7 @@ async function loadAttentionCards() {
   if (!container || !currentUserId || PREVIEW_MODE) return;
 
   // Shared header markup for the Open Reviews card (title + custom dropdown)
-  var _sortLabel = _clAttnSortLabels[_clAttnSort] || 'Earliest date';
+  var _sortLabel = _clAttnSortLabels[_clAttnSort] || 'Earliest submission';
   function _optHtml(val) {
     var lbl = _clAttnSortLabels[val];
     var active = _clAttnSort === val ? ' active' : '';

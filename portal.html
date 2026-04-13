@@ -494,6 +494,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pd-dropdown-option{display:block;width:100%;text-align:left;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;letter-spacing:0.01em;padding:10px 14px;border-radius:8px;background:none;border:none;color:#1a1a1a;cursor:pointer;transition:background .1s;}
 .pd-dropdown-option:hover{background:rgba(47,111,85,0.06);}
 .pd-dropdown-option.active{background:rgba(47,111,85,0.1);color:#2F6F55;font-weight:600;}
+.pd-dropdown-section-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.35);padding:8px 14px 4px;}
+.pd-dropdown-section-label:first-child{padding-top:4px;}
+.pd-dropdown-divider{height:1px;background:rgba(0,0,0,0.06);margin:6px 10px;}
+/* Column-header variant — renders the pd-dropdown toggle as a compact
+   sortable/filterable table header button (matches .cl-ft-col-btn typography). */
+.pd-dropdown-col-header .pd-dropdown-toggle{
+  background:none;
+  border:none;
+  padding:4px 0;
+  border-radius:0;
+  color:rgba(0,0,0,0.45);
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  justify-content:flex-start;
+  gap:5px;
+  width:auto;
+}
+.pd-dropdown-col-header .pd-dropdown-toggle:hover{background:none;color:rgba(0,0,0,0.8);}
+.pd-dropdown-col-header.open .pd-dropdown-toggle,
+.pd-dropdown-col-header.active-filter .pd-dropdown-toggle{background:none;color:rgba(0,0,0,0.95);}
+.pd-dropdown-col-header .pd-dropdown-value{flex:initial;text-align:left;color:inherit;}
+.pd-dropdown-col-header .pd-dropdown-chevron{color:inherit;width:10px;height:10px;}
 /* Book-a-visit appointment-type dropdown: compact, content-sized instead of
    stretching to the full card width. */
 .book-type-dd{display:inline-block;min-width:240px;max-width:320px;}
@@ -6632,6 +6657,13 @@ function _setClWeeklySort(val) {
   _clWeeklySort = val;
   loadWeeklySchedule();
 }
+// Type column filter for the weekly schedule card. Separate from _clWeeklySort
+// — both feed into loadWeeklySchedule's sort+filter pass.
+var _clWeeklyTypeFilter = 'all';
+function _setClWeeklyTypeFilter(val) {
+  _clWeeklyTypeFilter = val || 'all';
+  loadWeeklySchedule();
+}
 
 async function loadWeeklySchedule() {
   var container = document.getElementById('clWeeklySchedule');
@@ -6677,6 +6709,12 @@ async function loadWeeklySchedule() {
     var upcoming = appts.filter(function(a) {
       return new Date(a.scheduled_at).getTime() >= Date.now();
     });
+    // Apply the type column filter (if any)
+    if (_clWeeklyTypeFilter && _clWeeklyTypeFilter !== 'all') {
+      upcoming = upcoming.filter(function(a) {
+        return (a.appointment_type || '') === _clWeeklyTypeFilter;
+      });
+    }
     if (!upcoming.length) {
       showInlineEmpty(container, 'No live consults scheduled.', 'Upcoming consults with your patients will appear here.', { icon: 'clipboard' });
       return;
@@ -6712,10 +6750,49 @@ async function loadWeeklySchedule() {
       return _clFtColHeader(label, col, _clWeeklySort, _clWeeklyColConfig, _clWeeklySortDir, '_setClWeeklySort');
     };
 
+    // Combined filter + sort dropdown for the Type column.
+    // Shows current filter value as the button label (or 'Type' if unfiltered),
+    // with an asc/desc arrow when the Type column is the active sort.
+    var _typeLabelText = _clWeeklyTypeFilter === 'all' ? 'Type' : _clWeeklyTypeFilter;
+    var _typeSortActive = _clWeeklySort === 'type_az' || _clWeeklySort === 'type_za';
+    var _typeSortArrow = '';
+    if (_typeSortActive) {
+      var _tPoints = _clWeeklySort === 'type_az' ? '6 15 12 9 18 15' : '6 9 12 15 18 9';
+      _typeSortArrow = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + _tPoints + '"/></svg>';
+    }
+    var _typeOpt = function(val, lbl) {
+      var active = _clWeeklyTypeFilter === val;
+      return '<button type="button" class="pd-dropdown-option' + (active ? ' active' : '') + '" data-value="' + escapeAttr(val) + '" onclick="_pdSelect(\'clWeeklyTypeDD\',\'' + escapeAttr(val) + '\',\'' + escapeAttr(val === 'all' ? 'Type' : val) + '\',function(v){_setClWeeklyTypeFilter(v);})">' + escapeHtml(lbl) + '</button>';
+    };
+    var _typeSortOpt = function(mode, lbl) {
+      var active = _clWeeklySort === mode;
+      return '<button type="button" class="pd-dropdown-option' + (active ? ' active' : '') + '" onclick="_setClWeeklySort(\'' + mode + '\');document.querySelectorAll(\'.pd-dropdown.open\').forEach(function(d){d.classList.remove(\'open\');});">' + escapeHtml(lbl) + '</button>';
+    };
+    var _typeHeaderHtml =
+      '<div class="pd-dropdown pd-dropdown-col-header' + (_clWeeklyTypeFilter !== 'all' || _typeSortActive ? ' active-filter' : '') + '" id="clWeeklyTypeDD" data-value="' + escapeAttr(_clWeeklyTypeFilter) + '">' +
+        '<button type="button" class="pd-dropdown-toggle" onclick="_pdToggle(\'clWeeklyTypeDD\')">' +
+          '<span class="pd-dropdown-value">' + escapeHtml(_typeLabelText) + '</span>' +
+          _typeSortArrow +
+          '<svg class="pd-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+        '</button>' +
+        '<div class="pd-dropdown-menu">' +
+          '<div class="pd-dropdown-section-label">Filter</div>' +
+          _typeOpt('all', 'All types') +
+          _typeOpt('Initial Consult', 'Initial Consult') +
+          _typeOpt('Protocol Review', 'Protocol Review') +
+          _typeOpt('Follow-up', 'Follow-up') +
+          _typeOpt('Check-in', 'Check-in') +
+          '<div class="pd-dropdown-divider"></div>' +
+          '<div class="pd-dropdown-section-label">Sort</div>' +
+          _typeSortOpt('type_az', 'A → Z (ascending)') +
+          _typeSortOpt('type_za', 'Z → A (descending)') +
+        '</div>' +
+      '</div>';
+
     // Flat table header — matches Open Reviews card (sortable column headers)
     var html =
       '<div class="cl-ft-header cl-ft-cols-weekly">' +
-        '<div>' + _wh('Type', 'type') + '</div>' +
+        '<div>' + _typeHeaderHtml + '</div>' +
         '<div>' + _wh('Day', 'day') + '</div>' +
         '<div>' + _wh('Time', 'time') + '</div>' +
         '<div>' + _wh('Patient', 'patient') + '</div>' +

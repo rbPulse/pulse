@@ -6647,12 +6647,19 @@ async function loadWeeklySchedule() {
 
         var joinHtml = '';
         if (canJoin) {
-          joinHtml = '<button onclick="event.stopPropagation();_joinClinicianSession(\'' + a.id + '\')" style="font-family:\'Inter\',sans-serif;font-size:13px;padding:8px 18px;border-radius:10px;border:none;background:#1DB954;color:#fff !important;font-weight:500;cursor:pointer;">Join</button>';
+          joinHtml = '<button onclick="event.stopPropagation();_joinClinicianSession(\'' + a.id + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:7px 16px;border-radius:999px;border:1px solid #1DB954;background:#1DB954;color:#fff !important;cursor:pointer;">Join</button>';
         } else {
           var diff = aDt.getTime() - nowMs;
-          var hrs = Math.floor(diff / 3600000);
+          var days = Math.floor(diff / 86400000);
+          var hrs = Math.floor((diff % 86400000) / 3600000);
           var mins = Math.floor((diff % 3600000) / 60000);
-          joinHtml = '<span style="font-family:\'Inter\',sans-serif;font-size:8px;color:var(--grey2);">' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm</span>';
+          var countdown = days > 0 ? ('in ' + days + 'd ' + hrs + 'h') : (hrs > 0 ? ('in ' + hrs + 'h ' + mins + 'm') : ('in ' + mins + 'm'));
+          // Readable countdown pill with a clock glyph — matches the Join pill
+          // dimensions so the column stays visually aligned.
+          joinHtml = '<span style="display:inline-flex;align-items:center;gap:5px;font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:6px 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.02);color:var(--cl-text2,rgba(0,0,0,0.65));">' +
+            '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>' +
+            escapeHtml(countdown) +
+            '</span>';
         }
 
         html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;' + (group.appts.indexOf(a) < group.appts.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
@@ -8494,17 +8501,29 @@ function renderApptList(elId, appts, role) {
     var initials = role === 'consumer' ? 'SC' : (a.initials || '?');
     var rawSt = a._rawStatus || a.status;
     var canJoinRow = role === 'clinician' && rawSt !== 'cancelled' && rawSt !== 'cancelled_by_member' && rawSt !== 'cancelled_by_clinician' && rawSt !== 'completed';
+    // Unified pill styling for both actions — same size, shape, typography.
+    var _btnBase = 'font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:9px 18px;border-radius:999px;cursor:pointer;margin-left:10px;transition:all .15s;';
     var rescheduleBtnHtml = canJoinRow
-      ? '<button style="background:transparent;color:#111;font-family:Inter,sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border:1px solid rgba(0,0,0,0.12);border-radius:10px;cursor:pointer;margin-left:6px;" onclick="event.stopPropagation();_openClRescheduleModal(\'' + escapeAttr(a._id || '') + '\')">Reschedule</button>'
+      ? '<button style="' + _btnBase + 'background:transparent;color:var(--cl-text2,rgba(0,0,0,0.65));border:1px solid rgba(0,0,0,0.14);" onclick="event.stopPropagation();_openClRescheduleModal(\'' + escapeAttr(a._id || '') + '\')">Reschedule</button>'
       : '';
     var joinBtnHtml = canJoinRow
-      ? '<button style="background:#1DB954;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:500;padding:8px 18px;border:none;border-radius:10px;cursor:pointer;margin-left:6px;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
+      ? '<button style="' + _btnBase + 'background:#1DB954;color:#fff;border:1px solid #1DB954;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(a._id || '') + '\')">Join</button>'
       : '';
+    // Don't render the generic 'Pending'/'Confirmed' appt-status chip in the
+    // clinician view — the fact that it's on the clinician's schedule implies
+    // it's already in their queue, so the chip just duplicates state. Still
+    // surface Cancelled / Completed for historical rows.
     var statusLabel = '';
-    if (rawSt === 'confirmed') statusLabel = '<span style="color:#22C55E;font-weight:600;">Confirmed</span>';
-    else if (rawSt === 'pending') statusLabel = '<span style="color:#EAB308;font-weight:600;">Pending</span>';
-    else if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
-    else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
+    if (role === 'clinician') {
+      if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
+      else if (rawSt === 'cancelled' || rawSt === 'cancelled_by_member' || rawSt === 'cancelled_by_clinician') statusLabel = '<span style="color:#EF4444;font-weight:600;">Cancelled</span>';
+      else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
+    } else {
+      if (rawSt === 'confirmed') statusLabel = '<span style="color:#22C55E;font-weight:600;">Confirmed</span>';
+      else if (rawSt === 'pending') statusLabel = '<span style="color:#EAB308;font-weight:600;">Pending</span>';
+      else if (rawSt === 'completed') statusLabel = '<span style="color:#A1A1AA;">Completed</span>';
+      else if (rawSt === 'live_consult_requested') statusLabel = '<span style="color:#3B82F6;font-weight:600;">Requested</span>';
+    }
     // Patient stage label (from cached patient data)
     var stageLabel = '';
     if (role === 'clinician' && _clPatientRows && a.consumerId) {

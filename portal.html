@@ -2858,12 +2858,27 @@ body.clinician-mode .cl-ft-cols-live .cl-ft-row-wrap:hover{background:transparen
 body.clinician-mode .cl-ft-cols-weekly{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr) 120px;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
-/* Live Consults page (clinician tab) — 5-col flat table:
+/* Consultations page (clinician tab) — 5-col flat table:
      Patient | Scheduled | Duration | Type | Actions
-   Equal fr columns so every data column has the same width and
-   the gap between adjacent cells is uniform. Actions fixed at 220px. */
-body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 220px;}
+   Patient column has a hard max so long names wrap to 2 lines instead
+   of hogging the row. Wider column-gap (24px) keeps columns breathing
+   apart, especially between Scheduled (date + time) and Duration, and
+   between Type and the Actions button pair. */
+body.clinician-mode .cl-ft-cols-clappts{
+  grid-template-columns:minmax(140px,180px) minmax(0,1.5fr) 100px minmax(0,1fr) 240px;
+  column-gap:24px !important;
+}
 body.clinician-mode .cl-ft-cols-clappts .cl-ft-row-wrap{cursor:pointer;}
+/* Patient name wraps to a max of 2 lines inside the Patient column cap */
+body.clinician-mode .cl-ft-cols-clappts .cl-ft-cell-name{
+  white-space:normal !important;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  line-height:1.3 !important;
+  word-break:break-word;
+}
 
 /* ── Recently evaluated ── */
 body.clinician-mode .cl-recent-row{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;margin-bottom:6px;padding:10px 14px;}

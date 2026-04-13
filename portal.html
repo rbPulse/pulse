@@ -2823,7 +2823,7 @@ body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap{cursor:default;}
 body.clinician-mode .cl-ft-cols-weekly .cl-ft-row-wrap:hover{background:rgba(0,0,0,0.02) !important;}
 /* Live Consults page (clinician tab) — 5-col flat table:
      Patient | Scheduled | Duration | Type | Actions */
-body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1.2fr) minmax(0,1.2fr) 70px minmax(0,0.9fr) 220px;}
+body.clinician-mode .cl-ft-cols-clappts{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 100px minmax(0,1fr) 220px;}
 body.clinician-mode .cl-ft-cols-clappts .cl-ft-row-wrap{cursor:pointer;}
 
 /* ── Recently evaluated ── */
@@ -8629,22 +8629,6 @@ function renderApptList(elId, appts, role) {
         actionHtml = '<span style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#3B82F6;">Requested</span>';
       }
 
-      // Patient stage label
-      var stageLabel = '';
-      if (_clPatientRows && a.consumerId) {
-        for (var _pi = 0; _pi < _clPatientRows.length; _pi++) {
-          if (_clPatientRows[_pi].id === a.consumerId) {
-            var _rs = _clPatientRows[_pi].review_status;
-            var _ps = _clPatientRows[_pi].purchase_status;
-            if (_rs === 'prescribed' && _ps === 'completed') stageLabel = '<span style="margin-left:8px;color:#22C55E;font-weight:600;font-size:11px;">Active</span>';
-            else if (_rs === 'prescribed') stageLabel = '<span style="margin-left:8px;color:#B17B08;font-weight:600;font-size:11px;">Awaiting</span>';
-            else if (_rs === 'not_prescribed') stageLabel = '<span style="margin-left:8px;color:#EF4444;font-weight:600;font-size:11px;">Not Rx</span>';
-            else stageLabel = '<span style="margin-left:8px;color:rgba(0,0,0,0.45);font-weight:500;font-size:11px;">Pending</span>';
-            break;
-          }
-        }
-      }
-
       // Scheduled column = date · time
       var dateStr = a.date || '';
       var timeStr = a.time || '';
@@ -8653,7 +8637,7 @@ function renderApptList(elId, appts, role) {
       body +=
         '<div class="cl-ft-row-wrap" data-appt-id="' + escapeAttr(a._id || '') + '">' +
           '<div class="cl-ft-row cl-ft-cols-clappts">' +
-            '<div class="cl-ft-cell-name">' + escapeHtml(displayName) + stageLabel + '</div>' +
+            '<div class="cl-ft-cell-name">' + escapeHtml(displayName) + '</div>' +
             '<div class="cl-ft-cell">' + scheduledHtml + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.dur || '—') + '</div>' +
             '<div class="cl-ft-cell">' + escapeHtml(a.appointmentType || '—') + '</div>' +

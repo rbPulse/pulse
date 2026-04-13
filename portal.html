@@ -500,6 +500,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .book-type-dd .pd-dropdown-menu{right:auto;min-width:240px;}
 @media(max-width:480px){.book-type-dd{display:block;width:100%;max-width:none;}}
 
+/* Dark-on-green variant — used inside the clinician Open Reviews hero card. */
+.pd-dropdown.pd-dropdown-on-dark{display:inline-block;min-width:200px;}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-toggle{
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.16);
+  color:rgba(255,255,255,0.85);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  padding:7px 14px;
+}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-toggle:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.28);}
+.pd-dropdown.pd-dropdown-on-dark.open .pd-dropdown-toggle{background:rgba(255,255,255,0.16);border-color:rgba(255,255,255,0.32);}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-value{color:rgba(255,255,255,0.9);text-align:left;}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-chevron{color:rgba(255,255,255,0.7);}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-menu{
+  left:auto;
+  right:0;
+  min-width:220px;
+  background:#1a3d2e;
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:0 12px 32px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.3);
+}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-option{color:rgba(255,255,255,0.82);font-weight:500;}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-option:hover{background:rgba(255,255,255,0.08);color:#fff;}
+.pd-dropdown.pd-dropdown-on-dark .pd-dropdown-option.active{background:rgba(255,255,255,0.12);color:#fff;font-weight:600;}
+
 @media(max-width:600px){
   .consumer-appt-filters{display:none;}
   .cappt-filter-dd{display:block;min-width:160px;}
@@ -2545,9 +2573,6 @@ body.clinician-mode #clAttentionSection .cl-attention-title{color:#FFFFFF !impor
 body.clinician-mode #clAttentionSection .cl-attention-empty{background:rgba(255,255,255,0.08) !important;border:1px solid rgba(255,255,255,0.1) !important;color:rgba(255,255,255,0.6) !important;}
 /* Header row with title + sort control */
 .cl-attn-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
-.cl-attn-sort{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.65);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:999px;padding:6px 14px 6px 16px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.65)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;transition:background-color .15s,border-color .15s;}
-.cl-attn-sort:hover{background-color:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.22);}
-.cl-attn-sort option{color:#1a1a1a;background:#fff;}
 /* Cap visible list to ~10 rows; anything beyond scrolls inside the card.
    Each row is ~56px (header padding 12×2 + 20px content + 10px bottom gap). */
 .cl-attn-list{max-height:560px;overflow-y:auto;padding-right:4px;}
@@ -6136,13 +6161,20 @@ async function loadAttentionCards() {
   var container = document.getElementById('clAttentionSection');
   if (!container || !currentUserId || PREVIEW_MODE) return;
 
-  // Shared header markup for the Open Reviews card (title + sort select)
+  // Shared header markup for the Open Reviews card (title + custom dropdown)
+  var _sortLabel = _clAttnSort === 'risk' ? 'Sort by Risk' : 'Sort by Submission';
   var _hdr = '<div class="cl-attn-header-row">' +
                '<div class="cl-attention-title">Open Reviews</div>' +
-               '<select class="cl-attn-sort" onchange="_setClAttnSort(this.value)" aria-label="Sort open reviews">' +
-                 '<option value="submission"' + (_clAttnSort === 'submission' ? ' selected' : '') + '>Sort by Submission</option>' +
-                 '<option value="risk"' + (_clAttnSort === 'risk' ? ' selected' : '') + '>Sort by Risk</option>' +
-               '</select>' +
+               '<div class="pd-dropdown pd-dropdown-on-dark" id="clAttnSortDD" data-value="' + _clAttnSort + '">' +
+                 '<button type="button" class="pd-dropdown-toggle" onclick="_pdToggle(\'clAttnSortDD\')">' +
+                   '<span class="pd-dropdown-value">' + _sortLabel + '</span>' +
+                   '<svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+                 '</button>' +
+                 '<div class="pd-dropdown-menu">' +
+                   '<button type="button" class="pd-dropdown-option' + (_clAttnSort === 'submission' ? ' active' : '') + '" data-value="submission" onclick="_pdSelect(\'clAttnSortDD\',\'submission\',\'Sort by Submission\',_setClAttnSort)">Sort by Submission</button>' +
+                   '<button type="button" class="pd-dropdown-option' + (_clAttnSort === 'risk' ? ' active' : '') + '" data-value="risk" onclick="_pdSelect(\'clAttnSortDD\',\'risk\',\'Sort by Risk\',_setClAttnSort)">Sort by Risk</button>' +
+                 '</div>' +
+               '</div>' +
              '</div>';
 
   try {

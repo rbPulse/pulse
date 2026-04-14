@@ -3334,16 +3334,15 @@ body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
   font-family:'Inter',sans-serif;
 }
 .rx-adjust-card{
-  width:100%; max-width:520px;
+  width:100%; max-width:640px;
   background:#FFFFFF; color:var(--cl-text,#111111);
-  border-radius:16px; padding:24px 24px 20px;
+  border-radius:16px; padding:24px 28px 22px;
   box-shadow:0 24px 56px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.08);
   max-height:calc(100vh - 80px); overflow-y:auto;
 }
-.rx-adjust-hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px;}
-.rx-adjust-eyebrow{font-size:9px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:rgba(0,0,0,0.4); margin-bottom:6px;}
-.rx-adjust-title{font-size:20px; font-weight:600; color:var(--cl-text,#111111); line-height:1.2;}
-.rx-adjust-sub{font-size:13px; color:rgba(0,0,0,0.55); margin-top:4px;}
+.rx-adjust-hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:20px;}
+.rx-adjust-title{font-size:22px; font-weight:600; color:var(--cl-text,#111111); line-height:1.2; letter-spacing:-0.01em;}
+.rx-adjust-sub{font-size:12px; color:rgba(0,0,0,0.5); margin-top:4px; font-weight:500; letter-spacing:0.02em;}
 .rx-adjust-close{
   background:transparent; border:1px solid rgba(0,0,0,0.12);
   width:32px; height:32px; border-radius:999px;
@@ -3353,7 +3352,8 @@ body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
 .rx-adjust-close:hover{background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.3); color:var(--cl-text,#111111);}
 
 .rx-adjust-section-lbl{font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:rgba(0,0,0,0.45); margin:6px 0 8px;}
-.rx-adjust-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+.rx-adjust-chips{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:20px;}
+.rx-adj-chip-spacer{flex:1 1 auto;}
 .rx-adj-chip{
   font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
   padding:8px 14px; border-radius:999px; cursor:pointer;
@@ -3367,7 +3367,8 @@ body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
 .rx-adj-chip-danger.active{background:rgba(185,28,28,0.08); border-color:#B91C1C; color:#B91C1C;}
 
 .rx-adjust-form{display:flex; flex-direction:column; gap:14px; margin-bottom:16px;}
-.rx-adjust-grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.rx-adjust-grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.rx-adjust-inline2{display:grid; grid-template-columns:1fr 1.1fr; gap:8px;}
 .rx-adjust-field{display:flex; flex-direction:column; gap:6px;}
 .rx-adjust-field label{font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(0,0,0,0.5);}
 .rx-adj-req{color:#EF4444;}
@@ -3376,13 +3377,66 @@ body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
 .rx-adjust-field textarea{
   font-family:'Inter',sans-serif; font-size:13px; color:var(--cl-text,#111111);
   padding:10px 12px; border:1px solid rgba(0,0,0,0.14); border-radius:10px;
-  background:#FBFAF6; outline:none; transition:border-color .15s;
+  background:#FBFAF6; outline:none; transition:border-color .15s, opacity .15s;
   box-sizing:border-box; width:100%;
 }
 .rx-adjust-field textarea{resize:vertical; min-height:70px; line-height:1.5;}
 .rx-adjust-field input:focus,
 .rx-adjust-field select:focus,
 .rx-adjust-field textarea:focus{border-color:#1DB954;}
+
+/* Disabled field state — fields stay visible but greyed out until the
+   matching chip is selected. Reason textarea is exempt (always editable). */
+.rx-adjust-field.rx-adj-field-disabled label{color:rgba(0,0,0,0.3);}
+.rx-adjust-field.rx-adj-field-disabled input,
+.rx-adjust-field.rx-adj-field-disabled select{
+  background:rgba(0,0,0,0.03); border-color:rgba(0,0,0,0.08);
+  color:rgba(0,0,0,0.35); cursor:not-allowed;
+}
+.rx-adjust-field.rx-adj-field-disabled .rx-proto-toggle{
+  background:rgba(0,0,0,0.03); border-color:rgba(0,0,0,0.08);
+  color:rgba(0,0,0,0.35); cursor:not-allowed;
+}
+.rx-adjust-field.rx-adj-field-enabled input,
+.rx-adjust-field.rx-adj-field-enabled select,
+.rx-adjust-field.rx-adj-field-enabled .rx-proto-toggle{
+  background:#FBFAF6;
+}
+
+/* Custom protocol dropdown — same shape/colour as the text inputs so it
+   reads as part of the form rather than a different control type. */
+.rx-proto-dd{position:relative;}
+.rx-proto-toggle{
+  width:100%; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  font-family:'Inter',sans-serif; font-size:13px; color:var(--cl-text,#111111);
+  padding:10px 12px; border:1px solid rgba(0,0,0,0.14); border-radius:10px;
+  background:#FBFAF6; cursor:pointer; outline:none;
+  transition:border-color .15s;
+}
+.rx-proto-toggle:hover:not(:disabled){border-color:rgba(0,0,0,0.3);}
+.rx-proto-dd.open .rx-proto-toggle{border-color:#1DB954;}
+.rx-proto-value{flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rx-proto-chev{flex-shrink:0; transition:transform .15s; color:rgba(0,0,0,0.45);}
+.rx-proto-dd.open .rx-proto-chev{transform:rotate(180deg);}
+.rx-proto-menu{
+  position:absolute; top:calc(100% + 6px); left:0; right:0;
+  background:#FFFFFF; border:1px solid rgba(0,0,0,0.1); border-radius:12px;
+  box-shadow:0 12px 28px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06);
+  padding:6px; max-height:240px; overflow-y:auto;
+  z-index:60;
+  opacity:0; pointer-events:none; transform:translateY(-4px);
+  transition:opacity .15s, transform .15s;
+}
+.rx-proto-dd.open .rx-proto-menu{opacity:1; pointer-events:auto; transform:translateY(0);}
+.rx-proto-option{
+  display:block; width:100%; text-align:left;
+  font-family:'Inter',sans-serif; font-size:13px; color:var(--cl-text,#111111);
+  padding:9px 12px; border-radius:8px; border:none; background:transparent;
+  cursor:pointer; transition:background .12s;
+}
+.rx-proto-option:hover{background:rgba(29,185,84,0.08);}
+.rx-proto-option.active{background:rgba(29,185,84,0.12); color:#17a34a; font-weight:600;}
 
 .rx-adjust-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
 .rx-adjust-btn{
@@ -7438,6 +7492,27 @@ function _diffSummary(histEntry, currentValues) {
 // to write back to without re-querying the DOM.
 var _rxAdjustCtx = null;
 
+// Parse the serialized frequency/duration strings back into their two
+// parts so the Adjust modal can pre-fill a number input + period select
+// just like the original prescribe form. Round-trips cleanly for values
+// created by _submitEvaluation; falls back to empty if the format is odd.
+function _parseFrequency(str) {
+  if (!str || typeof str !== 'string') return { num:'', period:'' };
+  var m = str.trim().match(/^(\d+)\s*doses?\s*(daily|weekly)$/i);
+  if (m) return { num: m[1], period: m[2].toLowerCase() };
+  return { num:'', period:'' };
+}
+function _parseDuration(str) {
+  if (!str || typeof str !== 'string') return { num:'', period:'' };
+  var m = str.trim().match(/^(\d+)\s*(days?|weeks?|months?)$/i);
+  if (m) {
+    var p = m[2].toLowerCase();
+    if (p.charAt(p.length-1) !== 's') p += 's';
+    return { num: m[1], period: p };
+  }
+  return { num:'', period:'' };
+}
+
 async function _openAdjustRxModal(consultId, userId) {
   try {
     // Fetch the current active prescription values + history
@@ -7449,6 +7524,9 @@ async function _openAdjustRxModal(consultId, userId) {
     var d = row.data || {};
     var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
 
+    var freqParts = _parseFrequency(row.frequency);
+    var durParts  = _parseDuration(row.duration);
+
     _rxAdjustCtx = {
       consultId: consultId,
       userId: userId,
@@ -7459,11 +7537,18 @@ async function _openAdjustRxModal(consultId, userId) {
         dose_amount:       row.dose_amount || '',
         dose_unit:         row.dose_unit || '',
         frequency:         row.frequency || '',
+        freq_num:          freqParts.num,
+        freq_period:       freqParts.period,
         timing:            row.timing || '',
         duration:          row.duration || '',
+        dur_num:           durParts.num,
+        dur_period:        durParts.period,
         other_notes:       row.other_notes || '',
         evaluation_date:   row.evaluation_date || null
       },
+      // Multi-select set of currently-enabled chip values. Discontinue is
+      // exclusive with the others — flipping it clears this set.
+      selectedTypes: {},
       history: Array.isArray(row.prescription_history) ? row.prescription_history : []
     };
 
@@ -7478,8 +7563,15 @@ async function _openAdjustRxModal(consultId, userId) {
     modal.addEventListener('click', function(e) {
       if (e.target === modal) _closeAdjustRxModal();
     });
-    // Default chip
-    _selectRxAdjustType(_rxAdjustCtx.isReprescribe ? 'represcribe' : 'dose_change');
+    // Close the custom protocol dropdown when clicking outside it
+    modal.addEventListener('click', function(e) {
+      var dd = document.getElementById('rxAdjProtoDD');
+      if (dd && dd.classList.contains('open') && !dd.contains(e.target)) {
+        dd.classList.remove('open');
+      }
+    });
+    _rxAdjustApplyFieldState();
+    _rxAdjustValidate();
   } catch (e) {
     console.warn('[Pulse] adjust modal open failed:', e);
   }
@@ -7490,27 +7582,40 @@ function _buildRxAdjustModalHtml(ctx) {
   var doseUnitOpts = ['mg','mcg','mL'].map(function(u){
     return '<option value="'+u+'"'+(cur.dose_unit === u ? ' selected' : '')+'>'+u+'</option>';
   }).join('');
+  var freqPeriodOpts = [['daily','daily'],['weekly','weekly']].map(function(o){
+    return '<option value="'+o[0]+'"'+(cur.freq_period === o[0] ? ' selected' : '')+'>'+o[1]+'</option>';
+  }).join('');
+  var durPeriodOpts = [['days','days'],['weeks','weeks'],['months','months']].map(function(o){
+    return '<option value="'+o[0]+'"'+(cur.dur_period === o[0] ? ' selected' : '')+'>'+o[1]+'</option>';
+  }).join('');
+  var protoOptsHtml = (typeof _EVAL_PROTOCOLS !== 'undefined' ? _EVAL_PROTOCOLS : []).map(function(p) {
+    var isActive = (cur.protocol_assigned === p);
+    return '<button type="button" class="rx-proto-option'+(isActive ? ' active' : '')+'" data-val="'+escapeAttr(p)+'" onclick="_rxAdjProtoPick(\''+escapeAttr(p).replace(/'/g,"\\'")+'\')">'+escapeHtml(p)+'</button>';
+  }).join('');
+
+  // Chips — six types, Discontinue pinned far right via spacer
   var chips = [
     { val:'dose_change',       label:'Dose' },
     { val:'frequency_change',  label:'Frequency' },
     { val:'timing_change',     label:'Timing' },
     { val:'protocol_change',   label:'Protocol' },
-    { val:'duration_change',   label:'Duration' },
-    { val:'discontinuation',   label:'Discontinue', danger:true }
+    { val:'duration_change',   label:'Duration' }
   ];
   var chipsHtml = chips.map(function(c) {
-    return '<button type="button" class="rx-adj-chip'+(c.danger ? ' rx-adj-chip-danger' : '')+'" data-val="'+c.val+'" onclick="_selectRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
+    return '<button type="button" class="rx-adj-chip" data-val="'+c.val+'" onclick="_toggleRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
   }).join('');
-  var titleTxt = ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription';
-  var saveTxt  = ctx.isReprescribe ? 'Re-prescribe' : 'Save changes';
+  chipsHtml += '<div class="rx-adj-chip-spacer"></div>';
+  chipsHtml += '<button type="button" class="rx-adj-chip rx-adj-chip-danger" data-val="discontinuation" onclick="_toggleRxAdjustType(\'discontinuation\')">Discontinue</button>';
+
+  var subTxt = ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription';
+  var saveTxt = ctx.isReprescribe ? 'Re-prescribe' : 'Save changes';
 
   return (
     '<div class="rx-adjust-card" onclick="event.stopPropagation()">' +
       '<div class="rx-adjust-hdr">' +
         '<div>' +
-          '<div class="rx-adjust-eyebrow">Prescription</div>' +
-          '<div class="rx-adjust-title">'+escapeHtml(titleTxt)+'</div>' +
-          '<div class="rx-adjust-sub">'+escapeHtml(ctx.patientName)+'</div>' +
+          '<div class="rx-adjust-title">'+escapeHtml(ctx.patientName)+'</div>' +
+          '<div class="rx-adjust-sub">'+escapeHtml(subTxt)+'</div>' +
         '</div>' +
         '<button type="button" class="rx-adjust-close" onclick="_closeAdjustRxModal()" aria-label="Close">&times;</button>' +
       '</div>' +
@@ -7519,37 +7624,50 @@ function _buildRxAdjustModalHtml(ctx) {
       '<div class="rx-adjust-chips" id="rxAdjChips">'+chipsHtml+'</div>' +
 
       '<div class="rx-adjust-form" id="rxAdjForm">' +
-        '<div class="rx-adjust-field">' +
+        '<div class="rx-adjust-field" data-field="protocol_change">' +
           '<label>Protocol</label>' +
-          '<input type="text" id="rxAdjProto" value="'+escapeAttr(cur.protocol_assigned)+'" placeholder="e.g. Sleep"/>' +
+          '<div class="rx-proto-dd" id="rxAdjProtoDD">' +
+            '<button type="button" class="rx-proto-toggle" id="rxAdjProtoBtn" onclick="_rxAdjProtoToggle(event)">' +
+              '<span class="rx-proto-value" id="rxAdjProtoVal">'+escapeHtml(cur.protocol_assigned || 'Select protocol…')+'</span>' +
+              '<svg class="rx-proto-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+            '</button>' +
+            '<input type="hidden" id="rxAdjProto" value="'+escapeAttr(cur.protocol_assigned)+'"/>' +
+            '<div class="rx-proto-menu">'+protoOptsHtml+'</div>' +
+          '</div>' +
         '</div>' +
         '<div class="rx-adjust-grid2">' +
-          '<div class="rx-adjust-field">' +
+          '<div class="rx-adjust-field" data-field="dose_change">' +
             '<label>Dose amount</label>' +
-            '<input type="text" id="rxAdjDose" value="'+escapeAttr(cur.dose_amount)+'" placeholder="e.g. 250"/>' +
+            '<input type="number" min="0" id="rxAdjDose" value="'+escapeAttr(cur.dose_amount)+'" placeholder="e.g. 250"/>' +
           '</div>' +
-          '<div class="rx-adjust-field">' +
+          '<div class="rx-adjust-field" data-field="dose_change">' +
             '<label>Dose unit</label>' +
             '<select id="rxAdjUnit"><option value="">—</option>'+doseUnitOpts+'</select>' +
           '</div>' +
         '</div>' +
         '<div class="rx-adjust-grid2">' +
-          '<div class="rx-adjust-field">' +
+          '<div class="rx-adjust-field" data-field="frequency_change">' +
             '<label>Frequency</label>' +
-            '<input type="text" id="rxAdjFreq" value="'+escapeAttr(cur.frequency)+'" placeholder="e.g. 1 dose daily"/>' +
+            '<div class="rx-adjust-inline2">' +
+              '<input type="number" min="1" max="10" id="rxAdjFreqNum" value="'+escapeAttr(cur.freq_num)+'" placeholder="e.g. 1"/>' +
+              '<select id="rxAdjFreqPeriod"><option value="">—</option>'+freqPeriodOpts+'</select>' +
+            '</div>' +
           '</div>' +
-          '<div class="rx-adjust-field">' +
+          '<div class="rx-adjust-field" data-field="timing_change">' +
             '<label>Timing</label>' +
             '<input type="text" id="rxAdjTiming" value="'+escapeAttr(cur.timing)+'" placeholder="e.g. Morning, before meals"/>' +
           '</div>' +
         '</div>' +
-        '<div class="rx-adjust-field">' +
+        '<div class="rx-adjust-field" data-field="duration_change">' +
           '<label>Duration</label>' +
-          '<input type="text" id="rxAdjDuration" value="'+escapeAttr(cur.duration)+'" placeholder="e.g. 8 weeks"/>' +
+          '<div class="rx-adjust-inline2">' +
+            '<input type="number" min="1" max="52" id="rxAdjDurNum" value="'+escapeAttr(cur.dur_num)+'" placeholder="e.g. 8"/>' +
+            '<select id="rxAdjDurPeriod"><option value="">—</option>'+durPeriodOpts+'</select>' +
+          '</div>' +
         '</div>' +
       '</div>' +
 
-      '<div class="rx-adjust-field">' +
+      '<div class="rx-adjust-field rx-adjust-reason-field">' +
         '<label id="rxAdjReasonLbl">Reason for adjustment <span class="rx-adj-req">*</span></label>' +
         '<textarea id="rxAdjReason" rows="3" placeholder="Clinical justification for the change…" oninput="_rxAdjustValidate()"></textarea>' +
       '</div>' +
@@ -7563,37 +7681,111 @@ function _buildRxAdjustModalHtml(ctx) {
   );
 }
 
-function _selectRxAdjustType(val) {
+// Multi-select chip toggle. Discontinue is mutually exclusive with the
+// other chips — selecting it clears the others, selecting any other while
+// Discontinue is active turns Discontinue off.
+function _toggleRxAdjustType(val) {
   if (!_rxAdjustCtx) return;
-  _rxAdjustCtx.adjustmentType = val;
-  // Sync chip active state
+  var sel = _rxAdjustCtx.selectedTypes;
+  if (val === 'discontinuation') {
+    if (sel['discontinuation']) {
+      // Toggle off discontinue → leave everything blank (no types selected)
+      delete sel['discontinuation'];
+    } else {
+      // Turning discontinue ON clears everything else
+      _rxAdjustCtx.selectedTypes = { discontinuation: true };
+    }
+  } else {
+    if (sel['discontinuation']) delete sel['discontinuation'];
+    if (sel[val]) delete sel[val];
+    else sel[val] = true;
+  }
+  _rxAdjustSyncChipUI();
+  _rxAdjustApplyFieldState();
+  _rxAdjustValidate();
+}
+
+// Sync the visual active state of every chip with _rxAdjustCtx.selectedTypes
+function _rxAdjustSyncChipUI() {
+  if (!_rxAdjustCtx) return;
+  var sel = _rxAdjustCtx.selectedTypes;
   document.querySelectorAll('#rxAdjChips .rx-adj-chip').forEach(function(c) {
-    c.classList.toggle('active', c.getAttribute('data-val') === val);
+    c.classList.toggle('active', !!sel[c.getAttribute('data-val')]);
   });
-  // Discontinue collapses the form and relabels the reason
+}
+
+// Enable only the form fields whose data-field matches a selected chip.
+// Every other field is disabled + muted. When Discontinue is selected we
+// hide the whole form entirely (reason becomes the only input).
+function _rxAdjustApplyFieldState() {
+  if (!_rxAdjustCtx) return;
+  var sel = _rxAdjustCtx.selectedTypes;
+  var isDiscontinue = !!sel['discontinuation'];
   var form = document.getElementById('rxAdjForm');
   var reasonLbl = document.getElementById('rxAdjReasonLbl');
   var saveBtn = document.getElementById('rxAdjSaveBtn');
-  if (val === 'discontinuation') {
-    if (form) form.style.display = 'none';
-    if (reasonLbl) reasonLbl.innerHTML = 'Discontinuation reason <span class="rx-adj-req">*</span>';
-    if (saveBtn) saveBtn.textContent = 'Discontinue protocol';
-  } else {
-    if (form) form.style.display = '';
-    if (reasonLbl) reasonLbl.innerHTML = 'Reason for adjustment <span class="rx-adj-req">*</span>';
-    if (saveBtn) saveBtn.textContent = _rxAdjustCtx.isReprescribe ? 'Re-prescribe' : 'Save changes';
+
+  if (form) form.style.display = isDiscontinue ? 'none' : '';
+  if (reasonLbl) {
+    reasonLbl.innerHTML = isDiscontinue
+      ? 'Discontinuation reason <span class="rx-adj-req">*</span>'
+      : 'Reason for adjustment <span class="rx-adj-req">*</span>';
   }
-  _rxAdjustValidate();
+  if (saveBtn) {
+    saveBtn.textContent = isDiscontinue
+      ? 'Discontinue protocol'
+      : (_rxAdjustCtx.isReprescribe ? 'Re-prescribe' : 'Save changes');
+  }
+
+  if (isDiscontinue || !form) return;
+  // Toggle per-field enabled state
+  form.querySelectorAll('.rx-adjust-field').forEach(function(fieldEl) {
+    var key = fieldEl.getAttribute('data-field');
+    var active = !!sel[key];
+    fieldEl.classList.toggle('rx-adj-field-enabled', active);
+    fieldEl.classList.toggle('rx-adj-field-disabled', !active);
+    // Disable every native input/select inside this field when inactive
+    fieldEl.querySelectorAll('input, select, textarea').forEach(function(el) {
+      el.disabled = !active;
+    });
+    // Custom protocol dropdown toggle
+    var protoBtn = fieldEl.querySelector('.rx-proto-toggle');
+    if (protoBtn) protoBtn.disabled = !active;
+  });
+}
+
+// Custom protocol dropdown handlers
+function _rxAdjProtoToggle(e) {
+  if (e) e.stopPropagation();
+  var dd = document.getElementById('rxAdjProtoDD');
+  if (!dd) return;
+  // Don't open if the whole field is disabled
+  var btn = document.getElementById('rxAdjProtoBtn');
+  if (btn && btn.disabled) return;
+  dd.classList.toggle('open');
+}
+function _rxAdjProtoPick(val) {
+  var dd = document.getElementById('rxAdjProtoDD');
+  var valEl = document.getElementById('rxAdjProtoVal');
+  var hid = document.getElementById('rxAdjProto');
+  if (valEl) valEl.textContent = val;
+  if (hid) hid.value = val;
+  document.querySelectorAll('#rxAdjProtoDD .rx-proto-option').forEach(function(o) {
+    o.classList.toggle('active', o.getAttribute('data-val') === val);
+  });
+  if (dd) dd.classList.remove('open');
 }
 
 function _rxAdjustValidate() {
   var reasonEl = document.getElementById('rxAdjReason');
   var btn = document.getElementById('rxAdjSaveBtn');
-  if (!btn) return;
+  if (!btn || !_rxAdjustCtx) return;
   var hasReason = reasonEl && reasonEl.value.trim().length > 0;
-  btn.disabled = !hasReason;
-  btn.style.opacity = hasReason ? '1' : '0.4';
-  btn.style.cursor = hasReason ? 'pointer' : 'not-allowed';
+  var hasType = Object.keys(_rxAdjustCtx.selectedTypes).length > 0;
+  var ok = hasReason && hasType;
+  btn.disabled = !ok;
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.cursor = ok ? 'pointer' : 'not-allowed';
 }
 
 function _closeAdjustRxModal() {
@@ -7612,23 +7804,64 @@ async function _saveAdjustRx() {
   var reason = reasonEl ? reasonEl.value.trim() : '';
   if (!reason) { if (errEl) errEl.textContent = 'A reason is required.'; return; }
 
-  var isDiscontinue = ctx.adjustmentType === 'discontinuation';
+  var sel = ctx.selectedTypes || {};
+  var selectedList = Object.keys(sel);
+  if (selectedList.length === 0) {
+    if (errEl) errEl.textContent = 'Select at least one type of change.';
+    return;
+  }
+  var isDiscontinue = !!sel['discontinuation'];
+
+  // Start from the current values, then overwrite ONLY the fields
+  // unlocked by the selected chips. Anything not explicitly included in
+  // the selection stays at its previous value.
   var newValues;
   if (isDiscontinue) {
     newValues = {
       protocol_assigned: null, dose_amount: null, dose_unit: null,
-      frequency: null, timing: null, duration: null, other_notes: null
+      frequency: null, timing: null, duration: null,
+      other_notes: ctx.current.other_notes || null
     };
   } else {
     newValues = {
-      protocol_assigned: (document.getElementById('rxAdjProto')    || {}).value || null,
-      dose_amount:       (document.getElementById('rxAdjDose')     || {}).value || null,
-      dose_unit:         (document.getElementById('rxAdjUnit')     || {}).value || null,
-      frequency:         (document.getElementById('rxAdjFreq')     || {}).value || null,
-      timing:            (document.getElementById('rxAdjTiming')   || {}).value || null,
-      duration:          (document.getElementById('rxAdjDuration') || {}).value || null,
+      protocol_assigned: ctx.current.protocol_assigned || null,
+      dose_amount:       ctx.current.dose_amount || null,
+      dose_unit:         ctx.current.dose_unit || null,
+      frequency:         ctx.current.frequency || null,
+      timing:            ctx.current.timing || null,
+      duration:          ctx.current.duration || null,
       other_notes:       ctx.current.other_notes || null
     };
+    if (sel['protocol_change']) {
+      newValues.protocol_assigned = (document.getElementById('rxAdjProto') || {}).value || null;
+    }
+    if (sel['dose_change']) {
+      newValues.dose_amount = (document.getElementById('rxAdjDose') || {}).value || null;
+      newValues.dose_unit   = (document.getElementById('rxAdjUnit') || {}).value || null;
+    }
+    if (sel['frequency_change']) {
+      // Serialize to "1 dose daily" / "2 doses weekly" to match the
+      // existing schema consumed by the member portal protocol card.
+      var fNum = (document.getElementById('rxAdjFreqNum') || {}).value || '';
+      var fPer = (document.getElementById('rxAdjFreqPeriod') || {}).value || '';
+      if (fNum && fPer) {
+        newValues.frequency = fNum + ' dose' + (parseInt(fNum, 10) > 1 ? 's ' : ' ') + fPer;
+      } else if (fNum || fPer) {
+        newValues.frequency = (fNum + ' ' + fPer).trim();
+      }
+    }
+    if (sel['timing_change']) {
+      newValues.timing = (document.getElementById('rxAdjTiming') || {}).value || null;
+    }
+    if (sel['duration_change']) {
+      var dNum = (document.getElementById('rxAdjDurNum') || {}).value || '';
+      var dPer = (document.getElementById('rxAdjDurPeriod') || {}).value || '';
+      if (dNum && dPer) {
+        newValues.duration = dNum + ' ' + dPer;
+      } else if (dNum || dPer) {
+        newValues.duration = (dNum + ' ' + dPer).trim();
+      }
+    }
   }
 
   var nowIso = new Date().toISOString();
@@ -7674,12 +7907,15 @@ async function _saveAdjustRx() {
       protocol_assigned: null, dose_amount: null, dose_unit: null,
       frequency: null, timing: null, duration: null,
       adjustment_type: 'discontinuation',
+      adjustment_types: ['discontinuation'],
       adjustment_reason: reason
     });
   } else {
-    // Re-prescribe counts as a fresh 'initial'; regular adjust uses the
-    // chip the clinician picked.
-    var adjType = ctx.isReprescribe ? 'initial' : (ctx.adjustmentType || 'dose_change');
+    // Re-prescribe counts as a fresh 'initial'; regular adjust stores the
+    // full multi-select set of chips plus the first one as the primary
+    // adjustment_type for backward compat with older readers.
+    var adjTypesArr = ctx.isReprescribe ? ['initial'] : selectedList;
+    var primaryType = adjTypesArr[0] || 'dose_change';
     newHistory.push({
       version: newHistory.length + 1,
       effective_from: nowIso,
@@ -7692,7 +7928,8 @@ async function _saveAdjustRx() {
       frequency:   newValues.frequency,
       timing:      newValues.timing,
       duration:    newValues.duration,
-      adjustment_type: adjType,
+      adjustment_type: primaryType,
+      adjustment_types: adjTypesArr,
       adjustment_reason: reason
     });
   }
@@ -7849,12 +8086,23 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
   }
   var who = entry.prescribed_by_name || '';
   var typeLabels = {
-    dose_change:'Dose change', frequency_change:'Frequency change',
-    timing_change:'Timing change', protocol_change:'Protocol change',
-    duration_change:'Duration change', discontinuation:'Discontinued',
+    dose_change:'Dose', frequency_change:'Frequency',
+    timing_change:'Timing', protocol_change:'Protocol',
+    duration_change:'Duration', discontinuation:'Discontinued',
     initial:'Initial'
   };
-  var tag = isCurrent ? 'Active' : (typeLabels[entry.adjustment_type || ''] || 'Change');
+  // Prefer the multi-select adjustment_types array when present; fall
+  // back to the legacy single adjustment_type for old entries.
+  var tag;
+  if (isCurrent) {
+    tag = 'Active';
+  } else if (Array.isArray(entry.adjustment_types) && entry.adjustment_types.length > 0) {
+    tag = entry.adjustment_types.map(function(t){ return typeLabels[t] || 'Change'; }).join(' + ');
+    if (!isDiscontinuation && entry.adjustment_types.length > 0 && entry.adjustment_types[0] !== 'discontinuation' && entry.adjustment_types[0] !== 'initial') tag += ' change';
+  } else {
+    tag = typeLabels[entry.adjustment_type || ''] || 'Change';
+    if (!isDiscontinuation && entry.adjustment_type && entry.adjustment_type !== 'initial') tag += ' change';
+  }
   var summary;
   if (isDiscontinuation) {
     summary = 'Protocol stopped';

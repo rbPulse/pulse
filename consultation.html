@@ -2482,6 +2482,10 @@ async function _loadSingleClinicianAvailability(clinicianId) {
 
 var _reviewBookingAvail = {};
 var _reviewBookingTaken = [];
+// Duration (in minutes) of the currently-selected slot — pulled from the
+// clinician's availability row so the summary + appointment insert match
+// whatever interval the clinician configured (20 / 30 / 45 / etc.).
+var _reviewSelectedDuration = 30;
 
 function buildReviewCalendar() {
   var grid = document.getElementById('calGrid2');
@@ -2595,6 +2599,7 @@ function buildReviewSlots(day) {
   if (!avail) { slotsGrid.innerHTML = '<div style="color:var(--grey2);font-size:12px;">No availability on this day.</div>'; return; }
 
   var duration = avail.duration || 30;
+  _reviewSelectedDuration = duration;
   var slots = [];
 
   // Generate slots from 8 AM to 5 PM
@@ -2645,7 +2650,7 @@ function buildReviewSlots(day) {
       var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       document.getElementById('summDate2').textContent = DAYS[s.date.getDay()] + ', ' + MONS[s.date.getMonth()] + ' ' + s.date.getDate();
-      document.getElementById('summTime2').textContent = s.time + ' \u00b7 30 min consultation';
+      document.getElementById('summTime2').textContent = s.time + ' \u00b7 ' + duration + ' min consultation';
       document.getElementById('bookingSummary2').style.display = 'block';
       // Reveal the Confirm Appointment button (centered via flex) now
       // that both a date and a time are picked.
@@ -2675,7 +2680,7 @@ async function submitReviewBooking() {
       consumer_id: session.user.id,
       clinician_id: _reviewBookingClinicianId,
       scheduled_at: selectedDate.toISOString(),
-      duration_minutes: 30,
+      duration_minutes: _reviewSelectedDuration || 30,
       status: 'pending',
       appointment_type: 'Initial Consult'
     }).select('id');
@@ -2721,7 +2726,7 @@ async function submitReviewBooking() {
     infoCard.innerHTML =
       '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
       '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr + '</div>' +
-      '<div style="font-size:13px;color:var(--grey2);">' + selectedSlot + ' \u00b7 30 min consultation</div>' +
+      '<div style="font-size:13px;color:var(--grey2);">' + selectedSlot + ' \u00b7 ' + (_reviewSelectedDuration || 30) + ' min consultation</div>' +
       '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
         '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
         '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +

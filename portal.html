@@ -503,6 +503,76 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
    pill, AND match the two filters so they read as a unified pair. */
 #clApptDateDD .pd-dropdown-toggle,
 #clApptTypeDD .pd-dropdown-toggle{min-width:170px;}
+/* Date range popover — opens from the "All dates" pill and lets the
+   clinician pick an inclusive From/To range. Anchored to the right so
+   it doesn't run off the card edge. */
+#clApptDateDD .pd-date-range-panel{
+  min-width:300px;
+  right:0;
+  left:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+#clApptDateDD .pd-date-range-field{display:flex;flex-direction:column;gap:6px;}
+#clApptDateDD .pd-date-range-label{
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:rgba(0,0,0,0.45);
+}
+#clApptDateDD .pd-date-range-input{
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  color:rgba(0,0,0,0.85);
+  padding:9px 12px;
+  border:1px solid rgba(20,20,20,0.12);
+  border-radius:10px;
+  background:#fff;
+  outline:none;
+  transition:border-color .15s;
+}
+#clApptDateDD .pd-date-range-input:focus{border-color:rgba(47,111,85,0.55);}
+#clApptDateDD .pd-date-range-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:4px;
+}
+#clApptDateDD .pd-date-range-btn{
+  font-family:'Inter',sans-serif;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  padding:9px 16px;
+  border-radius:999px;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+}
+#clApptDateDD .pd-date-range-btn.primary{
+  background:#2F6F55;
+  color:#fff;
+  border-color:#2F6F55;
+}
+#clApptDateDD .pd-date-range-btn.primary:hover{background:#275a46;border-color:#275a46;}
+#clApptDateDD .pd-date-range-btn.ghost{
+  background:transparent;
+  color:rgba(0,0,0,0.6);
+  border-color:rgba(0,0,0,0.15);
+}
+#clApptDateDD .pd-date-range-btn.ghost:hover{color:rgba(0,0,0,0.9);border-color:rgba(0,0,0,0.35);}
+#clApptDateDD .pd-date-range-error{
+  font-family:'Inter',sans-serif;
+  font-size:11px;
+  color:#B91C1C;
+  min-height:14px;
+}
 .pd-dropdown-section-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.35);padding:8px 14px 4px;}
 .pd-dropdown-section-label:first-child{padding-top:4px;}
 .pd-dropdown-divider{height:1px;background:rgba(0,0,0,0.06);margin:6px 10px;}
@@ -4311,11 +4381,20 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <span class="pd-dropdown-value">All dates</span>
                 <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              <div class="pd-dropdown-menu">
-                <button type="button" class="pd-dropdown-option active" data-value="all"   onclick="_pdSelect('clApptDateDD','all','All dates',function(v){_filterClApptsByDate('all');})">All dates</button>
-                <button type="button" class="pd-dropdown-option"        data-value="today" onclick="_pdSelect('clApptDateDD','today','Today',function(v){_filterClApptsByDate('today');})">Today</button>
-                <button type="button" class="pd-dropdown-option"        data-value="week"  onclick="_pdSelect('clApptDateDD','week','This week',function(v){_filterClApptsByDate('week');})">This week</button>
-                <button type="button" class="pd-dropdown-option"        data-value="month" onclick="_pdSelect('clApptDateDD','month','This month',function(v){_filterClApptsByDate('month');})">This month</button>
+              <div class="pd-dropdown-menu pd-date-range-panel" onclick="event.stopPropagation()">
+                <div class="pd-date-range-field">
+                  <label class="pd-date-range-label" for="clApptDateFrom">From</label>
+                  <input type="date" id="clApptDateFrom" class="pd-date-range-input" />
+                </div>
+                <div class="pd-date-range-field">
+                  <label class="pd-date-range-label" for="clApptDateTo">To</label>
+                  <input type="date" id="clApptDateTo" class="pd-date-range-input" />
+                </div>
+                <div class="pd-date-range-error" id="clApptDateErr"></div>
+                <div class="pd-date-range-actions">
+                  <button type="button" class="pd-date-range-btn ghost" onclick="_clearClApptDateRange()">Clear</button>
+                  <button type="button" class="pd-date-range-btn primary" onclick="_applyClApptDateRange()">Apply</button>
+                </div>
               </div>
             </div>
             <div class="pd-dropdown cl-appt-flt-dd" id="clApptTypeDD" data-value="all">
@@ -8358,16 +8437,86 @@ var _clAppointments = [];
 // Loaded real appointment rows from DB (or mock); shared across filters
 var _clApptRows = null;
 
-var _clApptDateFilter = 'all';
-var _clApptTypeFilter = 'all';
+// Date filter is now a custom range instead of a bucket. Shape:
+//   { start: Date|null, end: Date|null }   — null means 'all dates'
+var _clApptDateRange = { start: null, end: null };
 
-function _filterClApptsByDate(range, pillEl) {
-  _clApptDateFilter = range;
-  ['all','today','week','month'].forEach(function(f) {
-    var p = document.getElementById('flt-date-' + f);
-    if (p) p.classList.toggle('active', f === range);
-  });
-  // Re-apply current filter with date range
+// Parse a native <input type="date"> value ("YYYY-MM-DD") as a local-time
+// Date, avoiding the UTC-midnight off-by-one that `new Date(str)` causes.
+function _parseDateInputLocal(str, endOfDay) {
+  if (!str) return null;
+  var p = str.split('-');
+  if (p.length !== 3) return null;
+  var y = parseInt(p[0], 10), m = parseInt(p[1], 10) - 1, d = parseInt(p[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  return endOfDay
+    ? new Date(y, m, d, 23, 59, 59, 999)
+    : new Date(y, m, d, 0, 0, 0, 0);
+}
+
+// Pretty "Apr 14" for the toggle label.
+function _fmtDateRangeLabel(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function _applyClApptDateRange() {
+  var fromEl = document.getElementById('clApptDateFrom');
+  var toEl   = document.getElementById('clApptDateTo');
+  var errEl  = document.getElementById('clApptDateErr');
+  if (errEl) errEl.textContent = '';
+  var fromStr = fromEl ? fromEl.value : '';
+  var toStr   = toEl ? toEl.value : '';
+  if (!fromStr && !toStr) {
+    if (errEl) errEl.textContent = 'Pick a start or end date.';
+    return;
+  }
+  var start = _parseDateInputLocal(fromStr, false);
+  var end   = _parseDateInputLocal(toStr, true);
+  if (start && end && end < start) {
+    if (errEl) errEl.textContent = 'End date must be on or after start date.';
+    return;
+  }
+  _clApptDateRange = { start: start, end: end };
+  // Update the dropdown label
+  var dd = document.getElementById('clApptDateDD');
+  if (dd) {
+    var val = dd.querySelector('.pd-dropdown-value');
+    var lbl;
+    if (start && end) {
+      // Same day → just one date
+      if (start.toDateString() === end.toDateString()) {
+        lbl = _fmtDateRangeLabel(start);
+      } else {
+        lbl = _fmtDateRangeLabel(start) + ' – ' + _fmtDateRangeLabel(end);
+      }
+    } else if (start) {
+      lbl = 'From ' + _fmtDateRangeLabel(start);
+    } else {
+      lbl = 'Until ' + _fmtDateRangeLabel(end);
+    }
+    if (val) val.textContent = lbl;
+    dd.setAttribute('data-value', 'range');
+    dd.classList.remove('open');
+  }
+  if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
+}
+
+function _clearClApptDateRange() {
+  _clApptDateRange = { start: null, end: null };
+  var fromEl = document.getElementById('clApptDateFrom');
+  var toEl   = document.getElementById('clApptDateTo');
+  var errEl  = document.getElementById('clApptDateErr');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value = '';
+  if (errEl)  errEl.textContent = '';
+  var dd = document.getElementById('clApptDateDD');
+  if (dd) {
+    var val = dd.querySelector('.pd-dropdown-value');
+    if (val) val.textContent = 'All dates';
+    dd.setAttribute('data-value', 'all');
+    dd.classList.remove('open');
+  }
   if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
 }
 
@@ -8384,12 +8533,19 @@ function _filterClApptsByType(type, pillEl) {
 
 function filterClAppts(filter, pillEl) {
   _clApptFilter = filter;
-  _clApptDateFilter = 'all'; // Reset date filter on tab change
+  // Reset the custom date range whenever the primary status tab changes
+  _clApptDateRange = { start: null, end: null };
+  var fromEl = document.getElementById('clApptDateFrom');
+  var toEl   = document.getElementById('clApptDateTo');
+  var errEl  = document.getElementById('clApptDateErr');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value = '';
+  if (errEl)  errEl.textContent = '';
   ['requested','scheduled','completed'].forEach(function(f) {
     var p = document.getElementById('flt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
-  // Show the Date dropdown only for the 'Upcoming' tab. Reset its value
+  // Show the Date dropdown only for the 'Upcoming' tab. Reset its label
   // back to 'All dates' whenever the primary filter changes.
   var dateDD = document.getElementById('clApptDateDD');
   if (dateDD) {
@@ -8397,9 +8553,7 @@ function filterClAppts(filter, pillEl) {
     dateDD.setAttribute('data-value', 'all');
     var dv = dateDD.querySelector('.pd-dropdown-value');
     if (dv) dv.textContent = 'All dates';
-    dateDD.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
-      opt.classList.toggle('active', opt.getAttribute('data-value') === 'all');
-    });
+    dateDD.classList.remove('open');
   }
   if (PREVIEW_MODE || !currentUserId) {
     _applyClApptFilter(ALL_APPTS, filter);
@@ -8496,20 +8650,14 @@ function _applyClApptFilter(rows, filter) {
       var isFuture = a.scheduledAt ? a.scheduledAt > new Date() : false;
       return (st === 'pending' || st === 'confirmed') && isFuture;
     });
-    // Apply date range sub-filter
-    if (_clApptDateFilter && _clApptDateFilter !== 'all') {
-      var now = new Date();
+    // Apply custom date range sub-filter (inclusive on both ends)
+    if (_clApptDateRange && (_clApptDateRange.start || _clApptDateRange.end)) {
+      var rStart = _clApptDateRange.start;
+      var rEnd   = _clApptDateRange.end;
       filtered = filtered.filter(function(a) {
         if (!a.scheduledAt) return false;
-        if (_clApptDateFilter === 'today') {
-          return a.scheduledAt.toDateString() === now.toDateString();
-        } else if (_clApptDateFilter === 'week') {
-          var weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
-          return a.scheduledAt <= weekEnd;
-        } else if (_clApptDateFilter === 'month') {
-          var monthEnd = new Date(now); monthEnd.setMonth(monthEnd.getMonth() + 1);
-          return a.scheduledAt <= monthEnd;
-        }
+        if (rStart && a.scheduledAt < rStart) return false;
+        if (rEnd   && a.scheduledAt > rEnd)   return false;
         return true;
       });
     }

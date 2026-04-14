@@ -432,8 +432,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .avail-editor-row:last-child{border-bottom:none;padding-bottom:0;}
 .avail-day-label{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--grey2);min-width:84px;}
 .avail-time-range{display:flex;align-items:center;gap:7px;flex:1;}
-.avail-time-input{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:#fff;font-family:'Inter',sans-serif;font-size:11px;padding:5px 9px;outline:none;width:90px;transition:border-color .2s;color-scheme:dark;}
+.avail-time-input{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:#fff;font-family:'Inter',sans-serif;font-size:11px;padding:5px 9px;outline:none;width:130px;transition:border-color .2s;}
 .avail-time-input:focus{border-color:rgba(58,122,92,0.38);}
+/* Hide the native time picker's clock icon — it was rendering as a
+   white glyph on the light clinician card which read as a broken
+   image. Works in Chrome/Safari/Edge. */
+.avail-time-input::-webkit-calendar-picker-indicator{display:none;opacity:0;}
 .avail-time-sep{font-size:11px;color:rgba(255,255,255,0.2);}
 .avail-off-text{font-size:12px;color:rgba(255,255,255,0.2);}
 
@@ -2700,7 +2704,8 @@ body.clinician-mode .cl-two-col{gap:16px;}
 body.clinician-mode .cl-two-col > *{background:var(--cl-high) !important;border:1px solid var(--cl-border) !important;border-radius:12px !important;padding:16px !important;box-shadow:0 1px 3px rgba(0,0,0,0.04) !important;}
 body.clinician-mode .cl-two-col *{font-family:'Inter',sans-serif !important;}
 body.clinician-mode .cl-two-col .compounds-label,
-body.clinician-mode #clWeeklyScheduleCard .compounds-label{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
+body.clinician-mode #clWeeklyScheduleCard .compounds-label,
+body.clinician-mode #tab-cl-schedule .compounds-label{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
 body.clinician-mode .cl-two-col > div > div:first-child{font-family:'Inter',sans-serif !important;font-size:11px !important;letter-spacing:0.08em !important;color:var(--cl-text3) !important;text-transform:uppercase !important;font-weight:600 !important;}
 body.clinician-mode .cl-live-card{background:var(--cl-mid);border:1px solid var(--cl-border);border-radius:10px;box-shadow:none;padding:12px 16px;}
 body.clinician-mode .cl-live-card-name{color:var(--cl-text);font-family:'Inter',sans-serif;}
@@ -3189,6 +3194,22 @@ body.clinician-mode .avail-row{border-bottom-color:rgba(0,0,0,0.06) !important;}
 body.clinician-mode .settings-toggle-text{color:#111111 !important;font-family:'Inter',sans-serif;}
 body.clinician-mode .avail-dot{border-color:rgba(0,0,0,0.15) !important;}
 body.clinician-mode .avail-dot.on{background:#1DB954 !important;border-color:#1DB954 !important;}
+/* Availability editor time inputs — light surface + dark text so AM/PM
+   is actually visible (was white-on-light and invisible). */
+body.clinician-mode .avail-time-input{background:#FFFFFF !important;border:1px solid rgba(0,0,0,0.14) !important;color:#111111 !important;padding:8px 12px !important;border-radius:10px !important;font-size:13px !important;width:140px !important;}
+body.clinician-mode .avail-time-input:focus{border-color:#1DB954 !important;}
+body.clinician-mode .avail-time-sep{color:rgba(0,0,0,0.5) !important;font-size:13px !important;}
+body.clinician-mode .avail-off-text{color:rgba(0,0,0,0.45) !important;font-size:13px !important;}
+body.clinician-mode .avail-editor-row{padding:12px 0 !important;border-bottom:1px solid rgba(0,0,0,0.06) !important;}
+body.clinician-mode .avail-day-label{color:rgba(0,0,0,0.55) !important;font-weight:600 !important;}
+/* Weekly Availability + Blocked Times share a single card with a thin
+   vertical divider between the two columns. Stacks on mobile. */
+.cl-avail-2col{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;}
+body.clinician-mode .cl-avail-2col .cl-avail-col-right{padding-left:24px;border-left:1px solid rgba(0,0,0,0.08);}
+@media(max-width:720px){
+  .cl-avail-2col{grid-template-columns:1fr;gap:20px;}
+  body.clinician-mode .cl-avail-2col .cl-avail-col-right{padding-left:0;border-left:none;border-top:1px solid rgba(0,0,0,0.08);padding-top:20px;}
+}
 
 /* ── Toggle sliders ── */
 body.clinician-mode .toggle-track{background:rgba(0,0,0,0.18) !important;}
@@ -4475,10 +4496,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           Your availability is used for all appointment scheduling — including monthly check-ins, ad hoc consults requested by active members, and clinician-initiated consultations.
         </div>
 
-        <!-- Consult settings -->
+        <!-- Consult settings (duration + timezone) -->
         <div class="p-card">
           <div class="compounds-label">Consult Settings</div>
-          <div class="settings-grid">
+          <div class="settings-grid" style="grid-template-columns:1fr 1fr;gap:14px;">
             <div class="settings-field">
               <label class="settings-field-lbl">Live Consult Duration</label>
               <select class="book-select" id="clDuration" onchange="APPT_DURATION=parseInt(this.value);onDurationChange(this.value)">
@@ -4488,57 +4509,67 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <option value="60">60 minutes</option>
               </select>
             </div>
-          </div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.28);margin-top:4px;">
-            <span style="font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.1em;">Timezone</span>
-            <span style="margin-left:10px;color:var(--grey2);">Eastern Time (ET) · UTC−5</span>
+            <div class="settings-field">
+              <label class="settings-field-lbl">Timezone</label>
+              <select class="book-select" id="clTimezone" onchange="_saveClinicianTimezone(this.value)">
+                <option value="America/New_York">Eastern Time (ET) · New York</option>
+                <option value="America/Chicago">Central Time (CT) · Chicago</option>
+                <option value="America/Denver">Mountain Time (MT) · Denver</option>
+                <option value="America/Phoenix">Mountain Time (no DST) · Phoenix</option>
+                <option value="America/Los_Angeles">Pacific Time (PT) · Los Angeles</option>
+                <option value="America/Anchorage">Alaska Time (AKT) · Anchorage</option>
+                <option value="Pacific/Honolulu">Hawaii Time (HT) · Honolulu</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Weekly availability editor -->
+        <!-- Weekly availability + Blocked times in a single 2-column card -->
         <div class="p-card">
-          <div class="compounds-label">Weekly Availability</div>
-          <div id="clAvailEditor"></div>
-          <div style="margin-top:18px;display:flex;align-items:center;gap:14px;">
-            <button class="btn-green" onclick="saveAvailability()">Save</button>
-            <span id="availSaved" style="display:none;font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
-          </div>
-        </div>
-
-        <!-- Blocked times -->
-        <div class="p-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <div class="compounds-label" style="margin-bottom:0;">Blocked Times</div>
-            <button class="btn-ghost" style="padding:7px 15px;font-size:9px;" onclick="toggleAddBlock()">+ Add Block</button>
-          </div>
-          <div id="clBlockedList"></div>
-          <div id="addBlockForm" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.05);">
-            <div class="settings-grid" style="margin-bottom:10px;">
-              <div class="settings-field">
-                <label class="settings-field-lbl">Day</label>
-                <select class="book-select" id="blockDay">
-                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-                  <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
-                </select>
-              </div>
-              <div class="settings-field">
-                <label class="settings-field-lbl">Label</label>
-                <input class="settings-input" id="blockLabel" placeholder="e.g. Lunch"/>
+          <div class="cl-avail-2col">
+            <div class="cl-avail-col-left">
+              <div class="compounds-label">Weekly Availability</div>
+              <div id="clAvailEditor"></div>
+              <div style="margin-top:18px;display:flex;align-items:center;gap:14px;">
+                <button class="btn-green" onclick="saveAvailability()">Save</button>
+                <span id="availSaved" style="display:none;font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.1em;color:var(--green);">Saved.</span>
               </div>
             </div>
-            <div class="settings-grid" style="margin-bottom:14px;">
-              <div class="settings-field">
-                <label class="settings-field-lbl">Start</label>
-                <input class="settings-input" id="blockStart" type="time" value="12:00"/>
+            <div class="cl-avail-col-right">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div class="compounds-label" style="margin-bottom:0;">Blocked Times</div>
+                <button class="btn-ghost" style="padding:7px 15px;font-size:9px;" onclick="toggleAddBlock()">+ Add Block</button>
               </div>
-              <div class="settings-field">
-                <label class="settings-field-lbl">End</label>
-                <input class="settings-input" id="blockEnd" type="time" value="13:00"/>
+              <div id="clBlockedList"></div>
+              <div id="addBlockForm" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.05);">
+                <div class="settings-grid" style="margin-bottom:10px;">
+                  <div class="settings-field">
+                    <label class="settings-field-lbl">Day</label>
+                    <select class="book-select" id="blockDay">
+                      <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                      <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                    </select>
+                  </div>
+                  <div class="settings-field">
+                    <label class="settings-field-lbl">Label</label>
+                    <input class="settings-input" id="blockLabel" placeholder="e.g. Lunch"/>
+                  </div>
+                </div>
+                <div class="settings-grid" style="margin-bottom:14px;">
+                  <div class="settings-field">
+                    <label class="settings-field-lbl">Start</label>
+                    <input class="settings-input" id="blockStart" type="time" value="12:00"/>
+                  </div>
+                  <div class="settings-field">
+                    <label class="settings-field-lbl">End</label>
+                    <input class="settings-input" id="blockEnd" type="time" value="13:00"/>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn-green" onclick="addBlockedTime()">Add</button>
+                  <button class="btn-ghost" onclick="toggleAddBlock()">Cancel</button>
+                </div>
               </div>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn-green" onclick="addBlockedTime()">Add</button>
-              <button class="btn-ghost" onclick="toggleAddBlock()">Cancel</button>
             </div>
           </div>
         </div>
@@ -6024,6 +6055,15 @@ function _continuePortalInit(user, role) {
 
   if (role === 'clinician' || role === 'admin') {
     document.body.classList.add('clinician-mode');
+    // Load the clinician's stored timezone (if any) so other surfaces
+    // that render appointment times can use it. Falls back to the
+    // browser timezone silently if the column is missing or empty.
+    db.from('profiles').select('cl_timezone').eq('user_id', user.id).limit(1)
+      .then(function(r) {
+        if (r && r.data && r.data.length > 0 && r.data[0].cl_timezone) {
+          _clTimezone = r.data[0].cl_timezone;
+        }
+      }).catch(function(){});
     checkClSetup(user, role, greeting);
   } else {
     // Consumer flow — apply light theme
@@ -9182,13 +9222,36 @@ function _loadClOverviewDayAppts(dateStr) {
 // Day-of-week index map (matches JS Date.getDay())
 var _DOW_INDEX = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
 
+// Active clinician timezone (IANA id). Loaded from profiles.cl_timezone
+// at auth time and referenced by clinician-side time renderers. Falls
+// back to the browser timezone if not set.
+var _clTimezone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/New_York';
+
+function _saveClinicianTimezone(tz) {
+  if (!tz) return;
+  _clTimezone = tz;
+  if (PREVIEW_MODE || !currentUserId) return;
+  // Persist on profiles row. Required migration:
+  //   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cl_timezone text;
+  db.from('profiles').update({ cl_timezone: tz, updated_at: new Date().toISOString() }).eq('user_id', currentUserId)
+    .then(function(){}).catch(function(){});
+}
+
 function initClSchedule() {
   if (PREVIEW_MODE || !currentUserId) {
     renderAvailEditor();
     renderBlockedList();
     return;
   }
-  // Load availability from DB, restore state, then render
+  // Load availability + timezone from DB, restore state, then render
+  db.from('profiles').select('cl_timezone').eq('user_id', currentUserId).limit(1)
+    .then(function(pr) {
+      if (pr && pr.data && pr.data.length > 0 && pr.data[0].cl_timezone) {
+        _clTimezone = pr.data[0].cl_timezone;
+      }
+      var tzSel = document.getElementById('clTimezone');
+      if (tzSel) tzSel.value = _clTimezone;
+    }).catch(function(){});
   db.from('availability')
     .select('*')
     .eq('clinician_id', currentUserId)

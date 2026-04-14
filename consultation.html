@@ -528,16 +528,87 @@ label.field-label{color:rgba(0,0,0,0.45);}
 /* Status cards */
 .status-card{background:var(--card);border-color:var(--border);}
 
-/* Review booking */
-#reviewBooking{background:var(--card);border-color:var(--border);}
+/* ── Review booking — matches the member portal booking aesthetic ── */
+#reviewBooking{background:transparent;border:none;}
+#reviewBooking .form-section{margin-bottom:20px;}
+#reviewBooking .form-section-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:rgba(0,0,0,0.45);margin-bottom:14px;}
 
-/* Calendar */
-.cal-day{color:#111111;background:var(--card);border:1px solid var(--border);}
-.cal-day.past{color:rgba(0,0,0,0.2);}
-.cal-day.today{border-color:var(--green);}
-.cal-day.has-slots{cursor:pointer;font-weight:500;}
-.cal-day.has-slots:hover{background:var(--green-dim);}
-.cal-day.selected{background:var(--green);color:#fff;border-color:var(--green);}
+/* Calendar header */
+#reviewBooking .cal-header{margin-bottom:16px;}
+#reviewBooking .cal-month{font-family:'Inter',sans-serif !important;font-size:13px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#111111;}
+#reviewBooking .cal-nav button{background:#FFFFFF;border:1px solid var(--border);color:rgba(0,0,0,0.55);width:32px;height:32px;border-radius:10px;transition:border-color .15s,color .15s;}
+#reviewBooking .cal-nav button:hover{border-color:rgba(0,0,0,0.25);color:#111111;}
+
+/* Day header row */
+#reviewBooking .cal-day-label{font-family:'Inter',sans-serif !important;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.4);text-align:center;padding-bottom:8px;}
+
+/* Day cells — white cards, dark text, green accent on selection */
+#reviewBooking .cal-grid{gap:8px;}
+#reviewBooking .cal-day{
+  font-family:'Inter',sans-serif;
+  font-size:14px;
+  font-weight:500;
+  color:#111111;
+  background:#FFFFFF;
+  border:1px solid var(--border);
+  border-radius:12px;
+  transition:background .15s,border-color .15s,color .15s;
+}
+#reviewBooking .cal-day.past{color:rgba(0,0,0,0.25);background:transparent;border-color:transparent;cursor:default;}
+#reviewBooking .cal-day.empty{background:transparent;border-color:transparent;cursor:default;}
+#reviewBooking .cal-day.has-slots{color:#111111;font-weight:600;cursor:pointer;}
+#reviewBooking .cal-day.has-slots:hover{border-color:#22C55E;background:rgba(34,197,94,0.06);}
+#reviewBooking .cal-day.today{border-color:rgba(34,197,94,0.35);}
+#reviewBooking .cal-day.selected{background:#22C55E;color:#FFFFFF !important;border-color:#22C55E;font-weight:600;}
+#reviewBooking .cal-day.selected:hover{background:#16A34A;border-color:#16A34A;}
+
+/* Time slot grid */
+#reviewBooking .slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;}
+#reviewBooking .slot-btn{
+  background:#FFFFFF;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+#reviewBooking .slot-btn:hover{border-color:#22C55E;background:rgba(34,197,94,0.06);}
+#reviewBooking .slot-btn.selected{border-color:#22C55E;background:rgba(34,197,94,0.1);}
+#reviewBooking .slot-btn.booked{opacity:0.35;cursor:not-allowed;}
+#reviewBooking .slot-btn.booked:hover{border-color:var(--border);background:#FFFFFF;}
+#reviewBooking .slot-time{font-family:'Inter',sans-serif !important;font-size:14px;font-weight:600;color:#111111;margin-bottom:2px;}
+#reviewBooking .slot-tz{font-family:'Inter',sans-serif !important;font-size:10px;font-weight:500;color:rgba(0,0,0,0.45);letter-spacing:0;text-transform:none;}
+#reviewBooking .slot-avail{font-family:'Inter',sans-serif !important;font-size:10px;font-weight:500;color:#22C55E;letter-spacing:0;margin-top:3px;text-transform:none;}
+
+/* Appointment summary card */
+.review-booking-summary{
+  background:rgba(34,197,94,0.06);
+  border:1px solid rgba(34,197,94,0.25);
+  border-radius:14px;
+  padding:18px 22px;
+  margin-top:4px;
+}
+.review-booking-summary-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#16A34A;margin-bottom:8px;}
+.review-booking-summary-date{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#111111;}
+.review-booking-summary-time{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:rgba(0,0,0,0.6);margin-top:2px;}
+
+/* Confirm Appointment button underneath the booking view */
+#reviewBooking .btn-primary{
+  background:#22C55E !important;
+  color:#FFFFFF !important;
+  border:none;
+  border-radius:999px;
+  padding:14px 32px;
+  font-family:'Inter',sans-serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  box-shadow:0 4px 14px rgba(34,197,94,0.25);
+  transition:background .2s,box-shadow .2s;
+}
+#reviewBooking .btn-primary:hover{background:#16A34A !important;box-shadow:0 6px 18px rgba(34,197,94,0.32);}
 
 /* Ineligible */
 .ineligible-title{color:#111111;}
@@ -1024,22 +1095,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
 
     <!-- Booking section for live consult requests -->
     <div id="reviewBooking" style="display:none;margin-top:24px;">
-      <!-- Clinician message card -->
-      <div id="liveConsultCard" style="background:linear-gradient(135deg,rgba(100,150,255,0.08) 0%,rgba(100,150,255,0.03) 100%);border:1px solid rgba(100,150,255,0.25);border-radius:14px;padding:24px 28px;margin-bottom:24px;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(100,150,255,0.5),transparent);"></div>
-        <div style="display:flex;align-items:flex-start;gap:16px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:rgba(100,150,255,0.12);border:1px solid rgba(100,150,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <span style="color:rgba(150,185,255,0.9);font-size:16px;">&#x1F4F9;</span>
-          </div>
-          <div>
-            <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Live consultation requested</div>
-            <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;" id="liveConsultReason">Your clinician would like to schedule a live video consultation.</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:8px;">Select a date and time below to book your appointment.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Calendar - reuse existing calendar structure -->
+      <!-- Calendar -->
       <div class="form-section">
         <div class="form-section-label">Select a date</div>
         <div class="cal-wrap">
@@ -1062,10 +1118,10 @@ label.field-label{color:rgba(0,0,0,0.45);}
       </div>
 
       <div id="bookingSummary2" style="display:none;margin-top:16px;">
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
-          <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Appointment summary</div>
-          <div style="font-size:14px;color:#fff;" id="summDate2">--</div>
-          <div style="font-size:13px;color:var(--grey2);" id="summTime2">--</div>
+        <div class="review-booking-summary">
+          <div class="review-booking-summary-label">Appointment summary</div>
+          <div class="review-booking-summary-date" id="summDate2">--</div>
+          <div class="review-booking-summary-time" id="summTime2">--</div>
         </div>
       </div>
 
@@ -2365,11 +2421,8 @@ function initReviewBooking(clinicianId, liveConsultMessage) {
   // so the centering rule (justify-content:center) actually applies.
   var ctaEl = document.getElementById('liveConsultCta');
   if (ctaEl) ctaEl.style.display = 'flex';
-  // Set the clinician's message on the booking card
-  if (liveConsultMessage) {
-    var liveReasonEl = document.getElementById('liveConsultReason');
-    if (liveReasonEl) liveReasonEl.textContent = liveConsultMessage;
-  }
+  // liveConsultMessage is already conveyed via the Messages card above,
+  // so nothing extra to wire up here.
   // Preload availability in the background so calendar is ready when revealed
   _loadSingleClinicianAvailability(clinicianId);
 }

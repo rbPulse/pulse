@@ -7465,12 +7465,23 @@ function _diffSummary(histEntry, currentValues) {
   if (histEntry.adjustment_type === 'discontinuation') return 'Discontinued';
   var curDose = [currentValues.dose_amount || '', currentValues.dose_unit || ''].filter(Boolean).join('');
   var oldDose = [histEntry.dose_amount || '', histEntry.dose_unit || ''].filter(Boolean).join('');
+  // Render frequency / duration through the canonical format helpers so
+  // the diff text always looks like "1x daily → 2x daily" / "8 weeks →
+  // 12 weeks" regardless of how the underlying row was stored.
+  var oldFreqRead = _readFrequency(histEntry);
+  var curFreqRead = _readFrequency(currentValues);
+  var oldFreqStr = _fmtFrequency(oldFreqRead.amount, oldFreqRead.cadence) || histEntry.frequency || '';
+  var curFreqStr = _fmtFrequency(curFreqRead.amount, curFreqRead.cadence) || currentValues.frequency || '';
+  var oldDurRead = _readDuration(histEntry);
+  var curDurRead = _readDuration(currentValues);
+  var oldDurStr = _fmtDuration(oldDurRead.value, oldDurRead.unit) || histEntry.duration || '';
+  var curDurStr = _fmtDuration(curDurRead.value, curDurRead.unit) || currentValues.duration || '';
   var fields = [
     { key:'protocol', label:'Protocol', old: histEntry.protocol_assigned || '', cur: currentValues.protocol_assigned || '' },
-    { key:'dose',     label:'Dose',     old: oldDose, cur: curDose },
-    { key:'frequency',label:'Frequency',old: histEntry.frequency || '',         cur: currentValues.frequency || '' },
-    { key:'timing',   label:'Timing',   old: histEntry.timing || '',            cur: currentValues.timing || '' },
-    { key:'duration', label:'Duration', old: histEntry.duration || '',          cur: currentValues.duration || '' }
+    { key:'dose',     label:'Dose',     old: oldDose,    cur: curDose },
+    { key:'frequency',label:'Frequency',old: oldFreqStr, cur: curFreqStr },
+    { key:'timing',   label:'Timing',   old: histEntry.timing || '',   cur: currentValues.timing || '' },
+    { key:'duration', label:'Duration', old: oldDurStr,  cur: curDurStr }
   ];
   // If an adjustment_type was recorded, surface that field specifically
   var typeMap = { dose_change:'dose', frequency_change:'frequency', timing_change:'timing', protocol_change:'protocol', duration_change:'duration' };
@@ -7492,24 +7503,34 @@ function _diffSummary(histEntry, currentValues) {
 // to write back to without re-querying the DOM.
 var _rxAdjustCtx = null;
 
-// Parse the serialized frequency/duration strings back into their two
-// parts so the Adjust modal can pre-fill a number input + period select
-// just like the original prescribe form. Handles every shape we've ever
-// written ("1 dose daily", "2 doses weekly", "1x daily", bare "daily").
+// Canonical display helpers — every place that renders a frequency or
+// duration string for a human goes through these so the format stays
+// uniform across clinician portal, member portal, history timeline,
+// notifications, etc.
+function _fmtFrequency(amount, cadence) {
+  if (amount == null || amount === '' || !cadence) return '';
+  return amount + 'x ' + cadence;
+}
+function _fmtDuration(value, unit) {
+  if (value == null || value === '' || !unit) return '';
+  return value + ' ' + unit;
+}
+
+// Parse the legacy serialized frequency/duration strings back into their
+// two parts. Used as a fallback when a row hasn't been migrated to the
+// new structured columns yet. Handles every shape we've ever written:
+// "1 dose daily", "2 doses weekly", "1x daily", bare "daily", and now
+// the monthly cadence too.
 function _parseFrequency(str) {
   if (!str || typeof str !== 'string') return { num:'', period:'' };
   var s = str.trim().toLowerCase();
-  // "1 dose daily" / "2 doses weekly"
-  var m = s.match(/^(\d+)\s*doses?\s+(daily|weekly)$/);
+  var m = s.match(/^(\d+)\s*doses?\s+(daily|weekly|monthly)$/);
   if (m) return { num: m[1], period: m[2] };
-  // "1x daily" / "2x weekly"
-  m = s.match(/^(\d+)\s*x\s+(daily|weekly)$/);
+  m = s.match(/^(\d+)\s*x\s+(daily|weekly|monthly)$/);
   if (m) return { num: m[1], period: m[2] };
-  // "1 daily" (no "dose" word)
-  m = s.match(/^(\d+)\s+(daily|weekly)$/);
+  m = s.match(/^(\d+)\s+(daily|weekly|monthly)$/);
   if (m) return { num: m[1], period: m[2] };
-  // Bare "daily" / "weekly" → assume 1
-  m = s.match(/^(daily|weekly)$/);
+  m = s.match(/^(daily|weekly|monthly)$/);
   if (m) return { num: '1', period: m[1] };
   return { num:'', period:'' };
 }
@@ -7524,19 +7545,44 @@ function _parseDuration(str) {
   return { num:'', period:'' };
 }
 
+// Read frequency / duration from an arbitrary row (consultation,
+// profile, history snapshot). Prefers the structured columns; falls
+// back to parsing the legacy text string. Returns nulls when nothing
+// is available so callers can short-circuit on '—'.
+function _readFrequency(row) {
+  if (!row) return { amount: null, cadence: null };
+  if (row.frequency_amount != null && row.frequency_cadence) {
+    return { amount: row.frequency_amount, cadence: row.frequency_cadence };
+  }
+  var p = _parseFrequency(row.frequency || '');
+  if (p.num && p.period) return { amount: parseInt(p.num, 10), cadence: p.period };
+  return { amount: null, cadence: null };
+}
+function _readDuration(row) {
+  if (!row) return { value: null, unit: null };
+  if (row.duration_value != null && row.duration_unit) {
+    return { value: row.duration_value, unit: row.duration_unit };
+  }
+  var p = _parseDuration(row.duration || '');
+  if (p.num && p.period) return { value: parseInt(p.num, 10), unit: p.period };
+  return { value: null, unit: null };
+}
+
 async function _openAdjustRxModal(consultId, userId) {
   try {
     // Fetch the current active prescription values + history
     var res = await db.from('consultations')
-      .select('id, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, other_notes, evaluation_date, prescription_history, data')
+      .select('id, review_status, protocol_assigned, dose_amount, dose_unit, frequency, frequency_amount, frequency_cadence, timing, duration, duration_value, duration_unit, other_notes, evaluation_date, prescription_history, data')
       .eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) return;
     var row = res.data[0];
     var d = row.data || {};
     var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
 
-    var freqParts = _parseFrequency(row.frequency);
-    var durParts  = _parseDuration(row.duration);
+    // Prefer the new structured columns; fall back to parsing legacy text
+    // for rows that haven't been migrated yet.
+    var freqRead = _readFrequency(row);
+    var durRead  = _readDuration(row);
 
     _rxAdjustCtx = {
       consultId: consultId,
@@ -7548,12 +7594,16 @@ async function _openAdjustRxModal(consultId, userId) {
         dose_amount:       row.dose_amount || '',
         dose_unit:         row.dose_unit || '',
         frequency:         row.frequency || '',
-        freq_num:          freqParts.num,
-        freq_period:       freqParts.period,
+        frequency_amount:  freqRead.amount,
+        frequency_cadence: freqRead.cadence,
+        freq_num:          freqRead.amount != null ? String(freqRead.amount) : '',
+        freq_period:       freqRead.cadence || '',
         timing:            row.timing || '',
         duration:          row.duration || '',
-        dur_num:           durParts.num,
-        dur_period:        durParts.period,
+        duration_value:    durRead.value,
+        duration_unit:     durRead.unit,
+        dur_num:           durRead.value != null ? String(durRead.value) : '',
+        dur_period:        durRead.unit || '',
         other_notes:       row.other_notes || '',
         evaluation_date:   row.evaluation_date || null
       },
@@ -7593,7 +7643,7 @@ function _buildRxAdjustModalHtml(ctx) {
   var doseUnitOpts = ['mg','mcg','mL'].map(function(u){
     return '<option value="'+u+'"'+(cur.dose_unit === u ? ' selected' : '')+'>'+u+'</option>';
   }).join('');
-  var freqPeriodOpts = [['daily','daily'],['weekly','weekly']].map(function(o){
+  var freqPeriodOpts = [['daily','daily'],['weekly','weekly'],['monthly','monthly']].map(function(o){
     return '<option value="'+o[0]+'"'+(cur.freq_period === o[0] ? ' selected' : '')+'>'+o[1]+'</option>';
   }).join('');
   var durPeriodOpts = [['days','days'],['weeks','weeks'],['months','months']].map(function(o){
@@ -7829,7 +7879,9 @@ async function _saveAdjustRx() {
   if (isDiscontinue) {
     newValues = {
       protocol_assigned: null, dose_amount: null, dose_unit: null,
-      frequency: null, timing: null, duration: null,
+      frequency_amount: null, frequency_cadence: null, frequency: null,
+      timing: null,
+      duration_value: null, duration_unit: null, duration: null,
       other_notes: ctx.current.other_notes || null
     };
   } else {
@@ -7837,8 +7889,12 @@ async function _saveAdjustRx() {
       protocol_assigned: ctx.current.protocol_assigned || null,
       dose_amount:       ctx.current.dose_amount || null,
       dose_unit:         ctx.current.dose_unit || null,
+      frequency_amount:  ctx.current.frequency_amount,
+      frequency_cadence: ctx.current.frequency_cadence,
       frequency:         ctx.current.frequency || null,
       timing:            ctx.current.timing || null,
+      duration_value:    ctx.current.duration_value,
+      duration_unit:     ctx.current.duration_unit,
       duration:          ctx.current.duration || null,
       other_notes:       ctx.current.other_notes || null
     };
@@ -7850,15 +7906,11 @@ async function _saveAdjustRx() {
       newValues.dose_unit   = (document.getElementById('rxAdjUnit') || {}).value || null;
     }
     if (sel['frequency_change']) {
-      // Serialize to "1 dose daily" / "2 doses weekly" to match the
-      // existing schema consumed by the member portal protocol card.
       var fNum = (document.getElementById('rxAdjFreqNum') || {}).value || '';
       var fPer = (document.getElementById('rxAdjFreqPeriod') || {}).value || '';
-      if (fNum && fPer) {
-        newValues.frequency = fNum + ' dose' + (parseInt(fNum, 10) > 1 ? 's ' : ' ') + fPer;
-      } else if (fNum || fPer) {
-        newValues.frequency = (fNum + ' ' + fPer).trim();
-      }
+      newValues.frequency_amount  = fNum ? parseInt(fNum, 10) : null;
+      newValues.frequency_cadence = fPer || null;
+      newValues.frequency = _fmtFrequency(newValues.frequency_amount, newValues.frequency_cadence) || null;
     }
     if (sel['timing_change']) {
       newValues.timing = (document.getElementById('rxAdjTiming') || {}).value || null;
@@ -7866,11 +7918,9 @@ async function _saveAdjustRx() {
     if (sel['duration_change']) {
       var dNum = (document.getElementById('rxAdjDurNum') || {}).value || '';
       var dPer = (document.getElementById('rxAdjDurPeriod') || {}).value || '';
-      if (dNum && dPer) {
-        newValues.duration = dNum + ' ' + dPer;
-      } else if (dNum || dPer) {
-        newValues.duration = (dNum + ' ' + dPer).trim();
-      }
+      newValues.duration_value = dNum ? parseInt(dNum, 10) : null;
+      newValues.duration_unit  = dPer || null;
+      newValues.duration = _fmtDuration(newValues.duration_value, newValues.duration_unit) || null;
     }
   }
 
@@ -7895,10 +7945,15 @@ async function _saveAdjustRx() {
       protocol_assigned: ctx.current.protocol_assigned || null,
       dose_amount: ctx.current.dose_amount || null,
       dose_unit:   ctx.current.dose_unit || null,
+      frequency_amount:  ctx.current.frequency_amount,
+      frequency_cadence: ctx.current.frequency_cadence,
       frequency:   ctx.current.frequency || null,
       timing:      ctx.current.timing || null,
+      duration_value: ctx.current.duration_value,
+      duration_unit:  ctx.current.duration_unit,
       duration:    ctx.current.duration || null,
       adjustment_type: 'initial',
+      adjustment_types: ['initial'],
       adjustment_reason: 'Initial prescription'
     });
   }
@@ -7915,7 +7970,9 @@ async function _saveAdjustRx() {
       prescribed_by: currentUserId || null,
       prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
       protocol_assigned: null, dose_amount: null, dose_unit: null,
-      frequency: null, timing: null, duration: null,
+      frequency_amount: null, frequency_cadence: null, frequency: null,
+      timing: null,
+      duration_value: null, duration_unit: null, duration: null,
       adjustment_type: 'discontinuation',
       adjustment_types: ['discontinuation'],
       adjustment_reason: reason
@@ -7935,8 +7992,12 @@ async function _saveAdjustRx() {
       protocol_assigned: newValues.protocol_assigned,
       dose_amount: newValues.dose_amount,
       dose_unit:   newValues.dose_unit,
+      frequency_amount:  newValues.frequency_amount,
+      frequency_cadence: newValues.frequency_cadence,
       frequency:   newValues.frequency,
       timing:      newValues.timing,
+      duration_value: newValues.duration_value,
+      duration_unit:  newValues.duration_unit,
       duration:    newValues.duration,
       adjustment_type: primaryType,
       adjustment_types: adjTypesArr,
@@ -7954,8 +8015,12 @@ async function _saveAdjustRx() {
       protocol_assigned: newValues.protocol_assigned,
       dose_amount: newValues.dose_amount,
       dose_unit: newValues.dose_unit,
+      frequency_amount:  newValues.frequency_amount,
+      frequency_cadence: newValues.frequency_cadence,
       frequency: newValues.frequency,
       timing: newValues.timing,
+      duration_value: newValues.duration_value,
+      duration_unit:  newValues.duration_unit,
       duration: newValues.duration,
       other_notes: newValues.other_notes,
       evaluation_date: new Date().toISOString(),
@@ -7979,8 +8044,12 @@ async function _saveAdjustRx() {
         protocol_assigned: newValues.protocol_assigned,
         dose_amount: newValues.dose_amount,
         dose_unit: newValues.dose_unit,
+        frequency_amount:  newValues.frequency_amount,
+        frequency_cadence: newValues.frequency_cadence,
         frequency: newValues.frequency,
         timing: newValues.timing,
+        duration_value: newValues.duration_value,
+        duration_unit:  newValues.duration_unit,
         duration: newValues.duration,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
@@ -8027,7 +8096,7 @@ async function _saveAdjustRx() {
 async function _openRxHistoryModal(consultId) {
   try {
     var res = await db.from('consultations')
-      .select('protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, evaluation_date, review_status, prescription_history, data')
+      .select('protocol_assigned, dose_amount, dose_unit, frequency, frequency_amount, frequency_cadence, timing, duration, duration_value, duration_unit, evaluation_date, review_status, prescription_history, data')
       .eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) return;
     var row = res.data[0];
@@ -8044,6 +8113,8 @@ async function _openRxHistoryModal(consultId) {
     // Backfill a synthesized "Active" pseudo-entry from live columns when
     // a prescribed patient has no history at all yet (pre-migration rows).
     if (active.length === 0 && row.review_status === 'prescribed' && (row.protocol_assigned || row.dose_amount)) {
+      var freqRead = _readFrequency(row);
+      var durRead  = _readDuration(row);
       active.push({
         _isCurrent: true,
         effective_from: row.evaluation_date || null,
@@ -8051,8 +8122,12 @@ async function _openRxHistoryModal(consultId) {
         protocol_assigned: row.protocol_assigned,
         dose_amount: row.dose_amount,
         dose_unit: row.dose_unit,
+        frequency_amount:  freqRead.amount,
+        frequency_cadence: freqRead.cadence,
         frequency: row.frequency,
         timing: row.timing,
+        duration_value: durRead.value,
+        duration_unit:  durRead.unit,
         duration: row.duration,
         adjustment_type: 'initial'
       });
@@ -8118,12 +8193,16 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
     summary = 'Protocol stopped';
   } else {
     var dose = [entry.dose_amount || '', entry.dose_unit || ''].filter(Boolean).join(' ');
+    var freqRead = _readFrequency(entry);
+    var freqStr  = _fmtFrequency(freqRead.amount, freqRead.cadence) || entry.frequency || '';
+    var durRead  = _readDuration(entry);
+    var durStr   = _fmtDuration(durRead.value, durRead.unit) || entry.duration || '';
     var cells = [];
     if (entry.protocol_assigned) cells.push(entry.protocol_assigned);
     if (dose) cells.push(dose);
-    if (entry.frequency) cells.push(entry.frequency);
+    if (freqStr) cells.push(freqStr);
     if (entry.timing) cells.push(entry.timing);
-    if (entry.duration) cells.push(entry.duration);
+    if (durStr) cells.push(durStr);
     summary = cells.join(' · ') || '—';
   }
 
@@ -8187,11 +8266,20 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    // NOTE: prescription_history is a new JSONB column on consultations.
-    // Required DB migration:
+    // NOTE: prescription_history + structured frequency/duration columns
+    // are new on consultations. Required DB migration:
     //   ALTER TABLE consultations
-    //     ADD COLUMN IF NOT EXISTS prescription_history jsonb DEFAULT '[]'::jsonb;
-    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, no_prescription_reason, other_notes, evaluation_date, session_notes, prescription_history').eq('id', consultId).limit(1);
+    //     ADD COLUMN IF NOT EXISTS prescription_history jsonb DEFAULT '[]'::jsonb,
+    //     ADD COLUMN IF NOT EXISTS frequency_amount  integer,
+    //     ADD COLUMN IF NOT EXISTS frequency_cadence text,
+    //     ADD COLUMN IF NOT EXISTS duration_value    integer,
+    //     ADD COLUMN IF NOT EXISTS duration_unit     text;
+    //   ALTER TABLE profiles
+    //     ADD COLUMN IF NOT EXISTS frequency_amount  integer,
+    //     ADD COLUMN IF NOT EXISTS frequency_cadence text,
+    //     ADD COLUMN IF NOT EXISTS duration_value    integer,
+    //     ADD COLUMN IF NOT EXISTS duration_unit     text;
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status, protocol_assigned, dose_amount, dose_unit, frequency, frequency_amount, frequency_cadence, timing, duration, duration_value, duration_unit, no_prescription_reason, other_notes, evaluation_date, session_notes, prescription_history').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="font-size:12px;">No intake data found.</div>'; return; }
     var consultRow = res.data[0];
     var d = consultRow.data || {};
@@ -8294,9 +8382,17 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _da = consultRow.dose_amount || _le.dose_amount || d.dose_amount || '';
       var _du = consultRow.dose_unit || _le.dose_unit || d.dose_unit || '';
       var doseInfo = [_da, _du].filter(Boolean).join(' ') || '—';
-      var freqInfo = consultRow.frequency || _le.frequency || d.frequency || '—';
+      // Structured frequency/duration: prefer the new columns, fall back
+      // to parsing the legacy text via _readFrequency/_readDuration.
+      var _freqRead = _readFrequency(consultRow);
+      if (_freqRead.amount == null) _freqRead = _readFrequency(_le);
+      if (_freqRead.amount == null) _freqRead = _readFrequency(d);
+      var freqInfo = _fmtFrequency(_freqRead.amount, _freqRead.cadence) || '—';
+      var _durRead = _readDuration(consultRow);
+      if (_durRead.value == null) _durRead = _readDuration(_le);
+      if (_durRead.value == null) _durRead = _readDuration(d);
+      var durInfo = _fmtDuration(_durRead.value, _durRead.unit) || '—';
       var timingInfo = consultRow.timing || _le.timing || d.timing || '';
-      var durInfo = consultRow.duration || _le.duration || d.duration || '—';
       var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
 
       // "Last adjusted Apr 14 by Dr. Jane — Dose 200mg → 300mg. View history"
@@ -10832,6 +10928,13 @@ function generateTimeSlots(dateStr) {
 function _parseFreqPerDay(freqStr) {
   if (!freqStr) return null;
   var s = freqStr.toLowerCase();
+  // "1x monthly", "monthly" — check first so 'month' doesn't get caught
+  // by the 'day' branch below.
+  if (s.indexOf('monthly') !== -1 || s.indexOf('month') !== -1) {
+    var m4 = s.match(/(\d+)/);
+    var perMonth = m4 ? parseInt(m4[1]) : 1;
+    return perMonth / 30; // approx fractional per day
+  }
   // "2x daily", "1x daily", "once daily", "twice daily"
   if (s.indexOf('daily') !== -1 || s.indexOf('day') !== -1) {
     var m = s.match(/(\d+)/);
@@ -10879,6 +10982,13 @@ function _normalizeFreqLabel(rawFreq, dosesPerDay) {
     var pw = n3 ? parseInt(n3[1]) : 1;
     if (pw === 1) return '1 dose weekly';
     return pw + ' doses weekly';
+  }
+  // "1x monthly", "once monthly"
+  if (/monthly|per\s*month/i.test(s)) {
+    var n4 = s.match(/(\d+)/);
+    var pm = n4 ? parseInt(n4[1]) : 1;
+    if (pm === 1) return '1 dose monthly';
+    return pm + ' doses monthly';
   }
   // "daily", "once daily"
   if (/^(once\s+)?daily$/i.test(s)) return '1 dose daily';
@@ -10976,7 +11086,7 @@ function _refreshOverviewData() {
 
   // ── ROW 2: Protocol card ──
   el = document.getElementById('mProtoName'); if (el) el.textContent = op.displayName;
-  el = document.getElementById('mProtoDuration'); if (el) el.textContent = durWeeks ? durWeeks + ' weeks' : 'Not specified';
+  el = document.getElementById('mProtoDuration'); if (el) el.textContent = op.durationLabel || (durWeeks ? durWeeks + ' weeks' : 'Not specified');
   el = document.getElementById('mProtoFreq'); if (el) el.textContent = freqPlain;
   el = document.getElementById('mProtoStarted'); if (el) el.textContent = startStr || 'No data';
   el = document.getElementById('mProtoPhase'); if (el) el.textContent = phaseStr || 'No data';
@@ -11021,7 +11131,7 @@ function _refreshOverviewData() {
   el = document.getElementById('moOnTime'); if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : '—';
 
   // 2. Plan card
-  el = document.getElementById('moPlanDuration'); if (el) el.textContent = durWeeks ? durWeeks + ' weeks' : '—';
+  el = document.getElementById('moPlanDuration'); if (el) el.textContent = op.durationLabel || (durWeeks ? durWeeks + ' weeks' : '—');
   el = document.getElementById('moPlanFreq'); if (el) el.textContent = freqPlain || '—';
   el = document.getElementById('moPlanStarted'); if (el) el.textContent = startStr || '—';
   el = document.getElementById('moSupplyCount'); if (el) el.textContent = dosesRemaining != null ? dosesRemaining : '—';
@@ -11189,9 +11299,24 @@ function populatePortal(user, consultation, greeting) {
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
       window._protoDose = _le.dose_amount || consultation.dose_amount || d.dose_amount || null;
       window._protoDoseUnit = _le.dose_unit || consultation.dose_unit || d.dose_unit || null;
-      window._protoFreq = _le.frequency || consultation.frequency || d.frequency || null;
+      // Frequency / Duration: prefer the structured columns from the
+      // consultation row, fall back to the latest evaluation, then the
+      // consultation.data blob, then parse the legacy text — all via
+      // _readFrequency/_readDuration. Display strings are assembled with
+      // _fmtFrequency/_fmtDuration so the format is uniform everywhere.
+      var _mFreqRead = _readFrequency(consultation);
+      if (_mFreqRead.amount == null) _mFreqRead = _readFrequency(_le);
+      if (_mFreqRead.amount == null) _mFreqRead = _readFrequency(d);
+      var _mDurRead = _readDuration(consultation);
+      if (_mDurRead.value == null) _mDurRead = _readDuration(_le);
+      if (_mDurRead.value == null) _mDurRead = _readDuration(d);
+      window._protoFreqAmount  = _mFreqRead.amount;
+      window._protoFreqCadence = _mFreqRead.cadence;
+      window._protoFreq = _fmtFrequency(_mFreqRead.amount, _mFreqRead.cadence) || _le.frequency || consultation.frequency || d.frequency || null;
       window._protoTiming = _le.timing || consultation.timing || d.timing || null;
-      window._protoDuration = _le.duration || consultation.duration || d.duration || null;
+      window._protoDurationValue = _mDurRead.value;
+      window._protoDurationUnit  = _mDurRead.unit;
+      window._protoDuration = _fmtDuration(_mDurRead.value, _mDurRead.unit) || _le.duration || consultation.duration || d.duration || null;
       window._protoStartDate = consultation.created_at || null;
     } else if (assignedProtoStr === 'no prescription' || (!purchaseDone && rxGiven === false)) {
       hasPendingReview = false;
@@ -11339,14 +11464,30 @@ function populatePortal(user, consultation, greeting) {
 
     // ── Store protocol config for overview refresh ──
     var _pdn = (window._allProtoNames && window._allProtoNames.length > 0) ? window._allProtoNames.join(', ') : proto.name;
+    // Convert duration to "weeks" for the math layer (refill date,
+    // currentWeek, totalPrescribedDoses) regardless of the unit the
+    // clinician picked. Display always uses the canonical label.
+    var _durWeeks = null;
+    if (window._protoDurationValue != null && window._protoDurationUnit) {
+      var _v = window._protoDurationValue;
+      var _u = window._protoDurationUnit;
+      if (_u === 'weeks') _durWeeks = _v;
+      else if (_u === 'days') _durWeeks = Math.max(1, Math.round(_v / 7));
+      else if (_u === 'months') _durWeeks = _v * 4; // approximate
+    }
+    if (_durWeeks == null) _durWeeks = parseInt(window._protoDuration || proto.cycle) || null;
     window._overviewProto = {
       displayName: _pdn,
       doseDesc: (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : (proto.compounds && proto.compounds[0] ? proto.compounds[0] : null),
       freqRaw: window._protoFreq || null,
+      // Canonical duration display ("8 weeks", "30 days", "3 months") —
+      // overview render uses this directly so unit-agnostic durations
+      // don't get force-rendered as "weeks".
+      durationLabel: _fmtDuration(window._protoDurationValue, window._protoDurationUnit) || (window._protoDuration || null),
       durationRaw: window._protoDuration || proto.cycle || null,
       startDate: consultation.created_at || null,
       freqPerDay: _parseFreqPerDay(window._protoFreq),
-      durationWeeks: parseInt(window._protoDuration || proto.cycle) || null,
+      durationWeeks: _durWeeks,
     };
     // Compute total prescribed doses
     var _op = window._overviewProto;
@@ -15685,7 +15826,7 @@ function _showEvaluationForm(apptId) {
           '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
               '<input id="evalFreqNum" class="settings-input" type="number" min="1" max="10" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/>' +
-              '<select id="evalFreqPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="daily">daily</option><option value="weekly">weekly</option></select>' +
+              '<select id="evalFreqPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="daily">daily</option><option value="weekly">weekly</option><option value="monthly">monthly</option></select>' +
             '</div>' +
           '</div>' +
           '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, before meals" oninput="_evalCheckSubmit()"/></div>' +
@@ -15871,9 +16012,13 @@ async function _submitEvaluation(apptId) {
       evalData.dose_amount = 'no prescription';
       evalData.dose_unit = 'no prescription';
       evalData.frequency = 'no prescription';
+      evalData.frequency_amount = null;
+      evalData.frequency_cadence = null;
       evalData.timing = 'no prescription';
       evalData.timing_instructions = 'no prescription';
       evalData.duration = 'no prescription';
+      evalData.duration_value = null;
+      evalData.duration_unit = null;
       evalData.other_notes = 'no prescription';
       evalData.protocol_version = 'no prescription';
     } else {
@@ -15891,11 +16036,17 @@ async function _submitEvaluation(apptId) {
       evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
       var _freqNum = (document.getElementById('evalFreqNum') || {}).value || '';
       var _freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
-      evalData.frequency = _freqNum + ' dose' + (parseInt(_freqNum) > 1 ? 's ' : ' ') + _freqPeriod;
+      // Structured columns are the source of truth from now on; the legacy
+      // text column gets populated via _fmtFrequency for backwards compat.
+      evalData.frequency_amount  = _freqNum ? parseInt(_freqNum, 10) : null;
+      evalData.frequency_cadence = _freqPeriod || null;
+      evalData.frequency = _fmtFrequency(evalData.frequency_amount, evalData.frequency_cadence) || '';
       evalData.timing = (document.getElementById('evalTiming') || {}).value || '';
       var _durNum = (document.getElementById('evalDurNum') || {}).value || '';
       var _durPeriod = (document.getElementById('evalDurPeriod') || {}).value || '';
-      evalData.duration = _durNum + ' ' + _durPeriod;
+      evalData.duration_value = _durNum ? parseInt(_durNum, 10) : null;
+      evalData.duration_unit  = _durPeriod || null;
+      evalData.duration = _fmtDuration(evalData.duration_value, evalData.duration_unit) || '';
       evalData.other_notes = (document.getElementById('evalOtherNotes') || {}).value || '';
       evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';
     }
@@ -15958,10 +16109,16 @@ async function _submitEvaluation(apptId) {
           protocol_assigned: assignedProtocolStr,
           dose_amount: evalData.dose_amount,
           dose_unit: evalData.dose_unit,
-          frequency: evalData.frequency,
+          // Structured + legacy text on every snapshot
+          frequency_amount:  evalData.frequency_amount,
+          frequency_cadence: evalData.frequency_cadence,
+          frequency:         evalData.frequency,
           timing: evalData.timing,
-          duration: evalData.duration,
+          duration_value: evalData.duration_value,
+          duration_unit:  evalData.duration_unit,
+          duration:       evalData.duration,
           adjustment_type: 'initial',
+          adjustment_types: ['initial'],
           adjustment_reason: 'Initial prescription' + (notes.trim() ? ' — ' + notes.trim() : '')
         });
       }
@@ -15973,9 +16130,13 @@ async function _submitEvaluation(apptId) {
         prescribed_protocols: evalData.prescribed_protocols,
         dose_amount: evalData.dose_amount,
         dose_unit: evalData.dose_unit,
+        frequency_amount:  evalData.frequency_amount,
+        frequency_cadence: evalData.frequency_cadence,
         frequency: evalData.frequency,
         timing: evalData.timing,
         timing_instructions: evalData.timing_instructions,
+        duration_value: evalData.duration_value,
+        duration_unit:  evalData.duration_unit,
         duration: evalData.duration,
         other_notes: evalData.other_notes,
         protocol_version: evalData.protocol_version,
@@ -16003,9 +16164,13 @@ async function _submitEvaluation(apptId) {
       protocol_assigned: assignedProtocolStr,
       dose_amount: evalData.dose_amount,
       dose_unit: evalData.dose_unit,
+      frequency_amount:  evalData.frequency_amount,
+      frequency_cadence: evalData.frequency_cadence,
       frequency: evalData.frequency,
       timing: evalData.timing,
       timing_instructions: evalData.timing_instructions,
+      duration_value: evalData.duration_value,
+      duration_unit:  evalData.duration_unit,
       duration: evalData.duration,
       protocol_version: evalData.protocol_version,
       updated_at: new Date().toISOString()

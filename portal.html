@@ -11891,20 +11891,31 @@ function renderPatientList(filter) {
     var d = p._rawData || {};
     var subAt = d.submitted_at || (p._consultation && p._consultation.created_at) || p.memberSince || '';
     var subRel = '—';
+    var subMs = subAt ? new Date(subAt).getTime() : 0;
     if (subAt) {
-      var diffH = Math.floor((Date.now() - new Date(subAt).getTime()) / 3600000);
+      var diffH = Math.floor((Date.now() - subMs) / 3600000);
       subRel = diffH < 1 ? 'Just now' : diffH < 24 ? diffH + 'h ago' : Math.floor(diffH / 24) + 'd ago';
     }
     var key  = _clPatientStatusKey(p);
     var meta = _clPatientStatusMeta[key];
 
+    // Overdue override — a patient pending review for more than 24h
+    // gets the 'Overdue' label + red rail + red status color, matching
+    // the behavior of the Open Reviews table on the overview. The
+    // underlying status key stays 'pending' so the filter pill still
+    // matches them.
+    var isOverdue = key === 'pending' && subMs && (Date.now() - subMs > 86400000);
+    var displayLabel = isOverdue ? 'Overdue'        : meta.label;
+    var displayCls   = isOverdue ? 'cl-ft-status-notrx' : meta.cls;
+    var railCls      = isOverdue ? 'cl-ft-rail-red'     : meta.rail;
+
     var wrapper = document.createElement('div');
-    wrapper.className = 'cl-ft-row-wrap ' + meta.rail;
+    wrapper.className = 'cl-ft-row-wrap ' + railCls;
     wrapper.innerHTML =
       '<div class="cl-ft-row cl-ft-cols-patients">' +
         '<div class="cl-ft-cell-name">' + escapeHtml(p.name || 'Unknown') + '</div>' +
         '<div class="cl-ft-cell">' + escapeHtml(subRel) + '</div>' +
-        '<div class="cl-ft-status ' + meta.cls + '">' + meta.label + '</div>' +
+        '<div class="cl-ft-status ' + displayCls + '">' + displayLabel + '</div>' +
         '<div class="cl-ft-cell-chev">\u203A</div>' +
       '</div>';
     wrapper.onclick = function(e) {

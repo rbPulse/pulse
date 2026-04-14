@@ -3270,6 +3270,154 @@ body.clinician-mode .crw-outcome-lbl{color:var(--cl-text3) !important;font-famil
 body.clinician-mode .crw-outcome-val{color:var(--cl-text) !important;font-family:'Inter',sans-serif !important;font-size:13px !important;font-weight:600 !important;word-break:break-word !important;line-height:1.35 !important;}
 body.clinician-mode .crw-outcome-notes{margin-top:10px !important;padding-top:8px !important;border-top:1px solid rgba(0,0,0,0.06) !important;}
 body.clinician-mode .crw-outcome-notes .crw-outcome-lbl{margin-bottom:4px !important;}
+/* Discontinued outcome — muted red, similar to Declined but signalling
+   that the protocol was previously active and has since been stopped. */
+body.clinician-mode .crw-outcome.crw-outcome-discontinued{border:1px solid rgba(180,80,80,0.35) !important;background:rgba(180,80,80,0.05) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-discontinued .crw-outcome-title{color:#B91C1C !important;border-bottom-color:rgba(185,28,28,0.2) !important;}
+/* Title row — keeps the outcome title label left-aligned and pins the
+   Adjust / Re-prescribe pill to the far right on the same line. */
+body.clinician-mode .crw-outcome-title-row{display:flex !important;align-items:center !important;justify-content:space-between !important;margin:0 0 10px !important;padding:0 0 8px !important;border-bottom:1px solid rgba(0,0,0,0.06) !important;}
+body.clinician-mode .crw-outcome-title-row .crw-outcome-title{margin:0 !important;padding:0 !important;border:none !important;}
+body.clinician-mode .crw-outcome.crw-outcome-prescribed .crw-outcome-title-row{border-bottom-color:rgba(29,185,84,0.2) !important;}
+body.clinician-mode .crw-outcome.crw-outcome-discontinued .crw-outcome-title-row{border-bottom-color:rgba(185,28,28,0.2) !important;}
+body.clinician-mode .crw-outcome-adjust-btn{
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  padding:6px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  border:1px solid rgba(29,185,84,0.45);
+  background:transparent;
+  color:#17a34a;
+  transition:background .15s,border-color .15s,color .15s;
+}
+body.clinician-mode .crw-outcome-adjust-btn:hover{background:rgba(29,185,84,0.1);border-color:#17a34a;color:#15803d;}
+body.clinician-mode .crw-outcome.crw-outcome-discontinued .crw-outcome-adjust-btn{
+  border-color:rgba(29,185,84,0.6);
+  color:#17a34a;
+}
+/* History one-liner below the outcome grid */
+body.clinician-mode .crw-outcome-history-line{
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid rgba(0,0,0,0.06);
+  font-family:'Inter',sans-serif;
+  font-size:11px;
+  color:var(--cl-text2,rgba(0,0,0,0.6));
+  line-height:1.5;
+}
+body.clinician-mode .crw-outcome-history-link{
+  background:none;
+  border:none;
+  padding:0;
+  margin:0;
+  font:inherit;
+  color:#17a34a;
+  font-weight:600;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
+
+/* ── Adjust Prescription + History modals ─────────────────────────────────
+   Shared .rx-adjust-overlay / .rx-adjust-card shell; the History modal
+   reuses the same card chrome but swaps the body contents. */
+.rx-adjust-overlay{
+  position:fixed; inset:0; z-index:9500;
+  background:rgba(15,20,25,0.55);
+  display:flex; align-items:center; justify-content:center;
+  padding:40px 20px;
+  font-family:'Inter',sans-serif;
+}
+.rx-adjust-card{
+  width:100%; max-width:520px;
+  background:#FFFFFF; color:var(--cl-text,#111111);
+  border-radius:16px; padding:24px 24px 20px;
+  box-shadow:0 24px 56px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.08);
+  max-height:calc(100vh - 80px); overflow-y:auto;
+}
+.rx-adjust-hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px;}
+.rx-adjust-eyebrow{font-size:9px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:rgba(0,0,0,0.4); margin-bottom:6px;}
+.rx-adjust-title{font-size:20px; font-weight:600; color:var(--cl-text,#111111); line-height:1.2;}
+.rx-adjust-sub{font-size:13px; color:rgba(0,0,0,0.55); margin-top:4px;}
+.rx-adjust-close{
+  background:transparent; border:1px solid rgba(0,0,0,0.12);
+  width:32px; height:32px; border-radius:999px;
+  font-size:20px; line-height:1; color:rgba(0,0,0,0.55);
+  cursor:pointer; transition:background .15s, border-color .15s, color .15s;
+}
+.rx-adjust-close:hover{background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.3); color:var(--cl-text,#111111);}
+
+.rx-adjust-section-lbl{font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:rgba(0,0,0,0.45); margin:6px 0 8px;}
+.rx-adjust-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+.rx-adj-chip{
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+  padding:8px 14px; border-radius:999px; cursor:pointer;
+  background:transparent; border:1px solid rgba(0,0,0,0.15);
+  color:rgba(0,0,0,0.65); transition:all .15s;
+}
+.rx-adj-chip:hover{border-color:rgba(0,0,0,0.35); color:var(--cl-text,#111111);}
+.rx-adj-chip.active{background:rgba(29,185,84,0.1); border-color:rgba(29,185,84,0.55); color:#17a34a;}
+.rx-adj-chip-danger{color:#B91C1C; border-color:rgba(185,28,28,0.3);}
+.rx-adj-chip-danger:hover{border-color:rgba(185,28,28,0.65); color:#991B1B;}
+.rx-adj-chip-danger.active{background:rgba(185,28,28,0.08); border-color:#B91C1C; color:#B91C1C;}
+
+.rx-adjust-form{display:flex; flex-direction:column; gap:14px; margin-bottom:16px;}
+.rx-adjust-grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.rx-adjust-field{display:flex; flex-direction:column; gap:6px;}
+.rx-adjust-field label{font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:rgba(0,0,0,0.5);}
+.rx-adj-req{color:#EF4444;}
+.rx-adjust-field input,
+.rx-adjust-field select,
+.rx-adjust-field textarea{
+  font-family:'Inter',sans-serif; font-size:13px; color:var(--cl-text,#111111);
+  padding:10px 12px; border:1px solid rgba(0,0,0,0.14); border-radius:10px;
+  background:#FBFAF6; outline:none; transition:border-color .15s;
+  box-sizing:border-box; width:100%;
+}
+.rx-adjust-field textarea{resize:vertical; min-height:70px; line-height:1.5;}
+.rx-adjust-field input:focus,
+.rx-adjust-field select:focus,
+.rx-adjust-field textarea:focus{border-color:#1DB954;}
+
+.rx-adjust-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+.rx-adjust-btn{
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+  letter-spacing:0.1em; text-transform:uppercase;
+  padding:10px 20px; border-radius:999px; cursor:pointer;
+  border:1px solid transparent; transition:all .15s;
+}
+.rx-adjust-btn.ghost{background:transparent; color:rgba(0,0,0,0.6); border-color:rgba(0,0,0,0.15);}
+.rx-adjust-btn.ghost:hover{color:var(--cl-text,#111111); border-color:rgba(0,0,0,0.35);}
+.rx-adjust-btn.primary{background:#1DB954; color:#fff; border-color:#1DB954;}
+.rx-adjust-btn.primary:hover{background:#17a34a; border-color:#17a34a;}
+.rx-adjust-btn.primary:disabled{background:#9CA3AF; border-color:#9CA3AF; cursor:not-allowed;}
+.rx-adjust-error{font-size:11px; color:#B91C1C; min-height:14px; margin-top:8px; text-align:right;}
+
+/* Rx history timeline */
+.rx-hist-list{display:flex; flex-direction:column; gap:12px;}
+.rx-hist-entry{
+  padding:14px 16px; border:1px solid rgba(0,0,0,0.08);
+  border-radius:12px; background:#FBFAF6;
+}
+.rx-hist-entry-current{background:rgba(29,185,84,0.06); border-color:rgba(29,185,84,0.4);}
+.rx-hist-entry-hdr{display:flex; align-items:center; gap:4px; margin-bottom:6px; flex-wrap:wrap;}
+.rx-hist-entry-date{font-size:12px; font-weight:600; color:var(--cl-text,#111111);}
+.rx-hist-entry-who{font-size:12px; color:rgba(0,0,0,0.55);}
+.rx-hist-entry-tag{
+  margin-left:auto;
+  font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  padding:3px 9px; border-radius:999px;
+  background:rgba(0,0,0,0.06); color:rgba(0,0,0,0.6);
+}
+.rx-hist-entry-current .rx-hist-entry-tag{background:rgba(29,185,84,0.15); color:#17a34a;}
+.rx-hist-entry-summary{font-size:13px; color:var(--cl-text,#111111); line-height:1.45;}
+.rx-hist-entry-reason{font-size:12px; color:rgba(0,0,0,0.6); font-style:italic; margin-top:6px; line-height:1.5;}
+.rx-hist-empty{text-align:center; font-size:12px; color:rgba(0,0,0,0.5); padding:24px 0;}
 body.clinician-mode .crw-right-msg{background:var(--cl-high) !important;flex:1 !important;margin-bottom:12px !important;display:flex !important;flex-direction:column !important;max-height:400px !important;overflow:hidden !important;}
 /* ── CRW right column fix ── */
 body.clinician-mode .crw-right-details{background:var(--cl-mid) !important;border:1px solid rgba(0,0,0,0.14) !important;border-radius:10px !important;overflow:visible !important;max-height:none !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
@@ -4393,6 +4541,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill"        id="pflt-awaiting_activation" onclick="filterPatients('awaiting_activation',this)">Awaiting Activation</div>
           <div class="filter-pill"        id="pflt-active"             onclick="filterPatients('active',this)">Active</div>
           <div class="filter-pill"        id="pflt-not_prescribed"     onclick="filterPatients('not_prescribed',this)">Not Prescribed</div>
+          <div class="filter-pill"        id="pflt-discontinued"       onclick="filterPatients('discontinued',this)">Discontinued</div>
           <div class="filter-pill"        id="pflt-withdrawn"          onclick="filterPatients('withdrawn',this)">Withdrawn</div>
         </div>
         <div style="padding:8px 0 4px;">
@@ -7249,6 +7398,428 @@ async function _toggleWeeklyRowDetail(rowWrap, e) {
   }
 }
 
+// ── Prescription adjustment helpers ──────────────────────────────────────
+// Build a short human diff between a history entry (the values that were
+// active before the change) and the current live values. Used for the
+// "Last adjusted … — Dose 200mg → 300mg" one-liner below the Prescribed
+// block. Prioritizes the field the clinician tagged as `adjustment_type`;
+// falls back to the first field that actually changed.
+function _diffSummary(histEntry, currentValues) {
+  if (!histEntry) return '';
+  if (histEntry.adjustment_type === 'discontinuation') return 'Discontinued';
+  var curDose = [currentValues.dose_amount || '', currentValues.dose_unit || ''].filter(Boolean).join('');
+  var oldDose = [histEntry.dose_amount || '', histEntry.dose_unit || ''].filter(Boolean).join('');
+  var fields = [
+    { key:'protocol', label:'Protocol', old: histEntry.protocol_assigned || '', cur: currentValues.protocol_assigned || '' },
+    { key:'dose',     label:'Dose',     old: oldDose, cur: curDose },
+    { key:'frequency',label:'Frequency',old: histEntry.frequency || '',         cur: currentValues.frequency || '' },
+    { key:'timing',   label:'Timing',   old: histEntry.timing || '',            cur: currentValues.timing || '' },
+    { key:'duration', label:'Duration', old: histEntry.duration || '',          cur: currentValues.duration || '' }
+  ];
+  // If an adjustment_type was recorded, surface that field specifically
+  var typeMap = { dose_change:'dose', frequency_change:'frequency', timing_change:'timing', protocol_change:'protocol', duration_change:'duration' };
+  var preferred = typeMap[histEntry.adjustment_type || ''];
+  if (preferred) {
+    var p = fields.find(function(f){ return f.key === preferred; });
+    if (p && p.old !== p.cur) return p.label + ' ' + (p.old || '—') + ' → ' + (p.cur || '—');
+  }
+  // Otherwise pick the first field that changed
+  for (var i = 0; i < fields.length; i++) {
+    if (fields[i].old !== fields[i].cur && (fields[i].old || fields[i].cur)) {
+      return fields[i].label + ' ' + (fields[i].old || '—') + ' → ' + (fields[i].cur || '—');
+    }
+  }
+  return 'No visible changes';
+}
+
+// Stash for the open Adjust modal so the Save handler knows which record
+// to write back to without re-querying the DOM.
+var _rxAdjustCtx = null;
+
+async function _openAdjustRxModal(consultId, userId) {
+  try {
+    // Fetch the current active prescription values + history
+    var res = await db.from('consultations')
+      .select('id, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, other_notes, evaluation_date, prescription_history, data')
+      .eq('id', consultId).limit(1);
+    if (!res.data || !res.data.length) return;
+    var row = res.data[0];
+    var d = row.data || {};
+    var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
+
+    _rxAdjustCtx = {
+      consultId: consultId,
+      userId: userId,
+      patientName: patientName,
+      isReprescribe: (row.review_status === 'discontinued'),
+      current: {
+        protocol_assigned: row.protocol_assigned || '',
+        dose_amount:       row.dose_amount || '',
+        dose_unit:         row.dose_unit || '',
+        frequency:         row.frequency || '',
+        timing:            row.timing || '',
+        duration:          row.duration || '',
+        other_notes:       row.other_notes || '',
+        evaluation_date:   row.evaluation_date || null
+      },
+      history: Array.isArray(row.prescription_history) ? row.prescription_history : []
+    };
+
+    var modal = document.getElementById('rxAdjustModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'rxAdjustModal';
+    modal.className = 'rx-adjust-overlay';
+    modal.innerHTML = _buildRxAdjustModalHtml(_rxAdjustCtx);
+    document.body.appendChild(modal);
+    // Close on backdrop click (but not inner card clicks)
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) _closeAdjustRxModal();
+    });
+    // Default chip
+    _selectRxAdjustType(_rxAdjustCtx.isReprescribe ? 'represcribe' : 'dose_change');
+  } catch (e) {
+    console.warn('[Pulse] adjust modal open failed:', e);
+  }
+}
+
+function _buildRxAdjustModalHtml(ctx) {
+  var cur = ctx.current;
+  var doseUnitOpts = ['mg','mcg','mL'].map(function(u){
+    return '<option value="'+u+'"'+(cur.dose_unit === u ? ' selected' : '')+'>'+u+'</option>';
+  }).join('');
+  var chips = [
+    { val:'dose_change',       label:'Dose' },
+    { val:'frequency_change',  label:'Frequency' },
+    { val:'timing_change',     label:'Timing' },
+    { val:'protocol_change',   label:'Protocol' },
+    { val:'duration_change',   label:'Duration' },
+    { val:'discontinuation',   label:'Discontinue', danger:true }
+  ];
+  var chipsHtml = chips.map(function(c) {
+    return '<button type="button" class="rx-adj-chip'+(c.danger ? ' rx-adj-chip-danger' : '')+'" data-val="'+c.val+'" onclick="_selectRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
+  }).join('');
+  var titleTxt = ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription';
+  var saveTxt  = ctx.isReprescribe ? 'Re-prescribe' : 'Save changes';
+
+  return (
+    '<div class="rx-adjust-card" onclick="event.stopPropagation()">' +
+      '<div class="rx-adjust-hdr">' +
+        '<div>' +
+          '<div class="rx-adjust-eyebrow">Prescription</div>' +
+          '<div class="rx-adjust-title">'+escapeHtml(titleTxt)+'</div>' +
+          '<div class="rx-adjust-sub">'+escapeHtml(ctx.patientName)+'</div>' +
+        '</div>' +
+        '<button type="button" class="rx-adjust-close" onclick="_closeAdjustRxModal()" aria-label="Close">&times;</button>' +
+      '</div>' +
+
+      '<div class="rx-adjust-section-lbl">Type of change</div>' +
+      '<div class="rx-adjust-chips" id="rxAdjChips">'+chipsHtml+'</div>' +
+
+      '<div class="rx-adjust-form" id="rxAdjForm">' +
+        '<div class="rx-adjust-field">' +
+          '<label>Protocol</label>' +
+          '<input type="text" id="rxAdjProto" value="'+escapeAttr(cur.protocol_assigned)+'" placeholder="e.g. Sleep"/>' +
+        '</div>' +
+        '<div class="rx-adjust-grid2">' +
+          '<div class="rx-adjust-field">' +
+            '<label>Dose amount</label>' +
+            '<input type="text" id="rxAdjDose" value="'+escapeAttr(cur.dose_amount)+'" placeholder="e.g. 250"/>' +
+          '</div>' +
+          '<div class="rx-adjust-field">' +
+            '<label>Dose unit</label>' +
+            '<select id="rxAdjUnit"><option value="">—</option>'+doseUnitOpts+'</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="rx-adjust-grid2">' +
+          '<div class="rx-adjust-field">' +
+            '<label>Frequency</label>' +
+            '<input type="text" id="rxAdjFreq" value="'+escapeAttr(cur.frequency)+'" placeholder="e.g. 1 dose daily"/>' +
+          '</div>' +
+          '<div class="rx-adjust-field">' +
+            '<label>Timing</label>' +
+            '<input type="text" id="rxAdjTiming" value="'+escapeAttr(cur.timing)+'" placeholder="e.g. Morning, before meals"/>' +
+          '</div>' +
+        '</div>' +
+        '<div class="rx-adjust-field">' +
+          '<label>Duration</label>' +
+          '<input type="text" id="rxAdjDuration" value="'+escapeAttr(cur.duration)+'" placeholder="e.g. 8 weeks"/>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="rx-adjust-field">' +
+        '<label id="rxAdjReasonLbl">Reason for adjustment <span class="rx-adj-req">*</span></label>' +
+        '<textarea id="rxAdjReason" rows="3" placeholder="Clinical justification for the change…" oninput="_rxAdjustValidate()"></textarea>' +
+      '</div>' +
+
+      '<div class="rx-adjust-actions">' +
+        '<button type="button" class="rx-adjust-btn ghost" onclick="_closeAdjustRxModal()">Cancel</button>' +
+        '<button type="button" class="rx-adjust-btn primary" id="rxAdjSaveBtn" disabled onclick="_saveAdjustRx()">'+escapeHtml(saveTxt)+'</button>' +
+      '</div>' +
+      '<div class="rx-adjust-error" id="rxAdjErr"></div>' +
+    '</div>'
+  );
+}
+
+function _selectRxAdjustType(val) {
+  if (!_rxAdjustCtx) return;
+  _rxAdjustCtx.adjustmentType = val;
+  // Sync chip active state
+  document.querySelectorAll('#rxAdjChips .rx-adj-chip').forEach(function(c) {
+    c.classList.toggle('active', c.getAttribute('data-val') === val);
+  });
+  // Discontinue collapses the form and relabels the reason
+  var form = document.getElementById('rxAdjForm');
+  var reasonLbl = document.getElementById('rxAdjReasonLbl');
+  var saveBtn = document.getElementById('rxAdjSaveBtn');
+  if (val === 'discontinuation') {
+    if (form) form.style.display = 'none';
+    if (reasonLbl) reasonLbl.innerHTML = 'Discontinuation reason <span class="rx-adj-req">*</span>';
+    if (saveBtn) saveBtn.textContent = 'Discontinue protocol';
+  } else {
+    if (form) form.style.display = '';
+    if (reasonLbl) reasonLbl.innerHTML = 'Reason for adjustment <span class="rx-adj-req">*</span>';
+    if (saveBtn) saveBtn.textContent = _rxAdjustCtx.isReprescribe ? 'Re-prescribe' : 'Save changes';
+  }
+  _rxAdjustValidate();
+}
+
+function _rxAdjustValidate() {
+  var reasonEl = document.getElementById('rxAdjReason');
+  var btn = document.getElementById('rxAdjSaveBtn');
+  if (!btn) return;
+  var hasReason = reasonEl && reasonEl.value.trim().length > 0;
+  btn.disabled = !hasReason;
+  btn.style.opacity = hasReason ? '1' : '0.4';
+  btn.style.cursor = hasReason ? 'pointer' : 'not-allowed';
+}
+
+function _closeAdjustRxModal() {
+  var modal = document.getElementById('rxAdjustModal');
+  if (modal) modal.remove();
+  _rxAdjustCtx = null;
+}
+
+async function _saveAdjustRx() {
+  if (!_rxAdjustCtx) return;
+  var ctx = _rxAdjustCtx;
+  var reasonEl = document.getElementById('rxAdjReason');
+  var errEl = document.getElementById('rxAdjErr');
+  var btn = document.getElementById('rxAdjSaveBtn');
+  if (errEl) errEl.textContent = '';
+  var reason = reasonEl ? reasonEl.value.trim() : '';
+  if (!reason) { if (errEl) errEl.textContent = 'A reason is required.'; return; }
+
+  var isDiscontinue = ctx.adjustmentType === 'discontinuation';
+  var newValues;
+  if (isDiscontinue) {
+    newValues = {
+      protocol_assigned: null, dose_amount: null, dose_unit: null,
+      frequency: null, timing: null, duration: null, other_notes: null
+    };
+  } else {
+    newValues = {
+      protocol_assigned: (document.getElementById('rxAdjProto')    || {}).value || null,
+      dose_amount:       (document.getElementById('rxAdjDose')     || {}).value || null,
+      dose_unit:         (document.getElementById('rxAdjUnit')     || {}).value || null,
+      frequency:         (document.getElementById('rxAdjFreq')     || {}).value || null,
+      timing:            (document.getElementById('rxAdjTiming')   || {}).value || null,
+      duration:          (document.getElementById('rxAdjDuration') || {}).value || null,
+      other_notes:       ctx.current.other_notes || null
+    };
+  }
+
+  // Snapshot the current live state into history. The outgoing entry's
+  // effective_from is either the previous history entry's effective_to
+  // (when it became active) or the consultation's evaluation_date.
+  var prevEffectiveTo = ctx.history.length > 0 ? ctx.history[ctx.history.length - 1].effective_to : null;
+  var effectiveFrom = prevEffectiveTo || ctx.current.evaluation_date || null;
+  var snapshot = {
+    version: ctx.history.length + 1,
+    effective_from: effectiveFrom,
+    effective_to: new Date().toISOString(),
+    prescribed_by: currentUserId || null,
+    prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+    protocol_assigned: ctx.current.protocol_assigned || null,
+    dose_amount: ctx.current.dose_amount || null,
+    dose_unit:   ctx.current.dose_unit || null,
+    frequency:   ctx.current.frequency || null,
+    timing:      ctx.current.timing || null,
+    duration:    ctx.current.duration || null,
+    adjustment_type:   ctx.adjustmentType || 'dose_change',
+    adjustment_reason: reason
+  };
+  var newHistory = ctx.history.slice();
+  newHistory.push(snapshot);
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    var update = {
+      protocol_assigned: newValues.protocol_assigned,
+      dose_amount: newValues.dose_amount,
+      dose_unit: newValues.dose_unit,
+      frequency: newValues.frequency,
+      timing: newValues.timing,
+      duration: newValues.duration,
+      other_notes: newValues.other_notes,
+      evaluation_date: new Date().toISOString(),
+      prescription_history: newHistory
+    };
+    if (isDiscontinue) {
+      update.review_status = 'discontinued';
+    } else if (ctx.isReprescribe) {
+      // Re-prescribing a previously discontinued patient flips them back
+      // to the prescribed state.
+      update.review_status = 'prescribed';
+    }
+    var upRes = await db.from('consultations').update(update).eq('id', ctx.consultId);
+    if (upRes && upRes.error) throw upRes.error;
+
+    // Mirror the active prescription on the profile row so the member
+    // portal's protocol card reflects the new values immediately.
+    try {
+      await db.from('profiles').upsert({
+        user_id: ctx.userId,
+        protocol_assigned: newValues.protocol_assigned,
+        dose_amount: newValues.dose_amount,
+        dose_unit: newValues.dose_unit,
+        frequency: newValues.frequency,
+        timing: newValues.timing,
+        duration: newValues.duration,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+    } catch (_) { /* non-blocking */ }
+
+    // Notify patient — body reflects what changed + the reason.
+    var notifBody;
+    if (isDiscontinue) {
+      notifBody = 'Your clinician has discontinued your protocol. Reason: ' + reason;
+    } else if (ctx.isReprescribe) {
+      notifBody = 'Your clinician has re-prescribed your protocol. ' + reason;
+    } else {
+      var diffTxt = _diffSummary(snapshot, newValues);
+      notifBody = 'Your clinician updated your protocol' + (diffTxt && diffTxt !== 'No visible changes' ? ' — ' + diffTxt : '') + '. Reason: ' + reason;
+    }
+    try {
+      await db.from('notifications').insert({
+        user_id: ctx.userId,
+        type: 'protocol_updated',
+        body: notifBody,
+        read: false,
+        link: 'protocol'
+      });
+    } catch (_) { /* non-blocking */ }
+
+    _closeAdjustRxModal();
+
+    // Refresh any patient card body currently mounted for this consultation
+    var bodyEls = document.querySelectorAll('[data-consult-id="' + ctx.consultId + '"] .cl-attn-card-body, #attn-body-' + ctx.consultId);
+    bodyEls.forEach(function(el) {
+      if (el) { el.dataset.loaded = ''; _loadAttentionCardBody(el, ctx.consultId, ctx.userId); }
+    });
+    // Also invalidate the cached patient rows on the Patients page so the
+    // status pill reflects a discontinuation / re-prescription.
+    _clPatientRows = null;
+  } catch (err) {
+    console.warn('[Pulse] _saveAdjustRx failed:', err);
+    if (errEl) errEl.textContent = (err && err.message) || 'Failed to save. Please try again.';
+    if (btn) { btn.disabled = false; btn.textContent = isDiscontinue ? 'Discontinue protocol' : (ctx.isReprescribe ? 'Re-prescribe' : 'Save changes'); }
+  }
+}
+
+// ── Rx History timeline modal ─────────────────────────────────────────────
+async function _openRxHistoryModal(consultId) {
+  try {
+    var res = await db.from('consultations')
+      .select('protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, evaluation_date, review_status, prescription_history, data')
+      .eq('id', consultId).limit(1);
+    if (!res.data || !res.data.length) return;
+    var row = res.data[0];
+    var d = row.data || {};
+    var name = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
+    var history = Array.isArray(row.prescription_history) ? row.prescription_history : [];
+    // Prepend a pseudo-entry for the currently active prescription so the
+    // timeline visually starts with "Current".
+    var entries = history.slice().reverse(); // newest first
+    var currentIsActive = row.review_status === 'prescribed';
+    var currentEntry = currentIsActive ? {
+      _isCurrent: true,
+      effective_from: entries.length > 0 ? entries[0].effective_to : row.evaluation_date,
+      effective_to: null,
+      protocol_assigned: row.protocol_assigned,
+      dose_amount: row.dose_amount,
+      dose_unit: row.dose_unit,
+      frequency: row.frequency,
+      timing: row.timing,
+      duration: row.duration
+    } : null;
+    var entriesHtml = '';
+    if (currentEntry) entriesHtml += _rxHistoryEntryHtml(currentEntry, true);
+    entries.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, false); });
+    if (!entriesHtml) entriesHtml = '<div class="rx-hist-empty">No prescription history yet.</div>';
+
+    var modal = document.getElementById('rxHistoryModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'rxHistoryModal';
+    modal.className = 'rx-adjust-overlay';
+    modal.innerHTML =
+      '<div class="rx-adjust-card" onclick="event.stopPropagation()" style="max-width:560px;">' +
+        '<div class="rx-adjust-hdr">' +
+          '<div>' +
+            '<div class="rx-adjust-eyebrow">Prescription</div>' +
+            '<div class="rx-adjust-title">Change history</div>' +
+            '<div class="rx-adjust-sub">'+escapeHtml(name)+'</div>' +
+          '</div>' +
+          '<button type="button" class="rx-adjust-close" onclick="_closeRxHistoryModal()" aria-label="Close">&times;</button>' +
+        '</div>' +
+        '<div class="rx-hist-list">'+entriesHtml+'</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) _closeRxHistoryModal(); });
+  } catch (e) { console.warn('[Pulse] history modal failed:', e); }
+}
+
+function _rxHistoryEntryHtml(entry, isCurrent) {
+  var dateLabel;
+  if (isCurrent) {
+    dateLabel = 'Current' + (entry.effective_from ? ' · since ' + new Date(entry.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '');
+  } else {
+    dateLabel = entry.effective_to ? new Date(entry.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  }
+  var who = entry.prescribed_by_name || '';
+  var typeLabels = {
+    dose_change:'Dose change', frequency_change:'Frequency change',
+    timing_change:'Timing change', protocol_change:'Protocol change',
+    duration_change:'Duration change', discontinuation:'Discontinued',
+    initial:'Initial'
+  };
+  var tag = isCurrent ? 'Active' : (typeLabels[entry.adjustment_type || ''] || 'Change');
+  var dose = [entry.dose_amount || '', entry.dose_unit || ''].filter(Boolean).join(' ');
+  var cells = [];
+  if (entry.protocol_assigned) cells.push(entry.protocol_assigned);
+  if (dose) cells.push(dose);
+  if (entry.frequency) cells.push(entry.frequency);
+  if (entry.timing) cells.push(entry.timing);
+  if (entry.duration) cells.push(entry.duration);
+  var summary = cells.join(' · ') || '—';
+
+  return '<div class="rx-hist-entry'+(isCurrent ? ' rx-hist-entry-current' : '')+'">' +
+    '<div class="rx-hist-entry-hdr">' +
+      '<span class="rx-hist-entry-date">'+escapeHtml(dateLabel)+'</span>' +
+      (who ? '<span class="rx-hist-entry-who"> · '+escapeHtml(who)+'</span>' : '') +
+      '<span class="rx-hist-entry-tag">'+escapeHtml(tag)+'</span>' +
+    '</div>' +
+    '<div class="rx-hist-entry-summary">'+escapeHtml(summary)+'</div>' +
+    (entry.adjustment_reason ? '<div class="rx-hist-entry-reason">"'+escapeHtml(entry.adjustment_reason)+'"</div>' : '') +
+  '</div>';
+}
+
+function _closeRxHistoryModal() {
+  var modal = document.getElementById('rxHistoryModal');
+  if (modal) modal.remove();
+}
+
 function _evaluateRiskFallback(d) {
   var reasons = [];
   var score = 0;
@@ -7293,7 +7864,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   bodyEl.dataset.loaded = 'true';
 
   try {
-    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, no_prescription_reason, other_notes, evaluation_date, session_notes').eq('id', consultId).limit(1);
+    // NOTE: prescription_history is a new JSONB column on consultations.
+    // Required DB migration:
+    //   ALTER TABLE consultations
+    //     ADD COLUMN IF NOT EXISTS prescription_history jsonb DEFAULT '[]'::jsonb;
+    var res = await db.from('consultations').select('data, created_at, risk_status, risk_flag_reasons, review_status, protocol_assigned, dose_amount, dose_unit, frequency, timing, duration, no_prescription_reason, other_notes, evaluation_date, session_notes, prescription_history').eq('id', consultId).limit(1);
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="font-size:12px;">No intake data found.</div>'; return; }
     var consultRow = res.data[0];
     var d = consultRow.data || {};
@@ -7359,9 +7934,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var consultReviewStatus = res.data[0].review_status || 'pending_review';
     var pCls='crw-btn crw-btn-grn',dCls='crw-btn crw-btn-red',cCls='crw-btn crw-btn-blu';
 
-    // Once a decision has been made (prescribed or declined), the Submitted
-    // timing + Overdue flag are no longer meaningful and get hidden.
-    var isDecided = (consultReviewStatus === 'prescribed' || consultReviewStatus === 'not_prescribed');
+    // Once a decision has been made (prescribed / declined / discontinued),
+    // the Submitted timing + Overdue flag are no longer meaningful and the
+    // outcome box replaces the Risk box at the top of the left column.
+    var isDecided = (consultReviewStatus === 'prescribed' || consultReviewStatus === 'not_prescribed' || consultReviewStatus === 'discontinued');
 
     // Detail field
     function _df(l,v){return '<div><div class="crw-det-lbl">'+l+'</div><div class="crw-det-val">'+escapeHtml(v)+'</div></div>';}
@@ -7373,6 +7949,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       if (!val && val !== 0) return '';
       return '<div class="crw-outcome-cell"><div class="crw-outcome-lbl">'+escapeHtml(lbl)+'</div><div class="crw-outcome-val">'+escapeHtml(val)+'</div></div>';
     }
+    // Prescription history — latest entry drives the "Last adjusted" one-liner
+    // below the PRESCRIBED grid. Array shape defined in _saveAdjustRx.
+    var rxHistory = Array.isArray(consultRow.prescription_history) ? consultRow.prescription_history : [];
+    var _latestHist = rxHistory.length > 0 ? rxHistory[rxHistory.length - 1] : null;
+
     var outcomeTopHtml = '';
     if (consultReviewStatus === 'prescribed') {
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
@@ -7385,8 +7966,29 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var timingInfo = consultRow.timing || _le.timing || d.timing || '';
       var durInfo = consultRow.duration || _le.duration || d.duration || '—';
       var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
+
+      // "Last adjusted Apr 14 by Dr. Jane — Dose 200mg → 300mg. View history"
+      var historyLineHtml = '';
+      if (_latestHist) {
+        var _histDate = _latestHist.effective_to ? new Date(_latestHist.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+        var _histWho = _latestHist.prescribed_by_name || 'your care team';
+        var _diffText = _diffSummary(_latestHist, {
+          protocol_assigned: protoAssigned, dose_amount: _da, dose_unit: _du,
+          frequency: freqInfo, timing: timingInfo, duration: durInfo
+        });
+        historyLineHtml =
+          '<div class="crw-outcome-history-line">'+
+            'Last adjusted '+escapeHtml(_histDate)+' by '+escapeHtml(_histWho)+
+            (_diffText ? ' — '+escapeHtml(_diffText) : '')+'. '+
+            '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+rxHistory.length+')</button>'+
+          '</div>';
+      }
+
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
-        '<div class="crw-outcome-title">Prescribed</div>'+
+        '<div class="crw-outcome-title-row">'+
+          '<div class="crw-outcome-title">Prescribed</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\')">Adjust</button>'+
+        '</div>'+
         '<div class="crw-outcome-grid">'+
           _outcomeCell('Protocol', protoAssigned)+
           _outcomeCell('Dose', doseInfo)+
@@ -7396,6 +7998,33 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           _outcomeCell('Evaluated', evalDate)+
         '</div>'+
         (otherNotes ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Notes</div><div class="crw-outcome-val">'+escapeHtml(otherNotes)+'</div></div>' : '')+
+        historyLineHtml+
+      '</div>';
+    } else if (consultReviewStatus === 'discontinued') {
+      // Discontinued protocol — show the last active values in muted red, with
+      // a Re-prescribe CTA that opens the Adjust modal pre-filled.
+      var _lastHistDc = _latestHist || {};
+      var _lastProto = _lastHistDc.protocol_assigned || consultRow.protocol_assigned || '—';
+      var _lastDose = [_lastHistDc.dose_amount || consultRow.dose_amount, _lastHistDc.dose_unit || consultRow.dose_unit].filter(Boolean).join(' ') || '—';
+      var _lastFreq = _lastHistDc.frequency || consultRow.frequency || '—';
+      var _lastTiming = _lastHistDc.timing || consultRow.timing || '';
+      var _lastDur = _lastHistDc.duration || consultRow.duration || '—';
+      var _dcReason = _lastHistDc.adjustment_reason || '';
+      var _dcDate = _lastHistDc.effective_to ? new Date(_lastHistDc.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (consultRow.evaluation_date ? new Date(consultRow.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+      var _dcWho = _lastHistDc.prescribed_by_name || 'care team';
+      outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
+        '<div class="crw-outcome-title-row">'+
+          '<div class="crw-outcome-title">Discontinued</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\')">Re-prescribe</button>'+
+        '</div>'+
+        '<div class="crw-outcome-grid">'+
+          _outcomeCell('Last protocol', _lastProto)+
+          _outcomeCell('Last dose', _lastDose)+
+          _outcomeCell('Discontinued', _dcDate)+
+          _outcomeCell('By', _dcWho)+
+        '</div>'+
+        (_dcReason ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Reason</div><div class="crw-outcome-val">'+escapeHtml(_dcReason)+'</div></div>' : '')+
+        (rxHistory.length > 0 ? '<div class="crw-outcome-history-line"><button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+rxHistory.length+')</button></div>' : '')+
       '</div>';
     } else if (consultReviewStatus === 'not_prescribed') {
       var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
@@ -10740,7 +11369,7 @@ function _normalisePatientRow(consultation, profile) {
 
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
-  ['all','pending_review','active','awaiting_activation','not_prescribed','withdrawn'].forEach(function(f) {
+  ['all','pending_review','active','awaiting_activation','not_prescribed','discontinued','withdrawn'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
@@ -10803,17 +11432,19 @@ var _clPatientSortDir = {
 function _clPatientStatusKey(p) {
   if (p.review_status === 'prescribed' && p.purchase_status === 'completed') return 'active';
   if (p.review_status === 'prescribed') return 'awaiting';
+  if (p.review_status === 'discontinued') return 'discontinued';
   if (p.review_status === 'not_prescribed') return 'notrx';
   if (p.review_status === 'withdrawn') return 'withdrawn';
   return 'pending';
 }
-var _clPatientStatusRank = { active:0, awaiting:1, pending:2, notrx:3, withdrawn:4 };
+var _clPatientStatusRank = { active:0, awaiting:1, pending:2, discontinued:3, notrx:4, withdrawn:5 };
 var _clPatientStatusMeta = {
-  active:    { label:'Active',          cls:'cl-ft-status-active',    rail:'cl-ft-rail-green' },
-  awaiting:  { label:'Awaiting',        cls:'cl-ft-status-awaiting',  rail:'cl-ft-rail-yellow' },
-  pending:   { label:'Pending Review',  cls:'cl-ft-status-pending',   rail:'cl-ft-rail-blue' },
-  notrx:     { label:'Not Prescribed',  cls:'cl-ft-status-notrx',     rail:'cl-ft-rail-red' },
-  withdrawn: { label:'Withdrawn',       cls:'cl-ft-status-withdrawn', rail:'cl-ft-rail-grey' }
+  active:       { label:'Active',          cls:'cl-ft-status-active',     rail:'cl-ft-rail-green' },
+  awaiting:     { label:'Awaiting',        cls:'cl-ft-status-awaiting',   rail:'cl-ft-rail-yellow' },
+  pending:      { label:'Pending Review',  cls:'cl-ft-status-pending',    rail:'cl-ft-rail-blue' },
+  discontinued: { label:'Discontinued',    cls:'cl-ft-status-notrx',      rail:'cl-ft-rail-red' },
+  notrx:        { label:'Not Prescribed',  cls:'cl-ft-status-notrx',      rail:'cl-ft-rail-red' },
+  withdrawn:    { label:'Withdrawn',       cls:'cl-ft-status-withdrawn',  rail:'cl-ft-rail-grey' }
 };
 function _setClPatientSort(val) {
   if (!_clPatientValidSort[val]) val = 'submission_earliest';
@@ -10839,10 +11470,11 @@ function renderPatientList(filter) {
 
   // Apply filter — matches status labels shown on card headers
   var patients = rows;
-  if (filter === 'pending_review') patients = rows.filter(function(p){ return !['prescribed','not_prescribed','withdrawn'].includes(p.review_status); });
+  if (filter === 'pending_review') patients = rows.filter(function(p){ return !['prescribed','not_prescribed','withdrawn','discontinued'].includes(p.review_status); });
   if (filter === 'active') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status === 'completed'; });
   if (filter === 'awaiting_activation') patients = rows.filter(function(p){ return p.review_status === 'prescribed' && p.purchase_status !== 'completed'; });
   if (filter === 'not_prescribed') patients = rows.filter(function(p){ return p.review_status === 'not_prescribed'; });
+  if (filter === 'discontinued') patients = rows.filter(function(p){ return p.review_status === 'discontinued'; });
   if (filter === 'withdrawn') patients = rows.filter(function(p){ return p.review_status === 'withdrawn'; });
 
   // Apply search filter (case-insensitive, by name or protocol)

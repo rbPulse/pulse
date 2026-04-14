@@ -2300,6 +2300,77 @@ body.member-mode [style*="background:var(--surface)"]{background:var(--m-bg) !im
 body.member-mode [style*="border:1px solid var(--border)"]{border-color:var(--m-border) !important;}
 body.member-mode [style*="border-bottom:1px solid var(--border)"]{border-bottom-color:var(--m-border) !important;}
 body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
+/* ── First-login Welcome modal ──────────────────────────────────────────
+   One-shot intro shown on a member's first overview load. Stored flag
+   in localStorage so it doesn't reappear on subsequent sessions. */
+.m-welcome-overlay{
+  position:fixed; inset:0; z-index:9600;
+  background:rgba(15,20,25,0.55);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+  font-family:'Inter',sans-serif;
+  animation:_mwOverlayIn .2s ease-out;
+}
+@keyframes _mwOverlayIn { from { opacity:0; } to { opacity:1; } }
+.m-welcome-card{
+  width:100%; max-width:480px;
+  background:var(--m-card,#FBFAF6);
+  border:1px solid var(--m-border,rgba(20,20,20,0.06));
+  border-radius:20px;
+  box-shadow:0 24px 56px rgba(0,0,0,0.22), 0 4px 14px rgba(0,0,0,0.08);
+  overflow:hidden;
+  animation:_mwCardIn .25s ease-out;
+}
+@keyframes _mwCardIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+/* Thin green accent strip at the top of the card — echoes the Your
+   Protocol hero without being loud. */
+.m-welcome-card::before{
+  content:''; display:block; height:4px;
+  background:linear-gradient(90deg, rgba(47,111,85,0.4), #2F6F55 40%, #22C55E 70%, rgba(34,197,94,0.4));
+}
+.m-welcome-body{padding:28px 28px 24px;}
+.m-welcome-brand{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+.m-welcome-brand svg{width:22px; height:22px; fill:none; stroke:var(--m-green,#2F6F55); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+.m-welcome-brand-name{font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.18em; color:var(--m-text,#111);}
+.m-welcome-title{font-family:'Inter',sans-serif; font-size:24px; font-weight:600; color:var(--m-text,#111); line-height:1.2; letter-spacing:-0.01em; margin-bottom:6px;}
+.m-welcome-sub{font-family:'Inter',sans-serif; font-size:13px; color:var(--m-text2,#6B6F6B); line-height:1.5; margin-bottom:22px;}
+.m-welcome-divider{height:1px; background:var(--m-border,rgba(20,20,20,0.08)); margin-bottom:20px;}
+.m-welcome-list{display:flex; flex-direction:column; gap:18px; margin-bottom:26px;}
+.m-welcome-row{display:flex; align-items:flex-start; gap:14px;}
+.m-welcome-icon{
+  width:38px; height:38px; border-radius:50%;
+  background:var(--m-green-tint, rgba(47,111,85,0.1));
+  border:1px solid var(--m-green-border, rgba(47,111,85,0.25));
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.m-welcome-icon svg{width:16px; height:16px; fill:none; stroke:var(--m-green,#2F6F55); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+.m-welcome-row-text{flex:1; min-width:0;}
+.m-welcome-row-title{font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--m-green,#2F6F55); margin-bottom:4px;}
+.m-welcome-row-body{font-family:'Inter',sans-serif; font-size:13px; font-weight:500; color:var(--m-text,#111); line-height:1.5;}
+.m-welcome-cta{
+  width:100%;
+  background:#22C55E;
+  color:#FFFFFF !important;
+  border:none;
+  border-radius:999px;
+  padding:14px 32px;
+  font-family:'Inter',sans-serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(34,197,94,0.25);
+  transition:background .2s, box-shadow .2s;
+}
+.m-welcome-cta:hover{background:#16A34A; box-shadow:0 6px 18px rgba(34,197,94,0.32);}
+/* Mobile breakpoint — keep the card readable on narrow screens. */
+@media(max-width:480px){
+  .m-welcome-card{max-width:100%;}
+  .m-welcome-body{padding:24px 20px 20px;}
+  .m-welcome-title{font-size:22px;}
+}
 /* Mobile messages */
 @media(max-width:900px){
   body.member-mode .portal-main{padding:20px 16px;}
@@ -6164,6 +6235,11 @@ function _continuePortalInit(user, role) {
         var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
         if (_purchaseDone) {
           populatePortal(user, c, greeting);
+          // First-login welcome — shows once, keyed by localStorage.
+          // Delayed a tick so the overview has painted before the
+          // overlay drops in.
+          var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
+          setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst); }, 400);
           return;
         }
         // Check for active/completed appointments that need the consultation flow
@@ -11233,6 +11309,65 @@ function _updateProtoPrescribedLine() {
     text = 'Prescribed by ' + prescriberName;
   }
   el.textContent = text || '—';
+}
+
+// ── First-login welcome modal ──
+// Shown once per member, persisted via localStorage. Called from the
+// consumer init flow after populatePortal() finishes so the underlying
+// overview has rendered before the overlay drops in.
+var _MEMBER_WELCOME_FLAG = 'pulseWelcomeSeen';
+function _maybeShowMemberWelcome(firstName) {
+  try {
+    if (localStorage.getItem(_MEMBER_WELCOME_FLAG) === '1') return;
+  } catch (_) { /* localStorage blocked — show anyway, it's one-shot */ }
+  // Don't fire in preview mode — it's noisy for demos
+  if (typeof PREVIEW_MODE !== 'undefined' && PREVIEW_MODE) return;
+
+  var name = (firstName && String(firstName).trim()) || '';
+  var titleTxt = name ? ('Welcome to Pulse, ' + name) : 'Welcome to Pulse';
+
+  // Bottom-nav / sidebar icons so each bullet visually maps to where
+  // the member will find that action in the portal.
+  var _logIcon   = '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+  var _protoIcon = '<svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
+  var _apptIcon  = '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+  var _msgIcon   = '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  var _brandIcon = '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+
+  var overlay = document.createElement('div');
+  overlay.className = 'm-welcome-overlay';
+  overlay.id = 'memberWelcomeOverlay';
+  overlay.innerHTML =
+    '<div class="m-welcome-card" onclick="event.stopPropagation()">' +
+      '<div class="m-welcome-body">' +
+        '<div class="m-welcome-brand">'+_brandIcon+'<span class="m-welcome-brand-name">PULSE</span></div>' +
+        '<div class="m-welcome-title">'+escapeHtml(titleTxt)+'</div>' +
+        '<div class="m-welcome-sub">Here\u2019s everything you can do from here.</div>' +
+        '<div class="m-welcome-divider"></div>' +
+        '<div class="m-welcome-list">' +
+          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_logIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Log your dose</div><div class="m-welcome-row-body">Tap log dose to keep track of your usage.</div></div></div>' +
+          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_protoIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Your protocol</div><div class="m-welcome-row-body">Your protocol detail and any updates live in the Protocol tab.</div></div></div>' +
+          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_apptIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Schedule a call</div><div class="m-welcome-row-body">Book a check-in or consult with your clinician anytime from the Appts tab.</div></div></div>' +
+          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_msgIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Message your care team</div><div class="m-welcome-row-body">Reach your clinician directly from Messages. Most replies &lt; 24hrs.</div></div></div>' +
+        '</div>' +
+        '<button class="m-welcome-cta" onclick="_dismissMemberWelcome()">Let\u2019s go</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  // Dismiss on backdrop click
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) _dismissMemberWelcome(); });
+  // Dismiss on Esc
+  var _escHandler = function(e) { if (e.key === 'Escape') _dismissMemberWelcome(); };
+  document.addEventListener('keydown', _escHandler);
+  overlay._escHandler = _escHandler;
+}
+
+function _dismissMemberWelcome() {
+  var overlay = document.getElementById('memberWelcomeOverlay');
+  if (!overlay) return;
+  if (overlay._escHandler) document.removeEventListener('keydown', overlay._escHandler);
+  overlay.remove();
+  try { localStorage.setItem(_MEMBER_WELCOME_FLAG, '1'); } catch (_) {}
 }
 
 function populatePortal(user, consultation, greeting) {

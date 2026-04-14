@@ -9759,6 +9759,30 @@ var _clApptRows = null;
 var _clApptDateFilter = 'all';
 var _clApptTypeFilter = 'all';
 
+// Consultations page sort state. Default: soonest first (scheduled
+// ascending). Matches the sort pattern used by Open Reviews, Weekly
+// Schedule, and Patients — one module-level key, a valid-set, a
+// per-column config mapping { col: [mode_asc, mode_desc] }, and a
+// direction map that drives the up/down arrow on the active header.
+var _clApptSort = 'scheduled_earliest';
+var _clApptValidSort = {
+  patient_az: 1, patient_za: 1,
+  scheduled_earliest: 1, scheduled_latest: 1
+};
+var _clApptColConfig = {
+  patient:   ['patient_az', 'patient_za'],
+  scheduled: ['scheduled_earliest', 'scheduled_latest']
+};
+var _clApptSortDir = {
+  patient_az: 'up', patient_za: 'down',
+  scheduled_earliest: 'up', scheduled_latest: 'down'
+};
+function _setClApptSort(val) {
+  if (!_clApptValidSort[val]) val = 'scheduled_earliest';
+  _clApptSort = val;
+  if (_clApptRows) _applyClApptFilter(_clApptRows, _clApptFilter);
+}
+
 function _filterClApptsByDate(range, pillEl) {
   _clApptDateFilter = range;
   ['all','today','week','month'].forEach(function(f) {
@@ -9938,6 +9962,28 @@ function _applyClApptFilter(rows, filter) {
       return (a.appointmentType || '') === _clApptTypeFilter;
     });
   }
+  // Apply the clinician's column sort (Patient / Scheduled). For the
+  // 'completed' filter we already sorted newest-first above; respect
+  // the explicit column sort if the clinician toggled one.
+  filtered = filtered.slice().sort(function(a, b) {
+    var aMs = a.scheduledAt ? a.scheduledAt.getTime() : 0;
+    var bMs = b.scheduledAt ? b.scheduledAt.getTime() : 0;
+    var aName = (a.patient || '').toLowerCase();
+    var bName = (b.patient || '').toLowerCase();
+    switch (_clApptSort) {
+      case 'patient_az':
+        if (aName !== bName) return aName.localeCompare(bName);
+        return aMs - bMs;
+      case 'patient_za':
+        if (aName !== bName) return bName.localeCompare(aName);
+        return aMs - bMs;
+      case 'scheduled_latest':
+        return bMs - aMs;
+      case 'scheduled_earliest':
+      default:
+        return aMs - bMs;
+    }
+  });
   renderApptList('clApptList', filtered, 'clinician');
 }
 
@@ -10215,10 +10261,13 @@ function renderApptList(elId, appts, role) {
   // Clinician path — flat table with column headers matching Open Reviews
   // and the Patients tab. Consumer path keeps the card-based layout below.
   if (role === 'clinician') {
+    var _ah = function(label, col) {
+      return _clFtColHeader(label, col, _clApptSort, _clApptColConfig, _clApptSortDir, '_setClApptSort');
+    };
     var header =
       '<div class="cl-ft-header cl-ft-cols-clappts">' +
-        '<div class="cl-ft-col-static">Patient</div>' +
-        '<div class="cl-ft-col-static">Scheduled</div>' +
+        '<div>' + _ah('Patient', 'patient') + '</div>' +
+        '<div>' + _ah('Scheduled', 'scheduled') + '</div>' +
         '<div class="cl-ft-col-static">Duration</div>' +
         '<div class="cl-ft-col-static">Type</div>' +
         '<div class="cl-ft-col-static" style="text-align:center;">Actions</div>' +

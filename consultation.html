@@ -254,12 +254,26 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .proto-trigger:hover{background:var(--green-dim);}
 
 /* ── SUMMARY (STEP 6) ── */
-.summary-header-card{background:var(--card);border:1px solid rgba(58,122,92,0.2);border-radius:14px;padding:24px;margin-bottom:28px;text-align:center;}
+.summary-header-card{background:var(--card);border:1px solid rgba(58,122,92,0.2);border-radius:14px;padding:28px;margin-bottom:24px;text-align:center;}
 .summary-check{width:56px;height:56px;border-radius:50%;background:rgba(58,122,92,0.1);border:1.5px solid rgba(58,122,92,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 0 24px rgba(58,122,92,0.15);}
 .summary-check svg{width:26px;height:26px;stroke:var(--green);fill:none;stroke-width:2;}
-.summary-title{font-size:22px;font-weight:600;margin-bottom:6px;}
-.summary-sub{font-size:13px;color:var(--grey);line-height:1.6;}
-.summary-clinician-sig{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--grey2);margin-top:14px;}
+.summary-title{font-family:'Inter',sans-serif;font-size:24px;font-weight:600;margin-bottom:8px;letter-spacing:-0.01em;}
+.summary-sub{font-family:'Inter',sans-serif;font-size:14px;color:var(--grey);line-height:1.6;}
+/* "Prescribed by" row — clinician photo on the left, 2-line text on
+   the right. Mirrors the Review step's avatar + sentence card. */
+.summary-clinician-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:22px;padding-top:20px;border-top:1px solid rgba(0,0,0,0.06);text-align:left;}
+.summary-clinician-avatar{width:56px;height:56px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.summary-clinician-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
+.summary-clinician-initials{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--grey2);letter-spacing:0.02em;}
+.summary-clinician-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#111111;line-height:1.35;}
+.summary-clinician-date{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--grey2);margin-top:2px;line-height:1.35;}
+/* Legacy sig class still used by STATE A (awaiting) — keep it Inter
+   now and readable on the light card. */
+.summary-clinician-sig{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--grey2);margin-top:16px;}
+/* Summary "Let's Go" CTA — matches the Book consultation / Send pills
+   elsewhere (bright green with white text, soft drop shadow). */
+.summary-ready-btn{background:#22C55E !important;color:#FFFFFF !important;border:none !important;border-radius:999px !important;padding:16px 40px !important;font-family:'Inter',sans-serif !important;font-size:12px !important;font-weight:600 !important;letter-spacing:0.14em !important;text-transform:uppercase !important;box-shadow:0 4px 14px rgba(34,197,94,0.25) !important;transition:background .2s,box-shadow .2s !important;}
+.summary-ready-btn:hover{background:#16A34A !important;box-shadow:0 6px 18px rgba(34,197,94,0.32) !important;}
 
 .timeline{position:relative;padding-left:28px;margin-bottom:32px;}
 .timeline::before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:1px;background:rgba(255,255,255,0.08);}
@@ -274,11 +288,24 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .tl-body{font-size:12px;color:var(--grey);line-height:1.65;}
 .tl-tag{display:inline-block;font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:0.08em;text-transform:uppercase;background:var(--green-dim);border:1px solid rgba(58,122,92,0.2);color:var(--green);padding:2px 8px;border-radius:999px;margin-top:6px;}
 
-.summary-protocol-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:28px;}
-.spb-eyebrow{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px;}
-.spb-name{font-size:17px;font-weight:600;margin-bottom:8px;}
-.spb-compounds{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
-.spb-compound{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:0.08em;background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 11px;color:var(--grey);}
+.summary-protocol-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:24px;}
+.spb-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px;}
+.spb-name{font-family:'Inter',sans-serif;font-size:20px;font-weight:600;margin-bottom:12px;letter-spacing:-0.01em;}
+.spb-compounds{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.spb-compound{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--grey);}
+.spb-include-label{display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:4px;user-select:none;}
+.spb-include-label input[type="checkbox"]{width:18px;height:18px;accent-color:var(--green);cursor:pointer;}
+.spb-include-text{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--green);}
+.spb-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:18px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.spb-detail-cell{padding:12px 14px;border-right:1px solid var(--border);}
+.spb-detail-cell:last-child{border-right:none;}
+.spb-detail-lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;}
+.spb-detail-val{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#111111;}
+@media(max-width:520px){
+  .spb-detail-grid{grid-template-columns:1fr 1fr;}
+  .spb-detail-cell:nth-child(2){border-right:none;}
+  .spb-detail-cell:nth-child(1),.spb-detail-cell:nth-child(2){border-bottom:1px solid var(--border);}
+}
 .spb-detail{font-size:12px;color:var(--grey);line-height:1.7;}
 .spb-cta{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 
@@ -1276,8 +1303,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
   </div>
 
   <!-- STEP 5: SUMMARY — State A (awaiting) / State B (protocol assigned) -->
-  <div class="step" id="step-6">
-    <div class="step-eyebrow">Summary</div>
+  <div class="step" id="step-6" style="padding-top:32px;">
 
     <!-- STATE A: Awaiting clinician evaluation -->
     <div id="step6-awaiting">
@@ -1329,14 +1355,22 @@ label.field-label{color:rgba(0,0,0,0.45);}
         </div>
         <div class="summary-title">Your protocol is ready</div>
         <div class="summary-sub">Your clinician has completed their evaluation and assigned your personalized protocol.</div>
-        <div class="summary-clinician-sig">Prescribed by <span id="step6AssignedClinicianName">your Pulse clinician</span> &mdash; <span id="step6AssignedDate"></span></div>
+        <div class="summary-clinician-row">
+          <div id="step6ClinicianAvatar" class="summary-clinician-avatar">
+            <span class="summary-clinician-initials" id="step6ClinicianInitials">DR</span>
+          </div>
+          <div class="summary-clinician-text">
+            <div class="summary-clinician-name">Prescribed by <span id="step6AssignedClinicianName">your Pulse clinician</span></div>
+            <div class="summary-clinician-date" id="step6AssignedDate"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Protocol cards — populated by JS -->
       <div id="step6ProtocolCards"></div>
 
       <div style="margin-top:32px;text-align:center;">
-        <button class="btn-primary" style="padding:16px 48px;font-size:13px;" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
+        <button class="btn-primary summary-ready-btn" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
       </div>
     </div>
 
@@ -2281,6 +2315,19 @@ function _autoAssignClinician(slotDateTime) {
 }
 
 // ── Async clinician assignment: query DB for clinician with fewest pending reviews ──
+// Render the assigned clinician's circular photo into the Summary
+// (step 6) 'Prescribed by' row. Falls back to initials.
+function _setStep6ClinicianAvatar(displayName, photoUrl) {
+  var avatarEl = document.getElementById('step6ClinicianAvatar');
+  if (!avatarEl) return;
+  if (photoUrl) {
+    avatarEl.innerHTML = '<img src="' + photoUrl + '" alt=""/>';
+  } else {
+    var initials = (displayName || 'Dr').replace(/^Dr\.?\s*/i, '').split(/\s+/).map(function(p){return p.charAt(0);}).join('').slice(0,2).toUpperCase() || 'DR';
+    avatarEl.innerHTML = '<span class="summary-clinician-initials">' + initials + '</span>';
+  }
+}
+
 // Render the assigned clinician's name + circular photo into the
 // Review status card. Falls back to initials when no photo is set.
 function _setReviewClinician(displayName, photoUrl) {
@@ -3369,18 +3416,19 @@ async function _populateStep6() {
     var session = (await client.auth.getSession()).data.session;
     if (!session) return;
 
-    // Get clinician name from the appointment or consultation's assigned_clinician_id
+    // Get clinician name + photo from the appointment or consultation
     var _step6ClinicianResolved = false;
     if (_memberApptId) {
       var apptRes = await client.from('appointments').select('clinician_id').eq('id', _memberApptId).limit(1);
       if (apptRes.data && apptRes.data.length > 0 && apptRes.data[0].clinician_id) {
-        var clRes = await client.from('profiles').select('display_name').eq('user_id', apptRes.data[0].clinician_id).limit(1);
+        var clRes = await client.from('profiles').select('display_name, photo_url').eq('user_id', apptRes.data[0].clinician_id).limit(1);
         if (clRes.data && clRes.data.length > 0 && clRes.data[0].display_name) {
           var clName = clRes.data[0].display_name;
           var nameEl = document.getElementById('step6ClinicianName');
           if (nameEl) nameEl.textContent = clName;
           var nameEl2 = document.getElementById('step6AssignedClinicianName');
           if (nameEl2) nameEl2.textContent = clName;
+          _setStep6ClinicianAvatar(clName, clRes.data[0].photo_url || null);
           _step6ClinicianResolved = true;
         }
       }
@@ -3395,13 +3443,14 @@ async function _populateStep6() {
 
     // Fallback: resolve clinician name from consultation's assigned_clinician_id
     if (!_step6ClinicianResolved && consultation && consultation.assigned_clinician_id) {
-      var clFallback = await client.from('profiles').select('display_name').eq('user_id', consultation.assigned_clinician_id).limit(1);
+      var clFallback = await client.from('profiles').select('display_name, photo_url').eq('user_id', consultation.assigned_clinician_id).limit(1);
       if (clFallback.data && clFallback.data.length > 0 && clFallback.data[0].display_name) {
         var clNameFb = clFallback.data[0].display_name;
         var nameElFb = document.getElementById('step6ClinicianName');
         if (nameElFb) nameElFb.textContent = clNameFb;
         var nameEl2Fb = document.getElementById('step6AssignedClinicianName');
         if (nameEl2Fb) nameEl2Fb.textContent = clNameFb;
+        _setStep6ClinicianAvatar(clNameFb, clFallback.data[0].photo_url || null);
       }
     }
 
@@ -3482,16 +3531,16 @@ async function _populateStep6() {
                 '<div class="spb-name">' + escapeHtml(pName) + '</div>' +
                 (compHtml ? '<div class="spb-compounds">' + compHtml + '</div>' : '') +
               '</div>' +
-              '<label for="' + checkId + '" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:8px;user-select:none;">' +
-                '<input type="checkbox" id="' + checkId + '" name="selectedProtocols" value="' + escapeHtml(key) + '" checked style="width:20px;height:20px;accent-color:var(--green);cursor:pointer;">' +
-                '<span style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);font-weight:500;">Include</span>' +
+              '<label for="' + checkId + '" class="spb-include-label">' +
+                '<input type="checkbox" id="' + checkId + '" name="selectedProtocols" value="' + escapeHtml(key) + '" checked>' +
+                '<span class="spb-include-text">Include</span>' +
               '</label>' +
             '</div>' +
-            '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
-              '<div style="padding:8px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Dose</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +
-              '<div style="padding:8px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Frequency</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(freq) + '</div></div>' +
-              '<div style="padding:8px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Timing</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(timing) + '</div></div>' +
-              '<div style="padding:8px 12px;border-bottom:1px solid var(--border);"><div style="font-family:\'DM Mono\',monospace;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px;">Duration</div><div style="font-size:13px;color:#fff;font-weight:500;">' + escapeHtml(dur) + '</div></div>' +
+            '<div class="spb-detail-grid">' +
+              '<div class="spb-detail-cell"><div class="spb-detail-lbl">Dose</div><div class="spb-detail-val">' + escapeHtml(doseAmt) + ' ' + escapeHtml(doseUnit) + '</div></div>' +
+              '<div class="spb-detail-cell"><div class="spb-detail-lbl">Frequency</div><div class="spb-detail-val">' + escapeHtml(freq) + '</div></div>' +
+              '<div class="spb-detail-cell"><div class="spb-detail-lbl">Timing</div><div class="spb-detail-val">' + escapeHtml(timing) + '</div></div>' +
+              '<div class="spb-detail-cell"><div class="spb-detail-lbl">Duration</div><div class="spb-detail-val">' + escapeHtml(dur) + '</div></div>' +
             '</div>' +
           '</div>';
         });

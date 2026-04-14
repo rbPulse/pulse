@@ -16219,14 +16219,11 @@ async function _loadEvalPatientHeader(el, consultId, userId, profile) {
     var metaHtml = metaParts.map(function(s){return '<span>'+escapeHtml(s)+'</span>';}).join('<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>');
     if (riskHtml) metaHtml += (metaHtml ? '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' : '') + riskHtml;
     if (isOverdue) metaHtml += (metaHtml ? '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' : '') + '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>';
-    // Build risk detail, goals, clinical summary, patient details for dropdown
-    var riskStatus = c.risk_status || '';
-    var riskReasons = d.risk_flag_reasons || [];
-    if (!riskStatus && d) { var re = _evaluateRiskFallback(d); riskStatus = re.status; riskReasons = re.reasons; }
-    var riskCardHtml = '';
-    if (riskStatus === 'high_risk') riskCardHtml = '<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div><ul class="crw-risk-list" style="color:#EF4444;">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul></div>';
-    else if (riskStatus === 'moderate_risk') riskCardHtml = '<div class="crw-risk crw-risk-mod"><div class="crw-risk-title" style="color:#EAB308;">MODERATE RISK</div><ul class="crw-risk-list" style="color:rgba(234,179,8,0.8);">' + riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('') + '</ul></div>';
-    else riskCardHtml = '<div class="crw-risk crw-risk-low"><div class="crw-risk-title" style="color:#22C55E;">LOW RISK</div><div class="crw-risk-body">No concerns flagged</div></div>';
+    // Risk card intentionally NOT rendered inside the expanded eval
+    // patient header — the Moderate/High/Low chip already lives in
+    // the collapsed meta line above. Removing the full card here
+    // keeps the dropdown tight. Other surfaces (Open Reviews expand,
+    // Patients expand, Session sidebar) still show the full card.
     var goalsArr = d.goals || [];
     var goalsText = goalsArr.length ? goalsArr.map(function(g){return g.charAt(0).toUpperCase()+g.slice(1);}).join(', ') : 'No goals specified';
     var mhArr = d.medical_history || []; if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
@@ -16253,7 +16250,6 @@ async function _loadEvalPatientHeader(el, consultId, userId, profile) {
           '<span style="font-size:12px;color:rgba(0,0,0,0.3);font-family:\'Inter\',sans-serif;flex-shrink:0;margin-left:16px;">View details \u25BE</span>' +
         '</summary>' +
         '<div style="padding:20px;border-top:1px solid rgba(0,0,0,0.08);">' +
-          riskCardHtml +
           '<div class="crw-section"><div class="crw-section-title">Goals</div><div class="crw-val">' + escapeHtml(goalsText) + '</div></div>' +
           '<div class="crw-section"><div class="crw-section-title">Clinical Summary</div>' + clinHtml + '</div>' +
           '<div class="crw-section"><div class="crw-section-title">Patient Details</div>' + detailsHtml + '</div>' +

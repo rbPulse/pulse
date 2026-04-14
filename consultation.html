@@ -2348,14 +2348,14 @@ var _reviewBookingClinicianId = null;
 
 function initReviewBooking(clinicianId, liveConsultMessage) {
   _reviewBookingClinicianId = clinicianId;
-  // Show the CTA card (not the full booking section yet)
+  // Show the CTA card. display:flex matches the .live-consult-cta class
+  // so the centering rule (justify-content:center) actually applies.
   var ctaEl = document.getElementById('liveConsultCta');
-  if (ctaEl) ctaEl.style.display = 'block';
-  // Set the clinician's message on both CTA and booking card
+  if (ctaEl) ctaEl.style.display = 'flex';
+  // Set the clinician's message on the booking card
   if (liveConsultMessage) {
-    var ctaReason = document.getElementById('liveConsultCtaReason');
-    if (ctaReason) ctaReason.textContent = liveConsultMessage;
-    document.getElementById('liveConsultReason').textContent = liveConsultMessage;
+    var liveReasonEl = document.getElementById('liveConsultReason');
+    if (liveReasonEl) liveReasonEl.textContent = liveConsultMessage;
   }
   // Preload availability in the background so calendar is ready when revealed
   _loadSingleClinicianAvailability(clinicianId);

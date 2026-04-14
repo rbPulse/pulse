@@ -16322,6 +16322,10 @@ async function _startAsyncEvaluation() {
   }
 }
 
+// Default canned message the textarea pre-fills with so the clinician
+// can either send as-is or edit before sending.
+var _LIVE_CONSULT_DEFAULT_MSG = "I'd like to schedule a live video consultation to discuss your intake further.";
+
 // ── ASYNC REVIEW: Request live consult with message ──
 function _requestLiveConsult() {
   if (!_activePatientConsultId || !_activePatientUserId) {
@@ -16335,9 +16339,9 @@ function _requestLiveConsult() {
   modal.innerHTML =
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 24px;max-width:480px;width:100%;">' +
       '<div style="font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);margin-bottom:14px;font-weight:600;">Request Live Consult</div>' +
-      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">Why do you want a live consultation?</div>' +
-      '<div style="font-size:13px;color:var(--grey);margin-bottom:16px;line-height:1.5;">This message will be sent to the patient along with the live consult request.</div>' +
-      '<textarea id="liveConsultMsg" class="settings-input" rows="4" placeholder="Explain why a live video consult is needed\u2026" style="resize:vertical;min-height:80px;line-height:1.6;width:100%;box-sizing:border-box;margin-bottom:16px;"></textarea>' +
+      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">Message to patient</div>' +
+      '<div style="font-size:13px;color:var(--grey);margin-bottom:16px;line-height:1.5;">This message will be sent to the patient along with the live consult request. Edit as needed.</div>' +
+      '<textarea id="liveConsultMsg" class="settings-input" rows="4" style="resize:vertical;min-height:90px;line-height:1.6;width:100%;box-sizing:border-box;margin-bottom:16px;">' + escapeHtml(_LIVE_CONSULT_DEFAULT_MSG) + '</textarea>' +
       '<div id="liveConsultStatus" style="font-size:11px;color:var(--grey2);margin-bottom:10px;display:none;"></div>' +
       '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
         '<button onclick="document.getElementById(\'liveConsultModal\').remove()" class="btn-ghost" style="padding:10px 20px;cursor:pointer;">Cancel</button>' +
@@ -16347,6 +16351,11 @@ function _requestLiveConsult() {
   document.body.appendChild(modal);
   // Close on backdrop click
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  // Focus the textarea + place cursor at end so the clinician can edit
+  setTimeout(function() {
+    var ta = document.getElementById('liveConsultMsg');
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }, 50);
 }
 
 async function _confirmLiveConsult() {
@@ -16380,7 +16389,7 @@ async function _confirmLiveConsult() {
       sender_id: currentUserId,
       sender_role: 'clinician',
       sender_name: clinicianDisplayName,
-      body: "I'd like to schedule a live video consultation to discuss your intake further. " + customMessage,
+      body: customMessage,
       read: false
     });
 

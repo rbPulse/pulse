@@ -11674,10 +11674,24 @@ function _updateProtoPrescribedLine() {
 // members on the same browser each get their own one-shot welcome
 // instead of sharing a flat flag that the first dismiss burns for
 // everyone.
-var _MEMBER_WELCOME_FLAG_PREFIX = 'pulseWelcomeSeen';
+// Flag prefix bumped to v2 to invalidate any per-user flags that were
+// wrongly auto-set by the legacy-flag migration branch in commit
+// 0a26f93 (since reverted). Anyone who got a '1' written into the v1
+// slot without actually dismissing the modal now bypasses it cleanly.
+var _MEMBER_WELCOME_FLAG_PREFIX = 'pulseWelcomeSeen_v2';
 function _memberWelcomeFlagKey(uid) {
   return _MEMBER_WELCOME_FLAG_PREFIX + (uid ? ':' + uid : '');
 }
+// One-time cleanup of the v1 keys (and the even older flat key) so
+// localStorage doesn't accumulate dead entries.
+(function() {
+  try {
+    if (localStorage.getItem('pulseWelcomeSeen') === '1') localStorage.removeItem('pulseWelcomeSeen');
+    Object.keys(localStorage).forEach(function(k) {
+      if (k.indexOf('pulseWelcomeSeen:') === 0) localStorage.removeItem(k);
+    });
+  } catch (_) {}
+})();
 function _maybeShowMemberWelcome(firstName, userId) {
   var flagKey = _memberWelcomeFlagKey(userId || currentUserId || '');
   console.log('[PulseWelcome] called', { firstName: firstName, userId: userId, currentUserId: currentUserId, flagKey: flagKey });

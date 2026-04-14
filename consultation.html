@@ -2571,7 +2571,10 @@ function buildReviewCalendar() {
 // don't let you tune the native animation speed.
 function _scrollToSlowly(el, duration) {
   if (!el) return;
-  var targetY = el.getBoundingClientRect().top + window.pageYOffset - 16;
+  // Leave more breathing room on mobile so the target element doesn't
+  // land right under the browser chrome / status bar.
+  var topOffset = window.innerWidth <= 640 ? 96 : 24;
+  var targetY = el.getBoundingClientRect().top + window.pageYOffset - topOffset;
   var startY = window.pageYOffset;
   var diff = targetY - startY;
   var startTs = null;

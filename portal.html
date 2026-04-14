@@ -2616,6 +2616,51 @@ body.clinician-mode .crw-section textarea{background:#F2F4F3;border:1px solid rg
 body.clinician-mode .crw-section textarea::placeholder{color:rgba(0,0,0,0.35);}
 body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
 
+/* ── Live Video Session (clinician) — light theme ──
+   The overlay, header, sidebar and notes block all adopt the same
+   --cl-* surface tokens we use elsewhere in the clinician portal so
+   nothing dark-mode bleeds through during a live call. */
+.cl-session-overlay{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;background:var(--cl-bg,#F5F4EE);color:var(--cl-text,#111111);font-family:'Inter',sans-serif;}
+.cl-session-header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--cl-surface,#FFFFFF);border-bottom:1px solid var(--cl-border,rgba(0,0,0,0.08));flex-shrink:0;}
+.cl-session-brand{display:flex;align-items:center;gap:10px;}
+.cl-session-brand .nav-icon{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;color:#1DB954;}
+.cl-session-brand .nav-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.cl-session-title{font-size:11px;font-weight:600;letter-spacing:0.24em;text-transform:uppercase;color:var(--cl-text,#111111);}
+.cl-session-pname{font-size:13px;font-weight:500;color:var(--cl-text2,rgba(0,0,0,0.65));margin-left:10px;}
+.cl-session-actions{display:flex;align-items:center;gap:10px;}
+.cl-session-btn{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:9px 18px;border-radius:999px;cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s;}
+.cl-session-btn-ghost{background:transparent;border-color:var(--cl-border,rgba(0,0,0,0.12));color:var(--cl-text2,rgba(0,0,0,0.65));}
+.cl-session-btn-ghost:hover{border-color:rgba(0,0,0,0.35);color:var(--cl-text,#111111);}
+.cl-session-btn-ghost.active{background:rgba(29,185,84,0.08);border-color:rgba(29,185,84,0.45);color:#1DB954;}
+.cl-session-btn-danger{background:#EF4444;border-color:#EF4444;color:#FFFFFF;}
+.cl-session-btn-danger:hover{background:#DC2626;border-color:#DC2626;}
+.cl-session-body{flex:1;display:flex;overflow:hidden;min-height:0;}
+.cl-session-video-col{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--cl-bg,#F5F4EE);}
+.cl-session-video{flex:1;overflow:hidden;min-height:300px;display:flex;align-items:center;justify-content:center;}
+.cl-session-sidebar{width:480px;flex-shrink:0;display:none;flex-direction:column;background:var(--cl-surface,#FFFFFF);border-left:1px solid var(--cl-border,rgba(0,0,0,0.08));overflow:hidden;min-height:0;}
+.cl-session-sidebar.open{display:flex;}
+.cl-session-notes-block{flex-shrink:0;padding:20px 24px 18px;border-bottom:1px solid var(--cl-border,rgba(0,0,0,0.08));background:var(--cl-surface,#FFFFFF);}
+.cl-session-notes-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.cl-session-notes-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(0,0,0,0.5);}
+.cl-session-notes-saved{display:none;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#1DB954;}
+.cl-session-notes-input{width:100%;box-sizing:border-box;background:#FBFAF6;border:1px solid rgba(0,0,0,0.1);border-radius:10px;color:var(--cl-text,#111111);font-family:'Inter',sans-serif;font-size:13px;font-weight:400;padding:12px 14px;resize:none;height:180px;outline:none;line-height:1.55;transition:border-color .15s;}
+.cl-session-notes-input::placeholder{color:rgba(0,0,0,0.35);}
+.cl-session-notes-input:focus{border-color:#1DB954;}
+.cl-session-pcard{flex:1;overflow-y:auto;min-height:0;padding:0;background:var(--cl-surface,#FFFFFF);}
+.cl-session-status{text-align:center;padding:18px;color:var(--cl-text2,rgba(0,0,0,0.6));font-size:13px;background:var(--cl-surface,#FFFFFF);border-top:1px solid var(--cl-border,rgba(0,0,0,0.08));}
+/* Hide the bits of _loadAttentionCardBody that don't belong inside the
+   session sidebar: the live messaging column (clinician is on a call,
+   chatting mid-call is weird) and the duplicate Session Notes section
+   (we already have one pinned at the top of this sidebar). */
+#sessionSidePanel .crw-right,
+#sessionSidePanel .crw-right-msg,
+#sessionSidePanel [id^="attn-notes-section-"]{display:none !important;}
+/* Inside the session sidebar the patient card body is rendered into
+   a narrower column than the main pages — loosen its grid so nothing
+   clips. */
+#sessionSidePanel .cl-session-pcard .crw{grid-template-columns:1fr !important;}
+#sessionSidePanel .cl-session-pcard .crw-det-grid{grid-template-columns:1fr 1fr !important;}
+
 /* ── Patient detail panel (HIGH emphasis — floating workspace) ── */
 body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:16px;box-shadow:var(--cl-shadow-high);}
 
@@ -14297,35 +14342,35 @@ function _joinClinicianSession(apptId) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'dailySessionOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;';
+    overlay.className = 'cl-session-overlay';
     overlay.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
+      '<div class="cl-session-header">' +
+        '<div class="cl-session-brand">' +
           '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
-          '<span style="font-family:\'Inter\',sans-serif;font-size:12px;letter-spacing:0.28em;color:#fff;text-transform:uppercase;">Pulse Session</span>' +
-          '<span id="sessionPatientName" style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:#A1A1AA;margin-left:8px;"></span>' +
+          '<span class="cl-session-title">Pulse Session</span>' +
+          '<span id="sessionPatientName" class="cl-session-pname"></span>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<button id="sessionTogglePanel" onclick="_toggleSessionPanel()" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--grey);padding:7px 16px;border-radius:999px;cursor:pointer;transition:border-color .2s;">Patient Info</button>' +
-          '<button onclick="_leaveClinicianSession()" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);color:rgba(220,90,90,0.85);padding:7px 16px;border-radius:999px;cursor:pointer;">End Session</button>' +
+        '<div class="cl-session-actions">' +
+          '<button id="sessionTogglePanel" class="cl-session-btn cl-session-btn-ghost" onclick="_toggleSessionPanel()">Patient Info</button>' +
+          '<button class="cl-session-btn cl-session-btn-danger" onclick="_leaveClinicianSession()">End Session</button>' +
         '</div>' +
       '</div>' +
-      '<div style="flex:1;display:flex;overflow:hidden;">' +
-        '<div style="flex:1;display:flex;flex-direction:column;min-width:0;">' +
-          '<div id="dailySessionContainer" style="flex:1;overflow:hidden;min-height:300px;"></div>' +
+      '<div class="cl-session-body">' +
+        '<div class="cl-session-video-col">' +
+          '<div id="dailySessionContainer" class="cl-session-video"></div>' +
         '</div>' +
-        '<div id="sessionSidePanel" style="width:400px;display:none;flex-shrink:0;border-left:1px solid var(--border);background:#0B0B0C;overflow-y:auto;flex-direction:column;">' +
-          '<div style="padding:20px 24px;border-bottom:1px solid var(--border);">' +
-            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-              '<span style="font-family:\'Inter\',sans-serif;font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--green);">Session Notes</span>' +
-              '<span id="sessionNotesSaved" style="display:none;font-family:\'Inter\',sans-serif;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>' +
+        '<aside id="sessionSidePanel" class="cl-session-sidebar">' +
+          '<div class="cl-session-notes-block">' +
+            '<div class="cl-session-notes-hdr">' +
+              '<span class="cl-session-notes-eyebrow">Session Notes</span>' +
+              '<span id="sessionNotesSaved" class="cl-session-notes-saved">Saved</span>' +
             '</div>' +
-            '<textarea id="sessionLiveNotes" placeholder="Take notes during the session..." style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:none;height:120px;outline:none;line-height:1.6;transition:border-color .2s;"></textarea>' +
+            '<textarea id="sessionLiveNotes" class="cl-session-notes-input" placeholder="Take notes during the session…"></textarea>' +
           '</div>' +
-          '<div id="sessionPatientCard" style="padding:0;"></div>' +
-        '</div>' +
+          '<div id="sessionPatientCard" class="cl-session-pcard"></div>' +
+        '</aside>' +
       '</div>' +
-      '<div id="dailySessionStatus" style="text-align:center;padding:20px;color:var(--grey);font-size:13px;">Connecting…</div>';
+      '<div id="dailySessionStatus" class="cl-session-status">Connecting…</div>';
     document.body.appendChild(overlay);
   } else {
     overlay.style.display = 'flex';
@@ -14335,7 +14380,8 @@ function _joinClinicianSession(apptId) {
     var pc = document.getElementById('sessionPatientCard'); if (pc) pc.innerHTML = '';
     var nn = document.getElementById('sessionPatientName'); if (nn) nn.textContent = '';
     _sessionPanelOpen = false;
-    var sp = document.getElementById('sessionSidePanel'); if (sp) sp.style.display = 'none';
+    var sp = document.getElementById('sessionSidePanel'); if (sp) sp.classList.remove('open');
+    var stb = document.getElementById('sessionTogglePanel'); if (stb) stb.classList.remove('active');
   }
 
   db.auth.getSession().then(function(r) {
@@ -14390,30 +14436,28 @@ function _toggleSessionPanel() {
   var btn = document.getElementById('sessionTogglePanel');
   if (!panel) return;
   _sessionPanelOpen = !_sessionPanelOpen;
-  panel.style.display = _sessionPanelOpen ? 'flex' : 'none';
-  if (btn) {
-    btn.style.borderColor = _sessionPanelOpen ? 'rgba(58,122,92,0.5)' : 'var(--border)';
-    btn.style.color = _sessionPanelOpen ? 'var(--green)' : 'var(--grey)';
-  }
+  panel.classList.toggle('open', _sessionPanelOpen);
+  if (btn) btn.classList.toggle('active', _sessionPanelOpen);
 }
 
 async function _loadSessionPatientCard(apptId) {
   var cardEl = document.getElementById('sessionPatientCard');
   var nameEl = document.getElementById('sessionPatientName');
   if (!cardEl) return;
-  cardEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--grey2);font-size:12px;">Loading patient info...</div>';
+  cardEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;">Loading patient info…</div>';
 
   try {
-    // Get patient ID from appointment
+    // Resolve patient id from the appointment
     var apptRes = await db.from('appointments').select('consumer_id').eq('id', apptId).limit(1);
     if (!apptRes.data || !apptRes.data.length) return;
     var consumerId = apptRes.data[0].consumer_id;
 
-    // Get consultation + profile
-    var cRes = await db.from('consultations').select('*').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
-    var pRes = await db.from('profiles').select('*').eq('user_id', consumerId).limit(1);
+    // Grab the patient's latest consultation for the header name + to feed
+    // _loadAttentionCardBody (which does its own full fetch anyway).
+    var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
+    var pRes = await db.from('profiles').select('first_name, last_name, display_name, email').eq('user_id', consumerId).limit(1);
 
-    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : { user_id: consumerId, data: {} };
+    var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : { id: null, data: {} };
     var profile = (pRes.data && pRes.data.length > 0) ? pRes.data[0] : {};
     var d = consultation.data || {};
 
@@ -14422,80 +14466,14 @@ async function _loadSessionPatientCard(apptId) {
                    profile.display_name || profile.email || 'Unknown';
     if (nameEl) nameEl.textContent = '\u00B7 ' + fullName;
 
-    var ageStr = d.dob ? String(_calcAge(d.dob)) + ' yrs' : '—';
-    var sex = d.sex || '—';
-    var state = d.state || '—';
-
-    // Goals
-    var primaryGoal = consultation.primary_goal || d.primary_goal || (d.goals && d.goals.length > 0 ? d.goals[0] : null) || '—';
-    var secondaryGoals = consultation.secondary_goals || d.secondary_goals || (d.goals && d.goals.length > 1 ? d.goals.slice(1) : []) || [];
-    var goalsText = primaryGoal;
-    if (secondaryGoals.length > 0) goalsText += ', ' + (Array.isArray(secondaryGoals) ? secondaryGoals.join(', ') : secondaryGoals);
-
-    // Medical history
-    var mhArr = d.medical_history || d.health_conditions || [];
-    if (typeof mhArr === 'string') mhArr = mhArr.split(',').map(function(s){return s.trim();});
-    var mhDisplay = _buildMedHistoryDisplay(mhArr);
-
-    // Risk assessment
-    var riskStatus = consultation.risk_status || '';
-    var riskReasons = consultation.risk_flag_reasons || [];
-    if (!riskStatus && d) {
-      var riskEval = _evaluateRiskFallback(d);
-      riskStatus = riskEval.status;
-      riskReasons = riskEval.reasons;
-    }
-    var riskHtml = '';
-    if (riskStatus === 'high_risk') {
-      riskHtml = '<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div>' +
-        '<ul class="crw-risk-list" style="color:#EF4444;">' + riskReasons.map(function(r){return '<li>' + escapeHtml(r) + '</li>';}).join('') + '</ul></div>';
-    } else if (riskStatus === 'moderate_risk') {
-      riskHtml = '<div class="crw-risk crw-risk-mod"><div class="crw-risk-title" style="color:#EAB308;">MODERATE RISK</div>' +
-        '<ul class="crw-risk-list" style="color:rgba(234,179,8,0.8);">' + riskReasons.map(function(r){return '<li>' + escapeHtml(r) + '</li>';}).join('') + '</ul></div>';
-    } else {
-      riskHtml = '<div class="crw-risk crw-risk-low"><div class="crw-risk-title" style="color:#22C55E;">LOW RISK</div>' +
-        '<div class="crw-risk-body">No concerns flagged</div></div>';
-    }
-
-    var html =
-      '<div style="padding:20px 24px;">' +
-        '<div style="font-size:20px;font-weight:600;color:#fff;margin-bottom:4px;">' + escapeHtml(fullName) + '</div>' +
-        '<div style="font-size:13px;color:#A1A1AA;">' + escapeHtml(ageStr) + ' \u00B7 ' + escapeHtml(sex) + ' \u00B7 ' + escapeHtml(state) + '</div>' +
-        riskHtml +
-      '</div>' +
-
-      '<div style="padding:0 24px 20px;">' +
-        '<div class="crw-section">' +
-          '<div class="crw-section-title">Goals</div>' +
-          '<div style="font-size:14px;color:#fff;line-height:1.5;">' + escapeHtml(goalsText) + '</div>' +
-        '</div>' +
-
-        '<div class="crw-section">' +
-          '<div class="crw-section-title">Clinical Summary</div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Medical History</div><div class="crw-clin-val" style="font-size:13px;">' + mhDisplay + '</div></div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Medications</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.medications || 'None') + '</div></div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Allergies</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.allergies || 'None reported') + '</div></div>' +
-          '<div class="crw-clin-row"><div class="crw-clin-lbl" style="min-width:140px;">Peptide Use</div><div class="crw-clin-val" style="font-size:13px;">' + escapeHtml(d.peptide_use || d.prior_peptide_use || 'None') + '</div></div>' +
-        '</div>' +
-
-        '<div class="crw-section">' +
-          '<div class="crw-section-title">Patient Details</div>' +
-          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">' +
-            '<div><div class="crw-det-lbl">Email</div><div class="crw-det-val" style="font-size:12px;word-break:break-all;">' + escapeHtml(profile.email || d.email || '—') + '</div></div>' +
-            '<div><div class="crw-det-lbl">Phone</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.phone_number || d.phone || '—') + '</div></div>' +
-          '</div>' +
-          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:12px;">' +
-            '<div><div class="crw-det-lbl">Height</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.height || '—') + '</div></div>' +
-            '<div><div class="crw-det-lbl">Weight</div><div class="crw-det-val" style="font-size:12px;">' + escapeHtml(d.current_weight ? d.current_weight + ' lbs' : '—') + '</div></div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-
-    // Reuse the canonical patient card renderer instead of custom HTML
+    // Reuse the canonical patient card renderer — same component used by
+    // Open Reviews, Messages right column, and the Patients expand. CSS
+    // scoped to #sessionSidePanel hides the messaging column and the
+    // duplicate Session Notes section (we already have one pinned above).
     _loadAttentionCardBody(cardEl, consultation.id, consumerId);
   } catch(e) {
     console.warn('[Pulse] session patient card load failed:', e);
-    cardEl.innerHTML = '<div style="padding:20px;font-size:12px;">Failed to load patient info.</div>';
+    cardEl.innerHTML = '<div style="padding:20px;font-size:12px;color:var(--cl-text2,rgba(0,0,0,0.6));">Failed to load patient info.</div>';
   }
 }
 

@@ -6452,14 +6452,12 @@ function _continuePortalInit(user, role) {
         }
         // Purchase completed — stay on portal, skip all redirect checks
         var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
-        console.log('[PulseWelcome] init-flow check', { userId: user.id, purchaseDone: _purchaseDone, purchase_status: c.purchase_status, data_purchase_status: c.data && c.data.purchase_status });
         if (_purchaseDone) {
           populatePortal(user, c, greeting);
           // First-login welcome — shows once, keyed by localStorage.
           // Delayed a tick so the overview has painted before the
           // overlay drops in.
           var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
-          console.log('[PulseWelcome] scheduling welcome modal in 400ms for user', user.id);
           setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
           return;
         }
@@ -11694,23 +11692,11 @@ function _memberWelcomeFlagKey(uid) {
 })();
 function _maybeShowMemberWelcome(firstName, userId) {
   var flagKey = _memberWelcomeFlagKey(userId || currentUserId || '');
-  console.log('[PulseWelcome] called', { firstName: firstName, userId: userId, currentUserId: currentUserId, flagKey: flagKey });
   try {
-    // Clean up the legacy flat key if it's still lingering from a
-    // prior dismiss — it was shared across users on the same browser
-    // which is exactly why we moved to per-user keys. Don't let its
-    // presence suppress the modal for a new member.
-    if (localStorage.getItem(_MEMBER_WELCOME_FLAG_PREFIX) === '1') {
-      console.log('[PulseWelcome] removing legacy flat flag');
-      localStorage.removeItem(_MEMBER_WELCOME_FLAG_PREFIX);
-    }
-    var _existing = localStorage.getItem(flagKey);
-    console.log('[PulseWelcome] per-user flag value:', _existing);
-    if (_existing === '1') { console.log('[PulseWelcome] skipping — already dismissed'); return; }
-  } catch (e) { console.log('[PulseWelcome] localStorage blocked:', e && e.message); }
+    if (localStorage.getItem(flagKey) === '1') return;
+  } catch (_) { /* localStorage blocked — show anyway, it's one-shot */ }
   // Don't fire in preview mode — it's noisy for demos
-  if (typeof PREVIEW_MODE !== 'undefined' && PREVIEW_MODE) { console.log('[PulseWelcome] skipping — PREVIEW_MODE'); return; }
-  console.log('[PulseWelcome] rendering modal');
+  if (typeof PREVIEW_MODE !== 'undefined' && PREVIEW_MODE) return;
 
   var name = (firstName && String(firstName).trim()) || '';
   var titleTxt = name ? ('Welcome to Pulse, ' + name + '.') : 'Welcome to Pulse.';

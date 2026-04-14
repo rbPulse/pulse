@@ -1369,7 +1369,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
       <!-- Protocol cards — populated by JS -->
       <div id="step6ProtocolCards"></div>
 
-      <div style="margin-top:32px;text-align:center;">
+      <div style="margin:40px 0;text-align:center;">
         <button class="btn-primary summary-ready-btn" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
       </div>
     </div>
@@ -3506,14 +3506,8 @@ async function _populateStep6() {
           var key = pName.toLowerCase().replace(/\s+/g, '_');
           if (!prescribedProtocols[key]) return;
 
-          // Get compound tags from PROTOCOL_MAP
-          var protoData = PROTOCOL_MAP[pName.toLowerCase()] || PROTOCOL_MAP[key] || null;
-          var compHtml = '';
-          if (protoData && protoData.compounds) {
-            compHtml = protoData.compounds.map(function(c) {
-              return '<span class="spb-compound">' + escapeHtml(c) + '</span>';
-            }).join('');
-          }
+          // Compound pills intentionally not surfaced on the Summary —
+          // the protocol name alone is what the member needs to see.
 
           // Dosing details — check evaluations array, then consultation columns, then JSONB top-level
           var _le = (cd.evaluations && cd.evaluations.length > 0) ? cd.evaluations[cd.evaluations.length - 1] : {};
@@ -3529,7 +3523,6 @@ async function _populateStep6() {
               '<div style="flex:1;min-width:200px;">' +
                 '<div class="spb-eyebrow">Your prescribed protocol</div>' +
                 '<div class="spb-name">' + escapeHtml(pName) + '</div>' +
-                (compHtml ? '<div class="spb-compounds">' + compHtml + '</div>' : '') +
               '</div>' +
               '<label for="' + checkId + '" class="spb-include-label">' +
                 '<input type="checkbox" id="' + checkId + '" name="selectedProtocols" value="' + escapeHtml(key) + '" checked>' +

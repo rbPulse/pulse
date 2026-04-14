@@ -3405,6 +3405,8 @@ body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
   border-radius:12px; background:#FBFAF6;
 }
 .rx-hist-entry-current{background:rgba(29,185,84,0.06); border-color:rgba(29,185,84,0.4);}
+.rx-hist-entry-stop{background:rgba(185,28,28,0.04); border-color:rgba(185,28,28,0.25);}
+.rx-hist-entry-stop .rx-hist-entry-tag{background:rgba(185,28,28,0.12); color:#B91C1C;}
 .rx-hist-entry-hdr{display:flex; align-items:center; gap:4px; margin-bottom:6px; flex-wrap:wrap;}
 .rx-hist-entry-date{font-size:12px; font-weight:600; color:var(--cl-text,#111111);}
 .rx-hist-entry-who{font-size:12px; color:rgba(0,0,0,0.55);}
@@ -7629,28 +7631,75 @@ async function _saveAdjustRx() {
     };
   }
 
-  // Snapshot the current live state into history. The outgoing entry's
-  // effective_from is either the previous history entry's effective_to
-  // (when it became active) or the consultation's evaluation_date.
-  var prevEffectiveTo = ctx.history.length > 0 ? ctx.history[ctx.history.length - 1].effective_to : null;
-  var effectiveFrom = prevEffectiveTo || ctx.current.evaluation_date || null;
-  var snapshot = {
-    version: ctx.history.length + 1,
-    effective_from: effectiveFrom,
-    effective_to: new Date().toISOString(),
-    prescribed_by: currentUserId || null,
-    prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
-    protocol_assigned: ctx.current.protocol_assigned || null,
-    dose_amount: ctx.current.dose_amount || null,
-    dose_unit:   ctx.current.dose_unit || null,
-    frequency:   ctx.current.frequency || null,
-    timing:      ctx.current.timing || null,
-    duration:    ctx.current.duration || null,
-    adjustment_type:   ctx.adjustmentType || 'dose_change',
-    adjustment_reason: reason
-  };
-  var newHistory = ctx.history.slice();
-  newHistory.push(snapshot);
+  var nowIso = new Date().toISOString();
+  // Build the new history. Three steps:
+  //   1. If history is empty AND there's an existing active prescription
+  //      (i.e. this is a patient prescribed before we added the history
+  //      column), backfill a v1 'initial' entry from the live columns so
+  //      the timeline has a starting point.
+  //   2. Close any currently-active entries (effective_to: null → now).
+  //   3. Append a new active entry with the new values (unless this is a
+  //      discontinuation, in which case we append a zero-duration
+  //      tombstone that records who/why and then stops).
+  var working = ctx.history.slice();
+  if (working.length === 0 && (ctx.current.protocol_assigned || ctx.current.dose_amount)) {
+    working.push({
+      version: 1,
+      effective_from: ctx.current.evaluation_date || null,
+      effective_to: null, // closed in step 2
+      prescribed_by: null,
+      prescribed_by_name: null,
+      protocol_assigned: ctx.current.protocol_assigned || null,
+      dose_amount: ctx.current.dose_amount || null,
+      dose_unit:   ctx.current.dose_unit || null,
+      frequency:   ctx.current.frequency || null,
+      timing:      ctx.current.timing || null,
+      duration:    ctx.current.duration || null,
+      adjustment_type: 'initial',
+      adjustment_reason: 'Initial prescription'
+    });
+  }
+  var newHistory = working.map(function(e) {
+    if (!e.effective_to) return Object.assign({}, e, { effective_to: nowIso });
+    return e;
+  });
+  if (isDiscontinue) {
+    // Zero-duration tombstone capturing WHO discontinued and WHY
+    newHistory.push({
+      version: newHistory.length + 1,
+      effective_from: nowIso,
+      effective_to: nowIso,
+      prescribed_by: currentUserId || null,
+      prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+      protocol_assigned: null, dose_amount: null, dose_unit: null,
+      frequency: null, timing: null, duration: null,
+      adjustment_type: 'discontinuation',
+      adjustment_reason: reason
+    });
+  } else {
+    // Re-prescribe counts as a fresh 'initial'; regular adjust uses the
+    // chip the clinician picked.
+    var adjType = ctx.isReprescribe ? 'initial' : (ctx.adjustmentType || 'dose_change');
+    newHistory.push({
+      version: newHistory.length + 1,
+      effective_from: nowIso,
+      effective_to: null,
+      prescribed_by: currentUserId || null,
+      prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+      protocol_assigned: newValues.protocol_assigned,
+      dose_amount: newValues.dose_amount,
+      dose_unit:   newValues.dose_unit,
+      frequency:   newValues.frequency,
+      timing:      newValues.timing,
+      duration:    newValues.duration,
+      adjustment_type: adjType,
+      adjustment_reason: reason
+    });
+  }
+  // Use the most recent CLOSED entry as the "before" reference for the
+  // notification diff summary.
+  var closedEntries = newHistory.filter(function(e){ return e.effective_to; });
+  var snapshot = closedEntries.length > 0 ? closedEntries[closedEntries.length - 1] : null;
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
@@ -7697,7 +7746,7 @@ async function _saveAdjustRx() {
     } else if (ctx.isReprescribe) {
       notifBody = 'Your clinician has re-prescribed your protocol. ' + reason;
     } else {
-      var diffTxt = _diffSummary(snapshot, newValues);
+      var diffTxt = snapshot ? _diffSummary(snapshot, newValues) : '';
       notifBody = 'Your clinician updated your protocol' + (diffTxt && diffTxt !== 'No visible changes' ? ' — ' + diffTxt : '') + '. Reason: ' + reason;
     }
     try {
@@ -7738,24 +7787,32 @@ async function _openRxHistoryModal(consultId) {
     var d = row.data || {};
     var name = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
     var history = Array.isArray(row.prescription_history) ? row.prescription_history : [];
-    // Prepend a pseudo-entry for the currently active prescription so the
-    // timeline visually starts with "Current".
-    var entries = history.slice().reverse(); // newest first
-    var currentIsActive = row.review_status === 'prescribed';
-    var currentEntry = currentIsActive ? {
-      _isCurrent: true,
-      effective_from: entries.length > 0 ? entries[0].effective_to : row.evaluation_date,
-      effective_to: null,
-      protocol_assigned: row.protocol_assigned,
-      dose_amount: row.dose_amount,
-      dose_unit: row.dose_unit,
-      frequency: row.frequency,
-      timing: row.timing,
-      duration: row.duration
-    } : null;
+    // Sort: active entry (effective_to: null) first, then closed entries
+    // newest-to-oldest by effective_to.
+    var active = history.filter(function(e){ return !e.effective_to; });
+    var closed = history.filter(function(e){ return e.effective_to; })
+      .slice().sort(function(a, b) {
+        return new Date(b.effective_to).getTime() - new Date(a.effective_to).getTime();
+      });
+    // Backfill a synthesized "Active" pseudo-entry from live columns when
+    // a prescribed patient has no history at all yet (pre-migration rows).
+    if (active.length === 0 && row.review_status === 'prescribed' && (row.protocol_assigned || row.dose_amount)) {
+      active.push({
+        _isCurrent: true,
+        effective_from: row.evaluation_date || null,
+        effective_to: null,
+        protocol_assigned: row.protocol_assigned,
+        dose_amount: row.dose_amount,
+        dose_unit: row.dose_unit,
+        frequency: row.frequency,
+        timing: row.timing,
+        duration: row.duration,
+        adjustment_type: 'initial'
+      });
+    }
     var entriesHtml = '';
-    if (currentEntry) entriesHtml += _rxHistoryEntryHtml(currentEntry, true);
-    entries.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, false); });
+    active.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, true); });
+    closed.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, false); });
     if (!entriesHtml) entriesHtml = '<div class="rx-hist-empty">No prescription history yet.</div>';
 
     var modal = document.getElementById('rxHistoryModal');
@@ -7781,9 +7838,12 @@ async function _openRxHistoryModal(consultId) {
 }
 
 function _rxHistoryEntryHtml(entry, isCurrent) {
+  var isDiscontinuation = entry.adjustment_type === 'discontinuation';
   var dateLabel;
   if (isCurrent) {
     dateLabel = 'Current' + (entry.effective_from ? ' · since ' + new Date(entry.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '');
+  } else if (isDiscontinuation) {
+    dateLabel = entry.effective_from ? new Date(entry.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
   } else {
     dateLabel = entry.effective_to ? new Date(entry.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
   }
@@ -7795,16 +7855,21 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
     initial:'Initial'
   };
   var tag = isCurrent ? 'Active' : (typeLabels[entry.adjustment_type || ''] || 'Change');
-  var dose = [entry.dose_amount || '', entry.dose_unit || ''].filter(Boolean).join(' ');
-  var cells = [];
-  if (entry.protocol_assigned) cells.push(entry.protocol_assigned);
-  if (dose) cells.push(dose);
-  if (entry.frequency) cells.push(entry.frequency);
-  if (entry.timing) cells.push(entry.timing);
-  if (entry.duration) cells.push(entry.duration);
-  var summary = cells.join(' · ') || '—';
+  var summary;
+  if (isDiscontinuation) {
+    summary = 'Protocol stopped';
+  } else {
+    var dose = [entry.dose_amount || '', entry.dose_unit || ''].filter(Boolean).join(' ');
+    var cells = [];
+    if (entry.protocol_assigned) cells.push(entry.protocol_assigned);
+    if (dose) cells.push(dose);
+    if (entry.frequency) cells.push(entry.frequency);
+    if (entry.timing) cells.push(entry.timing);
+    if (entry.duration) cells.push(entry.duration);
+    summary = cells.join(' · ') || '—';
+  }
 
-  return '<div class="rx-hist-entry'+(isCurrent ? ' rx-hist-entry-current' : '')+'">' +
+  return '<div class="rx-hist-entry'+(isCurrent ? ' rx-hist-entry-current' : '')+(isDiscontinuation ? ' rx-hist-entry-stop' : '')+'">' +
     '<div class="rx-hist-entry-hdr">' +
       '<span class="rx-hist-entry-date">'+escapeHtml(dateLabel)+'</span>' +
       (who ? '<span class="rx-hist-entry-who"> · '+escapeHtml(who)+'</span>' : '') +
@@ -7949,10 +8014,19 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       if (!val && val !== 0) return '';
       return '<div class="crw-outcome-cell"><div class="crw-outcome-lbl">'+escapeHtml(lbl)+'</div><div class="crw-outcome-val">'+escapeHtml(val)+'</div></div>';
     }
-    // Prescription history — latest entry drives the "Last adjusted" one-liner
-    // below the PRESCRIBED grid. Array shape defined in _saveAdjustRx.
+    // Prescription history — every version is a row, active one has
+    // effective_to: null. One-liner uses the most recent CLOSED entry as
+    // the "before" snapshot and the active entry (or live columns) for
+    // "who adjusted it" and when.
     var rxHistory = Array.isArray(consultRow.prescription_history) ? consultRow.prescription_history : [];
-    var _latestHist = rxHistory.length > 0 ? rxHistory[rxHistory.length - 1] : null;
+    var _activeHist = rxHistory.find(function(e){ return !e.effective_to; }) || null;
+    var _pastEntries = rxHistory.filter(function(e){ return e.effective_to; });
+    // The "last adjusted" one-liner only makes sense once at least one
+    // real adjustment has happened (past entry present AND active entry
+    // is not the initial one).
+    var _latestHist = _pastEntries.length > 0 && _activeHist && _activeHist.adjustment_type !== 'initial'
+      ? _pastEntries[_pastEntries.length - 1]
+      : null;
 
     var outcomeTopHtml = '';
     if (consultReviewStatus === 'prescribed') {
@@ -7970,8 +8044,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       // "Last adjusted Apr 14 by Dr. Jane — Dose 200mg → 300mg. View history"
       var historyLineHtml = '';
       if (_latestHist) {
-        var _histDate = _latestHist.effective_to ? new Date(_latestHist.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-        var _histWho = _latestHist.prescribed_by_name || 'your care team';
+        // Date of the transition = when the old entry was closed (which
+        // equals the active entry's effective_from). Who made it = the
+        // author of the currently-active entry.
+        var _histDate = _activeHist && _activeHist.effective_from
+          ? new Date(_activeHist.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+          : new Date(_latestHist.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        var _histWho = (_activeHist && _activeHist.prescribed_by_name) || 'your care team';
         var _diffText = _diffSummary(_latestHist, {
           protocol_assigned: protoAssigned, dose_amount: _da, dose_unit: _du,
           frequency: freqInfo, timing: timingInfo, duration: durInfo
@@ -8001,17 +8080,17 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         historyLineHtml+
       '</div>';
     } else if (consultReviewStatus === 'discontinued') {
-      // Discontinued protocol — show the last active values in muted red, with
-      // a Re-prescribe CTA that opens the Adjust modal pre-filled.
-      var _lastHistDc = _latestHist || {};
-      var _lastProto = _lastHistDc.protocol_assigned || consultRow.protocol_assigned || '—';
-      var _lastDose = [_lastHistDc.dose_amount || consultRow.dose_amount, _lastHistDc.dose_unit || consultRow.dose_unit].filter(Boolean).join(' ') || '—';
-      var _lastFreq = _lastHistDc.frequency || consultRow.frequency || '—';
-      var _lastTiming = _lastHistDc.timing || consultRow.timing || '';
-      var _lastDur = _lastHistDc.duration || consultRow.duration || '—';
-      var _dcReason = _lastHistDc.adjustment_reason || '';
-      var _dcDate = _lastHistDc.effective_to ? new Date(_lastHistDc.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (consultRow.evaluation_date ? new Date(consultRow.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
-      var _dcWho = _lastHistDc.prescribed_by_name || 'care team';
+      // Discontinued protocol — pull the last active values from the most
+      // recent CLOSED non-discontinuation entry, and pull the who/when/why
+      // from the discontinuation tombstone at the end of history.
+      var _dcTomb = rxHistory.filter(function(e){ return e.adjustment_type === 'discontinuation'; }).pop() || null;
+      var _lastActive = rxHistory.filter(function(e){ return e.adjustment_type !== 'discontinuation' && e.effective_to; }).pop() || null;
+      var _src = _lastActive || {};
+      var _lastProto = _src.protocol_assigned || consultRow.protocol_assigned || '—';
+      var _lastDose = [_src.dose_amount || consultRow.dose_amount, _src.dose_unit || consultRow.dose_unit].filter(Boolean).join(' ') || '—';
+      var _dcReason = (_dcTomb && _dcTomb.adjustment_reason) || '';
+      var _dcDate = (_dcTomb && _dcTomb.effective_from) ? new Date(_dcTomb.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (consultRow.evaluation_date ? new Date(consultRow.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+      var _dcWho = (_dcTomb && _dcTomb.prescribed_by_name) || 'care team';
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
         '<div class="crw-outcome-title-row">'+
           '<div class="crw-outcome-title">Discontinued</div>'+
@@ -15580,17 +15659,20 @@ async function _submitEvaluation(apptId) {
     // For async review, use the stored consultation ID directly; otherwise look up by user_id
     var cId = null;
     var cData = {};
+    var existingHistory = [];
     if (isAsyncReview && _activePatientConsultId) {
-      var cRes = await db.from('consultations').select('id, data').eq('id', _activePatientConsultId).limit(1);
+      var cRes = await db.from('consultations').select('id, data, prescription_history').eq('id', _activePatientConsultId).limit(1);
       if (cRes.data && cRes.data.length > 0) {
         cId = cRes.data[0].id;
         cData = cRes.data[0].data || {};
+        existingHistory = Array.isArray(cRes.data[0].prescription_history) ? cRes.data[0].prescription_history : [];
       }
     } else {
-      var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
+      var cRes = await db.from('consultations').select('id, data, prescription_history').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
       if (cRes.data && cRes.data.length > 0) {
         cId = cRes.data[0].id;
         cData = cRes.data[0].data || {};
+        existingHistory = Array.isArray(cRes.data[0].prescription_history) ? cRes.data[0].prescription_history : [];
       }
     }
     if (cId) {
@@ -15602,6 +15684,30 @@ async function _submitEvaluation(apptId) {
       cData.prescription_given = evalData.prescription_given;
       cData.prescribed_protocols = evalData.prescribed_protocols;
       cData.evaluation_date = evalData.evaluation_date;
+
+      // Stamp the initial prescription into prescription_history as v1 so
+      // every prescribed patient has a history entry from day one. Only
+      // appended when this is the first time (existingHistory empty) AND
+      // the clinician actually prescribed something.
+      var newPrescriptionHistory = existingHistory.slice();
+      if (decision === 'yes' && existingHistory.length === 0) {
+        newPrescriptionHistory.push({
+          version: 1,
+          effective_from: evalData.evaluation_date,
+          effective_to: null, // still active — cleared on first Adjust
+          prescribed_by: currentUserId || null,
+          prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+          protocol_assigned: assignedProtocolStr,
+          dose_amount: evalData.dose_amount,
+          dose_unit: evalData.dose_unit,
+          frequency: evalData.frequency,
+          timing: evalData.timing,
+          duration: evalData.duration,
+          adjustment_type: 'initial',
+          adjustment_reason: 'Initial prescription' + (notes.trim() ? ' — ' + notes.trim() : '')
+        });
+      }
+
       var consultUpdate = {
         data: cData,
         protocol_assigned: assignedProtocolStr,
@@ -15616,6 +15722,7 @@ async function _submitEvaluation(apptId) {
         other_notes: evalData.other_notes,
         protocol_version: evalData.protocol_version,
         no_prescription_reason: evalData.no_prescription_reason || null,
+        prescription_history: newPrescriptionHistory,
         session_notes: notes.trim(),
         evaluation_date: evalData.evaluation_date
       };

@@ -6458,7 +6458,7 @@ function _continuePortalInit(user, role) {
           // Delayed a tick so the overview has painted before the
           // overlay drops in.
           var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
-          setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst); }, 400);
+          setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
           return;
         }
         // Check for active/completed appointments that need the consultation flow
@@ -11668,10 +11668,24 @@ function _updateProtoPrescribedLine() {
 // Shown once per member, persisted via localStorage. Called from the
 // consumer init flow after populatePortal() finishes so the underlying
 // overview has rendered before the overlay drops in.
-var _MEMBER_WELCOME_FLAG = 'pulseWelcomeSeen';
-function _maybeShowMemberWelcome(firstName) {
+// The flag is keyed by user id (pulseWelcomeSeen:<uid>) so multiple
+// members on the same browser each get their own one-shot welcome
+// instead of sharing a flat flag that the first dismiss burns for
+// everyone.
+var _MEMBER_WELCOME_FLAG_PREFIX = 'pulseWelcomeSeen';
+function _memberWelcomeFlagKey(uid) {
+  return _MEMBER_WELCOME_FLAG_PREFIX + (uid ? ':' + uid : '');
+}
+function _maybeShowMemberWelcome(firstName, userId) {
+  var flagKey = _memberWelcomeFlagKey(userId || currentUserId || '');
   try {
-    if (localStorage.getItem(_MEMBER_WELCOME_FLAG) === '1') return;
+    if (localStorage.getItem(flagKey) === '1') return;
+    // Legacy flat flag — migrate it so users who already dismissed the
+    // welcome on the old global key don't see the modal again.
+    if (localStorage.getItem(_MEMBER_WELCOME_FLAG_PREFIX) === '1') {
+      localStorage.setItem(flagKey, '1');
+      return;
+    }
   } catch (_) { /* localStorage blocked — show anyway, it's one-shot */ }
   // Don't fire in preview mode — it's noisy for demos
   if (typeof PREVIEW_MODE !== 'undefined' && PREVIEW_MODE) return;
@@ -11722,7 +11736,10 @@ function _dismissMemberWelcome() {
   if (!overlay) return;
   if (overlay._escHandler) document.removeEventListener('keydown', overlay._escHandler);
   overlay.remove();
-  try { localStorage.setItem(_MEMBER_WELCOME_FLAG, '1'); } catch (_) {}
+  try {
+    var flagKey = _memberWelcomeFlagKey(currentUserId || '');
+    localStorage.setItem(flagKey, '1');
+  } catch (_) {}
 }
 
 function populatePortal(user, consultation, greeting) {

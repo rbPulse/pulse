@@ -2685,11 +2685,9 @@ body.clinician-mode .btn-green:hover,body.clinician-mode .adp-btn:hover{backgrou
 body.clinician-mode .btn-ghost{border:1px solid var(--cl-border);color:var(--cl-text2);font-family:'Inter',sans-serif;font-size:13px;border-radius:10px;background:var(--cl-inner);padding:8px 14px;box-shadow:none;}
 body.clinician-mode .btn-ghost:hover{border-color:rgba(0,0,0,0.1);color:var(--cl-text);}
 
-/* ── Live consults ── */
-/* Only style these when they have content (JS populates them) */
-body.clinician-mode #clLiveConsultsSection:empty,
+/* ── Recently Evaluated ── */
+/* Only style when it has content (JS populates) */
 body.clinician-mode #clRecentlyEvaluated:empty{display:none;}
-body.clinician-mode #clLiveConsultsSection:not(:empty),
 body.clinician-mode #clRecentlyEvaluated:not(:empty){background:var(--cl-high);border:1px solid var(--cl-border);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;}
 /* ── Bottom two-col section (Recent Activity + Live Consults) ── */
 body.clinician-mode .cl-two-col{gap:16px;}
@@ -2705,7 +2703,6 @@ body.clinician-mode .cl-live-join{background:var(--cl-green);color:#fff !importa
 body.clinician-mode .cl-live-section .tab-eyebrow,
 body.clinician-mode .cl-attention-title{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;font-weight:600;text-transform:uppercase;}
 /* Section empty states */
-body.clinician-mode #clLiveConsultsSection *,
 body.clinician-mode #clRecentlyEvaluated *{font-family:'Inter',sans-serif;}
 body.clinician-mode .cl-live-section div[style*="text-align:center"],
 body.clinician-mode .cl-attention-empty{font-family:'Inter',sans-serif !important;font-size:14px !important;}
@@ -4450,14 +4447,11 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <!-- Open Reviews — Phase A2 -->
         <div id="clAttentionSection"></div>
 
-        <!-- Live Consults — Phase A3 -->
-        <div id="clLiveConsultsSection"></div>
-
         <!-- Recently Evaluated — Phase A4 -->
         <div id="clRecentlyEvaluated"></div>
 
         <div class="p-card" id="clWeeklyScheduleCard" style="margin-bottom:0;">
-          <div class="compounds-label" style="margin-bottom:12px;">This Week's Live Consults</div>
+          <div class="compounds-label" style="margin-bottom:12px;">Your Schedule</div>
           <div id="clWeeklySchedule">
             <!-- Populated by JS -->
           </div>
@@ -6405,7 +6399,6 @@ function initClinicianPortal(user, role, greeting) {
     ['clStatUnread','clStatPending'].forEach(function(id){ document.getElementById(id).textContent = '—'; });
     _loadClOverviewStats();
     loadAttentionCards();
-    loadLiveConsultsSection();
     loadRecentlyEvaluated();
     loadWeeklySchedule();
     _startClOverviewPoll();
@@ -8826,126 +8819,6 @@ async function _sendAttnMsgFromModal() {
   if (inlineList && modalList) {
     modalList.innerHTML = inlineList.innerHTML;
     modalList.scrollTop = modalList.scrollHeight;
-  }
-}
-
-async function loadLiveConsultsSection() {
-  var container = document.getElementById('clLiveConsultsSection');
-  if (!container || !currentUserId || PREVIEW_MODE) return;
-
-  try {
-    var res = await db.from('consultations')
-      .select('id, user_id, review_status, live_consult_message, created_at')
-      .eq('assigned_clinician_id', currentUserId)
-      .in('review_status', ['live_consult_requested', 'live_consult_scheduled']);
-
-    var consults = res.data || [];
-    if (!consults.length) {
-      container.innerHTML = '';
-      return;
-    }
-
-    // Get patient names
-    var userIds = consults.map(function(c) { return c.user_id; });
-    var profileRes = await db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds);
-    var profileMap = {};
-    (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
-
-    // Get appointments for scheduled consults
-    var apptRes = await db.from('appointments')
-      .select('consumer_id, scheduled_at, status, daily_room_url, id')
-      .eq('clinician_id', currentUserId)
-      .in('consumer_id', userIds)
-      .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician")')
-      .order('scheduled_at', { ascending: true });
-    var apptMap = {};
-    (apptRes.data || []).forEach(function(a) {
-      if (!apptMap[a.consumer_id]) apptMap[a.consumer_id] = a;
-    });
-
-    // Sort: awaiting-booking first (most urgent), then scheduled ascending
-    // by appointment time.
-    var nowMs = Date.now();
-    consults.sort(function(a, b) {
-      var aA = apptMap[a.user_id];
-      var bA = apptMap[b.user_id];
-      var aAw = a.review_status === 'live_consult_requested' || !aA;
-      var bAw = b.review_status === 'live_consult_requested' || !bA;
-      if (aAw && !bAw) return -1;
-      if (!aAw && bAw) return 1;
-      var aT = aA ? new Date(aA.scheduled_at).getTime() : new Date(a.created_at).getTime();
-      var bT = bA ? new Date(bA.scheduled_at).getTime() : new Date(b.created_at).getTime();
-      return aT - bT;
-    });
-
-    var html = '<div class="cl-attention-title" style="margin-bottom:12px;">Live Consults</div>' +
-      '<div class="cl-ft-header cl-ft-cols-live">' +
-        '<div class="cl-ft-col-static">Patient</div>' +
-        '<div class="cl-ft-col-static">Scheduled</div>' +
-        '<div class="cl-ft-col-static">Status</div>' +
-        '<div class="cl-ft-col-static">Action</div>' +
-      '</div>' +
-      '<div class="cl-ft-list">';
-
-    consults.forEach(function(c) {
-      var profile = profileMap[c.user_id] || {};
-      var name = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.display_name || profile.email || 'Unknown';
-      var appt = apptMap[c.user_id];
-
-      var scheduledText = '—';
-      var statusLabel = '';
-      var statusCls = '';
-      var railCls = '';
-      var actionHtml = '';
-
-      if (c.review_status === 'live_consult_requested' || !appt) {
-        // Patient hasn't booked yet
-        scheduledText = 'Not yet booked';
-        statusLabel = 'Awaiting booking';
-        statusCls = 'cl-ft-status-awaiting';
-        railCls = 'cl-ft-rail-yellow';
-        actionHtml = '<span style="font-family:\'Inter\',sans-serif;font-size:10px;color:rgba(0,0,0,0.45);letter-spacing:0.06em;text-transform:uppercase;">Waiting</span>';
-      } else {
-        // Scheduled
-        var dt = new Date(appt.scheduled_at);
-        var fiveMinBefore = dt.getTime() - 5 * 60 * 1000;
-        var isReady = nowMs >= fiveMinBefore;
-        scheduledText = dt.toLocaleDateString([], { month:'short', day:'numeric' }) + ' · ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-
-        if (isReady) {
-          // Within 5-minute join window — ready right now
-          statusLabel = 'Ready to join';
-          statusCls = 'cl-ft-status-ready';
-          railCls = 'cl-ft-rail-green';
-          actionHtml = '<button class="cl-live-join" style="color:#fff !important;" onclick="event.stopPropagation();_joinClinicianSession(\'' + escapeAttr(appt.id) + '\')">Join</button>';
-        } else {
-          // Future scheduled but not yet joinable
-          statusLabel = 'Upcoming';
-          statusCls = 'cl-ft-status-upcoming';
-          railCls = 'cl-ft-rail-blue';
-          var diff = dt.getTime() - nowMs;
-          var hrs = Math.floor(diff / 3600000);
-          var mins = Math.floor((diff % 3600000) / 60000);
-          var countdown = hrs > 0 ? hrs + 'h ' + mins + 'm' : mins + 'm';
-          actionHtml = '<span style="font-family:\'Inter\',sans-serif;font-size:10px;color:rgba(0,0,0,0.45);letter-spacing:0.06em;text-transform:uppercase;">in ' + countdown + '</span>';
-        }
-      }
-
-      html += '<div class="cl-ft-row-wrap ' + railCls + '">' +
-        '<div class="cl-ft-row cl-ft-cols-live">' +
-          '<div class="cl-ft-cell-name">' + escapeHtml(name) + '</div>' +
-          '<div class="cl-ft-cell">' + escapeHtml(scheduledText) + '</div>' +
-          '<div class="cl-ft-status ' + statusCls + '">' + statusLabel + '</div>' +
-          '<div style="text-align:right;">' + actionHtml + '</div>' +
-        '</div>' +
-      '</div>';
-    });
-
-    html += '</div>';
-    container.innerHTML = html;
-
-  } catch(e) {
-    console.warn('[Pulse] live consults section failed:', e);
   }
 }
 
@@ -13976,7 +13849,6 @@ function _startClOverviewPoll() {
   _clOverviewPollTimer = setInterval(function() {
     _loadClOverviewStats();
     loadAttentionCards();
-    loadLiveConsultsSection();
     loadRecentlyEvaluated();
     loadWeeklySchedule();
   }, 30000);
@@ -14037,7 +13909,7 @@ function switchTab(name) {
   if (name === 'cl-schedule')      { initClSchedule(); }
   if (name === 'cl-appointments')  { _clApptRows = null; filterClAppts(_clApptFilter || 'scheduled'); }
   if (name === 'cl-patients')      { _myPatientIds = null; initClPatients(); }
-  if (name === 'cl-overview')       { _startClOverviewPoll(); loadAttentionCards(); loadLiveConsultsSection(); loadRecentlyEvaluated(); loadWeeklySchedule(); }
+  if (name === 'cl-overview')       { _startClOverviewPoll(); loadAttentionCards(); loadRecentlyEvaluated(); loadWeeklySchedule(); }
   else                              { _stopClOverviewPoll(); }
   if (name === 'cl-messages')      { _myPatientIds = null; initClMessages(); _markClinicianMsgsRead(); }
   // ── Sync bottom tab bar active states (Phases 13 & 14) ──
@@ -16208,7 +16080,6 @@ async function _submitEvaluation(apptId) {
         // Refresh overview sections
         _loadClOverviewStats();
         if (typeof loadRecentlyEvaluated === 'function') loadRecentlyEvaluated();
-        if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
         if (typeof loadAttentionCards === 'function') loadAttentionCards();
       } else {
         if (typeof _loadClAppts === 'function') _loadClAppts(_clApptFilter || 'scheduled');
@@ -16425,7 +16296,6 @@ async function _confirmLiveConsult() {
     }
     // Refresh overview sections
     _loadClOverviewStats();
-    if (typeof loadLiveConsultsSection === 'function') loadLiveConsultsSection();
     if (typeof loadAttentionCards === 'function') loadAttentionCards();
   } catch(e) {
     console.error('[Pulse] live consult request failed:', e);

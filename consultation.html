@@ -45,6 +45,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 /* MAIN */
 .main{padding-top:128px;padding-bottom:60px;min-height:100vh;}
+/* Router loader — full-bleed overlay that hides the whole main area
+   until showStep() fires. Prevents flash of step-1 content on refresh
+   for members who are on a later step. */
+.router-loader{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--bg);pointer-events:none;}
+.router-loader-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--green);animation:routerPulse 1.4s ease-in-out infinite;}
+.router-loader-icon svg{width:32px;height:32px;}
+@keyframes routerPulse{0%,100%{opacity:0.45;transform:scale(0.96);}50%{opacity:1;transform:scale(1.04);}}
+.router-loader.hidden{display:none;}
 .step{display:none;max-width:640px;margin:0 auto;padding:0 24px;opacity:0;}
 .step.active{display:block;}
 
@@ -792,6 +800,16 @@ label.field-label{color:rgba(0,0,0,0.45);}
 <!-- MAIN -->
 <div class="main">
 
+  <!-- Router loader — shown while the async auth+routing logic figures
+       out which step to render. Hidden once showStep() runs for the
+       first time. Prevents the quiz (step-1) from flashing on refresh
+       when a member is actually on a later step. -->
+  <div id="routerLoader" class="router-loader">
+    <div class="router-loader-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+  </div>
+
   <!-- INELIGIBLE SCREEN -->
   <div id="ineligible-screen">
     <div class="ineligible-icon">
@@ -815,7 +833,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
   </div>
 
   <!-- STEP 1: QUIZ-BASED INTAKE -->
-  <div class="step active" id="step-1">
+  <div class="step" id="step-1">
     <div class="quiz-wrap">
       <!-- Progress bar -->
       <div class="quiz-progress"><div class="quiz-progress-fill" id="quizProgressFill" style="width:0%"></div></div>
@@ -2073,6 +2091,9 @@ function showStep(n){
   });
   el.style.display = 'block';
   gsap.fromTo(el, {opacity:0,y:20},{opacity:1,y:0,duration:0.4,ease:'power2.out'});
+  // Hide the router loader overlay — we've resolved which step to show
+  var loader = document.getElementById('routerLoader');
+  if (loader && !loader.classList.contains('hidden')) loader.classList.add('hidden');
   updateProgress(n);
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -4065,9 +4086,23 @@ window._sbClient = createClient(
 );
 
 (async function() {
+  // Safety net: if the router doesn't call showStep() within 3s (network
+  // hiccup, auth hang, etc.), fall back to step-1 so the member never
+  // stays stuck on the loader.
+  var _routerSafetyTimer = setTimeout(function() {
+    var loader = document.getElementById('routerLoader');
+    if (loader && !loader.classList.contains('hidden')) {
+      if (typeof showStep === 'function') showStep(1);
+    }
+  }, 3000);
   try {
     var session = (await window._sbClient.auth.getSession()).data.session;
-    if (!session) return; // not logged in — let them fill out the form normally
+    if (!session) {
+      // Not logged in — show the intake quiz so they can fill it out.
+      clearTimeout(_routerSafetyTimer);
+      if (typeof showStep === 'function') showStep(1);
+      return;
+    }
 
     // Redirect non-members away from consultation page
     var roleCheck = await window._sbClient.from('profiles').select('role').eq('user_id', session.user.id).limit(1);
@@ -4358,7 +4393,13 @@ window._sbClient = createClient(
       var banner = document.getElementById('intake-welcome-banner');
       if (banner) banner.style.display = 'block';
     }
-  } catch(e) { /* silent — don't block the form */ }
+    clearTimeout(_routerSafetyTimer);
+    showStep(1);
+  } catch(e) {
+    // Don't block the form — fall back to the intake quiz
+    clearTimeout(_routerSafetyTimer);
+    if (typeof showStep === 'function') showStep(1);
+  }
 })();
 </script>
 </body>

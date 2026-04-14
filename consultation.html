@@ -1760,6 +1760,11 @@ async function submitQuiz() {
     if (typeof initReviewMessaging === 'function') {
       initReviewMessaging(session.user.id, fullName);
     }
+    // Start polling so the page auto-advances once the clinician
+    // prescribes / declines / requests or schedules a live consult.
+    if (typeof _startReviewStatusPoll === 'function') {
+      _startReviewStatusPoll('pending_review');
+    }
 
   } catch(e) {
     console.error('[Pulse] quiz submit failed:', e);
@@ -3823,6 +3828,7 @@ async function _updateReminderFlags() {
 var _reviewMsgPollTimer = null;
 var _reviewMsgUserId = null;
 var _reviewMsgUserName = null;
+var _reviewStatusPollTimer = null;
 
 function initReviewMessaging(userId, userName) {
   _reviewMsgUserId = userId;
@@ -3831,6 +3837,53 @@ function initReviewMessaging(userId, userName) {
   // Poll every 15 seconds
   if (_reviewMsgPollTimer) clearInterval(_reviewMsgPollTimer);
   _reviewMsgPollTimer = setInterval(loadReviewMessages, 15000);
+}
+
+// Poll the member's consultation row so that any status transition
+// driven by the clinician (prescribed / not_prescribed / live consult
+// requested / live consult scheduled) auto-advances the member's view
+// without requiring a manual page refresh.
+function _startReviewStatusPoll(initialStatus) {
+  if (_reviewStatusPollTimer) clearInterval(_reviewStatusPollTimer);
+  var lastStatus = initialStatus || null;
+  if (!window._sbClient || !_reviewMsgUserId) return;
+  _reviewStatusPollTimer = setInterval(async function() {
+    try {
+      var res = await window._sbClient.from('consultations')
+        .select('review_status, purchase_status')
+        .eq('user_id', _reviewMsgUserId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!res.data || !res.data.length) return;
+      var row = res.data[0];
+      var rs = row.review_status;
+      if (rs === lastStatus) return; // no change
+      // Terminal states — advance to step 6 (Summary)
+      if (rs === 'prescribed' || rs === 'not_prescribed') {
+        clearInterval(_reviewStatusPollTimer);
+        _reviewStatusPollTimer = null;
+        if (_reviewMsgPollTimer) { clearInterval(_reviewMsgPollTimer); _reviewMsgPollTimer = null; }
+        if (typeof showStep === 'function') showStep(6);
+        if (typeof _populateStep6 === 'function') _populateStep6();
+        return;
+      }
+      // Mid-flight transitions that change what step 2 should render —
+      // just reload the page so the routing logic picks the new state.
+      // Kept narrow: only when moving between live-consult states or
+      // from pending → in_review, to avoid reload loops.
+      if (
+        (lastStatus === 'live_consult_requested' && rs === 'live_consult_scheduled') ||
+        ((lastStatus === 'pending_review' || lastStatus === 'in_review') && (rs === 'live_consult_requested' || rs === 'live_consult_scheduled')) ||
+        (lastStatus === 'pending_review' && rs === 'in_review')
+      ) {
+        clearInterval(_reviewStatusPollTimer);
+        _reviewStatusPollTimer = null;
+        window.location.reload();
+        return;
+      }
+      lastStatus = rs;
+    } catch (_) { /* non-blocking */ }
+  }, 15000);
 }
 
 function stopReviewMessaging() {
@@ -4037,6 +4090,7 @@ window._sbClient = createClient(
         showStep(2);
         var _memberName = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName || session.user.email.split('@')[0]);
+        _startReviewStatusPoll(reviewStatus);
         return;
       }
 
@@ -4053,6 +4107,7 @@ window._sbClient = createClient(
         var _memberName2 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName2 || session.user.email.split('@')[0]);
         initReviewBooking(consultation.assigned_clinician_id, consultation.live_consult_message);
+        _startReviewStatusPoll(reviewStatus);
         return;
       }
 
@@ -4062,6 +4117,7 @@ window._sbClient = createClient(
         showStep(2);
         var _memberName3 = ((consultationData.first_name || '') + ' ' + (consultationData.last_name || '')).trim();
         initReviewMessaging(session.user.id, _memberName3 || session.user.email.split('@')[0]);
+        _startReviewStatusPoll(reviewStatus);
 
         // Update status display
         document.getElementById('reviewStatusText').textContent = 'Live consultation scheduled';

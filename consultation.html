@@ -4086,18 +4086,26 @@ window._sbClient = createClient(
           var apptDisplayM = apptM < 10 ? '0' + apptM : apptM;
           var timeStr3 = apptDisplayH + ':' + apptDisplayM + ' ' + apptAmpm;
 
-          // Add appointment info card
+          // Add appointment info card — uses the same 2-column layout
+          // as the post-booking render in submitReviewBooking.
           var infoCard3 = document.createElement('div');
           infoCard3.id = 'reviewApptInfo';
-          infoCard3.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+          infoCard3.className = 'review-appt-info-card';
           var isActiveSession = appt.status === 'confirmed';
+          var _eyebrow3 = isActiveSession ? 'Session In Progress' : 'Upcoming Appointment';
+          var _joinLabel3 = isActiveSession ? 'Rejoin Session' : 'Join Session';
+          var _joinDisabledAttr = isActiveSession ? '' : ' disabled';
+          var _rightHidden = isActiveSession ? '' : 'display:none;';
+          var _initialCountdown = isActiveSession ? 'Your session is still active' : '';
           infoCard3.innerHTML =
-            '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">' + (isActiveSession ? 'Session In Progress' : 'Upcoming Appointment') + '</div>' +
-            '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr3 + '</div>' +
-            '<div style="font-size:13px;color:var(--grey2);">' + timeStr3 + ' \u00b7 ' + (appt.duration_minutes || 30) + ' min consultation</div>' +
-            '<div id="reviewJoinWrap" style="margin-top:16px;' + (isActiveSession ? '' : 'display:none;') + '">' +
-              '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)"' + (isActiveSession ? '' : ' disabled style="opacity:0.4;"') + '>' + (isActiveSession ? 'Rejoin Session' : 'Join Session') + '</button>' +
-              '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;">' + (isActiveSession ? 'Your session is still active — rejoin now' : '') + '</div>' +
+            '<div class="review-appt-info-left">' +
+              '<div class="review-appt-info-eyebrow">' + _eyebrow3 + '</div>' +
+              '<div class="review-appt-info-date">' + dateStr3 + '</div>' +
+              '<div class="review-appt-info-meta">' + timeStr3 + ' \u00b7 ' + (appt.duration_minutes || 30) + ' min consultation</div>' +
+            '</div>' +
+            '<div class="review-appt-info-right" id="reviewJoinWrap" style="' + _rightHidden + '">' +
+              '<button id="reviewJoinBtn" class="review-appt-join-btn" onclick="goToStep(5)"' + _joinDisabledAttr + '>' + _joinLabel3 + '</button>' +
+              '<div id="reviewCountdown" class="review-appt-countdown">' + _initialCountdown + '</div>' +
             '</div>';
 
           var msgSection3 = document.getElementById('reviewMessaging');

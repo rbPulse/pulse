@@ -2622,11 +2622,9 @@ body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
    nothing dark-mode bleeds through during a live call. */
 .cl-session-overlay{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;background:var(--cl-bg,#F5F4EE);color:var(--cl-text,#111111);font-family:'Inter',sans-serif;}
 .cl-session-header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--cl-surface,#FFFFFF);border-bottom:1px solid var(--cl-border,rgba(0,0,0,0.08));flex-shrink:0;}
-.cl-session-brand{display:flex;align-items:center;gap:10px;}
-.cl-session-brand .nav-icon{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;color:#1DB954;}
-.cl-session-brand .nav-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.cl-session-title{font-size:11px;font-weight:600;letter-spacing:0.24em;text-transform:uppercase;color:var(--cl-text,#111111);}
-.cl-session-pname{font-size:13px;font-weight:500;color:var(--cl-text2,rgba(0,0,0,0.65));margin-left:10px;}
+/* Brand reuses the same .nav-brand component used in the portal nav so
+   the mark is identical; no bespoke title styling inside the session. */
+.cl-session-brand{text-decoration:none;pointer-events:none;}
 .cl-session-actions{display:flex;align-items:center;gap:10px;}
 .cl-session-btn{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:9px 18px;border-radius:999px;cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s;}
 .cl-session-btn-ghost{background:transparent;border-color:var(--cl-border,rgba(0,0,0,0.12));color:var(--cl-text2,rgba(0,0,0,0.65));}
@@ -2639,7 +2637,9 @@ body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
 .cl-session-video{flex:1;overflow:hidden;min-height:300px;display:flex;align-items:center;justify-content:center;}
 .cl-session-sidebar{width:480px;flex-shrink:0;display:none;flex-direction:column;background:var(--cl-surface,#FFFFFF);border-left:1px solid var(--cl-border,rgba(0,0,0,0.08));overflow:hidden;min-height:0;}
 .cl-session-sidebar.open{display:flex;}
-.cl-session-notes-block{flex-shrink:0;padding:20px 24px 18px;border-bottom:1px solid var(--cl-border,rgba(0,0,0,0.08));background:var(--cl-surface,#FFFFFF);}
+.cl-session-patient-hdr{flex-shrink:0;padding:20px 24px 12px;background:var(--cl-surface,#FFFFFF);}
+.cl-session-patient-name{font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:var(--cl-text,#111111);line-height:1.2;letter-spacing:-0.01em;}
+.cl-session-notes-block{flex-shrink:0;padding:6px 24px 18px;border-bottom:1px solid var(--cl-border,rgba(0,0,0,0.08));background:var(--cl-surface,#FFFFFF);}
 .cl-session-notes-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .cl-session-notes-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(0,0,0,0.5);}
 .cl-session-notes-saved{display:none;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#1DB954;}
@@ -14345,11 +14345,10 @@ function _joinClinicianSession(apptId) {
     overlay.className = 'cl-session-overlay';
     overlay.innerHTML =
       '<div class="cl-session-header">' +
-        '<div class="cl-session-brand">' +
+        '<a class="nav-brand cl-session-brand" role="button" tabindex="0" style="cursor:default;">' +
           '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
-          '<span class="cl-session-title">Pulse Session</span>' +
-          '<span id="sessionPatientName" class="cl-session-pname"></span>' +
-        '</div>' +
+          '<span class="nav-name">PULSE</span>' +
+        '</a>' +
         '<div class="cl-session-actions">' +
           '<button id="sessionTogglePanel" class="cl-session-btn cl-session-btn-ghost" onclick="_toggleSessionPanel()">Patient Info</button>' +
           '<button class="cl-session-btn cl-session-btn-danger" onclick="_leaveClinicianSession()">End Session</button>' +
@@ -14360,6 +14359,9 @@ function _joinClinicianSession(apptId) {
           '<div id="dailySessionContainer" class="cl-session-video"></div>' +
         '</div>' +
         '<aside id="sessionSidePanel" class="cl-session-sidebar">' +
+          '<div class="cl-session-patient-hdr">' +
+            '<div id="sessionPatientName" class="cl-session-patient-name"></div>' +
+          '</div>' +
           '<div class="cl-session-notes-block">' +
             '<div class="cl-session-notes-hdr">' +
               '<span class="cl-session-notes-eyebrow">Session Notes</span>' +
@@ -14464,7 +14466,7 @@ async function _loadSessionPatientCard(apptId) {
     var fullName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() ||
                    ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() ||
                    profile.display_name || profile.email || 'Unknown';
-    if (nameEl) nameEl.textContent = '\u00B7 ' + fullName;
+    if (nameEl) nameEl.textContent = fullName;
 
     // Reuse the canonical patient card renderer — same component used by
     // Open Reviews, Messages right column, and the Patients expand. CSS

@@ -2546,11 +2546,11 @@ function buildReviewCalendar() {
         if (confirmActions) confirmActions.style.display = 'none';
         buildReviewSlots(selectedDate);
         // Scroll the time slot grid into view so the member sees it
-        // right after picking a date.
+        // right after picking a date. Custom rAF animation at ~30% slower
+        // than the native scrollIntoView('smooth') default so it feels
+        // less abrupt.
         var slotsWrap = document.getElementById('slotsWrap2');
-        if (slotsWrap && slotsWrap.scrollIntoView) {
-          setTimeout(function() { slotsWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
-        }
+        if (slotsWrap) setTimeout(function() { _scrollToSlowly(slotsWrap, 540); }, 60);
       });
     }
 
@@ -2560,6 +2560,26 @@ function buildReviewCalendar() {
 
     grid.appendChild(cell);
   }
+}
+
+// Smoothly scroll an element into view with a custom duration (ms).
+// Used instead of scrollIntoView({behavior:'smooth'}) because browsers
+// don't let you tune the native animation speed.
+function _scrollToSlowly(el, duration) {
+  if (!el) return;
+  var targetY = el.getBoundingClientRect().top + window.pageYOffset - 16;
+  var startY = window.pageYOffset;
+  var diff = targetY - startY;
+  var startTs = null;
+  var dur = duration || 540;
+  function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function step(ts) {
+    if (startTs === null) startTs = ts;
+    var t = Math.min(1, (ts - startTs) / dur);
+    window.scrollTo(0, startY + diff * easeInOutQuad(t));
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 function buildReviewSlots(day) {

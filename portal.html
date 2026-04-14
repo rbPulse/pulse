@@ -6453,13 +6453,25 @@ function _continuePortalInit(user, role) {
         // Purchase completed — stay on portal, skip all redirect checks
         var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
         if (_purchaseDone) {
-          populatePortal(user, c, greeting);
-          // First-login welcome — shows once, keyed by localStorage.
-          // Delayed a tick so the overview has painted before the
-          // overlay drops in.
-          var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
-          setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
-          return;
+          // Pre-fetch the canonical protocol start stamp so populatePortal
+          // can render the correct 'Started' date on first paint instead
+          // of flashing consultation.created_at and rewriting it later.
+          return db.from('profiles').select('protocol_started_at').eq('user_id', user.id).limit(1)
+            .then(function(pr) {
+              var stamped = (pr && pr.data && pr.data.length > 0 && pr.data[0].protocol_started_at) || null;
+              c._protoStartedAt = stamped;
+              populatePortal(user, c, greeting);
+              // First-login welcome — shows once, keyed by localStorage.
+              // Delayed a tick so the overview has painted before the
+              // overlay drops in.
+              var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
+              setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
+            })
+            .catch(function() {
+              populatePortal(user, c, greeting);
+              var _mwFirst2 = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
+              setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst2, user.id); }, 400);
+            });
         }
         // Check for active/completed appointments that need the consultation flow
         console.log('[Pulse] checking appointments for redirect...');
@@ -7882,6 +7894,21 @@ function _parseDuration(str) {
     return { num: m[1], period: p };
   }
   return { num:'', period:'' };
+}
+
+// Convert a legacy duration string ("3 months", "30 days", "8 weeks")
+// to a number of weeks. Replaces the old bare parseInt() which always
+// read the numeric prefix as weeks — '3 months' came out as 3 weeks
+// instead of 12.
+function _durationToWeeks(str) {
+  var p = _parseDuration(str);
+  if (!p.num) return null;
+  var v = parseInt(p.num, 10);
+  if (isNaN(v)) return null;
+  if (p.period === 'weeks') return v;
+  if (p.period === 'days')  return Math.max(1, Math.round(v / 7));
+  if (p.period === 'months') return v * 4; // approximate, matches the structured path
+  return v;
 }
 
 // Read frequency / duration from an arbitrary row (consultation,
@@ -11214,6 +11241,27 @@ async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durati
 // portal after purchasing. Idempotent via profiles.welcome_msg_sent.
 // Required DB migration:
 //   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS welcome_msg_sent boolean DEFAULT false;
+// Stamp profiles.protocol_started_at with NOW the first time a member
+// lands on the portal after purchase. Gives us a reliable 'protocol
+// actually started' timestamp that's independent of intake submission
+// date (consultation.created_at) or appointment rows.
+// Required DB migration:
+//   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS protocol_started_at timestamptz;
+async function _ensureProtocolStartStamped(consumerId) {
+  try {
+    var r = await db.from('profiles').select('protocol_started_at').eq('user_id', consumerId).limit(1);
+    if (!r.data || !r.data.length) return;
+    if (r.data[0].protocol_started_at) {
+      // Already stamped — cache on window for readers
+      window._protoStartDate = r.data[0].protocol_started_at;
+      return;
+    }
+    var nowIso = new Date().toISOString();
+    var upd = await db.from('profiles').update({ protocol_started_at: nowIso }).eq('user_id', consumerId);
+    if (upd && !upd.error) window._protoStartDate = nowIso;
+  } catch (_) { /* non-blocking */ }
+}
+
 async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
   try {
     // Idempotency: skip if already sent
@@ -11835,7 +11883,11 @@ function populatePortal(user, consultation, greeting) {
       window._protoDurationValue = _mDurRead.value;
       window._protoDurationUnit  = _mDurRead.unit;
       window._protoDuration = _fmtDuration(_mDurRead.value, _mDurRead.unit) || _le.duration || consultation.duration || d.duration || null;
-      window._protoStartDate = consultation.created_at || null;
+      // Prefer the profile-stamped protocol_started_at (set the first
+      // time the member lands on the portal after purchase). Falls back
+      // to consultation.created_at for legacy rows where the stamp
+      // hasn't been written yet.
+      window._protoStartDate = consultation._protoStartedAt || consultation.created_at || null;
     } else if (assignedProtoStr === 'no prescription' || (!purchaseDone && rxGiven === false)) {
       hasPendingReview = false;
       proto = null;
@@ -11959,7 +12011,10 @@ function populatePortal(user, consultation, greeting) {
     if (!PREVIEW_MODE && currentUserId && consultation.assigned_clinician_id) {
       (async function() {
         try {
-          await _ensureMonthlyCheckins(currentUserId, consultation.assigned_clinician_id, consultation.created_at, parseInt(window._protoDuration) || 12);
+          await _ensureProtocolStartStamped(currentUserId);
+        } catch (_) {}
+        try {
+          await _ensureMonthlyCheckins(currentUserId, consultation.assigned_clinician_id, consultation.created_at, _durationToWeeks(window._protoDuration) || 12);
         } catch (_) {}
         try {
           await _ensureClinicianWelcomeMessage(currentUserId, consultation.assigned_clinician_id);
@@ -12003,7 +12058,7 @@ function populatePortal(user, consultation, greeting) {
       else if (_u === 'days') _durWeeks = Math.max(1, Math.round(_v / 7));
       else if (_u === 'months') _durWeeks = _v * 4; // approximate
     }
-    if (_durWeeks == null) _durWeeks = parseInt(window._protoDuration || proto.cycle) || null;
+    if (_durWeeks == null) _durWeeks = _durationToWeeks(window._protoDuration || proto.cycle);
     window._overviewProto = {
       displayName: _pdn,
       doseDesc: (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : (proto.compounds && proto.compounds[0] ? proto.compounds[0] : null),
@@ -12105,7 +12160,7 @@ function populatePortal(user, consultation, greeting) {
     var rxDose = (window._protoDose && window._protoDoseUnit) ? window._protoDose + ' ' + window._protoDoseUnit : '—';
     var rxFreq = _normalizeFreqLabel(window._protoFreq, _parseFreqPerDay(window._protoFreq)) || '—';
     var rxTiming = window._protoTiming || 'Not specified';
-    var rxDurWeeks = parseInt(window._protoDuration || proto.cycle) || null;
+    var rxDurWeeks = _durationToWeeks(window._protoDuration || proto.cycle);
     var rxDuration = rxDurWeeks ? rxDurWeeks + ' weeks' : 'Not specified';
     var rxStartDate = consultation.created_at ? new Date(consultation.created_at) : null;
     var rxStart = rxStartDate ? rxStartDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—';
@@ -14110,10 +14165,18 @@ function sendClMessage() {
 var _consumerMsgPollTimer = null;
 var _consumerUnreadPollTimer = null;
 
-function _setConsumerUnreadDot(hasUnread) {
+function _setConsumerUnreadDot(hasUnread, count) {
   var dot = document.getElementById('mem-msg-dot');
-  if (!dot) return;
-  dot.style.display = hasUnread ? 'inline-block' : 'none';
+  if (dot) dot.style.display = hasUnread ? 'inline-block' : 'none';
+  // Sync the hero 'Coming up → Messages' stat card on the overview.
+  var n = (typeof count === 'number' && count > 0) ? count : 0;
+  var label = n > 0 ? (n === 1 ? '1 unread' : n + ' unread') : 'No unread';
+  var upEl = document.getElementById('mUpMessages');
+  if (upEl) upEl.textContent = label;
+  var newMsgsEl = document.getElementById('mNewMsgs');
+  if (newMsgsEl) newMsgsEl.textContent = n > 0 ? (n === 1 ? '1 new' : n + ' new') : 'None';
+  var moEl = document.getElementById('moNewMsgs');
+  if (moEl) moEl.textContent = label;
 }
 
 function _startConsumerUnreadPoll() {
@@ -14124,7 +14187,10 @@ function _startConsumerUnreadPoll() {
       .eq('thread_id', currentUserId)
       .eq('sender_role', 'clinician')
       .eq('read', false)
-      .then(function(res) { _setConsumerUnreadDot(!res.error && res.count > 0); })
+      .then(function(res) {
+        var c = (!res.error && typeof res.count === 'number') ? res.count : 0;
+        _setConsumerUnreadDot(c > 0, c);
+      })
       .catch(function() {});
   }
   check();

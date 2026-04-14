@@ -7494,19 +7494,30 @@ var _rxAdjustCtx = null;
 
 // Parse the serialized frequency/duration strings back into their two
 // parts so the Adjust modal can pre-fill a number input + period select
-// just like the original prescribe form. Round-trips cleanly for values
-// created by _submitEvaluation; falls back to empty if the format is odd.
+// just like the original prescribe form. Handles every shape we've ever
+// written ("1 dose daily", "2 doses weekly", "1x daily", bare "daily").
 function _parseFrequency(str) {
   if (!str || typeof str !== 'string') return { num:'', period:'' };
-  var m = str.trim().match(/^(\d+)\s*doses?\s*(daily|weekly)$/i);
-  if (m) return { num: m[1], period: m[2].toLowerCase() };
+  var s = str.trim().toLowerCase();
+  // "1 dose daily" / "2 doses weekly"
+  var m = s.match(/^(\d+)\s*doses?\s+(daily|weekly)$/);
+  if (m) return { num: m[1], period: m[2] };
+  // "1x daily" / "2x weekly"
+  m = s.match(/^(\d+)\s*x\s+(daily|weekly)$/);
+  if (m) return { num: m[1], period: m[2] };
+  // "1 daily" (no "dose" word)
+  m = s.match(/^(\d+)\s+(daily|weekly)$/);
+  if (m) return { num: m[1], period: m[2] };
+  // Bare "daily" / "weekly" → assume 1
+  m = s.match(/^(daily|weekly)$/);
+  if (m) return { num: '1', period: m[1] };
   return { num:'', period:'' };
 }
 function _parseDuration(str) {
   if (!str || typeof str !== 'string') return { num:'', period:'' };
-  var m = str.trim().match(/^(\d+)\s*(days?|weeks?|months?)$/i);
+  var m = str.trim().toLowerCase().match(/^(\d+)\s*(day|days|week|weeks|month|months)$/);
   if (m) {
-    var p = m[2].toLowerCase();
+    var p = m[2];
     if (p.charAt(p.length-1) !== 's') p += 's';
     return { num: m[1], period: p };
   }
@@ -7604,7 +7615,6 @@ function _buildRxAdjustModalHtml(ctx) {
   var chipsHtml = chips.map(function(c) {
     return '<button type="button" class="rx-adj-chip" data-val="'+c.val+'" onclick="_toggleRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
   }).join('');
-  chipsHtml += '<div class="rx-adj-chip-spacer"></div>';
   chipsHtml += '<button type="button" class="rx-adj-chip rx-adj-chip-danger" data-val="discontinuation" onclick="_toggleRxAdjustType(\'discontinuation\')">Discontinue</button>';
 
   var subTxt = ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription';

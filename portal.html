@@ -16212,12 +16212,13 @@ async function _loadEvalPatientHeader(el, consultId, userId, profile) {
     if (rs === 'high_risk') riskHtml = '<span style="color:#EF4444;font-weight:600;">High Risk</span>';
     else if (rs === 'moderate_risk') riskHtml = '<span style="color:#EAB308;font-weight:600;">Moderate Risk</span>';
     else if (rs === 'low_risk') riskHtml = '<span style="color:#22C55E;font-weight:500;">Low Risk</span>';
-    // Meta line
-    var metaParts = [ageStr, sexStr, heightStr, weightStr, stateStr].filter(Boolean);
+    // Meta line — age / sex / height / weight, then risk + overdue.
+    // State and submission timing intentionally omitted so the eval
+    // header stays tight and clinically focused.
+    var metaParts = [ageStr, sexStr, heightStr, weightStr].filter(Boolean);
     var metaHtml = metaParts.map(function(s){return '<span>'+escapeHtml(s)+'</span>';}).join('<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>');
-    metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span><span>Submitted ' + escapeHtml(subRel) + '</span>';
-    if (riskHtml) metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' + riskHtml;
-    if (isOverdue) metaHtml += '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span><span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>';
+    if (riskHtml) metaHtml += (metaHtml ? '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' : '') + riskHtml;
+    if (isOverdue) metaHtml += (metaHtml ? '<span style="margin:0 6px;color:rgba(0,0,0,0.2);">\u00B7</span>' : '') + '<span style="color:#EF4444;font-weight:600;">\u26A0 Overdue</span>';
     // Build risk detail, goals, clinical summary, patient details for dropdown
     var riskStatus = c.risk_status || '';
     var riskReasons = d.risk_flag_reasons || [];

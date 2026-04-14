@@ -4091,12 +4091,21 @@ window._sbClient = createClient(
           var infoCard3 = document.createElement('div');
           infoCard3.id = 'reviewApptInfo';
           infoCard3.className = 'review-appt-info-card';
-          var isActiveSession = appt.status === 'confirmed';
+          // "Active session" is strictly time-based: NOW must be within
+          // [start - 5min, end]. Member-side bookings auto-confirm, so
+          // using appt.status as a proxy caused the card to render as
+          // 'in progress' the moment it was booked.
+          var _apptStartMs = apptDt.getTime();
+          var _apptEndMs = _apptStartMs + (appt.duration_minutes || 30) * 60 * 1000;
+          var _fiveMinBeforeMs = _apptStartMs - 5 * 60 * 1000;
+          var _nowMs = Date.now();
+          var _notCancelled = appt.status !== 'cancelled_by_member' && appt.status !== 'cancelled_by_clinician' && appt.status !== 'cancelled';
+          var isActiveSession = _notCancelled && _nowMs >= _fiveMinBeforeMs && _nowMs <= _apptEndMs;
           var _eyebrow3 = isActiveSession ? 'Session In Progress' : 'Upcoming Appointment';
-          var _joinLabel3 = isActiveSession ? 'Rejoin Session' : 'Join Session';
+          var _joinLabel3 = 'Join Session';
           var _joinDisabledAttr = isActiveSession ? '' : ' disabled';
           var _rightHidden = isActiveSession ? '' : 'display:none;';
-          var _initialCountdown = isActiveSession ? 'Your session is still active' : '';
+          var _initialCountdown = isActiveSession ? 'Session is ready to join' : '';
           infoCard3.innerHTML =
             '<div class="review-appt-info-left">' +
               '<div class="review-appt-info-eyebrow">' + _eyebrow3 + '</div>' +
@@ -4111,8 +4120,11 @@ window._sbClient = createClient(
           var msgSection3 = document.getElementById('reviewMessaging');
           if (msgSection3) msgSection3.parentNode.insertBefore(infoCard3, msgSection3);
 
-          // Start countdown for pending appointments; confirmed ones show rejoin immediately
-          if (!isActiveSession) _startReviewCountdown(apptDt);
+          // Always start the countdown — it handles both "Starts in Xh
+          // Ym" (before the 5-min window) and "Session is ready to join"
+          // (inside the window) states, and flips the button enabled
+          // state automatically when the window opens.
+          _startReviewCountdown(apptDt);
         }
         return;
       }

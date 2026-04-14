@@ -610,6 +610,49 @@ label.field-label{color:rgba(0,0,0,0.45);}
 }
 #reviewBooking .btn-primary:hover{background:#16A34A !important;box-shadow:0 6px 18px rgba(34,197,94,0.32);}
 
+/* Upcoming Appointment card — horizontal layout shown after booking.
+   Left: date + time + duration. Right: join button + countdown. */
+.review-appt-info-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:18px 22px;
+  margin-bottom:24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.review-appt-info-left{flex:1;min-width:0;}
+.review-appt-info-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#16A34A;margin-bottom:6px;}
+.review-appt-info-date{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#111111;line-height:1.25;}
+.review-appt-info-meta{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:rgba(0,0,0,0.55);margin-top:3px;}
+.review-appt-info-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.review-appt-join-btn{
+  background:#22C55E;
+  color:#FFFFFF !important;
+  border:none;
+  border-radius:999px;
+  padding:11px 24px;
+  font-family:'Inter',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  cursor:pointer;
+  box-shadow:0 3px 12px rgba(34,197,94,0.25);
+  transition:background .2s,box-shadow .2s,opacity .2s;
+}
+.review-appt-join-btn:hover:not(:disabled){background:#16A34A;box-shadow:0 5px 16px rgba(34,197,94,0.32);}
+.review-appt-join-btn:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;}
+.review-appt-countdown{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:rgba(0,0,0,0.5);letter-spacing:0;}
+@media(max-width:480px){
+  .review-appt-info-card{flex-direction:column;align-items:stretch;}
+  .review-appt-info-right{align-items:stretch;}
+  .review-appt-join-btn{width:100%;}
+}
+
 /* Ineligible */
 .ineligible-title{color:#111111;}
 .ineligible-body{color:rgba(0,0,0,0.55);}
@@ -2717,7 +2760,8 @@ async function submitReviewBooking() {
     // Hide booking section, show waiting room elements
     document.getElementById('reviewBooking').style.display = 'none';
     document.getElementById('reviewStatusText').textContent = 'Live consultation scheduled';
-    document.querySelector('#reviewStatusCard span').textContent = '\uD83D\uDCC5';
+    var statusIconEl = document.querySelector('#reviewStatusCard span');
+    if (statusIconEl) statusIconEl.textContent = '\uD83D\uDCC5';
 
     // Show appointment details on the review hub
     var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -2725,21 +2769,51 @@ async function submitReviewBooking() {
     var dt = selectedDate;
     var dateStr = DAYS[dt.getDay()] + ', ' + MONS[dt.getMonth()] + ' ' + dt.getDate();
 
-    // Add appointment info card
+    // Add appointment info card — horizontal two-column layout:
+    // left column (date + time + duration) | right column (join + countdown).
     var infoCard = document.createElement('div');
     infoCard.id = 'reviewApptInfo';
-    infoCard.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;';
+    infoCard.className = 'review-appt-info-card';
     infoCard.innerHTML =
-      '<div style="font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Upcoming Appointment</div>' +
-      '<div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;">' + dateStr + '</div>' +
-      '<div style="font-size:13px;color:var(--grey2);">' + selectedSlot + ' \u00b7 ' + (_reviewSelectedDuration || 30) + ' min consultation</div>' +
-      '<div id="reviewJoinWrap" style="margin-top:16px;display:none;">' +
-        '<button id="reviewJoinBtn" class="btn-primary" onclick="goToStep(5)" disabled style="opacity:0.4;">Join Session</button>' +
-        '<div id="reviewCountdown" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--grey2);margin-top:8px;"></div>' +
+      '<div class="review-appt-info-left">' +
+        '<div class="review-appt-info-eyebrow">Upcoming Appointment</div>' +
+        '<div class="review-appt-info-date">' + dateStr + '</div>' +
+        '<div class="review-appt-info-meta">' + selectedSlot + ' \u00b7 ' + (_reviewSelectedDuration || 30) + ' min consultation</div>' +
+      '</div>' +
+      '<div class="review-appt-info-right" id="reviewJoinWrap" style="display:none;">' +
+        '<button id="reviewJoinBtn" class="review-appt-join-btn" onclick="goToStep(5)" disabled>Join Session</button>' +
+        '<div id="reviewCountdown" class="review-appt-countdown"></div>' +
       '</div>';
 
     var msgSection = document.getElementById('reviewMessaging');
     msgSection.parentNode.insertBefore(infoCard, msgSection);
+
+    // Auto-send a message from the member to the clinician confirming
+    // the booking so the thread has a visible record.
+    try {
+      var bookingMsgBody = 'Booked appointment on ' + dateStr + ' at ' + selectedSlot + '.';
+      if (_reviewMsgUserId && window._sbClient) {
+        await window._sbClient.from('messages').insert({
+          thread_id: _reviewMsgUserId,
+          sender_id: _reviewMsgUserId,
+          sender_role: 'consumer',
+          sender_name: _reviewMsgUserName || 'Member',
+          body: bookingMsgBody,
+          read: false
+        });
+        // Mirror into the thread UI if it's already rendered
+        var list = document.getElementById('reviewMsgList');
+        if (list) {
+          var emptyEl = list.querySelector('.review-msg-empty');
+          if (emptyEl) emptyEl.remove();
+          var bookedBubble = document.createElement('div');
+          bookedBubble.className = 'review-msg-bubble consumer';
+          bookedBubble.innerHTML = _escMsg(bookingMsgBody) + '<div class="review-msg-bubble-meta">' + _escMsg(_reviewMsgUserName || 'Member') + ' \u00b7 just now</div>';
+          list.appendChild(bookedBubble);
+          list.scrollTop = list.scrollHeight;
+        }
+      }
+    } catch (_) { /* non-blocking */ }
 
     // Start countdown
     _startReviewCountdown(dt);
@@ -2756,7 +2830,8 @@ function _startReviewCountdown(apptDate) {
   var countdownEl = document.getElementById('reviewCountdown');
   if (!joinWrap) return;
 
-  joinWrap.style.display = 'block';
+  // flex (not block) to keep the right column layout from the card class
+  joinWrap.style.display = 'flex';
 
   var timer = setInterval(function() {
     var now = Date.now();

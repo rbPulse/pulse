@@ -7156,11 +7156,15 @@ async function loadWeeklySchedule() {
       return;
     }
 
+    // 'today' in the clinician's timezone, not the browser's
+    var _tzNow = new Date();
+    var _tzTodayStr = _tzNow.toLocaleDateString('en-US', { timeZone: _clTimezone });
     upcoming.forEach(function(a) {
       var aDt = new Date(a.scheduled_at);
-      var isToday = aDt.toDateString() === now.toDateString();
-      var dayLabel = isToday ? 'Today' : (SHORT_DAYS[aDt.getDay()] + ', ' + (aDt.getMonth() + 1) + '/' + aDt.getDate());
-      var timeStr  = aDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var _apptDayStr = aDt.toLocaleDateString('en-US', { timeZone: _clTimezone });
+      var isToday = _apptDayStr === _tzTodayStr;
+      var dayLabel = isToday ? 'Today' : aDt.toLocaleDateString('en-US', { timeZone: _clTimezone, weekday: 'short', month: 'numeric', day: 'numeric' });
+      var timeStr  = _fmtClTime(aDt, { hour: '2-digit', minute: '2-digit' });
       var patientName = profileMap[a.consumer_id] || 'Unknown';
       var apptType = a.appointment_type || '—';
 
@@ -8203,11 +8207,11 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
   var isDiscontinuation = entry.adjustment_type === 'discontinuation';
   var dateLabel;
   if (isCurrent) {
-    dateLabel = 'Current' + (entry.effective_from ? ' · since ' + new Date(entry.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '');
+    dateLabel = 'Current' + (entry.effective_from ? ' · since ' + _fmtClDate(entry.effective_from) : '');
   } else if (isDiscontinuation) {
-    dateLabel = entry.effective_from ? new Date(entry.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    dateLabel = entry.effective_from ? _fmtClDate(entry.effective_from) : '—';
   } else {
-    dateLabel = entry.effective_to ? new Date(entry.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    dateLabel = entry.effective_to ? _fmtClDate(entry.effective_to) : '—';
   }
   var who = entry.prescribed_by_name || '';
   var typeLabels = {
@@ -8342,7 +8346,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var heightStr = d.height||'\u2014';
     var addressParts = [d.street_address,d.apt_unit,d.city,d.state,d.zip_code].filter(Boolean);
     var addressStr = addressParts.length?addressParts.join(', '):'\u2014';
-    var submittedStr = d.submitted_at?new Date(d.submitted_at).toLocaleString():(consultCreatedAt?new Date(consultCreatedAt).toLocaleString():'\u2014');
+    var submittedStr = d.submitted_at ? _fmtClDateTime(d.submitted_at) : (consultCreatedAt ? _fmtClDateTime(consultCreatedAt) : '\u2014');
     var medHistoryArr = d.medical_history||d.med_history||[];
     var pepVal = d.peptide_history||d.currentPeptides||'';
     var pepStr = pepVal==='yes'?'Yes \u2014 '+(d.peptide_detail||d.peptideDetailText||'Details not provided'):pepVal==='no'?'No':'Not specified';
@@ -8418,7 +8422,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     if (consultReviewStatus === 'prescribed') {
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
       var protoAssigned = consultRow.protocol_assigned || d.assigned_protocol || d.protocol_assigned || 'Not specified';
-      var evalDate = (consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      var evalDate = _fmtClDate(consultRow.evaluation_date || _le.evaluation_date || d.evaluation_date) || '—';
       var _da = consultRow.dose_amount || _le.dose_amount || d.dose_amount || '';
       var _du = consultRow.dose_unit || _le.dose_unit || d.dose_unit || '';
       var doseInfo = [_da, _du].filter(Boolean).join(' ') || '—';
@@ -8442,8 +8446,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         // equals the active entry's effective_from). Who made it = the
         // author of the currently-active entry.
         var _histDate = _activeHist && _activeHist.effective_from
-          ? new Date(_activeHist.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-          : new Date(_latestHist.effective_to).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+          ? _fmtClDate(_activeHist.effective_from)
+          : _fmtClDate(_latestHist.effective_to);
         var _histWho = (_activeHist && _activeHist.prescribed_by_name) || 'your care team';
         var _diffText = _diffSummary(_latestHist, {
           protocol_assigned: protoAssigned, dose_amount: _da, dose_unit: _du,
@@ -8483,7 +8487,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _lastProto = _src.protocol_assigned || consultRow.protocol_assigned || '—';
       var _lastDose = [_src.dose_amount || consultRow.dose_amount, _src.dose_unit || consultRow.dose_unit].filter(Boolean).join(' ') || '—';
       var _dcReason = (_dcTomb && _dcTomb.adjustment_reason) || '';
-      var _dcDate = (_dcTomb && _dcTomb.effective_from) ? new Date(_dcTomb.effective_from).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (consultRow.evaluation_date ? new Date(consultRow.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+      var _dcDate = (_dcTomb && _dcTomb.effective_from) ? _fmtClDate(_dcTomb.effective_from) : (consultRow.evaluation_date ? _fmtClDate(consultRow.evaluation_date) : '—');
       var _dcWho = (_dcTomb && _dcTomb.prescribed_by_name) || 'care team';
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
         '<div class="crw-outcome-title-row">'+
@@ -8503,7 +8507,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
       var declineReason = consultRow.no_prescription_reason || _le2.no_prescription_reason || d.no_prescription_reason || 'No reason provided';
       var declineNotes = consultRow.session_notes || consultRow.other_notes || _le2.session_notes || _le2.other_notes || d.session_notes || d.clinician_notes || '';
-      var evalDate2 = (consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) ? new Date(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      var evalDate2 = _fmtClDate(consultRow.evaluation_date || _le2.evaluation_date || d.evaluation_date) || '—';
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-declined">'+
         '<div class="crw-outcome-title">Declined</div>'+
         '<div class="crw-outcome-grid">'+
@@ -8905,7 +8909,7 @@ async function loadRecentlyEvaluated() {
       var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
       var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';
       var protocol = c.protocol_assigned || '';
-      var evalDate = c.evaluation_date ? new Date(c.evaluation_date).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '--');
+      var evalDate = c.evaluation_date ? _fmtClDate(c.evaluation_date) : (c.updated_at ? _fmtClDate(c.updated_at) : '--');
 
       var purchaseHtml = '';
       if (c.review_status === 'prescribed') {
@@ -9205,7 +9209,7 @@ function _loadClOverviewDayAppts(dateStr) {
             var dn = nameMap[a.consumer_id] || (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
             var initials = dn.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
             var displayStatus = a.status === 'cancelled_by_member' || a.status === 'cancelled_by_clinician' ? 'cancelled' : a.status;
-            return { _id:a.id, date:dateStr, time:adt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}), patient:dn, initials:initials, dur:(a.duration_minutes||30)+' min', status:displayStatus, _rawStatus:a.status, consumerId:a.consumer_id };
+            return { _id:a.id, date:dateStr, time:_fmtClTime(adt,{hour:'numeric',minute:'2-digit'}), patient:dn, initials:initials, dur:(a.duration_minutes||30)+' min', status:displayStatus, _rawStatus:a.status, consumerId:a.consumer_id };
           });
           renderApptList('clTodayAppts', rows, 'clinician');
         })
@@ -9226,6 +9230,53 @@ var _DOW_INDEX = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Frida
 // at auth time and referenced by clinician-side time renderers. Falls
 // back to the browser timezone if not set.
 var _clTimezone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/New_York';
+
+// Canonical clinician-side time/date formatters. Every clinician
+// surface that renders an appointment / message / submission timestamp
+// should go through these so the displayed time reflects the
+// clinician's configured timezone (not the browser's). Member-side
+// code continues to call toLocaleTimeString / toLocaleDateString
+// directly so members see their own browser timezone.
+function _fmtClTime(dt, opts) {
+  if (!dt) return '';
+  var d = (dt instanceof Date) ? dt : new Date(dt);
+  if (isNaN(d.getTime())) return '';
+  var o = Object.assign({ hour: 'numeric', minute: '2-digit', hour12: true, timeZone: _clTimezone }, opts || {});
+  return d.toLocaleTimeString('en-US', o);
+}
+function _fmtClDate(dt, opts) {
+  if (!dt) return '';
+  var d = (dt instanceof Date) ? dt : new Date(dt);
+  if (isNaN(d.getTime())) return '';
+  var o = Object.assign({ month: 'short', day: 'numeric', year: 'numeric', timeZone: _clTimezone }, opts || {});
+  return d.toLocaleDateString('en-US', o);
+}
+function _fmtClDateTime(dt, opts) {
+  if (!dt) return '';
+  var d = (dt instanceof Date) ? dt : new Date(dt);
+  if (isNaN(d.getTime())) return '';
+  var o = Object.assign({ month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: _clTimezone }, opts || {});
+  return d.toLocaleString('en-US', o);
+}
+// Weekday helper in the clinician's timezone ('Sunday', 'Monday', ...)
+function _fmtClWeekday(dt) {
+  if (!dt) return '';
+  var d = (dt instanceof Date) ? dt : new Date(dt);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { weekday: 'long', timeZone: _clTimezone });
+}
+// Day-of-week index (0=Sun..6=Sat) IN THE CLINICIAN'S TIMEZONE, used
+// anywhere that previously did `new Date(iso).getDay()` to bucket an
+// appointment by day — which produces the browser's day, not the
+// clinician's. _clDowInTz rounds that to the clinician's tz.
+function _clDowInTz(dt) {
+  if (!dt) return 0;
+  var d = (dt instanceof Date) ? dt : new Date(dt);
+  if (isNaN(d.getTime())) return 0;
+  var weekday = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: _clTimezone });
+  var map = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+  return map[weekday] || 0;
+}
 
 function _saveClinicianTimezone(tz) {
   if (!tz) return;
@@ -9495,13 +9546,22 @@ function _loadClApptsQuery(filter) {
             var todayEnd   = new Date(now); todayEnd.setHours(23,59,59,999);
             var displayName = nameMap[a.consumer_id] || (a.consumer_id ? a.consumer_id.slice(0,8).toUpperCase() : '—');
             var initials = displayName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || '??';
-            var isToday  = (dt >= todayStart && dt <= todayEnd);
-            var isFuture = (dt > todayEnd);
-            var isPast   = (dt < todayStart);
-            var weekday   = dt.toLocaleDateString('en-US', {weekday:'long'});
-            var monthDay  = dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-            var dateLabel = isToday ? 'Today' : (isFuture && Math.round((dt - todayStart)/86400000) === 1 ? 'Tomorrow' : weekday + ', ' + monthDay);
-            var rawTime = dt.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+            // 'Today' / 'Tomorrow' comparisons are done in the clinician's
+            // timezone via day-string equality, not by comparing raw ms
+            // against browser-local midnight (which would misbucket any
+            // appointment straddling the date boundary from the clinician's
+            // perspective).
+            var _nowDayStr    = now.toLocaleDateString('en-US', { timeZone: _clTimezone });
+            var _apptDayStr2  = dt.toLocaleDateString('en-US', { timeZone: _clTimezone });
+            var _tomorrow     = new Date(now.getTime() + 86400000);
+            var _tomorrowStr  = _tomorrow.toLocaleDateString('en-US', { timeZone: _clTimezone });
+            var isToday  = _apptDayStr2 === _nowDayStr;
+            var isFuture = dt > todayEnd;
+            var isPast   = dt < todayStart;
+            var weekday  = _fmtClWeekday(dt);
+            var monthDay = dt.toLocaleDateString('en-US', { timeZone: _clTimezone, month: 'short', day: 'numeric' });
+            var dateLabel = isToday ? 'Today' : (_apptDayStr2 === _tomorrowStr ? 'Tomorrow' : weekday + ', ' + monthDay);
+            var rawTime = _fmtClTime(dt, { hour:'numeric', minute:'2-digit', hour12:true });
             var timeLabel = rawTime.replace(/\s?(AM|PM)/i, function(m){ return m.trim().toLowerCase(); });
             var fullTimeStr = (isToday ? 'Today' : weekday + ', ' + monthDay) + ' · ' + timeLabel;
             var displayStatus = a.status;
@@ -9778,7 +9838,7 @@ function _updateApptStatus(apptId, newStatus) {
           }
           if (patientEmail) {
             // Phase 26: notify patient of appointment confirmed or cancelled by clinician
-            var _apptDateStr = apptRow.scheduledAt ? new Date(apptRow.scheduledAt).toLocaleString() : '—';
+            var _apptDateStr = apptRow.scheduledAt ? _fmtClDateTime(apptRow.scheduledAt) : '—';
             var _apptDur = parseInt((apptRow.dur || '30'), 10) || 30;
             if (newStatus === 'confirmed') {
               sendEmail(
@@ -12086,7 +12146,7 @@ function buildPatientDetail(p) {
       ? '<div style="font-size:13px;color:var(--grey);">' + escapeHtml(p._mock.nextAppt.type) + ' · ' + escapeHtml(p._mock.nextAppt.date) + ', ' + escapeHtml(p._mock.nextAppt.time) + '</div>'
       : '<div style="font-size:12px;color:rgba(255,255,255,0.22);">None scheduled.</div>';
     var memberSinceMock = p.memberSince
-      ? (String(p.memberSince).length > 10 ? new Date(p.memberSince).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : p.memberSince)
+      ? (String(p.memberSince).length > 10 ? _fmtClDate(p.memberSince, { month:'short', year:'numeric' }) : p.memberSince)
       : '—';
     return (
       '<button class="pdp-mobile-back" onclick="var p=this.closest(\'.patient-detail-panel\');p.classList.remove(\'open\');setTimeout(function(){p.remove();},260);">← Back</button>' +
@@ -12178,9 +12238,7 @@ function buildPatientDetail(p) {
 
   // Submission date
   var submittedAt   = c.submitted_at || c.created_at || null;
-  var submittedStr  = submittedAt
-    ? new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : null;
+  var submittedStr  = submittedAt ? _fmtClDate(submittedAt) : null;
 
   // Last login (last_seen from profile)
   var lastSeenStr   = null;
@@ -12194,7 +12252,7 @@ function buildPatientDetail(p) {
       var lsDays = Math.floor(lsHrs / 24);
       if (lsDays < 7)       lastSeenStr = lsDays + ' day' + (lsDays === 1 ? '' : 's') + ' ago';
       else if (lsDays < 30) lastSeenStr = Math.floor(lsDays / 7) + ' week' + (Math.floor(lsDays / 7) === 1 ? '' : 's') + ' ago';
-      else                  lastSeenStr = lsDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      else                  lastSeenStr = _fmtClDate(lsDate);
     }
   }
 
@@ -12408,7 +12466,7 @@ function buildPatientDetail(p) {
       var latestNoRxReason = null;
 
       evals.forEach(function(ev, idx) {
-        var evDate = ev.evaluation_date ? new Date(ev.evaluation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+        var evDate = ev.evaluation_date ? _fmtClDate(ev.evaluation_date) : '—';
         if (ev.prescription_given === false) {
           latestNoRxReason = ev.no_prescription_reason || '—';
         }
@@ -12435,7 +12493,7 @@ function buildPatientDetail(p) {
       // Latest prescription status
       var latestEval = evals[evals.length - 1];
       var latestRx = latestEval.prescription_given;
-      var latestDateStr = latestEval.evaluation_date ? new Date(latestEval.evaluation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      var latestDateStr = latestEval.evaluation_date ? _fmtClDate(latestEval.evaluation_date) : '—';
       evalHtml += '<div class="pdp-info-grid" style="margin-bottom:14px;">' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Prescription</div><div class="pdp-info-value" style="color:' + (latestRx ? 'var(--green)' : 'rgba(200,80,80,0.8)') + ';">' + (latestRx ? 'Yes' : 'No') + '</div></div>' +
         '<div class="pdp-info-row"><div class="pdp-info-label">Latest Evaluation</div><div class="pdp-info-value">' + escapeHtml(latestDateStr) + '</div></div>' +
@@ -12789,7 +12847,7 @@ function _pdpRelativeTime(isoStr) {
   var days = Math.floor(hrs / 24);
   if (days < 7)   return days + ' day' + (days === 1 ? '' : 's') + ' ago';
   if (days < 30)  { var wks = Math.floor(days / 7); return wks + ' week' + (wks === 1 ? '' : 's') + ' ago'; }
-  return d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return _fmtClDate(d2);
 }
 
 // Load async activity data (last message date + upcoming appointments) for the open detail panel
@@ -12850,9 +12908,7 @@ function _loadPatientActivity(patientId) {
         var apptHtml = '<div class="pdp-appt-list">';
         for (var ai = 0; ai < appts.length; ai++) {
           var appt = appts[ai];
-          var apptDate = appt.scheduled_at
-            ? new Date(appt.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-            : '—';
+          var apptDate = appt.scheduled_at ? _fmtClDateTime(appt.scheduled_at) : '—';
           var apptType = appt.type || 'Appointment';
           apptHtml +=
             '<div class="pdp-appt-item">' +
@@ -13369,8 +13425,8 @@ function _renderClBubblesFromDB(rows) {
   el.innerHTML = rows.map(function(m) {
     var side = m.sender_role === 'clinician' ? 'from-me' : 'from-them';
     var senderLabel = m.sender_role === 'clinician' ? 'You' : escapeHtml(m.sender_name || patientName);
-    var ts = m.created_at ? new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
-    var dateStr = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+    var ts = m.created_at ? _fmtClTime(m.created_at, { hour:'numeric', minute:'2-digit' }) : '';
+    var dateStr = m.created_at ? _fmtClDate(m.created_at) : '';
     var dateSep = '';
     if (dateStr && dateStr !== lastDateStr) {
       lastDateStr = dateStr;
@@ -13457,7 +13513,7 @@ function sendClMessage() {
   // Optimistic UI then insert
   var el = document.getElementById('clMsgBubbles');
   if (el) {
-    var ts = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    var ts = _fmtClTime(new Date(), { hour:'numeric', minute:'2-digit' });
     var div = document.createElement('div');
     div.className = 'msg-bubble-row from-me';
     div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div>' +
@@ -15122,8 +15178,8 @@ async function _openClRescheduleModal(apptId) {
 
     // Send message to patient asking them to rebook
     var clName = document.getElementById('sidebarName') ? document.getElementById('sidebarName').textContent : 'Your clinician';
-    var apptDate = new Date(orig.scheduled_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    var apptTime = new Date(orig.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    var apptDate = _fmtClDate(orig.scheduled_at, { weekday: 'long', month: 'long', day: 'numeric' });
+    var apptTime = _fmtClTime(orig.scheduled_at, { hour: 'numeric', minute: '2-digit' });
     var msgBody = 'Hi — I need to reschedule our appointment on ' + apptDate + ' at ' + apptTime + '. I apologize for the inconvenience. Please book a new time at your earliest convenience through your Appointments tab. Thank you for your understanding.';
 
     try {
@@ -15355,7 +15411,7 @@ function _showConsultReminder(appt) {
       }).catch(function() {});
   }
   var dur = (appt.duration_minutes || 30) + ' min';
-  var schedTime = new Date(appt.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  var schedTime = _fmtClTime(appt.scheduled_at, { hour: 'numeric', minute: '2-digit' });
   var overlay = document.createElement('div');
   overlay.className = 'consult-reminder-overlay';
   overlay.id = 'consultReminderOverlay';

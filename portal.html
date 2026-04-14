@@ -11679,13 +11679,14 @@ function _memberWelcomeFlagKey(uid) {
 function _maybeShowMemberWelcome(firstName, userId) {
   var flagKey = _memberWelcomeFlagKey(userId || currentUserId || '');
   try {
-    if (localStorage.getItem(flagKey) === '1') return;
-    // Legacy flat flag — migrate it so users who already dismissed the
-    // welcome on the old global key don't see the modal again.
+    // Clean up the legacy flat key if it's still lingering from a
+    // prior dismiss — it was shared across users on the same browser
+    // which is exactly why we moved to per-user keys. Don't let its
+    // presence suppress the modal for a new member.
     if (localStorage.getItem(_MEMBER_WELCOME_FLAG_PREFIX) === '1') {
-      localStorage.setItem(flagKey, '1');
-      return;
+      localStorage.removeItem(_MEMBER_WELCOME_FLAG_PREFIX);
     }
+    if (localStorage.getItem(flagKey) === '1') return;
   } catch (_) { /* localStorage blocked — show anyway, it's one-shot */ }
   // Don't fire in preview mode — it's noisy for demos
   if (typeof PREVIEW_MODE !== 'undefined' && PREVIEW_MODE) return;

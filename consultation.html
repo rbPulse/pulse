@@ -339,16 +339,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 .review-msg-send:disabled{opacity:0.35;cursor:not-allowed;}
 
 /* ── Live Consult CTA Card ── */
-.live-consult-cta{background:linear-gradient(135deg,rgba(100,150,255,0.10) 0%,rgba(100,150,255,0.04) 100%);border:1px solid rgba(100,150,255,0.25);border-radius:14px;padding:24px 28px;margin-top:4px;margin-bottom:24px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .25s,box-shadow .25s;}
-.live-consult-cta:hover{border-color:rgba(100,150,255,0.45);box-shadow:0 0 24px rgba(100,150,255,0.08);}
-.live-consult-cta::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(100,150,255,0.5),transparent);}
-.live-consult-cta-inner{display:flex;align-items:center;gap:16px;}
-.live-consult-cta-icon{width:42px;height:42px;border-radius:50%;background:rgba(100,150,255,0.12);border:1px solid rgba(100,150,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
-.live-consult-cta-body{flex:1;min-width:0;}
-.live-consult-cta-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:4px;}
-.live-consult-cta-sub{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;}
-.live-consult-cta-btn{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(100,150,255,0.15);border:1px solid rgba(100,150,255,0.3);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,210,255,0.95);font-weight:500;transition:background .2s,border-color .2s;}
-.live-consult-cta:hover .live-consult-cta-btn{background:rgba(100,150,255,0.22);border-color:rgba(100,150,255,0.5);}
+/* Live Consult CTA — single centered Book Consultation button. The
+   request itself is conveyed by the clinician's message in the Messages
+   card above, so this card carries no extra title/copy. */
+.live-consult-cta{display:flex;justify-content:center;margin:8px 0 24px;}
+.live-consult-cta-btn{display:inline-flex;align-items:center;gap:8px;background:#2F6F55;border:none;border-radius:999px;padding:14px 32px;font-family:'Inter',sans-serif;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#FFFFFF;font-weight:600;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 14px rgba(47,111,85,0.25);}
+.live-consult-cta-btn:hover{background:#26594a;transform:translateY(-1px);box-shadow:0 6px 18px rgba(47,111,85,0.32);}
+.live-consult-cta-btn:active{transform:translateY(0);}
 
 @media(max-width:400px){
   .progress-dot{width:18px;height:18px;font-size:7px;}
@@ -545,12 +542,6 @@ label.field-label{color:rgba(0,0,0,0.45);}
 .ineligible-title{color:#111111;}
 .ineligible-body{color:rgba(0,0,0,0.55);}
 .ineligible-note{background:var(--card);color:rgba(0,0,0,0.5);}
-
-/* Live consult CTA */
-.live-consult-cta{background:rgba(47,111,85,0.04);border-color:rgba(47,111,85,0.15);}
-.live-consult-cta-title{color:#111111;}
-.live-consult-cta-sub{color:rgba(0,0,0,0.5);}
-.live-consult-cta-btn{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.2);color:var(--green);}
 
 /* Session states */
 #sessionWaiting,#sessionDisconnected,#sessionEnded{color:#111111;}
@@ -1025,16 +1016,11 @@ label.field-label{color:rgba(0,0,0,0.45);}
       </div>
     </div>
 
-    <!-- Live Consult CTA (shown when clinician requests a live consult) -->
-    <div id="liveConsultCta" class="live-consult-cta" style="display:none;" onclick="revealReviewBooking()">
-      <div class="live-consult-cta-inner">
-        <div class="live-consult-cta-icon">&#x1F4F9;</div>
-        <div class="live-consult-cta-body">
-          <div class="live-consult-cta-title">Live consultation requested</div>
-          <div class="live-consult-cta-sub" id="liveConsultCtaReason">Your clinician would like to schedule a live video consultation to discuss your intake.</div>
-          <div class="live-consult-cta-btn">Book consultation <span>&#8594;</span></div>
-        </div>
-      </div>
+    <!-- Live Consult CTA — centered button only, shown when clinician
+         requests a live consult. Title/reason already conveyed via the
+         message in the Messages card above. -->
+    <div id="liveConsultCta" class="live-consult-cta" style="display:none;">
+      <button type="button" class="live-consult-cta-btn" onclick="revealReviewBooking()">Book consultation <span>&#8594;</span></button>
     </div>
 
     <!-- Booking section for live consult requests -->

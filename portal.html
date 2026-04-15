@@ -6491,13 +6491,12 @@ function _continuePortalInit(user, role) {
         // Purchase completed — stay on portal, skip all redirect checks
         var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
         if (_purchaseDone) {
-          // Pre-fetch the canonical protocol start stamp so populatePortal
-          // can render the correct 'Started' date on first paint instead
-          // of flashing consultation.created_at and rewriting it later.
-          return db.from('profiles').select('protocol_started_at').eq('user_id', user.id).limit(1)
-            .then(function(pr) {
-              var stamped = (pr && pr.data && pr.data.length > 0 && pr.data[0].protocol_started_at) || null;
-              c._protoStartedAt = stamped;
+          // Pre-fetch active prescriptions so populatePortal can render the
+          // hero protocol card on first paint without flashing empty.
+          return pxGetActiveForUser(user.id)
+            .then(function(activeRxs) {
+              c._activeRxs = activeRxs;
+              c._protoStartedAt = (activeRxs[0] && activeRxs[0].started_at) || null;
               populatePortal(user, c, greeting);
               // First-login welcome — shows once, keyed by localStorage.
               // Delayed a tick so the overview has painted before the
@@ -6506,6 +6505,7 @@ function _continuePortalInit(user, role) {
               setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
             })
             .catch(function() {
+              c._activeRxs = [];
               populatePortal(user, c, greeting);
               var _mwFirst2 = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
               setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst2, user.id); }, 400);
@@ -6523,7 +6523,9 @@ function _continuePortalInit(user, role) {
               var apptStatus = apptCheck.data[0].status;
               console.log('[Pulse] appointment status:', apptStatus);
               var d = c.data || {};
-              var hasProtocol = d.assigned_protocol || c.protocol_assigned;
+              // Consultation is considered "has protocol" once the clinician
+              // has prescribed (review_status reflects the rollup).
+              var hasProtocol = d.assigned_protocol || c.review_status === 'prescribed' || c.review_status === 'discontinued';
               var purchaseComplete = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
 
               // Purchase completed — stay on the portal
@@ -9521,7 +9523,7 @@ async function loadRecentlyEvaluated() {
 
   try {
     var res = await db.from('consultations')
-      .select('id, user_id, review_status, protocol_assigned, purchase_status, evaluation_date, updated_at')
+      .select('id, user_id, review_status, purchase_status, evaluation_date, updated_at')
       .eq('assigned_clinician_id', currentUserId)
       .in('review_status', ['prescribed', 'not_prescribed'])
       .order('updated_at', { ascending: false })
@@ -9534,9 +9536,18 @@ async function loadRecentlyEvaluated() {
     }
 
     var userIds = consults.map(function(c) { return c.user_id; });
-    var profileRes = await db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds);
+    // Fetch profiles + active prescriptions in parallel so the recent-
+    // evaluations list can show each patient's current protocol name.
+    var [profileRes, rxRes] = await Promise.all([
+      db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds),
+      db.from('prescriptions').select('user_id, protocol_key, status').in('user_id', userIds).eq('status', 'active')
+    ]);
     var profileMap = {};
     (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
+    var protoByUser = {};
+    (rxRes.data || []).forEach(function(r) {
+      if (!protoByUser[r.user_id]) protoByUser[r.user_id] = r.protocol_key;
+    });
 
     var titleHtml = '<div class="cl-attention-title" style="display:flex;align-items:center;">' +
       'Recently Evaluated (' + consults.length + ')' +
@@ -9551,7 +9562,7 @@ async function loadRecentlyEvaluated() {
       var initial = name.charAt(0).toUpperCase();
       var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
       var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';
-      var protocol = c.protocol_assigned || '';
+      var protocol = protoByUser[c.user_id] || '';
       var evalDate = c.evaluation_date ? _fmtClDate(c.evaluation_date) : (c.updated_at ? _fmtClDate(c.updated_at) : '--');
 
       var purchaseHtml = '';
@@ -12124,6 +12135,11 @@ function populatePortal(user, consultation, greeting) {
   var proto = null;
   var hasPendingReview = false;
 
+  // Active prescriptions pre-fetched by the init chain. Phase 1 renders
+  // the first one in the hero; multi-protocol rolodex lands in Phase 4.
+  var _activeRxs = (consultation && consultation._activeRxs) || [];
+  var _primaryRx = _activeRxs[0] || null;
+
   if (consultation && consultation.data) {
     var d = consultation.data;
     firstName = d.first_name || '';
@@ -12133,14 +12149,16 @@ function populatePortal(user, consultation, greeting) {
     // Use activated protocols (what member selected) over prescribed protocols
     var activatedProtocols = d.activated_protocols || {};
     var activatedNamesStr = d.activated_protocol_names || null;
-    var rxGiven = d.prescription_given || consultation.prescription_given;
-    var assignedProtoStr = activatedNamesStr || d.assigned_protocol || consultation.protocol_assigned || consultation.protocol || null;
+    var rxGiven = _primaryRx || d.prescription_given || consultation.review_status === 'prescribed';
+    // Prescription name comes from the active Rx (new source of truth) or
+    // the member-set activated name (pre-prescribe flow)
+    var assignedProtoStr = (_primaryRx && _primaryRx.protocol_key) || activatedNamesStr || d.assigned_protocol || null;
     var prescribedProtocols = activatedProtocols;
 
-    // Fall back to prescribed_protocols if no activated set
+    // Fall back to prescribed_protocols JSONB if no activated set
     var hasActivated = Object.keys(activatedProtocols).some(function(k){ return activatedProtocols[k]; });
     if (!hasActivated) {
-      prescribedProtocols = d.prescribed_protocols || consultation.prescribed_protocols || {};
+      prescribedProtocols = d.prescribed_protocols || {};
     }
 
     // Also check evaluations array
@@ -12182,33 +12200,22 @@ function populatePortal(user, consultation, greeting) {
       window._userProto = firstProtoKey;
       window._allProtoNames = allProtoNames;
 
-      // Dosing details from evaluation
+      // Dosing details come from the active prescription (single source
+      // of truth). Fall back to the evaluation JSONB for the brief window
+      // between purchase and first-prescribe when no Rx exists yet.
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
-      window._protoDose = _le.dose_amount || consultation.dose_amount || d.dose_amount || null;
-      window._protoDoseUnit = _le.dose_unit || consultation.dose_unit || d.dose_unit || null;
-      // Frequency / Duration: prefer the structured columns from the
-      // consultation row, fall back to the latest evaluation, then the
-      // consultation.data blob, then parse the legacy text — all via
-      // _readFrequency/_readDuration. Display strings are assembled with
-      // _fmtFrequency/_fmtDuration so the format is uniform everywhere.
-      var _mFreqRead = _readFrequency(consultation);
-      if (_mFreqRead.amount == null) _mFreqRead = _readFrequency(_le);
-      if (_mFreqRead.amount == null) _mFreqRead = _readFrequency(d);
-      var _mDurRead = _readDuration(consultation);
-      if (_mDurRead.value == null) _mDurRead = _readDuration(_le);
-      if (_mDurRead.value == null) _mDurRead = _readDuration(d);
-      window._protoFreqAmount  = _mFreqRead.amount;
-      window._protoFreqCadence = _mFreqRead.cadence;
-      window._protoFreq = _fmtFrequency(_mFreqRead.amount, _mFreqRead.cadence) || _le.frequency || consultation.frequency || d.frequency || null;
-      window._protoTiming = _le.timing || consultation.timing || d.timing || null;
-      window._protoDurationValue = _mDurRead.value;
-      window._protoDurationUnit  = _mDurRead.unit;
-      window._protoDuration = _fmtDuration(_mDurRead.value, _mDurRead.unit) || _le.duration || consultation.duration || d.duration || null;
-      // Prefer the profile-stamped protocol_started_at (set the first
-      // time the member lands on the portal after purchase). Falls back
-      // to consultation.created_at for legacy rows where the stamp
-      // hasn't been written yet.
-      window._protoStartDate = consultation._protoStartedAt || consultation.created_at || null;
+      window._protoDose      = (_primaryRx && _primaryRx.dose_amount != null)   ? _primaryRx.dose_amount    : (_le.dose_amount    || d.dose_amount    || null);
+      window._protoDoseUnit  = (_primaryRx && _primaryRx.dose_unit)               ? _primaryRx.dose_unit      : (_le.dose_unit      || d.dose_unit      || null);
+      window._protoFreqAmount  = (_primaryRx && _primaryRx.frequency_amount != null)  ? _primaryRx.frequency_amount  : (_le.frequency_amount  || null);
+      window._protoFreqCadence = (_primaryRx && _primaryRx.frequency_cadence)         ? _primaryRx.frequency_cadence : (_le.frequency_cadence || null);
+      window._protoFreq      = _fmtFrequency(window._protoFreqAmount, window._protoFreqCadence) || _le.frequency || d.frequency || null;
+      window._protoTiming    = (_primaryRx && _primaryRx.timing) ? _primaryRx.timing : (_le.timing || d.timing || null);
+      window._protoDurationValue = (_primaryRx && _primaryRx.duration_value != null) ? _primaryRx.duration_value : (_le.duration_value || null);
+      window._protoDurationUnit  = (_primaryRx && _primaryRx.duration_unit)           ? _primaryRx.duration_unit  : (_le.duration_unit  || null);
+      window._protoDuration  = _fmtDuration(window._protoDurationValue, window._protoDurationUnit) || _le.duration || d.duration || null;
+      // Started date = when the active prescription started. Falls back
+      // to consultation.created_at for the pre-prescribe window.
+      window._protoStartDate = (_primaryRx && _primaryRx.started_at) || consultation._protoStartedAt || consultation.created_at || null;
     } else if (assignedProtoStr === 'no prescription' || (!purchaseDone && rxGiven === false)) {
       hasPendingReview = false;
       proto = null;
@@ -12464,7 +12471,7 @@ function populatePortal(user, consultation, greeting) {
     // Note — prefer the clinician's actual timing_instructions from the evaluation;
     // fall back to the protocol-level note only if the clinician didn't specify anything.
     var clinicianTiming = (consultation.data && consultation.data.timing_instructions)
-      || consultation.timing_instructions
+      || window._protoTiming
       || window._protoTimingInstructions
       || null;
     var noteEl = document.getElementById('compoundsNote');
@@ -12623,18 +12630,37 @@ function initClPatients() {
           if (!seen[c.user_id]) { seen[c.user_id] = true; unique.push(c); }
         });
 
-      // Step 2: fetch profiles for all those user_ids
+      // Step 2: fetch profiles + active prescriptions in parallel for
+      // all those user_ids. Prescriptions are needed so the Patients
+      // row can show the current protocol name / dose / status.
       var ids = unique.map(function(c){ return c.user_id; });
-      db.from('profiles')
-        .select('user_id, display_name, first_name, last_name, email, current_streak, subscription_status, notify_messages')
-        .in('user_id', ids)
-        .then(function(pr) {
+      Promise.all([
+        db.from('profiles')
+          .select('user_id, display_name, first_name, last_name, email, current_streak, subscription_status, notify_messages')
+          .in('user_id', ids),
+        db.from('prescriptions')
+          .select('*, prescription_versions(*)')
+          .in('user_id', ids)
+          .eq('status', 'active')
+      ])
+        .then(function(results) {
+          var pr = results[0];
+          var rxRes = results[1];
           if (pr.error) throw pr.error;
+          if (rxRes.error) throw rxRes.error;
           var profileMap = {};
           (pr.data || []).forEach(function(p){ profileMap[p.user_id] = p; });
+          // Group active Rxs by user_id and flatten via _pxFlattenCurrent
+          var rxByUser = {};
+          (rxRes.data || []).forEach(function(r) {
+            var flat = _pxFlattenCurrent(r);
+            if (!flat) return;
+            if (!rxByUser[flat.user_id]) rxByUser[flat.user_id] = [];
+            rxByUser[flat.user_id].push(flat);
+          });
 
           _clPatientRows = unique.map(function(c) {
-            return _normalisePatientRow(c, profileMap[c.user_id] || null);
+            return _normalisePatientRow(c, profileMap[c.user_id] || null, rxByUser[c.user_id] || []);
           });
           // Check which patients have upcoming appointments
           db.from('appointments').select('consumer_id')
@@ -12684,17 +12710,22 @@ function _normaliseMockPatients() {
   });
 }
 
-// Normalise a consultation + optional profile row into the shape renderPatientList expects
-function _normalisePatientRow(consultation, profile) {
+// Normalise a consultation + optional profile row + active prescriptions
+// into the shape renderPatientList expects.
+function _normalisePatientRow(consultation, profile, activeRxs) {
   var d = consultation.data || {};
+  activeRxs = activeRxs || [];
+  var primaryRx = activeRxs[0] || null;
+
   var name = (profile && profile.display_name)
     ? profile.display_name
     : (profile && (profile.first_name || profile.last_name) ? ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() : null)
     || (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null)
     || (profile && profile.email) || consultation.user_id.slice(0, 8).toUpperCase();
 
-  // Protocol: only show if explicitly assigned by a clinician
-  var protocolName = consultation.protocol_assigned || d.assigned_protocol || null;
+  // Protocol name comes from the active prescription; falls back to the
+  // intake JSONB for members not yet prescribed.
+  var protocolName = (primaryRx && primaryRx.protocol_key) || d.assigned_protocol || null;
 
   // Primary goal: check top-level field first, then data JSONB array
   var goal = consultation.primary_goal
@@ -12702,7 +12733,7 @@ function _normalisePatientRow(consultation, profile) {
     || (d.goals && d.goals.length > 0 ? d.goals[0] : null)
     || null;
 
-  // Derive status: use top-level consultation.status, then infer from protocol/goal
+  // Derive status: use top-level consultation.status, then infer from protocol
   var status;
   if (consultation.status) {
     status = consultation.status;
@@ -12714,11 +12745,6 @@ function _normalisePatientRow(consultation, profile) {
 
   // Member since: prefer submitted_at, fallback to created_at
   var memberSince = consultation.submitted_at || consultation.created_at || null;
-
-  // Prescription data from evaluation
-  var prescriptionGiven = consultation.prescription_given || d.prescription_given || null;
-  var prescribedProtocols = consultation.prescribed_protocols || d.prescribed_protocols || null;
-  var evaluationDate = consultation.evaluation_date || d.evaluation_date || null;
 
   // Review status from the async review workflow
   var reviewStatus = consultation.review_status || null;
@@ -12740,9 +12766,9 @@ function _normalisePatientRow(consultation, profile) {
     lastSeen:      (profile && profile.last_seen) ? profile.last_seen : null,
     subStatus:       (profile && profile.subscription_status) ? profile.subscription_status : null,
     notify_messages: profile ? (profile.notify_messages !== false) : true,
-    prescriptionGiven: prescriptionGiven,
-    prescribedProtocols: prescribedProtocols,
-    evaluationDate: evaluationDate,
+    prescriptionGiven: !!primaryRx,
+    evaluationDate: primaryRx ? primaryRx.started_at : (consultation.evaluation_date || null),
+    _activeRxs:    activeRxs,
     _consultation: consultation,
     _profile:      profile,
     _rawData:      d

@@ -3202,8 +3202,9 @@ body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
 /* ── Patient Notes (replaces the old Session Notes surface) ──
    View mode = read-only latest note + attribution + New button.
    Edit mode = editable textarea + Save/Cancel buttons. */
-.pn-section{display:flex;flex-direction:column;gap:12px;}
-.pn-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.08);}
+.pn-section{display:flex;flex-direction:column;gap:8px;}
+.pn-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:0;}
+.pn-header-actions{display:flex;align-items:center;gap:10px;}
 .pn-history-link{background:none;border:none;padding:0;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#2F6F55;cursor:pointer;letter-spacing:0.02em;transition:color .15s;}
 .pn-history-link:hover{color:#1a4a35;}
 .pn-view,.pn-edit{display:flex;flex-direction:column;gap:10px;}
@@ -3216,7 +3217,7 @@ body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
 .pn-edit-actions{display:flex;justify-content:flex-end;gap:8px;}
 .pn-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:8px 16px;border-radius:999px;background:transparent;border:1px solid rgba(0,0,0,0.14);color:#1a1a1a;cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
 .pn-btn:hover{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.22);}
-.pn-btn-new{align-self:flex-start;color:#2F6F55;border-color:rgba(47,111,85,0.3);}
+.pn-btn-new{color:#2F6F55;border-color:rgba(47,111,85,0.3);padding:7px 14px;font-size:10px;}
 .pn-btn-new:hover{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.5);color:#1a4a35;}
 .pn-btn-save{background:#2F6F55;color:#fff;border-color:#2F6F55;}
 .pn-btn-save:hover{background:#1a4a35;border-color:#1a4a35;color:#fff;}
@@ -10204,13 +10205,15 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         '<div class="crw-section pn-section" id="pn-section-'+escapeAttr(userId)+'" data-user-id="'+escapeAttr(userId)+'">'+
           '<div class="pn-header">'+
             '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Patient Notes</span>'+
-            '<button type="button" class="pn-history-link" id="pn-history-link-'+escapeAttr(userId)+'" style="display:none;" onclick="_openPatientHistoryModal(\''+escapeAttr(userId)+'\')">View patient history \u203A</button>'+
+            '<div class="pn-header-actions">'+
+              '<button type="button" class="pn-history-link" id="pn-history-link-'+escapeAttr(userId)+'" style="display:none;" onclick="_openPatientHistoryModal(\''+escapeAttr(userId)+'\')">View patient history \u203A</button>'+
+              '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\''+escapeAttr(userId)+'\')">+ New Note</button>'+
+            '</div>'+
           '</div>'+
           '<!-- View mode -->' +
           '<div class="pn-view" id="pn-view-'+escapeAttr(userId)+'">'+
             '<div class="pn-latest-body" id="pn-latest-body-'+escapeAttr(userId)+'"><span class="pn-empty-msg">No notes yet.</span></div>'+
             '<div class="pn-attribution" id="pn-attribution-'+escapeAttr(userId)+'" style="display:none;"></div>'+
-            '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\''+escapeAttr(userId)+'\')">+ New Note</button>'+
           '</div>'+
           '<!-- Edit mode -->' +
           '<div class="pn-edit" id="pn-edit-'+escapeAttr(userId)+'" style="display:none;">'+
@@ -15358,13 +15361,15 @@ function buildPatientDetail(p) {
         '<div class="crw-section pn-section" id="pn-section-' + escapeAttr(p.id) + '" data-user-id="' + escapeAttr(p.id) + '">' +
           '<div class="pn-header">'+
             '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Patient Notes</span>'+
-            '<button type="button" class="pn-history-link" id="pn-history-link-' + escapeAttr(p.id) + '" style="display:none;" onclick="_openPatientHistoryModal(\'' + escapeAttr(p.id) + '\')">View patient history \u203A</button>'+
+            '<div class="pn-header-actions">'+
+              '<button type="button" class="pn-history-link" id="pn-history-link-' + escapeAttr(p.id) + '" style="display:none;" onclick="_openPatientHistoryModal(\'' + escapeAttr(p.id) + '\')">View patient history \u203A</button>'+
+              '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\'' + escapeAttr(p.id) + '\')">+ New Note</button>'+
+            '</div>'+
           '</div>'+
-          '<!-- View mode: read-only latest note + attribution + New button -->' +
+          '<!-- View mode: read-only latest note + attribution -->' +
           '<div class="pn-view" id="pn-view-' + escapeAttr(p.id) + '">'+
             '<div class="pn-latest-body" id="pn-latest-body-' + escapeAttr(p.id) + '"><span class="pn-empty-msg">No notes yet.</span></div>'+
             '<div class="pn-attribution" id="pn-attribution-' + escapeAttr(p.id) + '" style="display:none;"></div>'+
-            '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\'' + escapeAttr(p.id) + '\')">+ New Note</button>'+
           '</div>'+
           '<!-- Edit mode: editable textarea + Save/Cancel -->' +
           '<div class="pn-edit" id="pn-edit-' + escapeAttr(p.id) + '" style="display:none;">'+

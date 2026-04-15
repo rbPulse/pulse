@@ -4018,6 +4018,11 @@ body.clinician-mode .crw-outcome-disc-divider{
 }
 .rx-hist-empty{text-align:center; font-size:12px; color:rgba(0,0,0,0.5); padding:24px 0;}
 body.clinician-mode .crw-right-msg{background:var(--cl-high) !important;flex:1 !important;margin-bottom:12px !important;display:flex !important;flex-direction:column !important;max-height:465px !important;overflow:hidden !important;}
+/* Decided patients: messaging thread takes the full grid-row height
+   (Patient Details moved to the left column so there's no footer card
+   competing for vertical space). */
+body.clinician-mode .crw.crw-decided .crw-right-msg{max-height:none !important;margin-bottom:0 !important;}
+body.clinician-mode .crw.crw-decided .crw-right{padding-bottom:16px !important;}
 /* ── CRW right column fix ── */
 body.clinician-mode .crw-right-details{background:var(--cl-mid) !important;border:1px solid rgba(0,0,0,0.14) !important;border-radius:10px !important;overflow:visible !important;max-height:none !important;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
 body.clinician-mode .crw-right{overflow:visible !important;min-width:0 !important;padding:4px 16px 16px;display:flex !important;flex-direction:column !important;}
@@ -9685,6 +9690,24 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // patients still show Risk inside .crw-left.
     var decidedTopHtml = isDecided ? '<div class="crw-decided-top">'+outcomeTopHtml+'</div>' : '';
     var topAlertHtml   = isDecided ? '' : riskHtml;
+
+    // Patient Details block — for decided patients it lives at the bottom
+    // of the LEFT column (under Session Notes) so the messaging thread
+    // on the right can fill the full grid row height. For pre-decision
+    // patients it stays in the right column where it was.
+    var patientDetailsHtml =
+      '<div class="crw-right-details">'+
+        '<div class="crw-section-title">Patient Details</div>'+
+        '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">'+
+          _df('Email',d.email||'\u2014')+_df('Phone',d.phone_number||'\u2014')+
+        '</div>'+
+        '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">'+
+          _df('Address',addressStr)+_df('Date of Birth',d.dob||'\u2014')+
+        '</div>'+
+        '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;opacity:0.5;margin-top:8px;margin-bottom:0;">'+
+          _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+
+        '</div>'+
+      '</div>';
     var html='<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
       decidedTopHtml+
       '<div class="crw-left">'+
@@ -9713,6 +9736,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>'+
           '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" class="crw-notes-input" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
         '</div>'+
+        // Decided patients get Patient Details in the left column here
+        (isDecided ? patientDetailsHtml : '')+
         (function(){
           // Pre-decision only: show action buttons. Prescribed/declined render
           // in the full-width .crw-bottom row below both columns.
@@ -9749,18 +9774,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             '<button class="crw-msg-btn" onclick="_sendAttnMsg(\''+consultId+'\')">Send</button>'+
           '</div>'+
         '</div>'+
-        '<div class="crw-right-details">'+
-          '<div class="crw-section-title">Patient Details</div>'+
-          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;">'+
-            _df('Email',d.email||'\u2014')+_df('Phone',d.phone_number||'\u2014')+
-          '</div>'+
-          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;">'+
-            _df('Address',addressStr)+_df('Date of Birth',d.dob||'\u2014')+
-          '</div>'+
-          '<div class="crw-det-grid" style="grid-template-columns:1fr 1fr;opacity:0.5;margin-top:8px;margin-bottom:0;">'+
-            _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+
-          '</div>'+
-        '</div>'+
+        // Pre-decision patients keep Patient Details below the messaging
+        // thread on the right. Decided patients moved it to the left column.
+        (isDecided ? '' : patientDetailsHtml)+
       '</div>'+
     '</div>';
 

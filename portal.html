@@ -8352,6 +8352,82 @@ async function pxReprescribe(ctx) {
   if (vRes.error) throw vRes.error;
 }
 
+// Open the Adjust modal in "Add new protocol" mode. Reuses the same
+// modal chrome and save pipeline as _openAdjustRxModal, but the form
+// starts blank, the chip selector is hidden, and Save calls pxCreate.
+async function _openAddProtocolModal(consultId, userId, evt) {
+  try {
+    var originPanel = null;
+    var panelSel = '.cl-attn-card-body, .patient-detail-panel, .appt-detail-panel, #clThreadPatientPanel, #sessionPatientCard';
+    if (evt && evt.target && evt.target.closest) {
+      originPanel = evt.target.closest(panelSel);
+    }
+    if (!originPanel) originPanel = document.getElementById('attn-body-' + consultId);
+
+    var [cRes, allRxs] = await Promise.all([
+      db.from('consultations').select('id, data').eq('id', consultId).limit(1),
+      pxGetAllForConsultation(consultId)
+    ]);
+    if (!cRes.data || !cRes.data.length) return;
+    var d = cRes.data[0].data || {};
+    var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
+
+    // Protocols already prescribed (active) on this consultation — the
+    // picker must filter these out to prevent the DB unique constraint
+    // from rejecting the insert.
+    var takenKeys = {};
+    allRxs.forEach(function(r) {
+      if (r.status === 'active' && r.protocol_key) takenKeys[r.protocol_key] = true;
+    });
+
+    _rxAdjustCtx = {
+      consultId: consultId,
+      userId: userId,
+      patientName: patientName,
+      originPanel: originPanel,
+      isAddNew: true,
+      isReprescribe: false,
+      prescriptionId: null,
+      takenProtocolKeys: takenKeys,
+      current: {
+        protocol_assigned: '',
+        dose_amount: '', dose_unit: '',
+        frequency: '',
+        frequency_amount: null, frequency_cadence: null,
+        freq_num: '', freq_period: '',
+        timing: '',
+        duration: '',
+        duration_value: null, duration_unit: null,
+        dur_num: '', dur_period: '',
+        other_notes: '',
+        evaluation_date: null
+      },
+      selectedTypes: {}
+    };
+
+    var modal = document.getElementById('rxAdjustModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'rxAdjustModal';
+    modal.className = 'rx-adjust-overlay';
+    modal.innerHTML = _buildRxAdjustModalHtml(_rxAdjustCtx);
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) _closeAdjustRxModal();
+    });
+    modal.addEventListener('click', function(e) {
+      var dd = document.getElementById('rxAdjProtoDD');
+      if (dd && dd.classList.contains('open') && !dd.contains(e.target)) {
+        dd.classList.remove('open');
+      }
+    });
+    _rxAdjustApplyFieldState();
+    _rxAdjustValidate();
+  } catch (e) {
+    console.warn('[Pulse] add protocol modal open failed:', e);
+  }
+}
+
 async function _openAdjustRxModal(consultId, userId, evt, prescriptionId) {
   try {
     // Capture the panel the Adjust button was clicked from so we can
@@ -8462,6 +8538,8 @@ async function _openAdjustRxModal(consultId, userId, evt, prescriptionId) {
 
 function _buildRxAdjustModalHtml(ctx) {
   var cur = ctx.current;
+  var isAddNew = !!ctx.isAddNew;
+  var takenKeys = ctx.takenProtocolKeys || {};
   var doseUnitOpts = ['mg','mcg','mL'].map(function(u){
     return '<option value="'+u+'"'+(cur.dose_unit === u ? ' selected' : '')+'>'+u+'</option>';
   }).join('');
@@ -8471,26 +8549,42 @@ function _buildRxAdjustModalHtml(ctx) {
   var durPeriodOpts = [['days','days'],['weeks','weeks'],['months','months']].map(function(o){
     return '<option value="'+o[0]+'"'+(cur.dur_period === o[0] ? ' selected' : '')+'>'+o[1]+'</option>';
   }).join('');
-  var protoOptsHtml = (typeof _EVAL_PROTOCOLS !== 'undefined' ? _EVAL_PROTOCOLS : []).map(function(p) {
-    var isActive = (cur.protocol_assigned === p);
-    return '<button type="button" class="rx-proto-option'+(isActive ? ' active' : '')+'" data-val="'+escapeAttr(p)+'" onclick="_rxAdjProtoPick(\''+escapeAttr(p).replace(/'/g,"\\'")+'\')">'+escapeHtml(p)+'</button>';
-  }).join('');
+  // In Add-new mode, filter out protocols that already have an active
+  // prescription on this consult (the DB unique constraint would reject).
+  var protoList = (typeof _EVAL_PROTOCOLS !== 'undefined' ? _EVAL_PROTOCOLS : []);
+  var protoOptsHtml = protoList
+    .filter(function(p) { return !(isAddNew && takenKeys[p]); })
+    .map(function(p) {
+      var isActive = (cur.protocol_assigned === p);
+      return '<button type="button" class="rx-proto-option'+(isActive ? ' active' : '')+'" data-val="'+escapeAttr(p)+'" onclick="_rxAdjProtoPick(\''+escapeAttr(p).replace(/'/g,"\\'")+'\')">'+escapeHtml(p)+'</button>';
+    }).join('');
 
-  // Chips — six types in vertical field order, Discontinue pinned far right
-  var chips = [
-    { val:'protocol_change',   label:'Protocol' },
-    { val:'dose_change',       label:'Dose' },
-    { val:'frequency_change',  label:'Frequency' },
-    { val:'timing_change',     label:'Timing' },
-    { val:'duration_change',   label:'Duration' }
-  ];
-  var chipsHtml = chips.map(function(c) {
-    return '<button type="button" class="rx-adj-chip" data-val="'+c.val+'" onclick="_toggleRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
-  }).join('');
-  chipsHtml += '<button type="button" class="rx-adj-chip rx-adj-chip-danger" data-val="discontinuation" onclick="_toggleRxAdjustType(\'discontinuation\')">Discontinue</button>';
+  // Chips — six types in vertical field order, Discontinue pinned far right.
+  // Add-new mode doesn't use chips; every field is always editable.
+  var chipsBlockHtml = '';
+  if (!isAddNew) {
+    var chips = [
+      { val:'protocol_change',   label:'Protocol' },
+      { val:'dose_change',       label:'Dose' },
+      { val:'frequency_change',  label:'Frequency' },
+      { val:'timing_change',     label:'Timing' },
+      { val:'duration_change',   label:'Duration' }
+    ];
+    var chipsHtml = chips.map(function(c) {
+      return '<button type="button" class="rx-adj-chip" data-val="'+c.val+'" onclick="_toggleRxAdjustType(\''+c.val+'\')">'+c.label+'</button>';
+    }).join('');
+    chipsHtml += '<button type="button" class="rx-adj-chip rx-adj-chip-danger" data-val="discontinuation" onclick="_toggleRxAdjustType(\'discontinuation\')">Discontinue</button>';
+    chipsBlockHtml =
+      '<div class="rx-adjust-section-lbl">Type of change</div>' +
+      '<div class="rx-adjust-chips" id="rxAdjChips">'+chipsHtml+'</div>';
+  }
 
-  var subTxt = ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription';
-  var saveTxt = ctx.isReprescribe ? 'Re-prescribe' : 'Save changes';
+  var subTxt = isAddNew
+    ? 'Prescribe new protocol'
+    : (ctx.isReprescribe ? 'Re-prescribe protocol' : 'Adjust prescription');
+  var saveTxt = isAddNew
+    ? 'Prescribe protocol'
+    : (ctx.isReprescribe ? 'Re-prescribe' : 'Save changes');
 
   return (
     '<div class="rx-adjust-card" onclick="event.stopPropagation()">' +
@@ -8502,8 +8596,7 @@ function _buildRxAdjustModalHtml(ctx) {
         '<button type="button" class="rx-adjust-close" onclick="_closeAdjustRxModal()" aria-label="Close">&times;</button>' +
       '</div>' +
 
-      '<div class="rx-adjust-section-lbl">Type of change</div>' +
-      '<div class="rx-adjust-chips" id="rxAdjChips">'+chipsHtml+'</div>' +
+      chipsBlockHtml +
 
       '<div class="rx-adjust-form" id="rxAdjForm">' +
         '<div class="rx-adjust-field" data-field="protocol_change">' +
@@ -8601,39 +8694,56 @@ function _rxAdjustSyncChipUI() {
 
 // Enable only the form fields whose data-field matches a selected chip.
 // Every other field is disabled + muted. When Discontinue is selected we
-// hide the whole form entirely (reason becomes the only input).
+// hide the whole form entirely (reason becomes the only input). In
+// Add-new mode every field is always enabled (no chips exist).
 function _rxAdjustApplyFieldState() {
   if (!_rxAdjustCtx) return;
+  var isAddNew = !!_rxAdjustCtx.isAddNew;
   var sel = _rxAdjustCtx.selectedTypes;
-  var isDiscontinue = !!sel['discontinuation'];
+  var isDiscontinue = !isAddNew && !!sel['discontinuation'];
   var form = document.getElementById('rxAdjForm');
   var reasonLbl = document.getElementById('rxAdjReasonLbl');
   var saveBtn = document.getElementById('rxAdjSaveBtn');
 
   if (form) form.style.display = isDiscontinue ? 'none' : '';
   if (reasonLbl) {
-    reasonLbl.innerHTML = isDiscontinue
-      ? 'Discontinuation reason <span class="rx-adj-req">*</span>'
-      : 'Reason for adjustment <span class="rx-adj-req">*</span>';
+    reasonLbl.innerHTML = isAddNew
+      ? 'Clinical justification <span class="rx-adj-req">*</span>'
+      : (isDiscontinue
+          ? 'Discontinuation reason <span class="rx-adj-req">*</span>'
+          : 'Reason for adjustment <span class="rx-adj-req">*</span>');
   }
   if (saveBtn) {
-    saveBtn.textContent = isDiscontinue
-      ? 'Discontinue protocol'
-      : (_rxAdjustCtx.isReprescribe ? 'Re-prescribe' : 'Save changes');
+    saveBtn.textContent = isAddNew
+      ? 'Prescribe protocol'
+      : (isDiscontinue
+          ? 'Discontinue protocol'
+          : (_rxAdjustCtx.isReprescribe ? 'Re-prescribe' : 'Save changes'));
   }
 
   if (isDiscontinue || !form) return;
-  // Toggle per-field enabled state
+  // Add-new: enable every field unconditionally.
+  if (isAddNew) {
+    form.querySelectorAll('.rx-adjust-field').forEach(function(fieldEl) {
+      fieldEl.classList.add('rx-adj-field-enabled');
+      fieldEl.classList.remove('rx-adj-field-disabled');
+      fieldEl.querySelectorAll('input, select, textarea').forEach(function(el) {
+        el.disabled = false;
+      });
+      var protoBtn = fieldEl.querySelector('.rx-proto-toggle');
+      if (protoBtn) protoBtn.disabled = false;
+    });
+    return;
+  }
+  // Adjust mode: toggle per-field enabled state from chip selection.
   form.querySelectorAll('.rx-adjust-field').forEach(function(fieldEl) {
     var key = fieldEl.getAttribute('data-field');
     var active = !!sel[key];
     fieldEl.classList.toggle('rx-adj-field-enabled', active);
     fieldEl.classList.toggle('rx-adj-field-disabled', !active);
-    // Disable every native input/select inside this field when inactive
     fieldEl.querySelectorAll('input, select, textarea').forEach(function(el) {
       el.disabled = !active;
     });
-    // Custom protocol dropdown toggle
     var protoBtn = fieldEl.querySelector('.rx-proto-toggle');
     if (protoBtn) protoBtn.disabled = !active;
   });
@@ -8659,6 +8769,7 @@ function _rxAdjProtoPick(val) {
     o.classList.toggle('active', o.getAttribute('data-val') === val);
   });
   if (dd) dd.classList.remove('open');
+  _rxAdjustValidate();
 }
 
 function _rxAdjustValidate() {
@@ -8666,8 +8777,17 @@ function _rxAdjustValidate() {
   var btn = document.getElementById('rxAdjSaveBtn');
   if (!btn || !_rxAdjustCtx) return;
   var hasReason = reasonEl && reasonEl.value.trim().length > 0;
-  var hasType = Object.keys(_rxAdjustCtx.selectedTypes).length > 0;
-  var ok = hasReason && hasType;
+  var ok;
+  if (_rxAdjustCtx.isAddNew) {
+    // Add-new mode: require a protocol choice + a reason. Every other
+    // field is optional but the picker + reason are the only hard gates.
+    var hid = document.getElementById('rxAdjProto');
+    var hasProto = hid && hid.value && hid.value.trim().length > 0;
+    ok = hasReason && hasProto;
+  } else {
+    var hasType = Object.keys(_rxAdjustCtx.selectedTypes).length > 0;
+    ok = hasReason && hasType;
+  }
   btn.disabled = !ok;
   btn.style.opacity = ok ? '1' : '0.4';
   btn.style.cursor = ok ? 'pointer' : 'not-allowed';
@@ -8689,13 +8809,97 @@ async function _saveAdjustRx() {
   var reason = reasonEl ? reasonEl.value.trim() : '';
   if (!reason) { if (errEl) errEl.textContent = 'A reason is required.'; return; }
 
+  var isAddNew = !!ctx.isAddNew;
   var sel = ctx.selectedTypes || {};
   var selectedList = Object.keys(sel);
-  if (selectedList.length === 0) {
+  if (!isAddNew && selectedList.length === 0) {
     if (errEl) errEl.textContent = 'Select at least one type of change.';
     return;
   }
-  var isDiscontinue = !!sel['discontinuation'];
+  var isDiscontinue = !isAddNew && !!sel['discontinuation'];
+
+  // Add-new branch: validate a protocol was picked, collect all field
+  // values from the form, call pxCreate, refresh, toast. Then bail out.
+  if (isAddNew) {
+    var protoVal = (document.getElementById('rxAdjProto') || {}).value || '';
+    if (!protoVal) {
+      if (errEl) errEl.textContent = 'Select a protocol to prescribe.';
+      return;
+    }
+    var addValues = {
+      protocolKey:       protoVal,
+      dose_amount:       (document.getElementById('rxAdjDose') || {}).value || null,
+      dose_unit:         (document.getElementById('rxAdjUnit') || {}).value || null,
+      timing:            (document.getElementById('rxAdjTiming') || {}).value || null
+    };
+    var fNumA = (document.getElementById('rxAdjFreqNum') || {}).value || '';
+    var fPerA = (document.getElementById('rxAdjFreqPeriod') || {}).value || '';
+    addValues.frequency_amount  = fNumA ? parseInt(fNumA, 10) : null;
+    addValues.frequency_cadence = fPerA || null;
+    var dNumA = (document.getElementById('rxAdjDurNum') || {}).value || '';
+    var dPerA = (document.getElementById('rxAdjDurPeriod') || {}).value || '';
+    addValues.duration_value = dNumA ? parseInt(dNumA, 10) : null;
+    addValues.duration_unit  = dPerA || null;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Prescribing…'; }
+    try {
+      await pxCreate({
+        consultId:         ctx.consultId,
+        userId:            ctx.userId,
+        clinicianId:       currentUserId || null,
+        clinicianName:     _resolveCurrentClinicianName(),
+        protocolKey:       addValues.protocolKey,
+        dose_amount:       addValues.dose_amount,
+        dose_unit:         addValues.dose_unit,
+        frequency_amount:  addValues.frequency_amount,
+        frequency_cadence: addValues.frequency_cadence,
+        timing:            addValues.timing,
+        duration_value:    addValues.duration_value,
+        duration_unit:     addValues.duration_unit,
+        adjustment_reason: reason
+      });
+      // Ensure the consultation's review_status reflects the new Rx.
+      // If the patient had been fully discontinued, adding a new Rx
+      // flips them back to 'prescribed'.
+      await db.from('consultations').update({ review_status: 'prescribed' }).eq('id', ctx.consultId);
+
+      try {
+        await db.from('notifications').insert({
+          user_id: ctx.userId,
+          type:    'protocol_updated',
+          body:    'Your clinician prescribed a new protocol: ' + addValues.protocolKey + '. Reason: ' + reason,
+          read:    false,
+          link:    'protocol'
+        });
+      } catch (_) { /* non-blocking */ }
+
+      _closeAdjustRxModal();
+
+      // Refresh the origin patient panel so the new sub-card appears.
+      var refreshEls = [];
+      if (ctx.originPanel && document.body.contains(ctx.originPanel)) {
+        refreshEls.push(ctx.originPanel);
+      } else {
+        var fallbackSel = '#attn-body-' + ctx.consultId + ', .cl-weekly-row.expanded .cl-attn-card-body, .patient-detail-panel, .appt-detail-panel, #clThreadPatientPanel, #sessionPatientCard';
+        document.querySelectorAll(fallbackSel).forEach(function(el) { refreshEls.push(el); });
+      }
+      refreshEls.forEach(function(el) {
+        if (!el) return;
+        el.dataset.loaded = '';
+        _loadAttentionCardBody(el, ctx.consultId, ctx.userId);
+      });
+      _clPatientRows = null;
+
+      try {
+        if (typeof showToast === 'function') showToast('Protocol prescribed.');
+      } catch (_) {}
+    } catch (err) {
+      console.warn('[Pulse] pxCreate failed:', err);
+      if (errEl) errEl.textContent = (err && err.message) || 'Failed to prescribe. Please try again.';
+      if (btn) { btn.disabled = false; btn.textContent = 'Prescribe protocol'; }
+    }
+    return;
+  }
 
   // Build the new values: start from current, overwrite only fields whose
   // chips are selected. Discontinue skips this — it just marks the Rx as
@@ -9241,6 +9445,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
         '<div class="crw-outcome-title-row">'+
           '<div class="crw-outcome-title">Prescribed'+headerCount+'</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
         '</div>'+
         rxCardsHtml +
         discStripHtml +
@@ -9254,6 +9459,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
         '<div class="crw-outcome-title-row">'+
           '<div class="crw-outcome-title">Discontinued'+dcHeaderCount+'</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
         '</div>'+
         dcCardsHtml +
         (totalDcVersions > 0 ? '<div class="crw-outcome-history-line"><span class="crw-outcome-history-label"></span><button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalDcVersions+')</button></div>' : '')+

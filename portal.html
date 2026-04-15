@@ -237,7 +237,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* Per-slide log-dose button in the member protocol carousel.
    Compact pill sized to sit alongside the title + prescribed-by
    column. Uses the cream gradient / dark-green fill from the
-   overview CTA but keeps the original small, mixed-case label. */
+   overview CTA but keeps the original small, mixed-case label.
+   Arrow sits AFTER the label so the button only widens on its
+   right edge — the text's left edge stays where it was. */
 .proto-slide-log-btn{
   display:inline-flex;align-items:center;gap:6px;
   font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
@@ -251,7 +253,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   white-space:nowrap;
 }
 .proto-slide-log-btn:hover{background:linear-gradient(180deg,#F8F4EB 0%,#F0EADB 100%);}
+.proto-slide-log-btn svg{width:12px;height:12px;flex-shrink:0;display:block;}
 .proto-slide-log-btn:disabled{opacity:0.45;cursor:default;}
+.proto-slide-log-btn:disabled svg{display:none;}
 
 .compounds-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .compounds-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:14px;}
@@ -12868,6 +12872,23 @@ function _buildProgressCardHtml(rx, adh, durWeeks) {
   '</div>';
 }
 
+// Inner markup for the per-slide log-dose button: label span followed
+// by the arrow SVG (arrow after the text so the button only widens on
+// its right edge). CSS hides the SVG when the button is :disabled.
+function _protoLogBtnInnerHtml(logged) {
+  var text = logged ? 'Logged today \u2713' : "Log today's dose";
+  var arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+  return '<span class="proto-slide-log-btn-label">' + text + '</span>' + arrow;
+}
+
+// Apply logged/unlogged state to an existing .proto-slide-log-btn
+// without replacing its onclick wiring.
+function _setProtoLogBtnState(btn, logged) {
+  if (!btn) return;
+  btn.disabled = !!logged;
+  btn.innerHTML = _protoLogBtnInnerHtml(logged);
+}
+
 // Build an extra slide's HTML for an Rx (slides 2..N). Slide 1 is the
 // static template that populatePortal already fills. These extra slides
 // use classes instead of IDs so they can coexist with slide 1.
@@ -12897,7 +12918,7 @@ function _buildExtraProtoSlide(rx, idx) {
   // Today-logged check for this specific Rx — disables the log button
   var todayStr = localDateStr(new Date());
   var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
-  var logBtnHtml = '<button type="button" class="proto-slide-log-btn" '+(todayLogged ? 'disabled' : '')+' onclick="_logDoseForRx(\''+escapeAttr(rx.id)+'\', this)">'+(todayLogged ? 'Logged today \u2713' : "Log today's dose")+'</button>';
+  var logBtnHtml = '<button type="button" class="proto-slide-log-btn" '+(todayLogged ? 'disabled' : '')+' onclick="_logDoseForRx(\''+escapeAttr(rx.id)+'\', this)">'+_protoLogBtnInnerHtml(todayLogged)+'</button>';
 
   return ''+
     '<div class="proto-slide" data-slide-idx="'+idx+'" data-rx-id="'+escapeAttr(rx.id)+'">'+
@@ -12995,8 +13016,7 @@ function _refreshProtoCarouselProgress() {
     if (btn) {
       var todayStr = localDateStr(new Date());
       var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
-      btn.disabled = !!todayLogged;
-      btn.textContent = todayLogged ? 'Logged today \u2713' : "Log today's dose";
+      _setProtoLogBtnState(btn, todayLogged);
     }
   });
   // Slide 1's static progress card — refresh via the existing path
@@ -13008,8 +13028,7 @@ function _refreshProtoCarouselProgress() {
     var primaryRxId = activeRxs[0] && activeRxs[0].id;
     var todayStr2 = localDateStr(new Date());
     var loggedPrimary = primaryRxId && (_rxLoggedDates[primaryRxId] || []).indexOf(todayStr2) !== -1;
-    slideOneBtn.disabled = !!loggedPrimary;
-    slideOneBtn.textContent = loggedPrimary ? 'Logged today \u2713' : "Log today's dose";
+    _setProtoLogBtnState(slideOneBtn, loggedPrimary);
   }
   // Update the fixed summary strip
   var countEl = document.getElementById('protoCarouselCount');
@@ -13060,8 +13079,7 @@ function _attachSlideOneLogButton(primaryRxId) {
   btn.type = 'button';
   btn.className = 'proto-slide-log-btn';
   btn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
-  btn.disabled = !!todayLogged;
-  btn.textContent = todayLogged ? 'Logged today \u2713' : "Log today's dose";
+  _setProtoLogBtnState(btn, todayLogged);
   headerCard.appendChild(btn);
 }
 

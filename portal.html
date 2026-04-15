@@ -3616,6 +3616,10 @@ body.clinician-mode .crw-outcome.crw-outcome-discontinued .crw-outcome-adjust-bt
 }
 /* History one-liner below the outcome grid */
 body.clinician-mode .crw-outcome-history-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
   margin-top:10px;
   padding-top:8px;
   border-top:1px solid rgba(0,0,0,0.06);
@@ -3623,6 +3627,14 @@ body.clinician-mode .crw-outcome-history-line{
   font-size:11px;
   color:var(--cl-text2,rgba(0,0,0,0.6));
   line-height:1.5;
+}
+body.clinician-mode .crw-outcome-history-line .crw-outcome-history-label{
+  flex:1 1 auto;
+  min-width:0;
+}
+body.clinician-mode .crw-outcome-history-line .crw-outcome-history-link{
+  flex:0 0 auto;
+  white-space:nowrap;
 }
 body.clinician-mode .crw-outcome-history-link{
   background:none;
@@ -7911,6 +7923,36 @@ function _durationToWeeks(str) {
   return v;
 }
 
+// Resolve the currently-logged-in clinician's name. Checks the
+// Settings form first (always mounted in the DOM once the clinician
+// session is wired up) and falls back to any cached name we've
+// loaded elsewhere. Returns a raw "First Last" string or null.
+function _resolveCurrentClinicianName() {
+  try {
+    var fEl = document.getElementById('clFirstName');
+    var lEl = document.getElementById('clLastName');
+    var f = (fEl && fEl.value || '').trim();
+    var l = (lEl && lEl.value || '').trim();
+    var joined = (f + (l ? ' ' + l : '')).trim();
+    if (joined) return joined;
+  } catch (_) {}
+  if (typeof window !== 'undefined' && window._clinicianName) return window._clinicianName;
+  return null;
+}
+
+// Format a stored full name as "Dr. <last word>" for display. Returns
+// null when we don't have anything usable so callers can fall back.
+function _formatDrLastName(fullName) {
+  if (!fullName || typeof fullName !== 'string') return null;
+  var trimmed = fullName.trim();
+  if (!trimmed) return null;
+  // Strip an existing "Dr." / "Dr " prefix so we don't double it up
+  trimmed = trimmed.replace(/^dr\.?\s+/i, '');
+  var parts = trimmed.split(/\s+/);
+  var last = parts[parts.length - 1] || trimmed;
+  return 'Dr. ' + last;
+}
+
 // Read frequency / duration from an arbitrary row (consultation,
 // profile, history snapshot). Prefers the structured columns; falls
 // back to parsing the legacy text string. Returns nulls when nothing
@@ -8307,6 +8349,7 @@ async function _saveAdjustRx() {
   }
 
   var nowIso = new Date().toISOString();
+  var _currentPrescriberName = _resolveCurrentClinicianName();
   // Build the new history. Three steps:
   //   1. If history is empty AND there's an existing active prescription
   //      (i.e. this is a patient prescribed before we added the history
@@ -8350,7 +8393,7 @@ async function _saveAdjustRx() {
       effective_from: nowIso,
       effective_to: nowIso,
       prescribed_by: currentUserId || null,
-      prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+      prescribed_by_name: _currentPrescriberName,
       protocol_assigned: null, dose_amount: null, dose_unit: null,
       frequency_amount: null, frequency_cadence: null, frequency: null,
       timing: null,
@@ -8370,7 +8413,7 @@ async function _saveAdjustRx() {
       effective_from: nowIso,
       effective_to: null,
       prescribed_by: currentUserId || null,
-      prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+      prescribed_by_name: _currentPrescriberName,
       protocol_assigned: newValues.protocol_assigned,
       dose_amount: newValues.dose_amount,
       dose_unit:   newValues.dose_unit,
@@ -8549,8 +8592,8 @@ async function _openRxHistoryModal(consultId) {
         '<div class="rx-adjust-hdr">' +
           '<div>' +
             '<div class="rx-adjust-eyebrow">Prescription</div>' +
-            '<div class="rx-adjust-title">Change history</div>' +
-            '<div class="rx-adjust-sub">'+escapeHtml(name)+'</div>' +
+            '<div class="rx-adjust-title">'+escapeHtml(name)+'</div>' +
+            '<div class="rx-adjust-sub">Change history</div>' +
           '</div>' +
           '<button type="button" class="rx-adjust-close" onclick="_closeRxHistoryModal()" aria-label="Close">&times;</button>' +
         '</div>' +
@@ -8571,7 +8614,7 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
   } else {
     dateLabel = entry.effective_to ? _fmtClDate(entry.effective_to) : '—';
   }
-  var who = entry.prescribed_by_name || '';
+  var who = _formatDrLastName(entry.prescribed_by_name) || '';
   var typeLabels = {
     dose_change:'Dose', frequency_change:'Frequency',
     timing_change:'Timing', protocol_change:'Protocol',
@@ -8797,7 +8840,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var timingInfo = consultRow.timing || _le.timing || d.timing || '';
       var otherNotes = consultRow.other_notes || _le.other_notes || d.other_notes || '';
 
-      // "Last adjusted Apr 14 by Dr. Jane — Dose 200mg → 300mg. View history"
+      // "Last adjusted Apr 14, 2026 by Dr. Chen" with right-aligned View history link
       var historyLineHtml = '';
       if (_latestHist) {
         // Date of the transition = when the old entry was closed (which
@@ -8806,15 +8849,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         var _histDate = _activeHist && _activeHist.effective_from
           ? _fmtClDate(_activeHist.effective_from)
           : _fmtClDate(_latestHist.effective_to);
-        var _histWho = (_activeHist && _activeHist.prescribed_by_name) || 'your care team';
-        var _diffText = _diffSummary(_latestHist, {
-          protocol_assigned: protoAssigned, dose_amount: _da, dose_unit: _du,
-          frequency: freqInfo, timing: timingInfo, duration: durInfo
-        });
+        var _histWho = _formatDrLastName((_activeHist && _activeHist.prescribed_by_name) || null) || 'your care team';
         historyLineHtml =
           '<div class="crw-outcome-history-line">'+
-            'Last adjusted '+escapeHtml(_histDate)+' by '+escapeHtml(_histWho)+
-            (_diffText ? ' — '+escapeHtml(_diffText) : '')+'. '+
+            '<span class="crw-outcome-history-label">Last adjusted '+escapeHtml(_histDate)+' by '+escapeHtml(_histWho)+'</span>'+
             '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+rxHistory.length+')</button>'+
           '</div>';
       }
@@ -16738,7 +16776,7 @@ async function _submitEvaluation(apptId) {
           effective_from: evalData.evaluation_date,
           effective_to: null, // still active — cleared on first Adjust
           prescribed_by: currentUserId || null,
-          prescribed_by_name: (typeof _currentClinicianName === 'string' && _currentClinicianName) || null,
+          prescribed_by_name: _resolveCurrentClinicianName(),
           protocol_assigned: assignedProtocolStr,
           dose_amount: evalData.dose_amount,
           dose_unit: evalData.dose_unit,

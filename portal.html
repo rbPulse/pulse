@@ -3650,6 +3650,73 @@ body.clinician-mode .crw-outcome-history-link{
 }
 body.clinician-mode .crw-outcome-history-link:hover{color:#15803d;}
 
+/* ── Per-Rx sub-cards inside the outcome card (Phase 2 multi-protocol) ── */
+body.clinician-mode .crw-outcome-rx{
+  padding:10px 12px;
+  border:1px solid rgba(29,185,84,0.18);
+  border-radius:8px;
+  background:rgba(255,255,255,0.35);
+  margin-bottom:8px;
+}
+body.clinician-mode .crw-outcome-rx:last-of-type{margin-bottom:0;}
+body.clinician-mode .crw-outcome-rx-hdr{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(0,0,0,0.05);
+}
+body.clinician-mode .crw-outcome-rx-name{
+  font-family:'Inter',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.02em;
+  color:var(--cl-text,#111111);
+  line-height:1.2;
+}
+body.clinician-mode .crw-outcome-rx-sub{
+  font-family:'Inter',sans-serif;
+  font-size:10px;
+  font-weight:500;
+  color:rgba(0,0,0,0.45);
+  margin-top:2px;
+}
+/* Tighter grid inside a sub-card — no Protocol cell (the name is the header) */
+body.clinician-mode .crw-outcome-rx .crw-outcome-grid{
+  grid-template-columns:repeat(auto-fit,minmax(110px,1fr)) !important;
+  gap:8px 14px !important;
+}
+/* Discontinued sub-card variant — muted red tint */
+body.clinician-mode .crw-outcome-rx.rx-discontinued{
+  border-color:rgba(185,28,28,0.18);
+  background:rgba(255,255,255,0.2);
+  opacity:0.85;
+}
+body.clinician-mode .crw-outcome-rx.rx-discontinued .crw-outcome-rx-name{
+  color:rgba(0,0,0,0.55);
+  text-decoration:line-through;
+  text-decoration-color:rgba(185,28,28,0.4);
+  text-decoration-thickness:1.5px;
+}
+body.clinician-mode .crw-outcome-rx.rx-discontinued .crw-outcome-adjust-btn{
+  border-color:rgba(29,185,84,0.45);
+  color:#17a34a;
+}
+/* Divider above the discontinued strip when it follows an active block */
+body.clinician-mode .crw-outcome-disc-divider{
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:rgba(0,0,0,0.4);
+  margin:14px 0 6px;
+  padding-top:10px;
+  border-top:1px dashed rgba(0,0,0,0.1);
+}
+
 /* ── Adjust Prescription + History modals ─────────────────────────────────
    Shared .rx-adjust-overlay / .rx-adjust-card shell; the History modal
    reuses the same card chrome but swaps the body contents. */
@@ -8285,7 +8352,7 @@ async function pxReprescribe(ctx) {
   if (vRes.error) throw vRes.error;
 }
 
-async function _openAdjustRxModal(consultId, userId, evt) {
+async function _openAdjustRxModal(consultId, userId, evt, prescriptionId) {
   try {
     // Capture the panel the Adjust button was clicked from so we can
     // targeted-reload it after save. Falls back to the currently-active
@@ -8300,9 +8367,10 @@ async function _openAdjustRxModal(consultId, userId, evt) {
     }
 
     // Fetch consultation intake for patient name + all prescriptions for
-    // this consult. Adjust modal operates on ONE prescription at a time —
-    // in Phase 1 that's the single active (or, for re-prescribe, the single
-    // discontinued) Rx. Multi-protocol picker lands in Phase 3.
+    // this consult. When prescriptionId is explicitly passed (from a
+    // per-Rx sub-card's Adjust/Re-prescribe button) we target that exact
+    // Rx; otherwise fall back to "first active" / "most recent
+    // discontinued" for callers that don't know about Phase 2 targeting.
     var [cRes, allRxs] = await Promise.all([
       db.from('consultations').select('id, review_status, data').eq('id', consultId).limit(1),
       pxGetAllForConsultation(consultId)
@@ -8312,15 +8380,25 @@ async function _openAdjustRxModal(consultId, userId, evt) {
     var d = row.data || {};
     var patientName = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
 
-    var isReprescribe = (row.review_status === 'discontinued');
-    var targetRx;
-    if (isReprescribe) {
-      // Pick the most recently discontinued Rx to re-prescribe
-      var discs = allRxs.filter(function(r){ return r.status === 'discontinued'; });
-      targetRx = discs[discs.length - 1] || null;
+    var targetRx = null;
+    if (prescriptionId) {
+      targetRx = allRxs.find(function(r) { return r.id === prescriptionId; }) || null;
+    }
+    var isReprescribe;
+    if (targetRx) {
+      // Explicit target — re-prescribe if the targeted Rx is currently
+      // discontinued, adjust otherwise.
+      isReprescribe = targetRx.status === 'discontinued';
     } else {
-      var actives = allRxs.filter(function(r){ return r.status === 'active'; });
-      targetRx = actives[0] || null;
+      // Fallback for callers that don't pass an rxId
+      isReprescribe = (row.review_status === 'discontinued');
+      if (isReprescribe) {
+        var discs = allRxs.filter(function(r){ return r.status === 'discontinued'; });
+        targetRx = discs[discs.length - 1] || null;
+      } else {
+        var actives = allRxs.filter(function(r){ return r.status === 'active'; });
+        targetRx = actives[0] || null;
+      }
     }
     if (!targetRx) {
       console.warn('[Pulse] adjust modal: no target prescription found for consult', consultId);
@@ -9083,70 +9161,102 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       if (!val && val !== 0) return '';
       return '<div class="crw-outcome-cell"><div class="crw-outcome-lbl">'+escapeHtml(lbl)+'</div><div class="crw-outcome-val">'+escapeHtml(val)+'</div></div>';
     }
-    var outcomeTopHtml = '';
-    if (consultReviewStatus === 'prescribed' && primaryActiveRx) {
-      var rx = primaryActiveRx;
-      var protoAssigned = rx.protocol_key || 'Not specified';
-      var evalDate = _fmtClDate(rx.started_at) || '—';
+    // Render one sub-card per Rx (active or discontinued). Extracted here
+    // so the Prescribed and Discontinued branches below can reuse it.
+    function _buildRxSubCard(rx, opts) {
+      opts = opts || {};
+      var isActive = rx.status === 'active';
+      var nameHtml = escapeHtml(rx.protocol_key || 'Protocol');
       var doseInfo = [rx.dose_amount, rx.dose_unit].filter(Boolean).join(' ') || '—';
       var freqInfo = rx.frequency || '—';
       var durInfo  = rx.duration || '—';
       var timingInfo = rx.timing || '';
       var otherNotes = rx.other_notes || '';
-      var versions = rx._versions || [];
-      var totalVersions = versions.length;
-      // The "last adjusted" line only makes sense after at least one real
-      // adjustment (more than the initial v1).
-      var showLastAdjusted = totalVersions > 1 && rx.effective_from && !(rx.adjustment_types || []).includes('initial');
-
-      var historyLineHtml = '';
-      if (showLastAdjusted) {
-        var _histDate = _fmtClDate(rx.effective_from);
-        var _histWho  = _formatDrLastName(rx.prescribed_by_name) || 'your care team';
-        historyLineHtml =
-          '<div class="crw-outcome-history-line">'+
-            '<span class="crw-outcome-history-label">Last adjusted '+escapeHtml(_histDate)+' by '+escapeHtml(_histWho)+'</span>'+
-            '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalVersions+')</button>'+
-          '</div>';
-      }
-
-      outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
-        '<div class="crw-outcome-title-row">'+
-          '<div class="crw-outcome-title">Prescribed</div>'+
-          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">Adjust</button>'+
+      var evalDate = _fmtClDate(rx.started_at) || '—';
+      var btnLabel = isActive ? 'Adjust' : 'Re-prescribe';
+      var subText = isActive
+        ? ('Prescribed ' + evalDate)
+        : ('Discontinued ' + (rx.discontinued_at ? _fmtClDate(rx.discontinued_at) : '—'));
+      return '<div class="crw-outcome-rx'+(isActive ? '' : ' rx-discontinued')+'">'+
+        '<div class="crw-outcome-rx-hdr">'+
+          '<div>'+
+            '<div class="crw-outcome-rx-name">'+nameHtml+'</div>'+
+            '<div class="crw-outcome-rx-sub">'+escapeHtml(subText)+'</div>'+
+          '</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event,\''+escapeAttr(rx.id)+'\')">'+btnLabel+'</button>'+
         '</div>'+
         '<div class="crw-outcome-grid">'+
-          _outcomeCell('Protocol', protoAssigned)+
           _outcomeCell('Dose', doseInfo)+
           _outcomeCell('Frequency', freqInfo)+
           (timingInfo ? _outcomeCell('Timing', timingInfo) : '')+
           _outcomeCell('Duration', durInfo)+
-          _outcomeCell('Evaluated', evalDate)+
         '</div>'+
         (otherNotes ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Notes</div><div class="crw-outcome-val">'+escapeHtml(otherNotes)+'</div></div>' : '')+
+        (!isActive && rx.discontinued_reason ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Reason</div><div class="crw-outcome-val">'+escapeHtml(rx.discontinued_reason)+'</div></div>' : '')+
+      '</div>';
+    }
+
+    // Pick the Rx whose most recent adjustment is the newest — that's
+    // the one the consultation-level "Last adjusted" line refers to.
+    function _pickMostRecentlyAdjusted(rxList) {
+      if (!rxList || !rxList.length) return null;
+      var best = null;
+      rxList.forEach(function(r) {
+        var vs = r._versions || [];
+        if (vs.length < 2) return; // only initial exists — no adjustment
+        var latest = vs[vs.length - 1];
+        if (!latest || !latest.effective_from) return;
+        var t = new Date(latest.effective_from).getTime();
+        if (!best || t > best._t) best = Object.assign({}, r, { _t: t, _latestVer: latest });
+      });
+      return best;
+    }
+
+    var outcomeTopHtml = '';
+    if (consultReviewStatus === 'prescribed' && activeRxs.length > 0) {
+      var headerCount = activeRxs.length > 1 ? ' (' + activeRxs.length + ')' : '';
+      var rxCardsHtml = activeRxs.map(function(r) { return _buildRxSubCard(r); }).join('');
+      // Discontinued Rxs on a prescribed patient get a muted footer strip
+      var discStripHtml = '';
+      if (discontinuedRxs.length > 0) {
+        discStripHtml = '<div class="crw-outcome-disc-divider">Previously discontinued</div>' +
+          discontinuedRxs.map(function(r) { return _buildRxSubCard(r); }).join('');
+      }
+      // Consultation-level "Last adjusted" line — points at the Rx with
+      // the most recent non-initial version across all active Rxs.
+      var mostRecent = _pickMostRecentlyAdjusted(activeRxs);
+      var totalAllVersions = 0;
+      allRxs.forEach(function(r) { totalAllVersions += (r._versions || []).length; });
+      var historyLineHtml = '';
+      if (mostRecent && totalAllVersions > 1) {
+        var _histDate = _fmtClDate(mostRecent._latestVer.effective_from);
+        var _histWho  = _formatDrLastName(mostRecent._latestVer.prescribed_by_name) || 'your care team';
+        var _histProto = mostRecent.protocol_key || '';
+        historyLineHtml =
+          '<div class="crw-outcome-history-line">'+
+            '<span class="crw-outcome-history-label">Last adjusted '+escapeHtml(_histDate)+' by '+escapeHtml(_histWho)+(_histProto ? ' (' + escapeHtml(_histProto) + ')' : '')+'</span>'+
+            '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalAllVersions+')</button>'+
+          '</div>';
+      }
+      outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
+        '<div class="crw-outcome-title-row">'+
+          '<div class="crw-outcome-title">Prescribed'+headerCount+'</div>'+
+        '</div>'+
+        rxCardsHtml +
+        discStripHtml +
         historyLineHtml+
       '</div>';
-    } else if (consultReviewStatus === 'discontinued' && primaryDiscontinuedRx) {
-      var drx = primaryDiscontinuedRx;
-      var _lastProto = drx.protocol_key || '—';
-      var _lastDose  = [drx.dose_amount, drx.dose_unit].filter(Boolean).join(' ') || '—';
-      var _dcReason  = drx.discontinued_reason || '';
-      var _dcDate    = drx.discontinued_at ? _fmtClDate(drx.discontinued_at) : '—';
-      var _dcWho     = _formatDrLastName(drx.prescribed_by_name) || 'care team';
-      var _dcVersionsCount = (drx._versions || []).length;
+    } else if (consultReviewStatus === 'discontinued' && discontinuedRxs.length > 0) {
+      var dcHeaderCount = discontinuedRxs.length > 1 ? ' (' + discontinuedRxs.length + ')' : '';
+      var dcCardsHtml = discontinuedRxs.map(function(r) { return _buildRxSubCard(r); }).join('');
+      var totalDcVersions = 0;
+      discontinuedRxs.forEach(function(r) { totalDcVersions += (r._versions || []).length; });
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
         '<div class="crw-outcome-title-row">'+
-          '<div class="crw-outcome-title">Discontinued</div>'+
-          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">Re-prescribe</button>'+
+          '<div class="crw-outcome-title">Discontinued'+dcHeaderCount+'</div>'+
         '</div>'+
-        '<div class="crw-outcome-grid">'+
-          _outcomeCell('Last protocol', _lastProto)+
-          _outcomeCell('Last dose', _lastDose)+
-          _outcomeCell('Discontinued', _dcDate)+
-          _outcomeCell('By', _dcWho)+
-        '</div>'+
-        (_dcReason ? '<div class="crw-outcome-notes"><div class="crw-outcome-lbl">Reason</div><div class="crw-outcome-val">'+escapeHtml(_dcReason)+'</div></div>' : '')+
-        (_dcVersionsCount > 0 ? '<div class="crw-outcome-history-line"><button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+_dcVersionsCount+')</button></div>' : '')+
+        dcCardsHtml +
+        (totalDcVersions > 0 ? '<div class="crw-outcome-history-line"><span class="crw-outcome-history-label"></span><button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalDcVersions+')</button></div>' : '')+
       '</div>';
     } else if (consultReviewStatus === 'not_prescribed') {
       var _le2 = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};

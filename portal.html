@@ -166,6 +166,87 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .proto-actions-text{font-family:'Inter',sans-serif;font-size:14px;color:var(--grey);line-height:1.55;flex:1;}
 .proto-actions-btns{display:flex;gap:10px;flex-shrink:0;}
 
+/* ── Protocol rolodex (Phase 4: multi-protocol carousel) ── */
+/* Summary strip + pill row live above the track. Arrows sit alongside it.
+   Single-protocol members see a plain centered card — the summary, pills,
+   and arrows all get display:none via inline style when _activeRxs.length===1. */
+.proto-carousel{position:relative;}
+.proto-carousel-summary{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:14px;padding:10px 16px;
+  background:rgba(58,122,92,0.06);
+  border:1px solid rgba(58,122,92,0.18);
+  border-radius:10px;
+  font-family:'Inter',sans-serif;font-size:12px;color:var(--grey);
+}
+.proto-carousel-summary-count{font-weight:600;color:#fff;}
+.proto-carousel-pills{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.proto-carousel-pill{
+  font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;
+  padding:7px 14px;border-radius:999px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  color:var(--grey2);
+  cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.proto-carousel-pill:hover{background:rgba(58,122,92,0.1);border-color:rgba(58,122,92,0.35);color:#fff;}
+.proto-carousel-pill.active{background:rgba(58,122,92,0.2);border-color:var(--green);color:#fff;}
+/* The scroll track — horizontal, scroll-snap to each slide */
+.proto-carousel-track{
+  display:flex;gap:16px;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-bottom:4px; /* avoid clipping the card shadow */
+}
+.proto-carousel-track::-webkit-scrollbar{display:none;}
+.proto-slide{
+  flex:0 0 100%;
+  min-width:0;
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+}
+/* Arrow buttons — only visible on desktop when there's more than one slide */
+.proto-carousel-arrow{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:38px;height:38px;border-radius:999px;
+  background:rgba(20,24,28,0.85);
+  border:1px solid rgba(255,255,255,0.12);
+  color:#fff;font-size:20px;line-height:1;
+  cursor:pointer;z-index:3;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,border-color .15s;
+}
+.proto-carousel-arrow:hover{background:rgba(58,122,92,0.65);border-color:var(--green);}
+.proto-carousel-arrow[disabled]{opacity:0.3;cursor:not-allowed;}
+.proto-carousel-prev{left:-8px;}
+.proto-carousel-next{right:-8px;}
+/* Hide arrows on narrow viewports — swipe takes over */
+@media (max-width: 768px){
+  .proto-carousel-arrow{display:none;}
+}
+/* Compact "Log dose" button inside a slide's header — each protocol gets
+   its own prominently-labeled button so members can't log the wrong dose */
+.proto-slide-log-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:0.04em;
+  padding:8px 14px;border-radius:999px;
+  background:var(--green);color:#fff;
+  border:1px solid var(--green);cursor:pointer;
+  transition:background .15s,opacity .15s;
+  white-space:nowrap;
+}
+.proto-slide-log-btn:hover{background:#4aba82;}
+.proto-slide-log-btn:disabled{opacity:0.45;cursor:default;background:rgba(58,122,92,0.2);border-color:rgba(58,122,92,0.25);}
+
 .compounds-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .compounds-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:14px;}
 .compounds-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
@@ -4532,6 +4613,23 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 
         <!-- Protocol content (hidden until loaded) -->
         <div id="protoContent" style="display:none;">
+          <!-- Rolodex carousel — wraps the per-protocol slides. Single-
+               protocol members see just the slide content; multi-protocol
+               adds a summary strip, pill row, arrows, and swipe/scroll. -->
+          <div class="proto-carousel" id="protoCarousel">
+            <!-- Summary strip (hidden unless >1 active Rx) -->
+            <div class="proto-carousel-summary" id="protoCarouselSummary" style="display:none;">
+              <div><span class="proto-carousel-summary-count" id="protoCarouselCount">—</span></div>
+              <div id="protoCarouselAdherence">—</div>
+            </div>
+            <!-- Protocol name pill row (hidden unless >1 active Rx) -->
+            <div class="proto-carousel-pills" id="protoCarouselPills" style="display:none;"></div>
+            <!-- Scroll track containing every slide -->
+            <div class="proto-carousel-track" id="protoCarouselTrack">
+              <!-- Slide 1: existing static template. populatePortal writes
+                   into the same element IDs it always has — zero regression
+                   for single-protocol members. -->
+              <div class="proto-slide proto-slide-active" data-slide-idx="0">
           <div class="proto-header-card">
             <div class="proto-name" id="protoName">—</div>
             <div class="proto-meta">
@@ -4614,8 +4712,14 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="compounds-label">Clinician Notes</div>
             <div class="proto-notes-body" id="protoNotesBody">—</div>
           </div>
+              </div><!-- /.proto-slide (slide 1) -->
+            </div><!-- /.proto-carousel-track -->
+            <!-- Arrows (hidden unless >1 active Rx; also hidden on mobile via CSS) -->
+            <button type="button" id="protoCarouselPrev" class="proto-carousel-arrow proto-carousel-prev" style="display:none;" onclick="_protoCarouselStep(-1)" aria-label="Previous protocol">&lsaquo;</button>
+            <button type="button" id="protoCarouselNext" class="proto-carousel-arrow proto-carousel-next" style="display:none;" onclick="_protoCarouselStep(1)" aria-label="Next protocol">&rsaquo;</button>
+          </div><!-- /.proto-carousel -->
 
-          <!-- Actions -->
+          <!-- Actions (stays outside the carousel — consultation-level) -->
           <div class="p-card proto-actions-card">
             <div class="proto-actions-text">Questions about your protocol or need an adjustment?</div>
             <div class="proto-actions-btns">
@@ -12326,6 +12430,192 @@ function _refreshProtoProgress() {
   if (el('protoStatRate')) el('protoStatRate').textContent = adh.rate + '%';
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Protocol rolodex (Phase 4)
+// ═══════════════════════════════════════════════════════════════════════
+// The Protocol tab is a horizontal carousel. Slide 1 is the static
+// template populatePortal already renders into (zero regression for
+// single-protocol members). When a member has multiple active Rxs we
+// append extra slides here and show the summary strip, pill row, and
+// desktop arrow buttons.
+
+// Track of the currently-visible slide index for arrow disabled state
+var _protoCarouselIdx = 0;
+
+function _protoCarouselSlideCount() {
+  var track = document.getElementById('protoCarouselTrack');
+  if (!track) return 0;
+  return track.querySelectorAll('.proto-slide').length;
+}
+
+function _protoCarouselGoTo(idx) {
+  var track = document.getElementById('protoCarouselTrack');
+  if (!track) return;
+  var slides = track.querySelectorAll('.proto-slide');
+  if (!slides.length) return;
+  var clamped = Math.max(0, Math.min(slides.length - 1, idx));
+  _protoCarouselIdx = clamped;
+  // Smooth-scroll the target slide into view
+  var target = slides[clamped];
+  if (target && target.scrollIntoView) {
+    // Use scrollLeft math so we don't end up vertical-scrolling the page
+    track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+  }
+  _protoCarouselSyncUI();
+}
+
+function _protoCarouselStep(delta) {
+  _protoCarouselGoTo(_protoCarouselIdx + delta);
+}
+
+function _protoCarouselSyncUI() {
+  var slides = document.querySelectorAll('#protoCarouselTrack .proto-slide');
+  slides.forEach(function(el, i) {
+    el.classList.toggle('proto-slide-active', i === _protoCarouselIdx);
+  });
+  var pills = document.querySelectorAll('#protoCarouselPills .proto-carousel-pill');
+  pills.forEach(function(p, i) {
+    p.classList.toggle('active', i === _protoCarouselIdx);
+  });
+  var prev = document.getElementById('protoCarouselPrev');
+  var next = document.getElementById('protoCarouselNext');
+  if (prev) prev.disabled = _protoCarouselIdx <= 0;
+  if (next) next.disabled = _protoCarouselIdx >= slides.length - 1;
+}
+
+// Observe scroll to keep the active index in sync when the member
+// drags/swipes the track directly.
+function _protoCarouselAttachScrollListener() {
+  var track = document.getElementById('protoCarouselTrack');
+  if (!track || track._listenerAttached) return;
+  track._listenerAttached = true;
+  var scrollTimer;
+  track.addEventListener('scroll', function() {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(function() {
+      var slides = track.querySelectorAll('.proto-slide');
+      if (!slides.length) return;
+      var trackRect = track.getBoundingClientRect();
+      var bestIdx = 0;
+      var bestDist = Infinity;
+      slides.forEach(function(s, i) {
+        var r = s.getBoundingClientRect();
+        var dist = Math.abs(r.left - trackRect.left);
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      });
+      if (bestIdx !== _protoCarouselIdx) {
+        _protoCarouselIdx = bestIdx;
+        _protoCarouselSyncUI();
+      }
+    }, 80);
+  });
+}
+
+// Build an extra slide's HTML for an Rx (slides 2..N). Slide 1 is the
+// static template that populatePortal already fills. These extra slides
+// use classes instead of IDs so they can coexist with slide 1.
+function _buildExtraProtoSlide(rx, idx) {
+  var startDate = rx.started_at ? new Date(rx.started_at) : null;
+  var startStr = startDate ? startDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—';
+  var durWeeks = _durationToWeeks(rx.duration) || null;
+  var endStr = '—';
+  if (startDate && durWeeks) {
+    var end = new Date(startDate); end.setDate(end.getDate() + durWeeks * 7);
+    endStr = end.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  }
+  var doseStr = (rx.dose_amount != null && rx.dose_unit) ? (rx.dose_amount + ' ' + rx.dose_unit) : '—';
+  var freqStr = rx.frequency || '—';
+  var timingStr = rx.timing || 'Not specified';
+  var durStr = durWeeks ? (durWeeks + ' weeks') : 'Not specified';
+  var protoName = escapeHtml(rx.protocol_key || 'Protocol');
+  var prescribedLine = '';
+  var whoText = _formatDrLastName(rx.prescribed_by_name) || '';
+  if (whoText && startStr !== '—') prescribedLine = 'Prescribed by ' + whoText + ' on ' + startStr;
+  else if (startStr !== '—') prescribedLine = 'Prescribed on ' + startStr;
+  else if (whoText) prescribedLine = 'Prescribed by ' + whoText;
+  return ''+
+    '<div class="proto-slide" data-slide-idx="'+idx+'" data-rx-id="'+escapeAttr(rx.id)+'">'+
+      '<div class="proto-header-card">'+
+        '<div class="proto-name">'+protoName+'</div>'+
+        '<div class="proto-meta">'+
+          '<span class="proto-prescribed">'+escapeHtml(prescribedLine || '—')+'</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="p-card">'+
+        '<div class="compounds-label">Prescription</div>'+
+        '<div class="proto-rx-grid">'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Dose</div><div class="proto-rx-value">'+escapeHtml(doseStr)+'</div></div>'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Frequency</div><div class="proto-rx-value">'+escapeHtml(freqStr)+'</div></div>'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Timing</div><div class="proto-rx-value">'+escapeHtml(timingStr)+'</div></div>'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Duration</div><div class="proto-rx-value">'+escapeHtml(durStr)+'</div></div>'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Start date</div><div class="proto-rx-value">'+escapeHtml(startStr)+'</div></div>'+
+          '<div class="proto-rx-item"><div class="proto-rx-label">Est. completion</div><div class="proto-rx-value">'+escapeHtml(endStr)+'</div></div>'+
+        '</div>'+
+      '</div>'+
+      // NOTE: Per-protocol progress card + dose logging wire up in Phase 5.
+      // For now the extra slide just shows static prescription details.
+      '<div class="p-card" style="text-align:center;padding:18px 24px;">'+
+        '<div class="compounds-label" style="margin-bottom:8px;">Progress tracking</div>'+
+        '<div style="font-size:12px;color:var(--grey2);">Per-protocol progress coming soon.</div>'+
+      '</div>'+
+    '</div>';
+}
+
+// Render (or re-render) the carousel shell for a given list of active Rxs.
+// Slide 1 is left alone — populatePortal populates it via the existing ID
+// path. Extra slides (2..N) get rebuilt from scratch on every call.
+function _renderProtoCarousel(activeRxs) {
+  var track = document.getElementById('protoCarouselTrack');
+  var summary = document.getElementById('protoCarouselSummary');
+  var pillsWrap = document.getElementById('protoCarouselPills');
+  var prevBtn = document.getElementById('protoCarouselPrev');
+  var nextBtn = document.getElementById('protoCarouselNext');
+  if (!track) return;
+
+  // Clean up any extra slides from a previous render
+  track.querySelectorAll('.proto-slide').forEach(function(s, i) {
+    if (i > 0) s.remove();
+  });
+
+  var n = (activeRxs || []).length;
+  // Single-protocol (or no prescriptions) — hide every multi-protocol
+  // affordance and bail. Single-protocol members see the plain card.
+  if (n <= 1) {
+    if (summary) summary.style.display = 'none';
+    if (pillsWrap) { pillsWrap.style.display = 'none'; pillsWrap.innerHTML = ''; }
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+    _protoCarouselIdx = 0;
+    return;
+  }
+
+  // Multi-protocol: append one extra slide per Rx beyond the first
+  for (var i = 1; i < n; i++) {
+    track.insertAdjacentHTML('beforeend', _buildExtraProtoSlide(activeRxs[i], i));
+  }
+
+  // Pill row
+  if (pillsWrap) {
+    pillsWrap.innerHTML = activeRxs.map(function(rx, idx) {
+      return '<button type="button" class="proto-carousel-pill'+(idx === 0 ? ' active' : '')+'" onclick="_protoCarouselGoTo('+idx+')">'+escapeHtml(rx.protocol_key || ('Protocol ' + (idx + 1)))+'</button>';
+    }).join('');
+    pillsWrap.style.display = '';
+  }
+  // Summary strip
+  if (summary) {
+    var countEl = document.getElementById('protoCarouselCount');
+    if (countEl) countEl.textContent = n + ' active protocols';
+    summary.style.display = '';
+  }
+  // Arrow buttons
+  if (prevBtn) prevBtn.style.display = '';
+  if (nextBtn) nextBtn.style.display = '';
+
+  _protoCarouselIdx = 0;
+  _protoCarouselSyncUI();
+  _protoCarouselAttachScrollListener();
+}
+
 // Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
 // Called both from populatePortal (when protocol loads) and from the clinician
 // profile fetch (when _clinicianName becomes available asynchronously).
@@ -12815,6 +13105,13 @@ function populatePortal(user, consultation, greeting) {
     window._protoRxStartDate = rxStartDate || null;
     window._protoRxDurWeeks = rxDurWeeks || null;
     _refreshProtoProgress();
+
+    // Multi-protocol rolodex: if the member has more than one active Rx,
+    // build out slides 2..N and show the summary strip / pills / arrows.
+    // Single-protocol members pass through with nothing changed.
+    if (typeof _renderProtoCarousel === 'function') {
+      _renderProtoCarousel(_activeRxs || []);
+    }
 
     // ── Clinician Notes ──
     var clinicianNotes = (consultation.data && consultation.data.clinician_notes) || consultation.clinician_notes || null;

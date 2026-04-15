@@ -8020,12 +8020,12 @@ function _buildRxAdjustModalHtml(ctx) {
     return '<button type="button" class="rx-proto-option'+(isActive ? ' active' : '')+'" data-val="'+escapeAttr(p)+'" onclick="_rxAdjProtoPick(\''+escapeAttr(p).replace(/'/g,"\\'")+'\')">'+escapeHtml(p)+'</button>';
   }).join('');
 
-  // Chips — six types, Discontinue pinned far right via spacer
+  // Chips — six types in vertical field order, Discontinue pinned far right
   var chips = [
+    { val:'protocol_change',   label:'Protocol' },
     { val:'dose_change',       label:'Dose' },
     { val:'frequency_change',  label:'Frequency' },
     { val:'timing_change',     label:'Timing' },
-    { val:'protocol_change',   label:'Protocol' },
     { val:'duration_change',   label:'Duration' }
   ];
   var chipsHtml = chips.map(function(c) {
@@ -8084,12 +8084,15 @@ function _buildRxAdjustModalHtml(ctx) {
             '<input type="text" id="rxAdjTiming" value="'+escapeAttr(cur.timing)+'" placeholder="e.g. Morning, before meals"/>' +
           '</div>' +
         '</div>' +
-        '<div class="rx-adjust-field" data-field="duration_change">' +
-          '<label>Duration</label>' +
-          '<div class="rx-adjust-inline2">' +
-            '<input type="number" min="1" max="52" id="rxAdjDurNum" value="'+escapeAttr(cur.dur_num)+'" placeholder="e.g. 8"/>' +
-            '<select id="rxAdjDurPeriod"><option value="">—</option>'+durPeriodOpts+'</select>' +
+        '<div class="rx-adjust-grid2">' +
+          '<div class="rx-adjust-field" data-field="duration_change">' +
+            '<label>Duration</label>' +
+            '<div class="rx-adjust-inline2">' +
+              '<input type="number" min="1" max="52" id="rxAdjDurNum" value="'+escapeAttr(cur.dur_num)+'" placeholder="e.g. 8"/>' +
+              '<select id="rxAdjDurPeriod"><option value="">—</option>'+durPeriodOpts+'</select>' +
+            '</div>' +
           '</div>' +
+          '<div></div>' +
         '</div>' +
       '</div>' +
 

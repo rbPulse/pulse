@@ -3465,8 +3465,34 @@ async function _populateStep6() {
     var cRes = await client.from('consultations').select('*')
       .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
     var consultation = (cRes.data && cRes.data.length > 0) ? cRes.data[0] : null;
-    var assignedProto = consultation ? (consultation.protocol_assigned || (consultation.data && consultation.data.assigned_protocol)) : null;
-    var rxGiven = consultation ? consultation.prescription_given : null;
+    // Fetch active prescriptions for this member — the new source of
+    // truth for "what was prescribed". Falls back to the intake JSONB
+    // for members who haven't been reviewed yet.
+    var _activeRxs = [];
+    if (consultation) {
+      var rxRes = await client.from('prescriptions')
+        .select('*, prescription_versions(*)')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active');
+      _activeRxs = (rxRes.data || []).map(function(rx) {
+        var versions = rx.prescription_versions || [];
+        var cur = versions.find(function(v){ return v.effective_to == null; }) || versions[0] || {};
+        return {
+          protocol_key:      rx.protocol_key,
+          dose_amount:       cur.dose_amount,
+          dose_unit:         cur.dose_unit,
+          frequency_amount:  cur.frequency_amount,
+          frequency_cadence: cur.frequency_cadence,
+          timing:            cur.timing,
+          duration_value:    cur.duration_value,
+          duration_unit:     cur.duration_unit
+        };
+      });
+    }
+    var assignedProto = _activeRxs.length > 0
+      ? _activeRxs.map(function(r){ return r.protocol_key; }).join(', ')
+      : (consultation && consultation.data && consultation.data.assigned_protocol) || null;
+    var rxGiven = _activeRxs.length > 0 ? true : (consultation && consultation.review_status === 'not_prescribed' ? false : null);
 
     // Fallback: resolve clinician name from consultation's assigned_clinician_id
     if (!_step6ClinicianResolved && consultation && consultation.assigned_clinician_id) {
@@ -3506,43 +3532,21 @@ async function _populateStep6() {
         dateEl2.textContent = months[evalDate.getMonth()] + ' ' + evalDate.getDate() + ', ' + evalDate.getFullYear();
       }
 
-      // Build protocol cards from evaluation data
+      // Build protocol cards from the member's active prescriptions.
       var cardsEl = document.getElementById('step6ProtocolCards');
       if (cardsEl) {
-        var cd = consultation.data || {};
-        var prescribedProtocols = cd.prescribed_protocols || consultation.prescribed_protocols || {};
-        // Also check inside evaluations array for the latest eval
-        if ((!prescribedProtocols || !Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; })) && cd.evaluations && cd.evaluations.length > 0) {
-          var latestEval = cd.evaluations[cd.evaluations.length - 1];
-          if (latestEval.prescribed_protocols) prescribedProtocols = latestEval.prescribed_protocols;
-        }
+        function _fmtFreq(amount, cadence) { return (amount != null && cadence) ? (amount + 'x ' + cadence) : '—'; }
+        function _fmtDur(value, unit) { return (value != null && unit) ? (value + ' ' + unit) : '—'; }
 
-        // Fallback: if prescribed_protocols is empty, derive from protocol_assigned string
-        var hasAnyProto = Object.keys(prescribedProtocols).some(function(k){ return prescribedProtocols[k]; });
-        if (!hasAnyProto && assignedProto) {
-          assignedProto.split(',').forEach(function(p) {
-            var k = p.trim().toLowerCase().replace(/\s+/g, '_');
-            if (k) prescribedProtocols[k] = true;
-          });
-        }
-
-        var allProtos = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Vitality Stack','Recovery Stack','Performance Stack','Optimize Stack'];
         var cardsHtml = '';
-
-        allProtos.forEach(function(pName) {
+        _activeRxs.forEach(function(rx) {
+          var pName = rx.protocol_key || 'Protocol';
           var key = pName.toLowerCase().replace(/\s+/g, '_');
-          if (!prescribedProtocols[key]) return;
-
-          // Compound pills intentionally not surfaced on the Summary —
-          // the protocol name alone is what the member needs to see.
-
-          // Dosing details — check evaluations array, then consultation columns, then JSONB top-level
-          var _le = (cd.evaluations && cd.evaluations.length > 0) ? cd.evaluations[cd.evaluations.length - 1] : {};
-          var doseAmt = _le.dose_amount || consultation.dose_amount || cd.dose_amount || '—';
-          var doseUnit = _le.dose_unit || consultation.dose_unit || cd.dose_unit || '';
-          var freq = _le.frequency || consultation.frequency || cd.frequency || '—';
-          var timing = _le.timing || consultation.timing || cd.timing || '—';
-          var dur = _le.duration || consultation.duration || cd.duration || '—';
+          var doseAmt = rx.dose_amount != null ? String(rx.dose_amount) : '—';
+          var doseUnit = rx.dose_unit || '';
+          var freq = _fmtFreq(rx.frequency_amount, rx.frequency_cadence);
+          var timing = rx.timing || '—';
+          var dur = _fmtDur(rx.duration_value, rx.duration_unit);
 
           var checkId = 'proto-check-' + key;
           cardsHtml += '<div class="summary-protocol-box" style="margin-bottom:14px;">' +
@@ -3566,9 +3570,8 @@ async function _populateStep6() {
         });
 
         if (!cardsHtml) {
-          // Fallback: show the protocol name from protocol_assigned
           cardsHtml = '<div class="summary-protocol-box"><div class="spb-eyebrow">Your prescribed protocol</div>' +
-            '<div class="spb-name">' + escapeHtml(assignedProto) + '</div></div>';
+            '<div class="spb-name">' + escapeHtml(assignedProto || 'Protocol') + '</div></div>';
         }
         cardsEl.innerHTML = cardsHtml;
       }
@@ -3612,10 +3615,12 @@ async function _activateAndGoToPortal() {
       existingData.purchase_status = 'completed';
       existingData.activated_protocols = selectedProtocols;
       existingData.activated_protocol_names = selectedNames.join(', ');
+      // protocol_assigned column is gone — source of truth is the
+      // prescriptions table. activated_protocol_names in the JSONB
+      // records the member's purchase selection for reference.
       await client.from('consultations').update({
         data: existingData,
-        purchase_status: 'completed',
-        protocol_assigned: selectedNames.join(', ')
+        purchase_status: 'completed'
       }).eq('id', consultId);
     }
 
@@ -4123,7 +4128,7 @@ window._sbClient = createClient(
 
     // Check for existing consultation (most recent, any status)
     var res = await window._sbClient.from('consultations')
-      .select('id, data, review_status, assigned_clinician_id, live_consult_message, purchase_status, protocol_assigned, prescription_given, no_prescription_reason, created_at')
+      .select('id, data, review_status, assigned_clinician_id, live_consult_message, purchase_status, no_prescription_reason, created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(1);

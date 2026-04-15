@@ -10404,6 +10404,22 @@ function _fmtClTime(dt, opts) {
   var o = Object.assign({ hour: 'numeric', minute: '2-digit', hour12: true, timeZone: _clTimezone }, opts || {});
   return d.toLocaleTimeString('en-US', o);
 }
+// Format a prescription timestamp as a static "Month Day, Year" string
+// that reflects the clinician's configured timezone when known, so the
+// displayed date doesn't drift for members viewing from different zones.
+// Falls back to the viewer's local browser timezone when the clinician's
+// tz hasn't been fetched yet.
+function _fmtRxStaticDate(ts, opts) {
+  if (!ts) return '';
+  var d = (ts instanceof Date) ? ts : new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  var fmt = Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, opts || {});
+  if (typeof window !== 'undefined' && window._clinicianTimezone) {
+    fmt.timeZone = window._clinicianTimezone;
+  }
+  return d.toLocaleDateString('en-US', fmt);
+}
+
 function _fmtClDate(dt, opts) {
   if (!dt) return '';
   var d = (dt instanceof Date) ? dt : new Date(dt);
@@ -12702,12 +12718,12 @@ function _buildProgressCardHtml(rx, adh, durWeeks) {
 // use classes instead of IDs so they can coexist with slide 1.
 function _buildExtraProtoSlide(rx, idx) {
   var startDate = rx.started_at ? new Date(rx.started_at) : null;
-  var startStr = startDate ? startDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—';
+  var startStr = startDate ? _fmtRxStaticDate(startDate) : '—';
   var durWeeks = _durationToWeeks(rx.duration) || null;
   var endStr = '—';
   if (startDate && durWeeks) {
     var end = new Date(startDate); end.setDate(end.getDate() + durWeeks * 7);
-    endStr = end.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    endStr = _fmtRxStaticDate(end);
   }
   var doseStr = (rx.dose_amount != null && rx.dose_unit) ? (rx.dose_amount + ' ' + rx.dose_unit) : '—';
   var freqStr = rx.frequency || '—';
@@ -12961,6 +12977,38 @@ function _renderProtoCarousel(activeRxs) {
   _refreshProtoCarouselProgress();
 }
 
+// Re-render every prescribed-date surface on the member portal after the
+// clinician's timezone loads asynchronously. Called from the clinician
+// profile fetch in populatePortal once window._clinicianTimezone is set.
+function _reRenderMemberRxDates() {
+  try {
+    // Slide 1 — refresh the "Start date" / "Est. completion" cells and
+    // the "Prescribed by Dr. X on [date]" header line.
+    var primaryStart = window._protoStartDate || window._protoRxStartDate || null;
+    if (primaryStart) {
+      var el = function(id){ return document.getElementById(id); };
+      var startStr = _fmtRxStaticDate(primaryStart);
+      if (el('protoRxStart')) el('protoRxStart').textContent = startStr;
+      var weeks = window._protoRxDurWeeks || null;
+      if (weeks) {
+        var endDate = new Date(primaryStart); endDate.setDate(endDate.getDate() + weeks * 7);
+        if (el('protoRxEnd')) el('protoRxEnd').textContent = _fmtRxStaticDate(endDate);
+      }
+      window._protoReviewDate = _fmtRxStaticDate(primaryStart, {month:'long', day:'numeric', year:'numeric'});
+      if (typeof _updateProtoPrescribedLine === 'function') _updateProtoPrescribedLine();
+    }
+    // Extra slides — rebuild from scratch so their Start/End cells pick up
+    // the new clinician timezone. Preserves the active slide index.
+    if (window._activeRxsForCarousel && window._activeRxsForCarousel.length > 1) {
+      var prevIdx = _protoCarouselIdx || 0;
+      _renderProtoCarousel(window._activeRxsForCarousel);
+      if (prevIdx > 0) _protoCarouselGoTo(prevIdx);
+    }
+  } catch (e) {
+    console.warn('[Pulse] _reRenderMemberRxDates failed:', e);
+  }
+}
+
 // Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
 // Called both from populatePortal (when protocol loads) and from the clinician
 // profile fetch (when _clinicianName becomes available asynchronously).
@@ -13202,10 +13250,17 @@ function populatePortal(user, consultation, greeting) {
   // Resolve assigned clinician name for care team header
   var clinicianId = consultation && consultation.assigned_clinician_id;
   if (clinicianId && !PREVIEW_MODE) {
-    db.from('profiles').select('display_name, first_name, last_name, photo_url, cl_bio, cl_credentials, cl_specialty').eq('user_id', clinicianId).limit(1)
+    db.from('profiles').select('display_name, first_name, last_name, photo_url, cl_bio, cl_credentials, cl_specialty, cl_timezone').eq('user_id', clinicianId).limit(1)
       .then(function(pr) {
         if (pr.data && pr.data.length > 0) {
           var cp = pr.data[0];
+          // Stash the clinician's timezone so the member portal formats
+          // prescribed dates in the clinician's zone (Phase 7 timezone fix).
+          // Triggers a re-render of every date surface that cares.
+          if (cp.cl_timezone) {
+            window._clinicianTimezone = cp.cl_timezone;
+            if (typeof _reRenderMemberRxDates === 'function') _reRenderMemberRxDates();
+          }
           var clName = cp.display_name || ((cp.first_name || '') + ' ' + (cp.last_name || '')).trim() || null;
           if (clName) {
             var nameEl = document.getElementById('careTeamName');
@@ -13391,10 +13446,11 @@ function populatePortal(user, consultation, greeting) {
     document.getElementById('protoName').textContent = cleanName;
     document.getElementById('protoCategoryBadge').textContent = proto.category;
 
-    // Store the review date for the prescribed-line updater
-    window._protoReviewDate = consultation.created_at
-      ? new Date(consultation.created_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})
-      : null;
+    // Store the review date for the prescribed-line updater. Prefer the
+    // primary Rx's started_at (the actual moment the clinician prescribed)
+    // over consultation.created_at (the intake submission date).
+    var _primaryStartTs = (_primaryRx && _primaryRx.started_at) || consultation.created_at || null;
+    window._protoReviewDate = _primaryStartTs ? _fmtRxStaticDate(_primaryStartTs, {month:'long', day:'numeric', year:'numeric'}) : null;
     _updateProtoPrescribedLine();
 
     // Compounds — show compound names only (actual doses live in the Prescription card)
@@ -13430,12 +13486,14 @@ function populatePortal(user, consultation, greeting) {
     var rxTiming = window._protoTiming || 'Not specified';
     var rxDurWeeks = _durationToWeeks(window._protoDuration || proto.cycle);
     var rxDuration = rxDurWeeks ? rxDurWeeks + ' weeks' : 'Not specified';
-    var rxStartDate = consultation.created_at ? new Date(consultation.created_at) : null;
-    var rxStart = rxStartDate ? rxStartDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—';
+    // Use the primary Rx's started_at so slide 1 reflects the actual
+    // prescription date, not the intake submission date.
+    var rxStartDate = _primaryStartTs ? new Date(_primaryStartTs) : null;
+    var rxStart = rxStartDate ? _fmtRxStaticDate(rxStartDate) : '—';
     var rxEnd = '—';
     if (rxStartDate && rxDurWeeks) {
       var endDate = new Date(rxStartDate); endDate.setDate(endDate.getDate() + rxDurWeeks * 7);
-      rxEnd = endDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+      rxEnd = _fmtRxStaticDate(endDate);
     }
     var el = function(id){ return document.getElementById(id); };
     if (el('protoRxDose')) el('protoRxDose').textContent = rxDose;

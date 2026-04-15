@@ -11573,25 +11573,13 @@ async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durati
 // portal after purchasing. Idempotent via profiles.welcome_msg_sent.
 // Required DB migration:
 //   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS welcome_msg_sent boolean DEFAULT false;
-// Stamp profiles.protocol_started_at with NOW the first time a member
-// lands on the portal after purchase. Gives us a reliable 'protocol
-// actually started' timestamp that's independent of intake submission
-// date (consultation.created_at) or appointment rows.
-// Required DB migration:
-//   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS protocol_started_at timestamptz;
+
+// Deprecated under the new prescriptions model — started_at is owned by
+// the prescriptions table. Left as a no-op so existing callers don't
+// break; window._protoStartDate is set from the active Rx in
+// populatePortal instead.
 async function _ensureProtocolStartStamped(consumerId) {
-  try {
-    var r = await db.from('profiles').select('protocol_started_at').eq('user_id', consumerId).limit(1);
-    if (!r.data || !r.data.length) return;
-    if (r.data[0].protocol_started_at) {
-      // Already stamped — cache on window for readers
-      window._protoStartDate = r.data[0].protocol_started_at;
-      return;
-    }
-    var nowIso = new Date().toISOString();
-    var upd = await db.from('profiles').update({ protocol_started_at: nowIso }).eq('user_id', consumerId);
-    if (upd && !upd.error) window._protoStartDate = nowIso;
-  } catch (_) { /* non-blocking */ }
+  return;
 }
 
 async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
@@ -12204,6 +12192,7 @@ function populatePortal(user, consultation, greeting) {
       // of truth). Fall back to the evaluation JSONB for the brief window
       // between purchase and first-prescribe when no Rx exists yet.
       var _le = (d.evaluations && d.evaluations.length > 0) ? d.evaluations[d.evaluations.length - 1] : {};
+      window._protoPrescriptionId = _primaryRx ? _primaryRx.id : null;
       window._protoDose      = (_primaryRx && _primaryRx.dose_amount != null)   ? _primaryRx.dose_amount    : (_le.dose_amount    || d.dose_amount    || null);
       window._protoDoseUnit  = (_primaryRx && _primaryRx.dose_unit)               ? _primaryRx.dose_unit      : (_le.dose_unit      || d.dose_unit      || null);
       window._protoFreqAmount  = (_primaryRx && _primaryRx.frequency_amount != null)  ? _primaryRx.frequency_amount  : (_le.frequency_amount  || null);
@@ -15169,13 +15158,17 @@ function renderCalendar() {
 
 async function _logPastDose(dateStr) {
   if (!currentUserId || PREVIEW_MODE) return;
+  if (!window._protoPrescriptionId) {
+    showToast('No active prescription to log against.');
+    return;
+  }
   try {
     var res = await db.from('dose_logs').upsert({
-      user_id: currentUserId,
-      protocol: window._userProto || null,
-      dose_date: dateStr,
-      logged_at: new Date().toISOString()
-    }, { onConflict: 'user_id,dose_date' });
+      user_id:         currentUserId,
+      prescription_id: window._protoPrescriptionId,
+      dose_date:       dateStr,
+      logged_at:       new Date().toISOString()
+    }, { onConflict: 'prescription_id,dose_date' });
     if (res.error) { showToast('Failed to log dose.'); return; }
     if (loggedDates.indexOf(dateStr) === -1) loggedDates.push(dateStr);
     renderCalendar();
@@ -15309,15 +15302,20 @@ async function logDose() {
 
   if (PREVIEW_MODE) { onSuccess(); return; }
 
-  // Use upsert with onConflict to avoid duplicate-key errors
-  // (requires unique(user_id, dose_date) constraint — see SQL comment above)
+  if (!window._protoPrescriptionId) {
+    console.warn('[Pulse] dose log: no active prescription id, skipping DB write');
+    onSuccess();
+    return;
+  }
+
+  // Upsert against the (prescription_id, dose_date) unique constraint
   try {
     var res = await db.from('dose_logs').upsert({
-      user_id:   currentUserId,
-      protocol:  window._userProto || null,
-      dose_date: today,
-      logged_at: new Date().toISOString()
-    }, { onConflict: 'user_id,dose_date' });
+      user_id:         currentUserId,
+      prescription_id: window._protoPrescriptionId,
+      dose_date:       today,
+      logged_at:       new Date().toISOString()
+    }, { onConflict: 'prescription_id,dose_date' });
     if (res && res.error) {
       console.error('[Pulse] dose log upsert error:', res.error.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; btn.style.opacity = ''; btn.style.cursor = ''; }
@@ -16949,25 +16947,26 @@ async function _submitEvaluation(apptId) {
       evaluation_date: new Date().toISOString()
     };
 
+    var assignedNames = [];
     if (decision === 'no') {
       evalData.no_prescription_reason = (document.getElementById('evalNoRxReason') || {}).value || '';
       evalData.prescribed_protocols = {};
       _EVAL_PROTOCOLS.forEach(function(p) { evalData.prescribed_protocols[p.toLowerCase().replace(/\s+/g,'_')] = false; });
-      evalData.dose_amount = 'no prescription';
-      evalData.dose_unit = 'no prescription';
-      evalData.frequency = 'no prescription';
+      // No regimen values when declining — leave dose/freq/timing/duration null.
+      evalData.dose_amount = null;
+      evalData.dose_unit = null;
+      evalData.frequency = null;
       evalData.frequency_amount = null;
       evalData.frequency_cadence = null;
-      evalData.timing = 'no prescription';
-      evalData.timing_instructions = 'no prescription';
-      evalData.duration = 'no prescription';
+      evalData.timing = null;
+      evalData.timing_instructions = null;
+      evalData.duration = null;
       evalData.duration_value = null;
       evalData.duration_unit = null;
-      evalData.other_notes = 'no prescription';
-      evalData.protocol_version = 'no prescription';
+      evalData.other_notes = null;
+      evalData.protocol_version = null;
     } else {
       evalData.prescribed_protocols = {};
-      var assignedNames = [];
       document.querySelectorAll('.eval-proto-toggle').forEach(function(s) {
         var key = s.getAttribute('data-proto');
         evalData.prescribed_protocols[key] = s.value === 'yes';
@@ -16980,8 +16979,6 @@ async function _submitEvaluation(apptId) {
       evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
       var _freqNum = (document.getElementById('evalFreqNum') || {}).value || '';
       var _freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
-      // Structured columns are the source of truth from now on; the legacy
-      // text column gets populated via _fmtFrequency for backwards compat.
       evalData.frequency_amount  = _freqNum ? parseInt(_freqNum, 10) : null;
       evalData.frequency_cadence = _freqPeriod || null;
       evalData.frequency = _fmtFrequency(evalData.frequency_amount, evalData.frequency_cadence) || '';
@@ -17006,119 +17003,84 @@ async function _submitEvaluation(apptId) {
       }).eq('id', apptId);
     }
 
-    // Update consultation — append evaluation to evaluations array + update latest columns
+    // Resolve the consultation id for this save (async review has it stashed;
+    // live session looks it up by user_id).
     var assignedProtocolStr = decision === 'yes' ? (assignedNames || []).join(', ') : 'no prescription';
     var reviewStatusUpdate = decision === 'yes' ? 'prescribed' : 'not_prescribed';
-    // For async review, use the stored consultation ID directly; otherwise look up by user_id
     var cId = null;
     var cData = {};
-    var existingHistory = [];
     if (isAsyncReview && _activePatientConsultId) {
-      var cRes = await db.from('consultations').select('id, data, prescription_history').eq('id', _activePatientConsultId).limit(1);
+      var cRes = await db.from('consultations').select('id, data').eq('id', _activePatientConsultId).limit(1);
       if (cRes.data && cRes.data.length > 0) {
         cId = cRes.data[0].id;
         cData = cRes.data[0].data || {};
-        existingHistory = Array.isArray(cRes.data[0].prescription_history) ? cRes.data[0].prescription_history : [];
       }
     } else {
-      var cRes = await db.from('consultations').select('id, data, prescription_history').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
+      var cRes = await db.from('consultations').select('id, data').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1);
       if (cRes.data && cRes.data.length > 0) {
         cId = cRes.data[0].id;
         cData = cRes.data[0].data || {};
-        existingHistory = Array.isArray(cRes.data[0].prescription_history) ? cRes.data[0].prescription_history : [];
       }
     }
     if (cId) {
-      // Append to evaluations array (preserves history)
+      // Append the evaluation to the intake JSONB so the clinical history
+      // is preserved (intake + review notes + decision).
       if (!Array.isArray(cData.evaluations)) cData.evaluations = [];
       cData.evaluations.push(evalData);
-      // Also set latest values at top level for quick access
       cData.assigned_protocol = assignedProtocolStr;
       cData.prescription_given = evalData.prescription_given;
       cData.prescribed_protocols = evalData.prescribed_protocols;
       cData.evaluation_date = evalData.evaluation_date;
 
-      // Stamp the initial prescription into prescription_history as v1 so
-      // every prescribed patient has a history entry from day one. Only
-      // appended when this is the first time (existingHistory empty) AND
-      // the clinician actually prescribed something.
-      var newPrescriptionHistory = existingHistory.slice();
-      if (decision === 'yes' && existingHistory.length === 0) {
-        newPrescriptionHistory.push({
-          version: 1,
-          effective_from: evalData.evaluation_date,
-          effective_to: null, // still active — cleared on first Adjust
-          prescribed_by: currentUserId || null,
-          prescribed_by_name: _resolveCurrentClinicianName(),
-          protocol_assigned: assignedProtocolStr,
-          dose_amount: evalData.dose_amount,
-          dose_unit: evalData.dose_unit,
-          // Structured + legacy text on every snapshot
-          frequency_amount:  evalData.frequency_amount,
-          frequency_cadence: evalData.frequency_cadence,
-          frequency:         evalData.frequency,
-          timing: evalData.timing,
-          duration_value: evalData.duration_value,
-          duration_unit:  evalData.duration_unit,
-          duration:       evalData.duration,
-          adjustment_type: 'initial',
-          adjustment_types: ['initial'],
-          adjustment_reason: 'Initial prescription' + (notes.trim() ? ' — ' + notes.trim() : '')
-        });
-      }
-
       var consultUpdate = {
         data: cData,
-        protocol_assigned: assignedProtocolStr,
-        prescription_given: evalData.prescription_given,
-        prescribed_protocols: evalData.prescribed_protocols,
-        dose_amount: evalData.dose_amount,
-        dose_unit: evalData.dose_unit,
-        frequency_amount:  evalData.frequency_amount,
-        frequency_cadence: evalData.frequency_cadence,
-        frequency: evalData.frequency,
-        timing: evalData.timing,
-        timing_instructions: evalData.timing_instructions,
-        duration_value: evalData.duration_value,
-        duration_unit:  evalData.duration_unit,
-        duration: evalData.duration,
-        other_notes: evalData.other_notes,
-        protocol_version: evalData.protocol_version,
         no_prescription_reason: evalData.no_prescription_reason || null,
-        prescription_history: newPrescriptionHistory,
         session_notes: notes.trim(),
-        evaluation_date: evalData.evaluation_date
+        evaluation_date: evalData.evaluation_date,
+        review_status: reviewStatusUpdate
       };
-      // For async reviews, also update review_status
+      // For async reviews, also stamp assignment + decision metadata
       if (isAsyncReview) {
-        consultUpdate.review_status = reviewStatusUpdate;
         consultUpdate.assigned_clinician_id = currentUserId;
         consultUpdate.clinician_decision = decision === 'yes' ? 'approved' : 'declined';
         consultUpdate.clinician_notes = notes.trim() || null;
         consultUpdate.consult_required = false;
       }
       await db.from('consultations').update(consultUpdate).eq('id', cId);
-    }
 
-    // Update member profile with latest active protocol data
-    await db.from('profiles').upsert({
-      user_id: consumerId,
-      prescription_given: evalData.prescription_given,
-      prescribed_protocols: evalData.prescribed_protocols,
-      protocol_assigned: assignedProtocolStr,
-      dose_amount: evalData.dose_amount,
-      dose_unit: evalData.dose_unit,
-      frequency_amount:  evalData.frequency_amount,
-      frequency_cadence: evalData.frequency_cadence,
-      frequency: evalData.frequency,
-      timing: evalData.timing,
-      timing_instructions: evalData.timing_instructions,
-      duration_value: evalData.duration_value,
-      duration_unit:  evalData.duration_unit,
-      duration: evalData.duration,
-      protocol_version: evalData.protocol_version,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
+      // If prescribing, create one prescription per selected protocol.
+      // In Phase 1 every selected protocol gets the same regimen (the form
+      // only captures one set of dose/freq/timing/duration). Per-protocol
+      // regimens during initial consult lands in Phase 6.
+      if (decision === 'yes' && assignedNames.length > 0) {
+        var clinicianName = _resolveCurrentClinicianName();
+        var initialReason = 'Initial prescription' + (notes.trim() ? ' — ' + notes.trim() : '');
+        for (var i = 0; i < assignedNames.length; i++) {
+          try {
+            await pxCreate({
+              consultId:         cId,
+              userId:            consumerId,
+              clinicianId:       currentUserId || null,
+              clinicianName:     clinicianName,
+              protocolKey:       assignedNames[i],
+              dose_amount:       evalData.dose_amount,
+              dose_unit:         evalData.dose_unit,
+              frequency_amount:  evalData.frequency_amount,
+              frequency_cadence: evalData.frequency_cadence,
+              timing:            evalData.timing,
+              duration_value:    evalData.duration_value,
+              duration_unit:     evalData.duration_unit,
+              other_notes:       evalData.other_notes,
+              adjustment_reason: initialReason
+            });
+          } catch (pe) {
+            // Likely a duplicate-active-protocol constraint violation
+            // (retry of a previously-submitted evaluation). Log and move on.
+            console.warn('[Pulse] pxCreate failed for', assignedNames[i], pe);
+          }
+        }
+      }
+    }
 
     // Notify member of review completion
     var patientId = _activePatientUserId;

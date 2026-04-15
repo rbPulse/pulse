@@ -8002,6 +8002,287 @@ function _readDuration(row) {
   return { value: null, unit: null };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Prescriptions data-access layer (Phase 1 of the multi-protocol refactor)
+// ═══════════════════════════════════════════════════════════════════════
+// Every read/write that touches prescription data flows through these
+// helpers. No code should call db.from('prescriptions') or
+// db.from('prescription_versions') directly from outside this block.
+//
+// Returned "flattened" shape (what the UI renders against):
+//   { id, consultation_id, user_id, clinician_id, protocol_key, status,
+//     started_at, discontinued_at, discontinued_reason, discontinued_by,
+//     version, effective_from,
+//     dose_amount, dose_unit,
+//     frequency_amount, frequency_cadence, frequency (display string),
+//     timing,
+//     duration_value, duration_unit, duration (display string),
+//     other_notes, adjustment_types, adjustment_reason,
+//     prescribed_by, prescribed_by_name,
+//     _versions (raw version rows, for history modal) }
+// ═══════════════════════════════════════════════════════════════════════
+
+function _pxFlattenCurrent(rx) {
+  if (!rx) return null;
+  var versions = rx.prescription_versions || [];
+  var cur = versions.find(function(v) { return v.effective_to == null; });
+  if (!cur && versions.length > 0) {
+    cur = versions.slice().sort(function(a, b) {
+      return new Date(b.effective_from) - new Date(a.effective_from);
+    })[0];
+  }
+  cur = cur || {};
+  return {
+    id:                  rx.id,
+    consultation_id:     rx.consultation_id,
+    user_id:             rx.user_id,
+    clinician_id:        rx.clinician_id,
+    protocol_key:        rx.protocol_key,
+    status:              rx.status,
+    started_at:          rx.started_at,
+    discontinued_at:     rx.discontinued_at,
+    discontinued_reason: rx.discontinued_reason,
+    discontinued_by:     rx.discontinued_by,
+    version:             cur.version || null,
+    effective_from:      cur.effective_from || null,
+    dose_amount:         cur.dose_amount,
+    dose_unit:           cur.dose_unit,
+    frequency_amount:    cur.frequency_amount,
+    frequency_cadence:   cur.frequency_cadence,
+    frequency:           _fmtFrequency(cur.frequency_amount, cur.frequency_cadence) || '',
+    timing:              cur.timing || '',
+    duration_value:      cur.duration_value,
+    duration_unit:       cur.duration_unit,
+    duration:            _fmtDuration(cur.duration_value, cur.duration_unit) || '',
+    other_notes:         cur.other_notes || '',
+    adjustment_types:    cur.adjustment_types || [],
+    adjustment_reason:   cur.adjustment_reason || '',
+    prescribed_by:       cur.prescribed_by,
+    prescribed_by_name:  cur.prescribed_by_name,
+    _versions:           versions
+  };
+}
+
+// Active prescriptions for a single consultation (with current version hydrated).
+async function pxGetActiveForConsultation(consultId) {
+  if (!consultId) return [];
+  try {
+    var res = await db.from('prescriptions')
+      .select('*, prescription_versions(*)')
+      .eq('consultation_id', consultId)
+      .eq('status', 'active')
+      .order('started_at', { ascending: true });
+    if (res.error) throw res.error;
+    return (res.data || []).map(_pxFlattenCurrent).filter(Boolean);
+  } catch (e) {
+    console.warn('[Pulse] pxGetActiveForConsultation failed:', e);
+    return [];
+  }
+}
+
+// Every prescription (active + discontinued) for a consultation.
+async function pxGetAllForConsultation(consultId) {
+  if (!consultId) return [];
+  try {
+    var res = await db.from('prescriptions')
+      .select('*, prescription_versions(*)')
+      .eq('consultation_id', consultId)
+      .order('started_at', { ascending: true });
+    if (res.error) throw res.error;
+    return (res.data || []).map(_pxFlattenCurrent).filter(Boolean);
+  } catch (e) {
+    console.warn('[Pulse] pxGetAllForConsultation failed:', e);
+    return [];
+  }
+}
+
+// Active prescriptions for a user — used by member portal hero.
+async function pxGetActiveForUser(userId) {
+  if (!userId) return [];
+  try {
+    var res = await db.from('prescriptions')
+      .select('*, prescription_versions(*)')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('started_at', { ascending: true });
+    if (res.error) throw res.error;
+    return (res.data || []).map(_pxFlattenCurrent).filter(Boolean);
+  } catch (e) {
+    console.warn('[Pulse] pxGetActiveForUser failed:', e);
+    return [];
+  }
+}
+
+// Full version history for one prescription, ordered by version ascending.
+async function pxGetVersions(prescriptionId) {
+  if (!prescriptionId) return [];
+  try {
+    var res = await db.from('prescription_versions')
+      .select('*')
+      .eq('prescription_id', prescriptionId)
+      .order('version', { ascending: true });
+    if (res.error) throw res.error;
+    return res.data || [];
+  } catch (e) {
+    console.warn('[Pulse] pxGetVersions failed:', e);
+    return [];
+  }
+}
+
+// Create a brand-new prescription with its initial version (v1).
+// ctx: { consultId, userId, clinicianId, clinicianName, protocolKey,
+//        dose_amount, dose_unit, frequency_amount, frequency_cadence,
+//        timing, duration_value, duration_unit, other_notes,
+//        adjustment_reason }
+// Returns the new prescription id.
+async function pxCreate(ctx) {
+  var now = new Date().toISOString();
+  var rxRes = await db.from('prescriptions').insert({
+    consultation_id: ctx.consultId,
+    user_id:         ctx.userId,
+    clinician_id:    ctx.clinicianId || null,
+    protocol_key:    ctx.protocolKey,
+    status:          'active',
+    started_at:      now
+  }).select('id').single();
+  if (rxRes.error) throw rxRes.error;
+  var rxId = rxRes.data.id;
+
+  var vRes = await db.from('prescription_versions').insert({
+    prescription_id:   rxId,
+    version:           1,
+    effective_from:    now,
+    effective_to:      null,
+    dose_amount:       ctx.dose_amount != null && ctx.dose_amount !== '' ? ctx.dose_amount : null,
+    dose_unit:         ctx.dose_unit || null,
+    frequency_amount:  ctx.frequency_amount != null && ctx.frequency_amount !== '' ? ctx.frequency_amount : null,
+    frequency_cadence: ctx.frequency_cadence || null,
+    timing:            ctx.timing || null,
+    duration_value:    ctx.duration_value != null && ctx.duration_value !== '' ? ctx.duration_value : null,
+    duration_unit:     ctx.duration_unit || null,
+    other_notes:       ctx.other_notes || null,
+    adjustment_types:  ['initial'],
+    adjustment_reason: ctx.adjustment_reason || 'Initial prescription',
+    prescribed_by:     ctx.clinicianId || null,
+    prescribed_by_name: ctx.clinicianName || null
+  });
+  if (vRes.error) throw vRes.error;
+  return rxId;
+}
+
+// Adjust an existing prescription — closes the current version, appends
+// a new one with the updated values.
+// ctx: { prescriptionId, dose_amount, dose_unit, frequency_amount,
+//        frequency_cadence, timing, duration_value, duration_unit,
+//        other_notes, adjustmentTypes, reason, clinicianId, clinicianName }
+async function pxAdjust(ctx) {
+  var now = new Date().toISOString();
+  // Read the current version number
+  var curRes = await db.from('prescription_versions')
+    .select('version')
+    .eq('prescription_id', ctx.prescriptionId)
+    .is('effective_to', null)
+    .limit(1);
+  if (curRes.error) throw curRes.error;
+  var curVersion = (curRes.data && curRes.data[0]) ? curRes.data[0].version : 0;
+
+  // Close the current version
+  var closeRes = await db.from('prescription_versions')
+    .update({ effective_to: now })
+    .eq('prescription_id', ctx.prescriptionId)
+    .is('effective_to', null);
+  if (closeRes.error) throw closeRes.error;
+
+  // Insert the new version
+  var vRes = await db.from('prescription_versions').insert({
+    prescription_id:   ctx.prescriptionId,
+    version:           curVersion + 1,
+    effective_from:    now,
+    effective_to:      null,
+    dose_amount:       ctx.dose_amount != null && ctx.dose_amount !== '' ? ctx.dose_amount : null,
+    dose_unit:         ctx.dose_unit || null,
+    frequency_amount:  ctx.frequency_amount != null && ctx.frequency_amount !== '' ? ctx.frequency_amount : null,
+    frequency_cadence: ctx.frequency_cadence || null,
+    timing:            ctx.timing || null,
+    duration_value:    ctx.duration_value != null && ctx.duration_value !== '' ? ctx.duration_value : null,
+    duration_unit:     ctx.duration_unit || null,
+    other_notes:       ctx.other_notes || null,
+    adjustment_types:  ctx.adjustmentTypes || [],
+    adjustment_reason: ctx.reason || null,
+    prescribed_by:     ctx.clinicianId || null,
+    prescribed_by_name: ctx.clinicianName || null
+  });
+  if (vRes.error) throw vRes.error;
+
+  // Bump updated_at so the parent row's mtime reflects the change
+  await db.from('prescriptions')
+    .update({ updated_at: now })
+    .eq('id', ctx.prescriptionId);
+}
+
+// Discontinue an active prescription — closes the current version and
+// flips the row to 'discontinued' with tombstone metadata.
+async function pxDiscontinue(ctx) {
+  var now = new Date().toISOString();
+  var closeRes = await db.from('prescription_versions')
+    .update({ effective_to: now })
+    .eq('prescription_id', ctx.prescriptionId)
+    .is('effective_to', null);
+  if (closeRes.error) throw closeRes.error;
+
+  var rxRes = await db.from('prescriptions').update({
+    status:              'discontinued',
+    discontinued_at:     now,
+    discontinued_reason: ctx.reason || null,
+    discontinued_by:     ctx.clinicianId || null,
+    updated_at:          now
+  }).eq('id', ctx.prescriptionId);
+  if (rxRes.error) throw rxRes.error;
+}
+
+// Re-prescribe a previously discontinued Rx — flips back to active and
+// appends a new version as the fresh initial for the reactivation.
+async function pxReprescribe(ctx) {
+  var now = new Date().toISOString();
+  var rxRes = await db.from('prescriptions').update({
+    status:              'active',
+    discontinued_at:     null,
+    discontinued_reason: null,
+    discontinued_by:     null,
+    started_at:          now,
+    updated_at:          now
+  }).eq('id', ctx.prescriptionId);
+  if (rxRes.error) throw rxRes.error;
+
+  var curRes = await db.from('prescription_versions')
+    .select('version')
+    .eq('prescription_id', ctx.prescriptionId)
+    .order('version', { ascending: false })
+    .limit(1);
+  if (curRes.error) throw curRes.error;
+  var nextVer = ((curRes.data && curRes.data[0]) ? curRes.data[0].version : 0) + 1;
+
+  var vRes = await db.from('prescription_versions').insert({
+    prescription_id:   ctx.prescriptionId,
+    version:           nextVer,
+    effective_from:    now,
+    effective_to:      null,
+    dose_amount:       ctx.dose_amount != null && ctx.dose_amount !== '' ? ctx.dose_amount : null,
+    dose_unit:         ctx.dose_unit || null,
+    frequency_amount:  ctx.frequency_amount != null && ctx.frequency_amount !== '' ? ctx.frequency_amount : null,
+    frequency_cadence: ctx.frequency_cadence || null,
+    timing:            ctx.timing || null,
+    duration_value:    ctx.duration_value != null && ctx.duration_value !== '' ? ctx.duration_value : null,
+    duration_unit:     ctx.duration_unit || null,
+    other_notes:       ctx.other_notes || null,
+    adjustment_types:  ['initial'],
+    adjustment_reason: ctx.reason || 'Re-prescribed',
+    prescribed_by:     ctx.clinicianId || null,
+    prescribed_by_name: ctx.clinicianName || null
+  });
+  if (vRes.error) throw vRes.error;
+}
+
 async function _openAdjustRxModal(consultId, userId, evt) {
   try {
     // Capture the panel the Adjust button was clicked from so we can

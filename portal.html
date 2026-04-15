@@ -295,6 +295,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
    Each row shows the protocol name, timing bucket, dose/freq
    subline, and a right-aligned log/undo pill. */
 .tracker-today-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+/* Today + Adherence row wrapper. Mobile default is a block layout so
+   the cards stack naturally via their own margin-bottom. On desktop
+   (>=768px) flip to a 2-column grid so they sit side-by-side; zero
+   the cards' bottom margin inside the grid since the gap handles the
+   vertical rhythm. */
+.tracker-top-row{}
+@media(min-width:768px){
+  .tracker-top-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    align-items:start;
+    margin-bottom:16px;
+  }
+  .tracker-top-row > .tracker-today-card,
+  .tracker-top-row > .tracker-adh-card{margin-bottom:0;}
+}
 .tracker-today-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
 .tracker-today-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
 .tracker-today-date{font-family:'Inter',sans-serif;font-size:12px;color:var(--grey2);font-weight:500;}
@@ -5117,27 +5134,32 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="tab-eyebrow">Dose Log</div>
         <div class="tab-title">Track your doses.</div>
 
-        <!-- ── Phase 2: Today checklist ──────────────────────────────
-             Per-Rx log checklist for doses scheduled today. Populated
-             by renderTrackerToday() from _activeRxsForCarousel. Hidden
-             until there's at least one active Rx scheduled today. -->
-        <div class="tracker-today-card" id="trackerTodaySection" style="display:none;">
-          <div class="tracker-today-header">
-            <div class="tracker-today-eyebrow">Today</div>
-            <div class="tracker-today-date" id="trackerTodayDate">—</div>
+        <!-- Today + Adherence: side-by-side on desktop, stacked on mobile.
+             Both cards are independently populated and toggle display
+             based on whether there's content to show. -->
+        <div class="tracker-top-row">
+          <!-- ── Phase 2: Today checklist ──────────────────────────────
+               Per-Rx log checklist for doses scheduled today. Populated
+               by renderTrackerToday() from _activeRxsForCarousel. Hidden
+               until there's at least one active Rx scheduled today. -->
+          <div class="tracker-today-card" id="trackerTodaySection" style="display:none;">
+            <div class="tracker-today-header">
+              <div class="tracker-today-eyebrow">Today</div>
+              <div class="tracker-today-date" id="trackerTodayDate">—</div>
+            </div>
+            <div class="tracker-today-list" id="trackerTodayList"></div>
           </div>
-          <div class="tracker-today-list" id="trackerTodayList"></div>
-        </div>
 
-        <!-- ── Phase 3: Adherence strip ──────────────────────────────
-             One compact row per active Rx showing the 30-day and
-             lifetime on-time rates plus a progress bar. Populated by
-             renderTrackerAdherence() from _activeRxsForCarousel. -->
-        <div class="tracker-adh-card" id="trackerAdherenceSection" style="display:none;">
-          <div class="tracker-adh-header">
-            <div class="tracker-adh-eyebrow">Adherence</div>
+          <!-- ── Phase 3: Adherence strip ──────────────────────────────
+               One compact row per active Rx showing the 30-day and
+               lifetime on-time rates plus a progress bar. Populated by
+               renderTrackerAdherence() from _activeRxsForCarousel. -->
+          <div class="tracker-adh-card" id="trackerAdherenceSection" style="display:none;">
+            <div class="tracker-adh-header">
+              <div class="tracker-adh-eyebrow">Adherence</div>
+            </div>
+            <div class="tracker-adh-list" id="trackerAdherenceList"></div>
           </div>
-          <div class="tracker-adh-list" id="trackerAdherenceList"></div>
         </div>
 
         <!-- ── Phase 4: History disclosure ───────────────────────────

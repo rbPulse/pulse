@@ -2100,7 +2100,7 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
    Same markup renders in both trees — the parent card supplies the
    dark green background in both cases. */
 .ov-multi-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:14px;}
-.ov-multi-title{font-family:'Inter',sans-serif;font-size:clamp(26px,4vw,34px);font-weight:600;color:#fff;margin-top:25px;margin-bottom:24px;line-height:1.15;letter-spacing:-0.02em;text-shadow:0 1px 2px rgba(0,0,0,0.25);}
+.ov-multi-title{font-family:'Inter',sans-serif;font-size:clamp(26px,4vw,34px);font-weight:600;color:#fff;margin-bottom:24px;line-height:1.15;letter-spacing:-0.02em;text-shadow:0 1px 2px rgba(0,0,0,0.25);}
 .ov-multi-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px;}
 /* When the member has more than 4 protocols, cap the tile grid at
    ~2 rows of tiles and scroll the overflow inside the hero card so
@@ -13630,6 +13630,16 @@ function _dismissMemberWelcome() {
 // the card innerHTML on both the desktop (#mCardHero / #mCardPlan) and
 // mobile (#moCardHero / #moCardPlan) trees so both stay in sync.
 
+// Time-of-day greeting for the multi-protocol Hero eyebrow.
+// Returns "Good morning" / "Good afternoon" / "Good evening" based
+// on the member's local hour. Callers uppercase it for display.
+function _ovGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 // Timing bucket label — reuses the Tracker's helper if available,
 // otherwise falls back to the raw rx.timing string.
 function _ovTimingLabel(rx) {
@@ -13700,6 +13710,7 @@ function _ovBuildMultiHeroHtml(activeRxs) {
   var tilesCls = 'ov-multi-tiles' + (rxs.length > 4 ? ' ov-multi-tiles-scroll' : '');
 
   return '' +
+    '<div class="ov-multi-label">' + escapeHtml(_ovGreeting()) + '</div>' +
     '<div class="ov-multi-title">Your Protocols</div>' +
     '<div class="' + tilesCls + '">' + tilesHtml + '</div>' +
     '<div class="ov-multi-stats">' +
@@ -13768,7 +13779,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
   }).join('');
 
   return '' +
-    '<div class="m-card-label">Your Protocols</div>' +
+    '<div class="m-card-label">Supply</div>' +
     '<div class="ov-supplies">' + rowsHtml + '</div>' +
     '<button class="m-plan-link" onclick="switchTab(\'protocol\')">View all protocols \u203A</button>';
 }

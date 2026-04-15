@@ -1551,19 +1551,41 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .proto-actions-btns{flex-direction:column;}
   .proto-actions-btns .btn-green,.proto-actions-btns .btn-ghost{width:100%;text-align:center;}
   .proto-name { font-size: clamp(22px, 6.5vw, 28px); }
-  /* Mobile: cap the per-slide log-dose button width so its label wraps
-     onto two lines, leaving the Prescribed-by column room to breathe
-     instead of cramming every word onto its own line. */
+  /* Mobile: collapse the log-dose button to a crisp round icon button
+     (arrow only). Keeps .mo-hero-cta's cream/gradient styling but
+     removes the label text so the left column can keep its full
+     title + prescribed-by width. The label text remains in the DOM
+     as screen-reader-only for accessibility. */
   .proto-slide-log-btn {
-    max-width: 132px;
-    padding: 12px 18px;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    line-height: 1.25;
-    white-space: normal;
-    text-align: center;
+    width: 52px;
+    height: 52px;
+    max-width: none;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    justify-content: center;
+    flex-shrink: 0;
   }
-  .proto-slide-log-btn-label { white-space: normal; }
+  .proto-slide-log-btn svg { width: 20px; height: 20px; }
+  .proto-slide-log-btn-label {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+  /* When the dose has been logged, the SVG arrow is hidden by the
+     existing :disabled rule. Drop in a checkmark so the button still
+     communicates state on mobile. */
+  .proto-slide-log-btn:disabled::before {
+    content: '\2713';
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a3d2e;
+    opacity: 0.6;
+  }
   .tl-title { font-size: 13px; }
   .tl-body { font-size: 12px; }
 }

@@ -2043,7 +2043,9 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
   margin-top:24px;padding-top:18px;
   border-top:1px solid rgba(255,255,255,0.14);
 }
-.m-hero-stat{text-align:left;}
+.m-hero-stat{text-align:center;}
+.m-hero-stats > div{text-align:center;}
+.ov-multi-stats > div{text-align:center;}
 .m-hero-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:4px;}
 .m-hero-stat-val{font-family:'Inter',sans-serif;font-size:15px;color:#fff;font-weight:600;letter-spacing:-0.01em;}
 /* Your Plan card — merged Protocol + Supply. Same .m-card chrome with
@@ -2192,7 +2194,12 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 /* 2-column variant used by the refactored Overview (Hero | Your Plan,
    Care Team | Support). Scopes to .m-grid so every existing mobile
    media-query rule for .m-grid still applies. */
-.m-grid.m-grid-2{grid-template-columns:1fr 1fr;}
+.m-grid.m-grid-2{grid-template-columns:1fr 1fr;align-items:stretch;}
+/* ── Overview 2-column stacks ──
+   Each column contains two cards stacked vertically (left: Hero +
+   Your Plan, right: Care Team + Support). gap:24px matches .m-grid's
+   horizontal gap so vertical rhythm stays consistent. */
+.m-ov-left-stack,.m-ov-right-stack{display:flex;flex-direction:column;gap:24px;min-width:0;}
 
 /* ── ALL 6 standard cards — identical styling ── */
 .m-card{background:#FBFAF6;border:1px solid var(--m-border);border-radius:var(--m-radius);padding:24px;box-shadow:var(--m-shadow);display:flex;flex-direction:column;transition:box-shadow .3s,transform .3s;}
@@ -2212,6 +2219,10 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .m-card-link:hover::after{transform:translateX(3px);}
 .m-card-btn{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--m-text2);background:transparent;border:1px solid var(--m-border);border-radius:var(--m-radius-btn);padding:10px 16px;cursor:pointer;transition:all .25s;margin-top:auto;}
 .m-card-btn:hover{border-color:rgba(47,111,85,0.25);background:rgba(47,111,85,0.06);color:#2F6F55;transform:translateY(-1px);box-shadow:0 2px 8px rgba(20,20,20,0.04);}
+/* Care Team Message/Schedule buttons — match the mobile .mo-btn
+   style (bolder, darker label) instead of the muted default. */
+#mCardClinician .m-card-btn{font-weight:600;color:#1a1a1a;}
+#mCardClinician .m-card-btn:hover{color:#2F6F55;}
 
 /* ── Progress bar ── */
 .m-card-progress{width:100%;height:8px;background:rgba(47,111,85,0.15);border-radius:999px;margin:12px 0;border:none;overflow:hidden;}
@@ -4762,46 +4773,80 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
              inline under the log button). Your Plan card merges the
              deleted Protocol + Supply cards — Duration / Frequency /
              Started rows followed by supply + refill + progress bar. -->
+        <!-- Two-column stack: left = Hero / Your Plan, right = Care Team / Support -->
         <div class="m-grid m-grid-2" id="mOvRow1">
-          <!-- Hero -->
-          <div class="m-card m-card-hero" id="mCardHero">
-            <div class="m-hero-label" id="mHeroLabel">Your Protocol</div>
-            <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
-            <div class="m-hero-sub" id="mHeroSub">Loading...</div>
-            <div class="m-hero-dose" id="mHeroDose"></div>
-            <button class="m-hero-cta" id="mHeroCta" onclick="logDose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><span class="m-hero-cta-label">Log Today's Dose</span></button>
-            <div class="m-hero-stats">
-              <div class="m-hero-stat">
-                <div class="m-hero-stat-lbl">Next dose</div>
-                <div class="m-hero-stat-val" id="mStatusNext">—</div>
+          <!-- LEFT column: Hero on top, Your Plan below -->
+          <div class="m-ov-left-stack">
+            <!-- Hero -->
+            <div class="m-card m-card-hero" id="mCardHero">
+              <div class="m-hero-label" id="mHeroLabel">Your Protocol</div>
+              <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
+              <div class="m-hero-sub" id="mHeroSub">Loading...</div>
+              <div class="m-hero-dose" id="mHeroDose"></div>
+              <button class="m-hero-cta" id="mHeroCta" onclick="logDose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><span class="m-hero-cta-label">Log Today's Dose</span></button>
+              <div class="m-hero-stats">
+                <div class="m-hero-stat">
+                  <div class="m-hero-stat-lbl">Next dose</div>
+                  <div class="m-hero-stat-val" id="mStatusNext">—</div>
+                </div>
+                <div class="m-hero-stat">
+                  <div class="m-hero-stat-lbl">Phase</div>
+                  <div class="m-hero-stat-val" id="mStatusPhase">—</div>
+                </div>
+                <div class="m-hero-stat">
+                  <div class="m-hero-stat-lbl">On-time</div>
+                  <div class="m-hero-stat-val" id="mHeroOnTime">—</div>
+                </div>
               </div>
-              <div class="m-hero-stat">
-                <div class="m-hero-stat-lbl">Phase</div>
-                <div class="m-hero-stat-val" id="mStatusPhase">—</div>
+            </div>
+
+            <!-- Your Plan (merges old Protocol + Supply) -->
+            <div class="m-card m-card-plan" id="mCardPlan">
+              <div class="m-card-label">Your Plan</div>
+              <div class="m-plan-rows">
+                <div class="m-plan-row"><span>Duration</span><span id="mProtoDuration">—</span></div>
+                <div class="m-plan-row"><span>Frequency</span><span id="mProtoFreq">—</span></div>
+                <div class="m-plan-row"><span>Started</span><span id="mProtoStarted">—</span></div>
               </div>
-              <div class="m-hero-stat">
-                <div class="m-hero-stat-lbl">On-time</div>
-                <div class="m-hero-stat-val" id="mHeroOnTime">—</div>
+              <div class="m-plan-supply">
+                <div class="m-plan-supply-top">
+                  <div><span class="m-plan-supply-num" id="mSupplyCount">—</span><span class="m-plan-supply-unit">doses remaining</span></div>
+                  <div class="m-plan-supply-refill" id="mSupplyRefill">—</div>
+                </div>
+                <div class="m-plan-progress"><div class="m-plan-progress-fill" id="mSupplyBar" style="width:0%;"></div></div>
               </div>
+              <button class="m-plan-link" onclick="switchTab('protocol')">View full protocol ›</button>
             </div>
           </div>
 
-          <!-- Your Plan (merges old Protocol + Supply) -->
-          <div class="m-card m-card-plan" id="mCardPlan">
-            <div class="m-card-label">Your Plan</div>
-            <div class="m-plan-rows">
-              <div class="m-plan-row"><span>Duration</span><span id="mProtoDuration">—</span></div>
-              <div class="m-plan-row"><span>Frequency</span><span id="mProtoFreq">—</span></div>
-              <div class="m-plan-row"><span>Started</span><span id="mProtoStarted">—</span></div>
-            </div>
-            <div class="m-plan-supply">
-              <div class="m-plan-supply-top">
-                <div><span class="m-plan-supply-num" id="mSupplyCount">—</span><span class="m-plan-supply-unit">doses remaining</span></div>
-                <div class="m-plan-supply-refill" id="mSupplyRefill">—</div>
+          <!-- RIGHT column: Care Team on top, Support below -->
+          <div class="m-ov-right-stack">
+            <!-- Care Team -->
+            <div class="m-card" id="mCardClinician">
+              <div class="m-card-label">Care Team</div>
+              <div class="m-cl-row">
+                <div class="m-cl-avatar" id="mClAvatar">Dr</div>
+                <div>
+                  <div class="m-cl-name" id="mClName">Your Clinician</div>
+                  <a href="#" onclick="event.preventDefault();_openClinicianProfile()" style="font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;margin-top:6px;display:inline-flex;align-items:center;gap:4px;opacity:0.7;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
               </div>
-              <div class="m-plan-progress"><div class="m-plan-progress-fill" id="mSupplyBar" style="width:0%;"></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:16px;">
+                <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
+                <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+              </div>
             </div>
-            <button class="m-plan-link" onclick="switchTab('protocol')">View full protocol ›</button>
+
+            <!-- Support -->
+            <div class="m-card">
+              <div class="m-card-label">Support</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Missed a dose?</button>
+                <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">How do I store my peptides?</button>
+                <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">View all resources</button>
+                <button class="m-card-btn" style="width:100%;justify-content:flex-start;border-color:rgba(70,185,122,0.18);color:var(--m-green-dark,#224D3A);" onclick="switchTab('messages')">Contact clinician</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -4830,41 +4875,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
         </div>
 
-        <!-- ══ ROW 2: Care Team + Support ═══════════════════════════
-             Care Team trimmed to just the clinician identity + the
-             Message/Schedule action buttons. Support unchanged. -->
-        <div class="m-grid m-grid-2" id="mOvRow2">
-          <!-- Care Team -->
-          <div class="m-card" id="mCardClinician">
-            <div class="m-card-label">Care Team</div>
-            <div class="m-cl-row">
-              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
-              <div>
-                <div class="m-cl-name" id="mClName">Your Clinician</div>
-                <a href="#" onclick="event.preventDefault();_openClinicianProfile()" style="font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;margin-top:6px;display:inline-flex;align-items:center;gap:4px;opacity:0.7;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:16px;">
-              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
-              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
-            </div>
-          </div>
-
-          <!-- Support — routes to Resources first, Messages as escalation -->
-          <div class="m-card">
-            <div class="m-card-label">Support</div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Missed a dose?</button>
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">How do I store my peptides?</button>
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">View all resources</button>
-              <button class="m-card-btn" style="width:100%;justify-content:flex-start;border-color:rgba(70,185,122,0.18);color:var(--m-green-dark,#224D3A);" onclick="switchTab('messages')">Contact clinician</button>
-            </div>
-          </div>
-          <!-- Hidden elements kept for JS compat with legacy paths -->
-          <span id="mUpNextAppt" style="display:none;"></span>
-          <span id="mUpRefill" style="display:none;"></span>
-          <span id="mUpCheckin" style="display:none;"></span>
-        </div>
+        <!-- Hidden elements kept for JS compat with legacy paths -->
+        <span id="mUpNextAppt" style="display:none;"></span>
+        <span id="mUpRefill" style="display:none;"></span>
+        <span id="mUpCheckin" style="display:none;"></span>
 
       </div>
 

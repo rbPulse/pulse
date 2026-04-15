@@ -3303,6 +3303,79 @@ body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
 
 /* ── Patient detail panel (HIGH emphasis — floating workspace) ── */
 body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px solid var(--cl-border);border-radius:16px;box-shadow:var(--cl-shadow-high);}
+/* ══ Patient Detail modal (Phase 1 — Patients tab entry point) ══
+   Centered, contained modal that hosts the existing patient card
+   renderer (_loadAttentionCardBody) instead of expanding inline
+   inside the table row. Sized so the full card fits in the
+   viewport without the page needing to scroll.
+   - width:  min(90vw, 1200px)
+   - height: fits content up to min(90vh, 860px)
+   - fade + scale entry
+   - ESC / backdrop click / × button all close
+   - Row stays highlighted while open via .is-modal-active
+   - Internal message thread column handles its own scroll via
+     the existing .crw-right overflow rules. */
+.pd-modal-overlay{
+  position:fixed; inset:0; z-index:9600;
+  background:rgba(15,20,25,0.55);
+  display:flex; align-items:center; justify-content:center;
+  padding:30px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+.pd-modal-overlay.open{opacity:1;pointer-events:auto;}
+.pd-modal{
+  width:min(90vw, 1200px);
+  max-height:min(90vh, 860px);
+  background:#FBFAF6;
+  border:1px solid rgba(0,0,0,0.08);
+  border-radius:18px;
+  box-shadow:0 32px 80px rgba(0,0,0,0.28), 0 4px 16px rgba(0,0,0,0.1);
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  transform:scale(0.97);
+  transition:transform .22s cubic-bezier(.2,.9,.3,1);
+}
+.pd-modal-overlay.open .pd-modal{transform:scale(1);}
+.pd-modal-close{
+  position:absolute; top:16px; right:18px;
+  background:rgba(0,0,0,0.04);
+  border:1px solid rgba(0,0,0,0.08);
+  width:32px; height:32px; border-radius:50%;
+  font-size:18px; line-height:1; color:rgba(0,0,0,0.55);
+  cursor:pointer;
+  z-index:10;
+  transition:background .15s, color .15s, border-color .15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.pd-modal-close:hover{background:rgba(0,0,0,0.1); color:#1a1a1a; border-color:rgba(0,0,0,0.22);}
+.pd-modal-body{
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+}
+/* Card renderer lives inside .pd-modal-body. It uses the existing
+   .crw grid (1fr + 380px). Give it full height so .crw-right can
+   anchor the message thread scroll to its column instead of the
+   page. Left column gets its own overflow guardrail so an
+   unusually tall patient can't break the modal envelope. */
+.pd-modal-body > .crw{height:100%; min-height:0;}
+.pd-modal-body > .crw > .crw-left{overflow-y:auto; min-height:0;}
+.pd-modal-body > .crw > .crw-right{overflow:hidden; min-height:0;}
+/* Row highlight — the Patients-tab row (or Overview card) that
+   opened the modal stays visually flagged until the modal closes. */
+.cl-ft-row-wrap.is-modal-active,
+.cl-attn-card.is-modal-active{background:rgba(47,111,85,0.05) !important;}
+body.clinician-mode .cl-ft-row-wrap.is-modal-active,
+body.clinician-mode .cl-attn-card.is-modal-active{background:rgba(47,111,85,0.06) !important;}
 
 /* ── Filter pills ── */
 body.clinician-mode .filter-bar{gap:8px;}
@@ -15029,50 +15102,127 @@ function renderPatientList(filter) {
   _checkPendingPatientOpen();
 }
 
+// ══ Patient Detail modal (Phase 1 — Patients tab) ══════════════
+// Opens a centered modal that hosts the existing patient card
+// renderer (_loadAttentionCardBody) instead of expanding inline
+// inside the table row. Entry point from the Patients tab row
+// click is togglePatientDetail below. Phases 2/3 will route the
+// Overview attention cards and Consultations tab rows through
+// the same _openPatientDetailModal function.
+
+var _pdModalActiveConsultId = null;
+var _pdModalActiveRow = null;
+var _pdModalEscHandler = null;
+
+function _openPatientDetailModal(patient, rowEl) {
+  if (!patient) return;
+  // Close any existing modal first so we don't stack overlays.
+  if (document.getElementById('pdModalOverlay')) {
+    _closePatientDetailModal();
+  }
+
+  var consultId = (patient._consultation && patient._consultation.id) || null;
+  var userId = patient.id || null;
+
+  _activePatientUserId = userId;
+  _activePatientConsultId = consultId;
+  _activePatientReviewStatus = patient.review_status || null;
+  _pdModalActiveConsultId = consultId;
+
+  // Highlight the source row while the modal is open so the
+  // clinician knows which list entry they're working on.
+  if (rowEl && rowEl.classList) {
+    rowEl.classList.add('is-modal-active');
+    _pdModalActiveRow = rowEl;
+  }
+
+  // Build the overlay shell. Body populates async via
+  // _loadAttentionCardBody (real patients) or buildPatientDetail
+  // (mock/preview patients).
+  var overlay = document.createElement('div');
+  overlay.className = 'pd-modal-overlay';
+  overlay.id = 'pdModalOverlay';
+  overlay.innerHTML =
+    '<div class="pd-modal" role="dialog" aria-modal="true">' +
+      '<button type="button" class="pd-modal-close" aria-label="Close" onclick="_closePatientDetailModal()">&times;</button>' +
+      '<div class="pd-modal-body" id="pdModalBody"><div style="padding:32px;font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);">Loading patient details…</div></div>' +
+    '</div>';
+
+  // Backdrop click → close
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) _closePatientDetailModal();
+  });
+
+  // ESC key → close. Store the handler on the overlay so we can
+  // remove it on close.
+  _pdModalEscHandler = function(e) {
+    if (e.key === 'Escape') _closePatientDetailModal();
+  };
+  document.addEventListener('keydown', _pdModalEscHandler);
+
+  document.body.appendChild(overlay);
+  // Lock the underlying page scroll while the modal is open.
+  document.body.style.overflow = 'hidden';
+  // Kick the fade+scale entry animation on the next frame.
+  requestAnimationFrame(function() { overlay.classList.add('open'); });
+
+  // Populate the card body. _loadAttentionCardBody wires its own
+  // message poller + notes loader; _closePatientDetailModal clears
+  // the poller to prevent it from ticking after close.
+  var bodyEl = document.getElementById('pdModalBody');
+  if (!bodyEl) return;
+  if (consultId && !patient._mock) {
+    _loadAttentionCardBody(bodyEl, consultId, userId);
+  } else {
+    bodyEl.innerHTML = buildPatientDetail(patient);
+  }
+}
+
+function _closePatientDetailModal() {
+  var overlay = document.getElementById('pdModalOverlay');
+  if (!overlay) return;
+  // Tear down the ESC listener.
+  if (_pdModalEscHandler) {
+    document.removeEventListener('keydown', _pdModalEscHandler);
+    _pdModalEscHandler = null;
+  }
+  // Stop the message poller started inside _loadAttentionCardBody
+  // so it doesn't keep ticking after the modal is gone.
+  if (_pdModalActiveConsultId && typeof _attnMsgPollers !== 'undefined' && _attnMsgPollers[_pdModalActiveConsultId]) {
+    try { clearInterval(_attnMsgPollers[_pdModalActiveConsultId]); } catch (_) {}
+    delete _attnMsgPollers[_pdModalActiveConsultId];
+  }
+  _pdModalActiveConsultId = null;
+  // Drop the row highlight.
+  if (_pdModalActiveRow && _pdModalActiveRow.classList) {
+    _pdModalActiveRow.classList.remove('is-modal-active');
+  }
+  _pdModalActiveRow = null;
+  // Clear the state tracking so any code that checks
+  // "_activePatient*" no longer thinks a card is open.
+  _activePatientUserId = null;
+  _activePatientConsultId = null;
+  _activePatientReviewStatus = null;
+  _openPatientRow = null;
+  // Fade out, then remove from the DOM after the transition.
+  overlay.classList.remove('open');
+  setTimeout(function() {
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }, 230);
+  // Unlock page scroll.
+  document.body.style.overflow = '';
+}
+
 var _openPatientRow = null;
 var _activePatientUserId = null;
 var _activePatientConsultId = null;
 var _activePatientReviewStatus = null;
 
 function togglePatientDetail(patient, rowWrapper) {
-  var list = rowWrapper.parentNode;
-  var existing = list.querySelector('.patient-detail-panel');
-  if (existing) {
-    var wasThis = existing.parentNode === rowWrapper;
-    existing.remove();
-    if (wasThis) { _openPatientRow = null; return; }
-  }
-  _openPatientRow = rowWrapper;
-  _activePatientUserId = patient.id || null;
-  _activePatientConsultId = (patient._consultation && patient._consultation.id) ? patient._consultation.id : null;
-  _activePatientReviewStatus = patient.review_status || null;
-
-  var panel = document.createElement('div');
-  panel.className = 'patient-detail-panel';
-
-  // For real patients with consultation data, use the CRW layout (same as Overview tab)
-  if (!patient._mock && patient._consultation) {
-    var consultId = patient._consultation.id;
-    var userId = patient.id;
-    panel.innerHTML = '<div style="color:var(--grey2);font-size:12px;padding:8px 0;">Loading...</div>';
-    rowWrapper.appendChild(panel);
-    requestAnimationFrame(function() { requestAnimationFrame(function() { panel.classList.add('open'); }); });
-    _loadAttentionCardBody(panel, consultId, userId);
-    return;
-  }
-
-  // Fallback for mock/preview patients
-  panel.innerHTML = buildPatientDetail(patient);
-  rowWrapper.appendChild(panel);
-  requestAnimationFrame(function() { requestAnimationFrame(function() { panel.classList.add('open'); }); });
-  var reviewActionsEl = panel.querySelector('#clReviewActions');
-  if (reviewActionsEl) {
-    var rs = patient.review_status;
-    reviewActionsEl.style.display = (rs === 'pending_review' || rs === 'in_review') ? '' : 'none';
-  }
-  if (!patient._mock && patient.id && typeof _loadPatientActivity === 'function') {
-    _loadPatientActivity(patient.id);
-  }
+  // Previously expanded the card inline below the row. Phase 1
+  // migration: now opens the card inside a centered modal so the
+  // full card is always visible without scrolling the page.
+  _openPatientDetailModal(patient, rowWrapper);
 }
 
 // Navigate to Patients tab and auto-open a specific patient's detail card

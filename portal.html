@@ -591,7 +591,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* Lock the toggle width so switching options doesn't grow/shrink the
    pill, AND match the two filters so they read as a unified pair. */
 #clApptDateDD .pd-dropdown-toggle,
-#clApptTypeDD .pd-dropdown-toggle{min-width:170px;}
+#clApptTypeDD .pd-dropdown-toggle,
+#clPatProtoDD .pd-dropdown-toggle{min-width:170px;}
 .pd-dropdown-section-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.35);padding:8px 14px 4px;}
 .pd-dropdown-section-label:first-child{padding-top:4px;}
 .pd-dropdown-divider{height:1px;background:rgba(0,0,0,0.06);margin:6px 10px;}
@@ -13931,7 +13932,49 @@ function _renderPatProtoDropdown() {
              '<span class="pd-multi-check">&#10003;</span>' + escapeHtml(k) +
            '</button>';
   }).join('');
+  _sizePatProtoToggle(protocols);
   _updatePatProtoButtonLabel();
+}
+
+// Lock the protocol toggle button's min-width to fit the widest label
+// it could ever display (each individual protocol, "All protocols", or
+// "N protocols"). Prevents the pill from shrinking to the current
+// selection and clipping longer labels.
+function _sizePatProtoToggle(protocols) {
+  var dd = document.getElementById('clPatProtoDD');
+  if (!dd) return;
+  var toggle = dd.querySelector('.pd-dropdown-toggle');
+  var valEl = dd.querySelector('.pd-dropdown-value');
+  if (!toggle || !valEl) return;
+  var labels = (protocols || []).slice();
+  labels.push('All protocols');
+  if (protocols && protocols.length >= 2) {
+    labels.push(protocols.length + ' protocols');
+  }
+  var style = window.getComputedStyle(valEl);
+  var measurer = document.createElement('span');
+  measurer.style.position = 'absolute';
+  measurer.style.visibility = 'hidden';
+  measurer.style.whiteSpace = 'nowrap';
+  measurer.style.fontFamily = style.fontFamily;
+  measurer.style.fontSize = style.fontSize;
+  measurer.style.fontWeight = style.fontWeight;
+  measurer.style.fontStyle = style.fontStyle;
+  measurer.style.letterSpacing = style.letterSpacing;
+  measurer.style.textTransform = style.textTransform;
+  document.body.appendChild(measurer);
+  var maxW = 0;
+  labels.forEach(function(l) {
+    measurer.textContent = l;
+    var w = measurer.offsetWidth;
+    if (w > maxW) maxW = w;
+  });
+  document.body.removeChild(measurer);
+  // Allowance for the chevron (12px) + gap (10px) + toggle horizontal
+  // padding (16px left + 16px right) + a small fudge so letters don't
+  // kiss the chevron on the widest label.
+  var minPx = Math.ceil(maxW) + 60;
+  toggle.style.minWidth = minPx + 'px';
 }
 
 function _togglePatProtoOption(proto) {

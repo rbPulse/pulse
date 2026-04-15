@@ -295,6 +295,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .log-card-title{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;}
 .log-card-sub{font-size:12px;color:var(--grey2);}
 .log-card-logged{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.1em;color:var(--green);}
+/* Compact Log Today's Dose button on the Tracker tab — matches the
+   dimensions of .proto-slide-log-btn on the Protocol tab so it
+   doesn't fill the card width. Overrides the default .btn-green
+   sizing and the mobile full-width stretch that was previously
+   applied inside .log-card. */
+#logDoseBtn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:0.04em;
+  padding:8px 14px;border-radius:999px;
+  text-transform:none;
+  white-space:nowrap;
+  width:auto;min-height:auto;line-height:normal;
+}
+#logDoseBtn svg{width:12px;height:12px;flex-shrink:0;display:block;}
+#logDoseBtn:disabled svg{display:none;}
 .cal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .cal-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
@@ -1323,15 +1339,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     gap: 12px;
     padding: 14px 16px;
   }
-  .log-card > div:last-child { width: 100%; }
-  .log-card .btn-green {
-    display: block;
-    width: 100%;
-    text-align: center;
-    min-height: 44px;
-    line-height: 44px;
-    padding: 0;
-  }
+  /* Keep the button container spanning the card so the compact pill
+     can sit centered within the card's horizontal space. The button
+     itself stays compact via the #logDoseBtn rules above. */
+  .log-card > div:last-child { width: 100%; text-align: center; }
   .log-card-sub { font-size: 12px; }
 }
 
@@ -4874,7 +4885,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="log-card-sub">Keep your protocol on track. Record each dose as you go.</div>
           </div>
           <div>
-            <button class="btn-green" id="logDoseBtn" onclick="logDose()">Log Dose</button>
+            <button class="btn-green" id="logDoseBtn" onclick="logDose()"><span class="log-dose-btn-label">Log Today's Dose</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
             <div class="log-card-logged" id="loggedMsg" style="display:none;">✓ Logged today</div>
           </div>
         </div>
@@ -16538,12 +16549,20 @@ function checkTodayLogged() {
   }
 }
 
+// Arrow SVG shared across every Tracker log-dose button state.
+// CSS hides it via #logDoseBtn:disabled svg so the disabled text
+// ("Logging..." / "Already logged ✓") is clean.
+var _LOG_DOSE_ARROW_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+function _logDoseBtnHtml(label) {
+  return '<span class="log-dose-btn-label">' + label + '</span>' + _LOG_DOSE_ARROW_SVG;
+}
+
 // ── _setAlreadyLoggedState: disable the log button and show already-logged label ──
 function _setAlreadyLoggedState() {
   var btn = document.getElementById('logDoseBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Already logged today \u2713';
+    btn.innerHTML = _logDoseBtnHtml('Already logged today \u2713');
     btn.style.opacity = '0.45';
     btn.style.cursor = 'default';
   }
@@ -16638,7 +16657,7 @@ async function logDose() {
   }
 
   var btn = document.getElementById('logDoseBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Logging...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = _logDoseBtnHtml('Logging...'); }
 
   function onSuccess() {
     loggedDates.push(today);
@@ -16673,7 +16692,7 @@ async function logDose() {
     }, { onConflict: 'prescription_id,dose_date' });
     if (res && res.error) {
       console.error('[Pulse] dose log upsert error:', res.error.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Log Dose'; btn.style.opacity = ''; btn.style.cursor = ''; }
+      if (btn) { btn.disabled = false; btn.innerHTML = _logDoseBtnHtml("Log Today's Dose"); btn.style.opacity = ''; btn.style.cursor = ''; }
       return;
     }
     onSuccess();

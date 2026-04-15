@@ -320,6 +320,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .tracker-today-row.is-logged .tracker-today-row-btn{background:transparent;color:var(--grey2);border-color:var(--border);}
 .tracker-today-row.is-logged .tracker-today-row-btn:hover{background:rgba(255,255,255,0.04);color:#fff;}
 .tracker-today-row.is-logged .tracker-today-row-btn svg{display:none;}
+/* ── Tracker Adherence strip ─────────────────────────────────────
+   One row per Rx. Each row is a two-line layout: top line is the
+   protocol name + "91% (30d) · 82% lifetime", bottom line is a
+   thin progress bar + the "X/Y doses" denominator. */
+.tracker-adh-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+.tracker-adh-header{margin-bottom:12px;}
+.tracker-adh-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
+.tracker-adh-list{display:flex;flex-direction:column;gap:14px;}
+.tracker-adh-row{display:flex;flex-direction:column;gap:6px;}
+.tracker-adh-row-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.tracker-adh-row-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tracker-adh-row-nums{font-family:'Inter',sans-serif;font-size:12px;color:var(--grey2);font-weight:500;flex-shrink:0;}
+.tracker-adh-row-nums .tracker-adh-30d{color:#fff;font-weight:600;}
+.tracker-adh-row-nums .tracker-adh-sep{color:var(--grey2);margin:0 6px;}
+.tracker-adh-row-bottom{display:flex;align-items:center;gap:10px;}
+.tracker-adh-bar{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;}
+.tracker-adh-bar-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
+.tracker-adh-row-count{font-family:'Inter',sans-serif;font-size:11px;color:var(--grey2);font-weight:500;flex-shrink:0;white-space:nowrap;}
 /* Compact Log Today's Dose button on the Tracker tab — matches the
    dimensions of .proto-slide-log-btn on the Protocol tab so it
    doesn't fill the card width. Overrides the default .btn-green
@@ -2337,6 +2355,15 @@ body.member-mode .tracker-today-row-timing.is-afternoon{color:#c25c3a !important
 body.member-mode .tracker-today-row-timing.is-evening{color:#4a5f9b !important;border-color:rgba(74,95,155,0.35) !important;background:rgba(74,95,155,0.08) !important;}
 body.member-mode .tracker-today-row.is-logged .tracker-today-row-btn{background:transparent !important;color:var(--m-text2) !important;border-color:var(--m-border) !important;}
 body.member-mode .tracker-today-row.is-logged .tracker-today-row-btn:hover{background:rgba(0,0,0,0.03) !important;color:var(--m-text) !important;}
+/* Tracker Adherence strip — light-theme overrides. */
+body.member-mode .tracker-adh-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;box-shadow:var(--m-shadow);}
+body.member-mode .tracker-adh-eyebrow{color:#2F6F55 !important;}
+body.member-mode .tracker-adh-row-name{color:var(--m-text) !important;}
+body.member-mode .tracker-adh-row-nums{color:var(--m-text2) !important;}
+body.member-mode .tracker-adh-row-nums .tracker-adh-30d{color:var(--m-text) !important;}
+body.member-mode .tracker-adh-row-nums .tracker-adh-sep{color:var(--m-text3) !important;}
+body.member-mode .tracker-adh-bar{background:rgba(0,0,0,0.06) !important;}
+body.member-mode .tracker-adh-row-count{color:var(--m-text2) !important;}
 /* ── Resources tab specifics ── */
 body.member-mode .res-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
 body.member-mode .res-card-title{color:var(--m-text) !important;}
@@ -4903,6 +4930,17 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="tracker-today-date" id="trackerTodayDate">—</div>
           </div>
           <div class="tracker-today-list" id="trackerTodayList"></div>
+        </div>
+
+        <!-- ── Phase 3: Adherence strip ──────────────────────────────
+             One compact row per active Rx showing the 30-day and
+             lifetime on-time rates plus a progress bar. Populated by
+             renderTrackerAdherence() from _activeRxsForCarousel. -->
+        <div class="tracker-adh-card" id="trackerAdherenceSection" style="display:none;">
+          <div class="tracker-adh-header">
+            <div class="tracker-adh-eyebrow">Adherence</div>
+          </div>
+          <div class="tracker-adh-list" id="trackerAdherenceList"></div>
         </div>
 
         <!-- Log today (legacy single-Rx card — removed in Phase 4) -->
@@ -16837,11 +16875,68 @@ async function _trackerUndoToday(rxId, btnEl) {
   }
 }
 
-// Orchestrator for re-rendering every new Tracker section. Phase 2
-// only wires the Today section; phases 3-4 will expand this to also
-// rebuild the Adherence strip and History calendar.
+// ── Phase 3: Tracker Adherence strip ─────────────────────────────────
+// One row per active Rx showing "91% (30d) · 82% lifetime" inline,
+// plus a thin progress bar (width = 30d rate, falling back to
+// lifetime when the Rx is newer than 30 days old) and the lifetime
+// "logged / scheduled" count.
+function renderTrackerAdherence() {
+  var section = document.getElementById('trackerAdherenceSection');
+  var list = document.getElementById('trackerAdherenceList');
+  if (!section || !list) return;
+
+  var activeRxs = window._activeRxsForCarousel || [];
+  if (!activeRxs.length) {
+    section.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+
+  // A fresh Rx (< 30 days since started_at) doesn't get a meaningful
+  // "rolling 30-day" rate — suppress the (30d) half until it ages in.
+  function _rxAgeDays(rx) {
+    if (!rx || !rx.started_at) return null;
+    var s = new Date(rx.started_at); s.setHours(0,0,0,0);
+    var t = new Date(); t.setHours(0,0,0,0);
+    return Math.floor((t.getTime() - s.getTime()) / 86400000) + 1;
+  }
+
+  list.innerHTML = activeRxs.map(function(rx) {
+    var dates = _rxLoggedDates[rx.id] || [];
+    var lifetime = _computeAdherenceForRx(rx, dates);
+    var ageDays = _rxAgeDays(rx);
+    var showThirty = (ageDays != null && ageDays >= 30);
+    var thirty = showThirty ? _computeAdherenceForRx30d(rx, dates) : null;
+    var name = escapeHtml(rx.protocol_key || 'Protocol');
+    var loggedCount = lifetime.logged || 0;
+    var scheduledCount = lifetime.scheduled || 0;
+    var barPct = showThirty ? thirty.rate : lifetime.rate;
+    var numsHtml = showThirty
+      ? '<span class="tracker-adh-30d">' + thirty.rate + '% (30d)</span>' +
+        '<span class="tracker-adh-sep">·</span>' +
+        '<span>' + lifetime.rate + '% lifetime</span>'
+      : '<span class="tracker-adh-30d">' + lifetime.rate + '% lifetime</span>';
+    return '' +
+      '<div class="tracker-adh-row">' +
+        '<div class="tracker-adh-row-top">' +
+          '<span class="tracker-adh-row-name">' + name + '</span>' +
+          '<span class="tracker-adh-row-nums">' + numsHtml + '</span>' +
+        '</div>' +
+        '<div class="tracker-adh-row-bottom">' +
+          '<div class="tracker-adh-bar"><div class="tracker-adh-bar-fill" style="width:' + barPct + '%;"></div></div>' +
+          '<span class="tracker-adh-row-count">' + loggedCount + '/' + scheduledCount + ' doses</span>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+  section.style.display = '';
+}
+
+// Orchestrator for re-rendering every new Tracker section. Phases 2-3
+// wire the Today + Adherence surfaces; phase 4 will add the History
+// collapsible calendar.
 function renderTrackerAll() {
   renderTrackerToday();
+  renderTrackerAdherence();
 }
 
 async function logDose() {

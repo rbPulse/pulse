@@ -8986,25 +8986,13 @@ function _buildRxAdjustModalHtml(ctx) {
           '</div>' +
           '<div class="rx-adjust-field" data-field="timing_change">' +
             '<label>Timing</label>' +
-            (function(){
-              var canon = ['Morning','Afternoon','Evening','Anytime'];
-              var raw = (cur.timing || '').trim();
-              var match = null;
-              for (var i = 0; i < canon.length; i++) {
-                if (canon[i].toLowerCase() === raw.toLowerCase()) { match = canon[i]; break; }
-              }
-              var opts = '<option value="">Select...</option>';
-              // Preserve any legacy free-text value that doesn\'t match one of
-              // the four canonical buckets so editing an existing Rx doesn\'t
-              // silently clobber its stored timing.
-              if (raw && !match) {
-                opts += '<option value="' + escapeAttr(raw) + '" selected>' + escapeHtml(raw) + ' (legacy)</option>';
-              }
-              canon.forEach(function(o) {
-                opts += '<option value="' + o + '"' + (match === o ? ' selected' : '') + '>' + o + '</option>';
-              });
-              return '<select id="rxAdjTiming">' + opts + '</select>';
-            })() +
+            '<select id="rxAdjTiming">' +
+              '<option value="">Select...</option>' +
+              '<option value="Morning"'   + (cur.timing === 'Morning'   ? ' selected' : '') + '>Morning</option>' +
+              '<option value="Afternoon"' + (cur.timing === 'Afternoon' ? ' selected' : '') + '>Afternoon</option>' +
+              '<option value="Evening"'   + (cur.timing === 'Evening'   ? ' selected' : '') + '>Evening</option>' +
+              '<option value="Anytime"'   + (cur.timing === 'Anytime'   ? ' selected' : '') + '>Anytime</option>' +
+            '</select>' +
           '</div>' +
         '</div>' +
         '<div class="rx-adjust-grid2">' +

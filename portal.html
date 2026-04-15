@@ -579,6 +579,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pd-dropdown-option{display:block;width:100%;text-align:left;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;letter-spacing:0.01em;padding:10px 14px;border-radius:8px;background:none;border:none;color:#1a1a1a;cursor:pointer;transition:background .1s;white-space:nowrap;}
 .pd-dropdown-option:hover{background:rgba(47,111,85,0.06);}
 .pd-dropdown-option.active{background:rgba(47,111,85,0.1);color:#2F6F55;font-weight:600;}
+/* Multi-select checkmark indicator — rendered before each option label
+   inside a multi-select pd-dropdown. Visible only when .active. */
+.pd-multi-check{display:inline-block;width:14px;margin-right:8px;color:#2F6F55;visibility:hidden;text-align:center;}
+.pd-dropdown-option.active .pd-multi-check{visibility:visible;}
 /* Live Consults filter dropdowns — give the menu enough room for the
    longest option (Protocol Review / Initial Consult) without wrapping
    or cramming against the menu padding. */
@@ -5201,7 +5205,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
       <div class="portal-tab" id="tab-cl-patients">
         <div class="tab-eyebrow">Patients</div>
         <div class="tab-title">Your patients.</div>
-        <div class="filter-bar">
+        <div class="filter-bar" style="align-items:center;">
           <div class="filter-pill active" id="pflt-all"                onclick="filterPatients('all',this)">All</div>
           <div class="filter-pill"        id="pflt-pending_review"     onclick="filterPatients('pending_review',this)">Pending Review</div>
           <div class="filter-pill"        id="pflt-awaiting_activation" onclick="filterPatients('awaiting_activation',this)">Awaiting Activation</div>
@@ -5209,6 +5213,18 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="filter-pill"        id="pflt-not_prescribed"     onclick="filterPatients('not_prescribed',this)">Not Prescribed</div>
           <div class="filter-pill"        id="pflt-discontinued"       onclick="filterPatients('discontinued',this)">Discontinued</div>
           <div class="filter-pill"        id="pflt-withdrawn"          onclick="filterPatients('withdrawn',this)">Withdrawn</div>
+          <!-- Protocol multi-select, right-aligned. Only shown when the
+               Active pill is selected. Options are derived from the set of
+               distinct protocols across currently-loaded active patients. -->
+          <div class="cl-appt-flt-secondary" id="clPatFltSecondary" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+            <div class="pd-dropdown cl-appt-flt-dd" id="clPatProtoDD" data-value="all" style="display:none;">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('clPatProtoDD')">
+                <span class="pd-dropdown-value">All protocols</span>
+                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu" id="clPatProtoDDMenu"></div>
+            </div>
+          </div>
         </div>
         <div style="padding:8px 0 4px;">
           <input type="search" id="clPatSearch" placeholder="Search patients or protocol…"
@@ -13867,17 +13883,97 @@ function _normalisePatientRow(consultation, profile, activeRxs) {
   };
 }
 
+// Multi-select protocol filter for the Patients tab. Only relevant when
+// the "Active" status pill is selected — clicking any other pill clears
+// the selection and hides the dropdown entirely. The option list is
+// derived at render time from the distinct protocol_keys across
+// currently-loaded active patients.
+var _patProtoFilter = [];
+
+function _renderPatProtoDropdown() {
+  var dd = document.getElementById('clPatProtoDD');
+  var menu = document.getElementById('clPatProtoDDMenu');
+  if (!dd || !menu) return;
+  var rows = _clPatientRows || [];
+  var activePts = rows.filter(function(p) {
+    return p.review_status === 'prescribed' && p.purchase_status === 'completed';
+  });
+  var protoSet = {};
+  activePts.forEach(function(p) {
+    (p._activeRxs || []).forEach(function(r) {
+      if (r && r.protocol_key) protoSet[r.protocol_key] = true;
+    });
+  });
+  var protocols = Object.keys(protoSet).sort(function(a, b) {
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+  });
+  // Hide entirely if nothing to choose from.
+  if (protocols.length === 0) {
+    dd.style.display = 'none';
+    dd.classList.remove('open');
+    return;
+  }
+  dd.style.display = '';
+  // Drop any stale selections that no longer match a known protocol.
+  _patProtoFilter = _patProtoFilter.filter(function(k) { return protoSet[k]; });
+  menu.innerHTML = protocols.map(function(k) {
+    var isOn = _patProtoFilter.indexOf(k) !== -1;
+    return '<button type="button" class="pd-dropdown-option' + (isOn ? ' active' : '') + '"' +
+           ' data-value="' + escapeAttr(k) + '"' +
+           ' onclick="event.stopPropagation();_togglePatProtoOption(\'' + escapeAttr(k) + '\')">' +
+             '<span class="pd-multi-check">&#10003;</span>' + escapeHtml(k) +
+           '</button>';
+  }).join('');
+  _updatePatProtoButtonLabel();
+}
+
+function _togglePatProtoOption(proto) {
+  var i = _patProtoFilter.indexOf(proto);
+  if (i === -1) _patProtoFilter.push(proto);
+  else _patProtoFilter.splice(i, 1);
+  // Toggle the .active class on existing option buttons in place so the
+  // menu doesn't flicker or re-scroll on each click.
+  var menu = document.getElementById('clPatProtoDDMenu');
+  if (menu) {
+    menu.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
+      var v = opt.getAttribute('data-value');
+      opt.classList.toggle('active', _patProtoFilter.indexOf(v) !== -1);
+    });
+  }
+  _updatePatProtoButtonLabel();
+  renderPatientList(_patFilter);
+}
+
+function _updatePatProtoButtonLabel() {
+  var dd = document.getElementById('clPatProtoDD');
+  if (!dd) return;
+  var valEl = dd.querySelector('.pd-dropdown-value');
+  if (!valEl) return;
+  var n = _patProtoFilter.length;
+  if (n === 0)      valEl.textContent = 'All protocols';
+  else if (n === 1) valEl.textContent = _patProtoFilter[0];
+  else              valEl.textContent = n + ' protocols';
+}
+
 function filterPatients(filter, pillEl) {
   _patFilter = filter;
   ['all','pending_review','active','awaiting_activation','not_prescribed','discontinued','withdrawn'].forEach(function(f) {
     var p = document.getElementById('pflt-' + f);
     if (p) p.classList.toggle('active', f === filter);
   });
+  // Protocol dropdown is Active-only. Leaving Active clears the selection
+  // and hides the dropdown; entering Active rebuilds its options.
+  if (filter !== 'active') {
+    _patProtoFilter = [];
+    var ddHide = document.getElementById('clPatProtoDD');
+    if (ddHide) { ddHide.style.display = 'none'; ddHide.classList.remove('open'); }
+  }
   // If rows not yet loaded, initClPatients will call renderPatientList when done
   if (_clPatientRows === null) {
     initClPatients();
     return;
   }
+  if (filter === 'active') _renderPatProtoDropdown();
   renderPatientList(filter);
 }
 
@@ -13976,6 +14072,24 @@ function renderPatientList(filter) {
   if (filter === 'not_prescribed') patients = rows.filter(function(p){ return p.review_status === 'not_prescribed'; });
   if (filter === 'discontinued') patients = rows.filter(function(p){ return p.review_status === 'discontinued'; });
   if (filter === 'withdrawn') patients = rows.filter(function(p){ return p.review_status === 'withdrawn'; });
+
+  // Active-only: hydrate the protocol dropdown against the current row
+  // set, and apply the multi-select protocol filter if the clinician has
+  // picked one or more protocols. OR logic — a patient matches if any of
+  // their active Rxs is in the selected set.
+  if (filter === 'active') {
+    _renderPatProtoDropdown();
+    if (_patProtoFilter.length > 0) {
+      var sel = _patProtoFilter;
+      patients = patients.filter(function(p) {
+        var rxs = p._activeRxs || [];
+        for (var i = 0; i < rxs.length; i++) {
+          if (sel.indexOf(rxs[i].protocol_key) !== -1) return true;
+        }
+        return false;
+      });
+    }
+  }
 
   // Apply search filter (case-insensitive, by name or protocol)
   if (_patSearch) {

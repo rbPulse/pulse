@@ -3195,6 +3195,40 @@ body.clinician-mode .crw-right-msg{background:#FFFFFF;}
 body.clinician-mode .crw-section textarea{background:#F2F4F3;border:1px solid rgba(0,0,0,0.08);border-radius:12px;color:#111111;font-family:'Inter',sans-serif;font-size:14px;padding:16px;}
 body.clinician-mode .crw-section textarea::placeholder{color:rgba(0,0,0,0.35);}
 body.clinician-mode .crw-section textarea:focus{border-color:#1DB954;}
+/* ── Patient Notes (replaces the old Session Notes surface) ──
+   View mode = read-only latest note + attribution + New button.
+   Edit mode = editable textarea + Save/Cancel buttons. */
+.pn-section{display:flex;flex-direction:column;gap:12px;}
+.pn-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.08);}
+.pn-history-link{background:none;border:none;padding:0;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#2F6F55;cursor:pointer;letter-spacing:0.02em;transition:color .15s;}
+.pn-history-link:hover{color:#1a4a35;}
+.pn-view,.pn-edit{display:flex;flex-direction:column;gap:10px;}
+.pn-latest-body{font-family:'Inter',sans-serif;font-size:13px;font-weight:400;color:#1a1a1a;line-height:1.7;padding:14px 16px;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.06);border-radius:10px;white-space:pre-wrap;min-height:56px;}
+.pn-empty-msg{color:rgba(0,0,0,0.35);font-style:italic;}
+.pn-attribution{font-family:'Inter',sans-serif;font-size:11px;color:rgba(0,0,0,0.45);letter-spacing:0.02em;padding-left:2px;}
+.pn-textarea{width:100%;background:#F2F4F3;border:1px solid rgba(0,0,0,0.08);border-radius:10px;color:#111111;font-family:'Inter',sans-serif;font-size:13px;padding:14px 16px;resize:vertical;min-height:96px;outline:none;line-height:1.7;transition:border-color .15s;}
+.pn-textarea::placeholder{color:rgba(0,0,0,0.35);}
+.pn-textarea:focus{border-color:#2F6F55;}
+.pn-edit-actions{display:flex;justify-content:flex-end;gap:8px;}
+.pn-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:8px 16px;border-radius:999px;background:transparent;border:1px solid rgba(0,0,0,0.14);color:#1a1a1a;cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
+.pn-btn:hover{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.22);}
+.pn-btn-new{align-self:flex-start;color:#2F6F55;border-color:rgba(47,111,85,0.3);}
+.pn-btn-new:hover{background:rgba(47,111,85,0.08);border-color:rgba(47,111,85,0.5);color:#1a4a35;}
+.pn-btn-save{background:#2F6F55;color:#fff;border-color:#2F6F55;}
+.pn-btn-save:hover{background:#1a4a35;border-color:#1a4a35;color:#fff;}
+.pn-btn-save:disabled{background:rgba(47,111,85,0.25);border-color:transparent;color:rgba(255,255,255,0.7);cursor:default;}
+.pn-btn-save:disabled:hover{background:rgba(47,111,85,0.25);border-color:transparent;color:rgba(255,255,255,0.7);}
+/* Patient History modal — reuses the shared .rx-adjust-overlay /
+   .rx-adjust-card shell that the Rx history modal uses, so the
+   chrome matches. Content inside is a list of entries with date,
+   clinician, and note text per row. */
+.pn-history-list{display:flex;flex-direction:column;gap:14px;padding:6px 4px 2px;}
+.pn-history-entry{padding:16px;border:1px solid rgba(0,0,0,0.08);border-radius:10px;background:#F2F4F3;}
+.pn-history-entry-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.08);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;color:rgba(0,0,0,0.55);}
+.pn-history-entry-date{color:#1a1a1a;}
+.pn-history-entry-who{color:#2F6F55;}
+.pn-history-entry-body{font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;line-height:1.7;white-space:pre-wrap;}
+.pn-history-empty{font-family:'Inter',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);text-align:center;padding:32px 16px;}
 
 /* ── Live Video Session (clinician) — light theme ──
    The overlay, header, sidebar and notes block all adopt the same
@@ -10163,12 +10197,25 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<div class="crw-section-title">Clinical Summary</div>'+
           clinHtml+
         '</div>'+
-        '<div class="crw-section" id="attn-notes-section-'+consultId+'">'+
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
-            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
-            '<span id="attn-notes-saved-'+consultId+'" style="display:none;font-family:\'Inter\',sans-serif;font-size:8px;color:rgba(0,0,0,0.3);">Saved</span>'+
+        '<div class="crw-section pn-section" id="pn-section-'+escapeAttr(userId)+'" data-user-id="'+escapeAttr(userId)+'">'+
+          '<div class="pn-header">'+
+            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Patient Notes</span>'+
+            '<button type="button" class="pn-history-link" id="pn-history-link-'+escapeAttr(userId)+'" style="display:none;" onclick="_openPatientHistoryModal(\''+escapeAttr(userId)+'\')">View patient history \u203A</button>'+
           '</div>'+
-          '<textarea id="attn-notes-'+consultId+'" data-user-id="'+userId+'" placeholder="No notes yet — type here to add notes…" class="crw-notes-input" oninput="_debounceNotesSave(\''+consultId+'\',\''+userId+'\')"></textarea>'+
+          '<!-- View mode -->' +
+          '<div class="pn-view" id="pn-view-'+escapeAttr(userId)+'">'+
+            '<div class="pn-latest-body" id="pn-latest-body-'+escapeAttr(userId)+'"><span class="pn-empty-msg">No notes yet.</span></div>'+
+            '<div class="pn-attribution" id="pn-attribution-'+escapeAttr(userId)+'" style="display:none;"></div>'+
+            '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\''+escapeAttr(userId)+'\')">+ New Note</button>'+
+          '</div>'+
+          '<!-- Edit mode -->' +
+          '<div class="pn-edit" id="pn-edit-'+escapeAttr(userId)+'" style="display:none;">'+
+            '<textarea id="pn-textarea-'+escapeAttr(userId)+'" class="pn-textarea" placeholder="Type your note here..." oninput="_onPatientNoteInput(\''+escapeAttr(userId)+'\')"></textarea>'+
+            '<div class="pn-edit-actions">'+
+              '<button type="button" class="pn-btn pn-btn-cancel" onclick="_cancelNewNote(\''+escapeAttr(userId)+'\')">Cancel</button>'+
+              '<button type="button" class="pn-btn pn-btn-save" id="pn-save-btn-'+escapeAttr(userId)+'" disabled onclick="_savePatientNote(\''+escapeAttr(userId)+'\')">Save</button>'+
+            '</div>'+
+          '</div>'+
         '</div>'+
         // Decided patients get Patient Details in the left column here
         (isDecided ? patientDetailsHtml : '')+
@@ -10219,8 +10266,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     if(_attnMsgPollers[consultId])clearInterval(_attnMsgPollers[consultId]);
     _attnMsgPollers[consultId]=setInterval(function(){_refreshAttnMsgs(consultId,userId);},10000);
 
-    // Load session notes from latest appointment
-    _loadPatientNotes(userId, 'attn-notes-section-'+consultId, 'attn-notes-'+consultId);
+    // Load the patient's saved notes (append-only audit log from the
+    // patient_notes table). Populates the Patient Notes card's view
+    // mode + toggles the "View patient history" link visibility.
+    _loadPatientNotes(userId);
 
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
@@ -15288,12 +15337,25 @@ function buildPatientDetail(p) {
             '</div>'
           : '') +
 
-        '<div class="crw-section" id="pdp-notes-section-' + escapeAttr(p.id) + '">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #2A2A30;">'+
-            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Session Notes</span>'+
-            '<span id="attn-notes-saved-pdp-' + escapeAttr(p.id) + '" style="display:none;font-family:\'Inter\',sans-serif;font-size:8px;color:rgba(255,255,255,0.3);">Saved</span>'+
+        '<div class="crw-section pn-section" id="pn-section-' + escapeAttr(p.id) + '" data-user-id="' + escapeAttr(p.id) + '">' +
+          '<div class="pn-header">'+
+            '<span class="crw-section-title" style="margin:0;padding:0;border:0;">Patient Notes</span>'+
+            '<button type="button" class="pn-history-link" id="pn-history-link-' + escapeAttr(p.id) + '" style="display:none;" onclick="_openPatientHistoryModal(\'' + escapeAttr(p.id) + '\')">View patient history \u203A</button>'+
           '</div>'+
-          '<textarea id="pdp-notes-' + escapeAttr(p.id) + '" data-user-id="' + escapeAttr(p.id) + '" placeholder="No notes yet — type here to add notes…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#fff;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:300;padding:10px 14px;resize:vertical;min-height:80px;outline:none;line-height:1.7;transition:border-color .2s;" oninput="_debounceNotesSave(\'pdp-' + escapeAttr(p.id) + '\',\'' + escapeAttr(p.id) + '\')"></textarea>' +
+          '<!-- View mode: read-only latest note + attribution + New button -->' +
+          '<div class="pn-view" id="pn-view-' + escapeAttr(p.id) + '">'+
+            '<div class="pn-latest-body" id="pn-latest-body-' + escapeAttr(p.id) + '"><span class="pn-empty-msg">No notes yet.</span></div>'+
+            '<div class="pn-attribution" id="pn-attribution-' + escapeAttr(p.id) + '" style="display:none;"></div>'+
+            '<button type="button" class="pn-btn pn-btn-new" onclick="_enterNewNoteMode(\'' + escapeAttr(p.id) + '\')">+ New Note</button>'+
+          '</div>'+
+          '<!-- Edit mode: editable textarea + Save/Cancel -->' +
+          '<div class="pn-edit" id="pn-edit-' + escapeAttr(p.id) + '" style="display:none;">'+
+            '<textarea id="pn-textarea-' + escapeAttr(p.id) + '" class="pn-textarea" placeholder="Type your note here..." oninput="_onPatientNoteInput(\'' + escapeAttr(p.id) + '\')"></textarea>'+
+            '<div class="pn-edit-actions">'+
+              '<button type="button" class="pn-btn pn-btn-cancel" onclick="_cancelNewNote(\'' + escapeAttr(p.id) + '\')">Cancel</button>'+
+              '<button type="button" class="pn-btn pn-btn-save" id="pn-save-btn-' + escapeAttr(p.id) + '" disabled onclick="_savePatientNote(\'' + escapeAttr(p.id) + '\')">Save</button>'+
+            '</div>'+
+          '</div>'+
         '</div>' +
 
       '</div>' +
@@ -15574,31 +15636,271 @@ function _saveAssignedProtocol(patientId) {
     });
 }
 
-// ── Load session notes from latest appointment for a patient ──
-async function _loadPatientNotes(patientUserId, sectionElId, contentElId) {
+// ══════════════════════════════════════════════════════════════════════
+// Patient Notes — append-only audit log per patient
+// ══════════════════════════════════════════════════════════════════════
+// New flow replacing the legacy auto-save session-notes path for the
+// patient-detail panel (.pn-section). Each save inserts a new row in
+// patient_notes (schema: supabase/migrations/002_patient_notes.sql)
+// and the view mode surfaces only the latest one. Clinicians open the
+// full history via a modal that lists every past version.
+
+// In-memory cache of the most recent `patient_notes` rows per patient
+// user_id, keyed for fast re-render without re-querying on every
+// state flip (view → edit → view).
+var _patientNotesCache = {};
+
+// Format helper — short date for the attribution line and history rows.
+function _fmtPatientNoteDate(iso) {
+  if (!iso) return '';
   try {
-    var res = await db.from('appointments')
-      .select('id, notes')
-      .eq('consumer_id', patientUserId)
-      .not('notes', 'is', null)
-      .order('scheduled_at', { ascending: false })
-      .limit(5);
-    var contentEl = document.getElementById(contentElId);
-    // Find first real note (skip monthly_checkin tags)
-    var realNote = null;
-    if (res.data) {
-      for (var i = 0; i < res.data.length; i++) {
-        var n = res.data[i].notes;
-        if (n && n.trim() && n.indexOf('monthly_checkin') === -1) {
-          realNote = res.data[i]; break;
-        }
+    var d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (_) { return ''; }
+}
+
+// Load all saved notes for a patient (most recent first) and render
+// the latest one into view mode. History link visibility toggles on
+// based on whether there's at least one saved entry. Called from the
+// patient-detail panel open path and re-used after each save.
+async function _loadPatientNotes(userId) {
+  if (!userId) return;
+  var viewBody = document.getElementById('pn-latest-body-' + userId);
+  var attrEl   = document.getElementById('pn-attribution-' + userId);
+  var histLink = document.getElementById('pn-history-link-' + userId);
+  if (!viewBody) return; // panel not open
+
+  if (PREVIEW_MODE || !currentUserId) {
+    _patientNotesCache[userId] = [];
+    viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
+    if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
+    if (histLink) histLink.style.display = 'none';
+    return;
+  }
+
+  try {
+    var res = await db.from('patient_notes')
+      .select('id, clinician_name, note_text, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (res && res.error) throw res.error;
+    var rows = (res && res.data) || [];
+    _patientNotesCache[userId] = rows;
+    if (rows.length === 0) {
+      viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
+      if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
+      if (histLink) histLink.style.display = 'none';
+      return;
+    }
+    var latest = rows[0];
+    viewBody.textContent = latest.note_text || '';
+    if (attrEl) {
+      var who = _formatDrLastName(latest.clinician_name) || latest.clinician_name || 'Clinician';
+      attrEl.textContent = 'Last updated ' + _fmtPatientNoteDate(latest.created_at) + ' \u00B7 ' + who;
+      attrEl.style.display = '';
+    }
+    if (histLink) histLink.style.display = '';
+  } catch (err) {
+    console.warn('[Pulse] patient_notes load failed:', err && err.message);
+    viewBody.innerHTML = '<span class="pn-empty-msg">Could not load notes.</span>';
+    if (attrEl) attrEl.style.display = 'none';
+    if (histLink) histLink.style.display = 'none';
+  }
+}
+
+// Swap the panel to edit mode — clear the textarea, hide view mode,
+// show the edit area, and disable the Save button until the clinician
+// types something.
+function _enterNewNoteMode(userId) {
+  var view = document.getElementById('pn-view-' + userId);
+  var edit = document.getElementById('pn-edit-' + userId);
+  var ta   = document.getElementById('pn-textarea-' + userId);
+  var save = document.getElementById('pn-save-btn-' + userId);
+  if (view) view.style.display = 'none';
+  if (edit) edit.style.display = '';
+  if (ta) { ta.value = ''; try { ta.focus(); } catch (_) {} }
+  if (save) save.disabled = true;
+}
+
+// Typing in the textarea toggles the Save button's disabled state.
+function _onPatientNoteInput(userId) {
+  var ta   = document.getElementById('pn-textarea-' + userId);
+  var save = document.getElementById('pn-save-btn-' + userId);
+  if (!ta || !save) return;
+  save.disabled = ta.value.trim().length === 0;
+}
+
+// Exit edit mode without saving — restores view mode with the cached
+// latest note intact (we never mutated it).
+function _cancelNewNote(userId) {
+  var view = document.getElementById('pn-view-' + userId);
+  var edit = document.getElementById('pn-edit-' + userId);
+  var ta   = document.getElementById('pn-textarea-' + userId);
+  if (edit) edit.style.display = 'none';
+  if (view) view.style.display = '';
+  if (ta) ta.value = '';
+}
+
+// Commit the textarea contents as a new patient_notes row. On success,
+// mirrors the new text into consultations.session_notes for backwards
+// compatibility (legacy reads continue to work), reloads the cache,
+// and flips back to view mode showing the new latest entry.
+async function _savePatientNote(userId) {
+  if (!userId) return;
+  var ta   = document.getElementById('pn-textarea-' + userId);
+  var save = document.getElementById('pn-save-btn-' + userId);
+  if (!ta) return;
+  var text = (ta.value || '').trim();
+  if (!text) return;
+
+  var clinicianName = _resolveCurrentClinicianName();
+  if (save) { save.disabled = true; save.textContent = 'Saving…'; }
+
+  // Find a consultation_id to attach if one exists for this patient —
+  // not required (column is nullable) but handy for downstream joins.
+  var consultId = null;
+  try {
+    if (!PREVIEW_MODE && currentUserId) {
+      var cRes = await db.from('consultations')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (cRes && !cRes.error && cRes.data && cRes.data.length > 0) {
+        consultId = cRes.data[0].id;
       }
     }
-    if (realNote && contentEl) {
-      contentEl.value = realNote.notes;
-      contentEl.dataset.apptId = realNote.id;
+  } catch (_) {}
+
+  if (PREVIEW_MODE || !currentUserId) {
+    // Optimistic local-only save in preview mode.
+    var nowIso = new Date().toISOString();
+    var fake = {
+      id: 'preview-' + Date.now(),
+      user_id: userId,
+      clinician_id: null,
+      clinician_name: clinicianName || 'Clinician',
+      note_text: text,
+      created_at: nowIso
+    };
+    _patientNotesCache[userId] = [fake].concat(_patientNotesCache[userId] || []);
+    _cancelNewNote(userId);
+    _renderPatientNotesFromCache(userId);
+    if (save) { save.disabled = false; save.textContent = 'Save'; }
+    return;
+  }
+
+  try {
+    var payload = {
+      user_id: userId,
+      consultation_id: consultId,
+      clinician_id: currentUserId || null,
+      clinician_name: clinicianName || null,
+      note_text: text
+    };
+    var res = await db.from('patient_notes').insert(payload).select().limit(1);
+    if (res && res.error) throw res.error;
+
+    // Mirror the new latest into consultations.session_notes for the
+    // legacy code paths that still read that field. Non-blocking —
+    // the main insert is the source of truth.
+    if (consultId) {
+      db.from('consultations').update({ session_notes: text }).eq('id', consultId)
+        .then(function(){}).catch(function(){});
     }
-  } catch(e) { /* silent */ }
+
+    // Refresh the cache and re-render view mode.
+    await _loadPatientNotes(userId);
+    _cancelNewNote(userId);
+  } catch (err) {
+    console.warn('[Pulse] patient_notes insert failed:', err && err.message);
+    if (save) { save.disabled = false; save.textContent = 'Save'; }
+    if (typeof showToast === 'function') showToast('Failed to save note.');
+    return;
+  }
+  if (save) { save.disabled = true; save.textContent = 'Save'; }
+}
+
+// Re-render view mode straight from the in-memory cache without
+// re-querying — used by the PREVIEW_MODE save path and wherever a
+// fresh DB fetch would be wasteful.
+function _renderPatientNotesFromCache(userId) {
+  var rows = _patientNotesCache[userId] || [];
+  var viewBody = document.getElementById('pn-latest-body-' + userId);
+  var attrEl   = document.getElementById('pn-attribution-' + userId);
+  var histLink = document.getElementById('pn-history-link-' + userId);
+  if (!viewBody) return;
+  if (rows.length === 0) {
+    viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
+    if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
+    if (histLink) histLink.style.display = 'none';
+    return;
+  }
+  var latest = rows[0];
+  viewBody.textContent = latest.note_text || '';
+  if (attrEl) {
+    var who = _formatDrLastName(latest.clinician_name) || latest.clinician_name || 'Clinician';
+    attrEl.textContent = 'Last updated ' + _fmtPatientNoteDate(latest.created_at) + ' \u00B7 ' + who;
+    attrEl.style.display = '';
+  }
+  if (histLink) histLink.style.display = '';
+}
+
+// Open the Patient History modal — mirrors the Rx history modal
+// chrome via the shared .rx-adjust-overlay / .rx-adjust-card shell.
+// Lists every saved note for the given patient, most recent first.
+async function _openPatientHistoryModal(userId) {
+  if (!userId) return;
+  // Make sure we have fresh data — cache might be stale if the clinician
+  // left and came back without touching the notes section.
+  try { await _loadPatientNotes(userId); } catch (_) {}
+  var rows = _patientNotesCache[userId] || [];
+
+  var entriesHtml = '';
+  if (rows.length === 0) {
+    entriesHtml = '<div class="pn-history-empty">No notes have been saved for this patient yet.</div>';
+  } else {
+    entriesHtml = '<div class="pn-history-list">' +
+      rows.map(function(r) {
+        var who = _formatDrLastName(r.clinician_name) || r.clinician_name || 'Clinician';
+        return '<div class="pn-history-entry">' +
+                 '<div class="pn-history-entry-meta">' +
+                   '<span class="pn-history-entry-date">' + escapeHtml(_fmtPatientNoteDate(r.created_at)) + '</span>' +
+                   '<span class="pn-history-entry-who">' + escapeHtml(who) + '</span>' +
+                 '</div>' +
+                 '<div class="pn-history-entry-body">' + escapeHtml(r.note_text || '') + '</div>' +
+               '</div>';
+      }).join('') +
+      '</div>';
+  }
+
+  // Remove any existing patient-notes modal first.
+  var old = document.getElementById('pn-history-overlay');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  var overlay = document.createElement('div');
+  overlay.className = 'rx-adjust-overlay';
+  overlay.id = 'pn-history-overlay';
+  overlay.innerHTML =
+    '<div class="rx-adjust-card">' +
+      '<div class="rx-adjust-hdr">' +
+        '<div>' +
+          '<div class="rx-adjust-title">Patient Notes History</div>' +
+          '<div class="rx-adjust-sub">' + rows.length + (rows.length === 1 ? ' entry' : ' entries') + '</div>' +
+        '</div>' +
+        '<button type="button" class="rx-adjust-close" onclick="_closePatientHistoryModal()">&times;</button>' +
+      '</div>' +
+      entriesHtml +
+    '</div>';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) _closePatientHistoryModal();
+  });
+  document.body.appendChild(overlay);
+}
+
+function _closePatientHistoryModal() {
+  var overlay = document.getElementById('pn-history-overlay');
+  if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
 }
 
 // Debounced auto-save for session notes in patient cards

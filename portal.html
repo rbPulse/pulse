@@ -12385,6 +12385,40 @@ function _memberProtoStart() {
   return null;
 }
 
+// Convert a prescription's frequency_amount + frequency_cadence into a
+// doses-per-day number used by adherence math. Monthly frequency is
+// approximated as /30, weekly as /7, daily as the raw amount.
+function _freqPerDayFromRx(rx) {
+  if (!rx || rx.frequency_amount == null || !rx.frequency_cadence) return 1;
+  var n = rx.frequency_amount;
+  if (rx.frequency_cadence === 'daily')   return n;
+  if (rx.frequency_cadence === 'weekly')  return n / 7;
+  if (rx.frequency_cadence === 'monthly') return n / 30;
+  return 1;
+}
+
+// Per-prescription adherence compute. Mirrors _computeMemberAdherence but
+// operates on a specific Rx + its filtered logged-dates array so the
+// protocol rolodex can show per-slide progress numbers.
+function _computeAdherenceForRx(rx, datesArr) {
+  var start = rx && rx.started_at ? new Date(rx.started_at) : null;
+  if (start) start.setHours(0, 0, 0, 0);
+  var freqPerDay = _freqPerDayFromRx(rx);
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var logged = 0;
+  if (start && datesArr && datesArr.length) {
+    datesArr.forEach(function(d) {
+      var dd = new Date(String(d).slice(0, 10) + 'T00:00:00');
+      dd.setHours(0, 0, 0, 0);
+      if (dd >= start && dd <= today) logged++;
+    });
+  }
+  var daysSince = start ? (Math.floor((today.getTime() - start.getTime()) / 86400000) + 1) : 0;
+  var scheduled = Math.max(1, Math.round(Math.max(1, daysSince) * freqPerDay));
+  var rate = start ? Math.min(100, Math.round((logged / scheduled) * 100)) : 0;
+  return { start: start, freqPerDay: freqPerDay, logged: logged, daysSince: daysSince, scheduled: scheduled, rate: rate };
+}
+
 // Shared adherence calculation. Both the My Protocol Progress card and the
 // Dose Log stats row call this so their "On-time rate" and "logged" counts
 // are guaranteed to match.
@@ -12413,7 +12447,21 @@ function _refreshProtoProgress() {
   var el = function(id){ return document.getElementById(id); };
   var weeks = window._protoRxDurWeeks || null;
   if (!weeks) return;
-  var adh = _computeMemberAdherence();
+  // Prefer per-Rx dates when the map is populated — this matches the
+  // primary-slide Rx instead of double-counting doses from other Rxs
+  // that belong to different protocols.
+  var primaryRxId = window._protoPrescriptionId;
+  var adh;
+  if (primaryRxId && _rxLoggedDates && _rxLoggedDates[primaryRxId]) {
+    var primaryRxObj = {
+      started_at: window._protoRxStartDate,
+      frequency_amount: window._protoFreqAmount,
+      frequency_cadence: window._protoFreqCadence
+    };
+    adh = _computeAdherenceForRx(primaryRxObj, _rxLoggedDates[primaryRxId]);
+  } else {
+    adh = _computeMemberAdherence();
+  }
   if (!adh.start) return;
   var totalDays = weeks * 7;
   var currentWeek = Math.min(weeks, Math.max(1, Math.ceil(adh.daysSince / 7)));
@@ -12511,6 +12559,43 @@ function _protoCarouselAttachScrollListener() {
   });
 }
 
+// Format an adherence object into an inline block of progress markup.
+// Matches the layout of slide 1's static #protoProgressCard so the rolodex
+// looks consistent as the member swipes between slides.
+function _buildProgressCardHtml(rx, adh, durWeeks) {
+  if (!durWeeks) durWeeks = _durationToWeeks(rx.duration) || null;
+  if (!adh || !adh.start || !durWeeks) {
+    return '<div class="p-card" style="text-align:center;padding:18px 24px;">'+
+      '<div class="compounds-label" style="margin-bottom:8px;">Progress tracking</div>'+
+      '<div style="font-size:12px;color:var(--grey2);">Start your first dose to begin tracking.</div>'+
+    '</div>';
+  }
+  var totalDays = durWeeks * 7;
+  var currentWeek = Math.min(durWeeks, Math.max(1, Math.ceil(adh.daysSince / 7)));
+  var totalDoses = Math.max(1, Math.round(totalDays * adh.freqPerDay));
+  var dosesRemaining = Math.max(0, totalDoses - adh.logged);
+  var pct = Math.min(100, Math.max(0, Math.round((adh.logged / totalDoses) * 100)));
+  return '<div class="p-card">'+
+    '<div class="compounds-label">Progress</div>'+
+    '<div class="proto-progress-header">'+
+      '<div>'+
+        '<div class="proto-progress-phase">Week '+currentWeek+' of '+durWeeks+'</div>'+
+        '<div class="proto-progress-sub">'+adh.logged+' of '+totalDoses+' doses</div>'+
+      '</div>'+
+      '<div class="proto-progress-pct-wrap">'+
+        '<div class="proto-progress-pct">'+pct+'%</div>'+
+        '<div class="proto-progress-pct-lbl">Complete</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="proto-progress-bar"><div class="proto-progress-fill" style="width:'+pct+'%;"></div></div>'+
+    '<div class="proto-progress-stats">'+
+      '<div class="proto-progress-stat"><div class="proto-progress-stat-val">'+adh.logged+'</div><div class="proto-progress-stat-lbl">Doses logged</div></div>'+
+      '<div class="proto-progress-stat"><div class="proto-progress-stat-val">'+dosesRemaining+'</div><div class="proto-progress-stat-lbl">Doses remaining</div></div>'+
+      '<div class="proto-progress-stat"><div class="proto-progress-stat-val">'+adh.rate+'%</div><div class="proto-progress-stat-lbl">On-time rate</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
 // Build an extra slide's HTML for an Rx (slides 2..N). Slide 1 is the
 // static template that populatePortal already fills. These extra slides
 // use classes instead of IDs so they can coexist with slide 1.
@@ -12533,13 +12618,25 @@ function _buildExtraProtoSlide(rx, idx) {
   if (whoText && startStr !== '—') prescribedLine = 'Prescribed by ' + whoText + ' on ' + startStr;
   else if (startStr !== '—') prescribedLine = 'Prescribed on ' + startStr;
   else if (whoText) prescribedLine = 'Prescribed by ' + whoText;
+
+  // Per-Rx adherence computed from the dose_logs map populated by loadDoseLogs
+  var adh = _computeAdherenceForRx(rx, _rxLoggedDates[rx.id] || []);
+  var progressHtml = _buildProgressCardHtml(rx, adh, durWeeks);
+  // Today-logged check for this specific Rx — disables the log button
+  var todayStr = localDateStr(new Date());
+  var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
+  var logBtnHtml = '<button type="button" class="proto-slide-log-btn" '+(todayLogged ? 'disabled' : '')+' onclick="_logDoseForRx(\''+escapeAttr(rx.id)+'\', this)">'+(todayLogged ? 'Logged today ✓' : 'Log today\'s dose')+'</button>';
+
   return ''+
     '<div class="proto-slide" data-slide-idx="'+idx+'" data-rx-id="'+escapeAttr(rx.id)+'">'+
-      '<div class="proto-header-card">'+
-        '<div class="proto-name">'+protoName+'</div>'+
-        '<div class="proto-meta">'+
-          '<span class="proto-prescribed">'+escapeHtml(prescribedLine || '—')+'</span>'+
+      '<div class="proto-header-card" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="proto-name">'+protoName+'</div>'+
+          '<div class="proto-meta">'+
+            '<span class="proto-prescribed">'+escapeHtml(prescribedLine || '—')+'</span>'+
+          '</div>'+
         '</div>'+
+        logBtnHtml+
       '</div>'+
       '<div class="p-card">'+
         '<div class="compounds-label">Prescription</div>'+
@@ -12552,13 +12649,147 @@ function _buildExtraProtoSlide(rx, idx) {
           '<div class="proto-rx-item"><div class="proto-rx-label">Est. completion</div><div class="proto-rx-value">'+escapeHtml(endStr)+'</div></div>'+
         '</div>'+
       '</div>'+
-      // NOTE: Per-protocol progress card + dose logging wire up in Phase 5.
-      // For now the extra slide just shows static prescription details.
-      '<div class="p-card" style="text-align:center;padding:18px 24px;">'+
-        '<div class="compounds-label" style="margin-bottom:8px;">Progress tracking</div>'+
-        '<div style="font-size:12px;color:var(--grey2);">Per-protocol progress coming soon.</div>'+
-      '</div>'+
+      progressHtml+
     '</div>';
+}
+
+// Log today's dose for a specific prescription. Each slide in the rolodex
+// has its own Log button wired to this — members can log each protocol
+// independently without swiping.
+async function _logDoseForRx(rxId, btnEl) {
+  if (!currentUserId || PREVIEW_MODE || !rxId) return;
+  var today = localDateStr(new Date());
+  try {
+    var res = await db.from('dose_logs').upsert({
+      user_id:         currentUserId,
+      prescription_id: rxId,
+      dose_date:       today,
+      logged_at:       new Date().toISOString()
+    }, { onConflict: 'prescription_id,dose_date' });
+    if (res && res.error) throw res.error;
+    // Update the local per-Rx map + combined loggedDates array
+    if (!_rxLoggedDates[rxId]) _rxLoggedDates[rxId] = [];
+    if (_rxLoggedDates[rxId].indexOf(today) === -1) _rxLoggedDates[rxId].push(today);
+    if (loggedDates.indexOf(today) === -1) loggedDates.push(today);
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Logged today ✓'; }
+    showToast('Dose logged.');
+    // Recompute and re-render the affected slide's progress card + the
+    // combined summary strip above the carousel.
+    _refreshProtoCarouselProgress();
+    // Sync Tracker calendar + Overview stats if they're open
+    try { renderCalendar(); } catch (_) {}
+    try { _refreshOverviewData(); } catch (_) {}
+  } catch (err) {
+    console.warn('[Pulse] _logDoseForRx failed:', err);
+    showToast('Failed to log dose.');
+  }
+}
+
+// Recompute per-slide adherence for every slide currently mounted in the
+// rolodex and update their progress cards + log button states + the
+// combined summary strip. Called after loadDoseLogs finishes async AND
+// after each _logDoseForRx call.
+function _refreshProtoCarouselProgress() {
+  var track = document.getElementById('protoCarouselTrack');
+  if (!track) return;
+  var slides = track.querySelectorAll('.proto-slide');
+  var activeRxs = window._activeRxsForCarousel || [];
+  if (!activeRxs.length) return;
+  var combinedLogged = 0;
+  var combinedScheduled = 0;
+  slides.forEach(function(slideEl, idx) {
+    var rx = activeRxs[idx];
+    if (!rx) return;
+    var adh = _computeAdherenceForRx(rx, _rxLoggedDates[rx.id] || []);
+    if (adh.start) {
+      combinedLogged += adh.logged;
+      combinedScheduled += adh.scheduled;
+    }
+    // Slide 1 uses static IDs — _refreshProtoProgress handles it
+    if (idx === 0) return;
+    // Replace the progress card inside extra slides
+    var existing = slideEl.querySelectorAll('.p-card');
+    // The last .p-card in an extra slide is the progress card
+    var last = existing[existing.length - 1];
+    if (last && last.parentNode) {
+      var durWeeks = _durationToWeeks(rx.duration) || null;
+      var newHtml = _buildProgressCardHtml(rx, adh, durWeeks);
+      var tmp = document.createElement('div');
+      tmp.innerHTML = newHtml;
+      last.parentNode.replaceChild(tmp.firstElementChild, last);
+    }
+    // Update the log button state for this slide
+    var btn = slideEl.querySelector('.proto-slide-log-btn');
+    if (btn) {
+      var todayStr = localDateStr(new Date());
+      var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
+      btn.disabled = !!todayLogged;
+      btn.textContent = todayLogged ? 'Logged today ✓' : "Log today's dose";
+    }
+  });
+  // Slide 1's static progress card — refresh via the existing path
+  if (typeof _refreshProtoProgress === 'function') _refreshProtoProgress();
+  // Also refresh slide 1's log button state (added dynamically in
+  // _renderProtoCarousel below)
+  var slideOneBtn = document.querySelector('#protoCarouselTrack .proto-slide[data-slide-idx="0"] .proto-slide-log-btn');
+  if (slideOneBtn) {
+    var primaryRxId = activeRxs[0] && activeRxs[0].id;
+    var todayStr2 = localDateStr(new Date());
+    var loggedPrimary = primaryRxId && (_rxLoggedDates[primaryRxId] || []).indexOf(todayStr2) !== -1;
+    slideOneBtn.disabled = !!loggedPrimary;
+    slideOneBtn.textContent = loggedPrimary ? 'Logged today ✓' : "Log today's dose";
+  }
+  // Update the fixed summary strip
+  var countEl = document.getElementById('protoCarouselCount');
+  var adherEl = document.getElementById('protoCarouselAdherence');
+  if (countEl && activeRxs.length > 1) {
+    countEl.textContent = activeRxs.length + ' active protocols';
+  }
+  if (adherEl && activeRxs.length > 1) {
+    if (combinedScheduled > 0) {
+      var combinedRate = Math.min(100, Math.round((combinedLogged / combinedScheduled) * 100));
+      adherEl.textContent = combinedLogged + ' of ' + combinedScheduled + ' doses · ' + combinedRate + '%';
+    } else {
+      adherEl.textContent = '—';
+    }
+  }
+}
+
+// Inject a per-slide "Log today's dose" button into slide 1. Slide 1 is
+// static HTML that doesn't know about prescriptionId, so we add the button
+// dynamically whenever the carousel renders. Called by _renderProtoCarousel.
+function _attachSlideOneLogButton(primaryRxId) {
+  var headerCard = document.querySelector('#protoCarouselTrack .proto-slide[data-slide-idx="0"] .proto-header-card');
+  if (!headerCard || !primaryRxId) return;
+  // Remove any previous injection (from a previous render)
+  var existing = headerCard.querySelector('.proto-slide-log-btn');
+  if (existing) existing.remove();
+  var todayStr = localDateStr(new Date());
+  var todayLogged = (_rxLoggedDates[primaryRxId] || []).indexOf(todayStr) !== -1;
+  // Restyle the header to flex layout so the button sits in the right rail
+  headerCard.style.display = 'flex';
+  headerCard.style.alignItems = 'flex-start';
+  headerCard.style.justifyContent = 'space-between';
+  headerCard.style.gap = '16px';
+  headerCard.style.flexWrap = 'wrap';
+  // Wrap the existing children (name + meta) in a single flex-1 block so
+  // the button ends up on the right
+  var innerWrap = headerCard.querySelector('.proto-header-inner');
+  if (!innerWrap) {
+    innerWrap = document.createElement('div');
+    innerWrap.className = 'proto-header-inner';
+    innerWrap.style.flex = '1';
+    innerWrap.style.minWidth = '0';
+    while (headerCard.firstChild) innerWrap.appendChild(headerCard.firstChild);
+    headerCard.appendChild(innerWrap);
+  }
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'proto-slide-log-btn';
+  btn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
+  btn.disabled = !!todayLogged;
+  btn.textContent = todayLogged ? 'Logged today ✓' : "Log today's dose";
+  headerCard.appendChild(btn);
 }
 
 // Render (or re-render) the carousel shell for a given list of active Rxs.
@@ -12572,12 +12803,22 @@ function _renderProtoCarousel(activeRxs) {
   var nextBtn = document.getElementById('protoCarouselNext');
   if (!track) return;
 
+  // Stash the active Rx list for _refreshProtoCarouselProgress to consume
+  window._activeRxsForCarousel = activeRxs || [];
+
   // Clean up any extra slides from a previous render
   track.querySelectorAll('.proto-slide').forEach(function(s, i) {
     if (i > 0) s.remove();
   });
 
   var n = (activeRxs || []).length;
+  var primaryRx = activeRxs && activeRxs[0];
+
+  // Attach a Log Dose button to slide 1 in both single- and multi-protocol
+  // cases. Single-protocol members finally get a one-tap log from the
+  // Protocol tab instead of having to navigate to Tracker.
+  if (primaryRx && primaryRx.id) _attachSlideOneLogButton(primaryRx.id);
+
   // Single-protocol (or no prescriptions) — hide every multi-protocol
   // affordance and bail. Single-protocol members see the plain card.
   if (n <= 1) {
@@ -12601,11 +12842,12 @@ function _renderProtoCarousel(activeRxs) {
     }).join('');
     pillsWrap.style.display = '';
   }
-  // Summary strip
+  // Summary strip — combined adherence gets filled in by
+  // _refreshProtoCarouselProgress once dose_logs have loaded.
   if (summary) {
     var countEl = document.getElementById('protoCarouselCount');
     if (countEl) countEl.textContent = n + ' active protocols';
-    summary.style.display = '';
+    summary.style.display = 'flex';
   }
   // Arrow buttons
   if (prevBtn) prevBtn.style.display = '';
@@ -12614,6 +12856,8 @@ function _renderProtoCarousel(activeRxs) {
   _protoCarouselIdx = 0;
   _protoCarouselSyncUI();
   _protoCarouselAttachScrollListener();
+  // Fill in the combined adherence summary now (dose_logs may already be loaded)
+  _refreshProtoCarouselProgress();
 }
 
 // Updates the "Prescribed by Dr. X on [date]" line in the My Protocol header.
@@ -15603,6 +15847,10 @@ var loggedDates = [];
 // _doseDates: module-level alias for loggedDates (Phase 20)
 // Kept in sync — both references point to the same array contents via loggedDates
 var _doseDates = loggedDates;
+// Per-prescription dose date map, populated from the same dose_logs query
+// that populates loggedDates. Used by per-slide progress + per-slide log
+// buttons when a member has multiple active prescriptions.
+var _rxLoggedDates = {};
 
 function localDateStr(d) {
   return d.getFullYear() + '-' +
@@ -15631,14 +15879,22 @@ async function loadDoseLogs() {
   var startStr = ninetyDaysAgo.toISOString().slice(0, 10);
   try {
     var res = await db.from('dose_logs')
-      .select('dose_date')
+      .select('dose_date, prescription_id')
       .eq('user_id', currentUserId)
       .gte('dose_date', startStr)
       .order('dose_date', { ascending: false });
     if (res && res.error) throw res.error;
-    loggedDates = (res.data || []).map(function(r) {
+    var rows = res.data || [];
+    loggedDates = rows.map(function(r) {
       // dose_date may come back as 'YYYY-MM-DD' or a full ISO string
       return String(r.dose_date).slice(0, 10);
+    });
+    // Build the per-Rx map for multi-protocol adherence.
+    _rxLoggedDates = {};
+    rows.forEach(function(r) {
+      if (!r.prescription_id) return;
+      if (!_rxLoggedDates[r.prescription_id]) _rxLoggedDates[r.prescription_id] = [];
+      _rxLoggedDates[r.prescription_id].push(String(r.dose_date).slice(0, 10));
     });
     renderCalendar();
     checkTodayLogged();
@@ -15646,6 +15902,8 @@ async function loadDoseLogs() {
     _syncStreakToOverview(streak);
     _saveStreakToProfile(streak);
     _refreshOverviewData(); // re-derive all overview values from updated dose logs
+    // Refresh any per-slide progress cards in the protocol rolodex
+    if (typeof _refreshProtoCarouselProgress === 'function') _refreshProtoCarouselProgress();
   } catch (err) {
     handleSupabaseError(err, 'dose_logs load');
     console.error('[Pulse] dose_logs unavailable, using local state:', err && err.message);

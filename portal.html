@@ -17629,31 +17629,12 @@ function _showEvaluationForm(apptId) {
         '<div style="' + _sec + '">Prescribed Protocols</div>' +
         '<div style="margin-bottom:20px;">' + protoRows + '</div>' +
 
-        // Instructions
-        '<div style="' + _sec + '">Instructions</div>' +
-        '<div class="settings-grid" style="margin-bottom:12px;">' +
-          '<div class="settings-field"><label style="' + _lbl + '">Dose Amount <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalDoseAmount" class="settings-input" type="number" placeholder="e.g. 250" oninput="_evalCheckSubmit()"/></div>' +
-          '<div class="settings-field"><label style="' + _lbl + '">Dose Unit <span style="color:rgba(200,80,80,0.7);">*</span></label><select id="evalDoseUnit" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="mL">mL</option></select></div>' +
-        '</div>' +
-        '<div class="settings-grid" style="margin-bottom:12px;">' +
-          '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-              '<input id="evalFreqNum" class="settings-input" type="number" min="1" max="10" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/>' +
-              '<select id="evalFreqPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="daily">daily</option><option value="weekly">weekly</option><option value="monthly">monthly</option></select>' +
-            '</div>' +
-          '</div>' +
-          '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalTiming" class="settings-input" type="text" placeholder="e.g. Morning, before meals" oninput="_evalCheckSubmit()"/></div>' +
-        '</div>' +
-        '<div class="settings-grid" style="margin-bottom:12px;">' +
-          '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-              '<input id="evalDurNum" class="settings-input" type="number" min="1" max="52" placeholder="e.g. 8" oninput="_evalCheckSubmit()"/>' +
-              '<select id="evalDurPeriod" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option></select>' +
-            '</div>' +
-          '</div>' +
-          '<div class="settings-field"><label style="' + _lbl + '">Protocol Version <span style="color:rgba(200,80,80,0.7);">*</span></label><input id="evalProtoVersion" class="settings-input" type="number" min="1" max="999" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/></div>' +
-        '</div>' +
-        '<div style="margin-bottom:20px;"><label style="' + _lbl + '">Other Notes <span style="opacity:0.5;font-size:9px;">(optional)</span></label><textarea id="evalOtherNotes" class="settings-input" rows="2" placeholder="Additional notes…" style="resize:vertical;min-height:50px;line-height:1.6;"></textarea></div>' +
+        // Regimens — one card per ticked protocol. Built dynamically
+        // by _evalSyncRegimenList as toggles flip yes/no. When nothing
+        // is ticked, _evalEmptyRegimenState below shows a prompt.
+        '<div style="' + _sec + '">Per-protocol regimens</div>' +
+        '<div id="evalRegimenList"></div>' +
+        '<div id="evalRegimenEmpty" style="padding:20px 24px;border:1px dashed rgba(0,0,0,0.12);border-radius:10px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:rgba(0,0,0,0.45);margin-bottom:20px;">Flip a protocol above to <b>Yes</b> to fill in its dose, frequency, timing, and duration.</div>' +
       '</div>' +
 
       // Submit
@@ -17667,6 +17648,7 @@ function _showEvaluationForm(apptId) {
   document.querySelectorAll('.eval-proto-toggle').forEach(function(sel) {
     sel.addEventListener('change', function() {
       _evalStyleProtoToggle(this);
+      _evalSyncRegimenList();
       _evalCheckSubmit();
     });
   });
@@ -17741,6 +17723,97 @@ function _evalStyleProtoToggle(sel) {
   }
 }
 
+// Build a single regimen card (one per ticked protocol). Each card's
+// inputs are keyed by the protocol slug so _submitEvaluation can scrape
+// them independently at save time.
+function _buildEvalRegimenCardHtml(protocolName) {
+  var key = protocolName.toLowerCase().replace(/\s+/g, '_');
+  var _lbl = 'font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.45);display:block;margin-bottom:6px;font-weight:600;';
+  var cardStyle = 'background:#FBFAF6;border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:18px 20px;margin-bottom:14px;';
+  var hdrStyle = 'font-family:\'Inter\',sans-serif;font-size:14px;font-weight:700;color:#111111;letter-spacing:-0.01em;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;gap:8px;';
+  var dotStyle = 'width:8px;height:8px;border-radius:999px;background:#1DB954;flex-shrink:0;';
+  return '<div class="eval-regimen-card" data-proto-key="' + escapeAttr(key) + '" data-proto-name="' + escapeAttr(protocolName) + '" style="' + cardStyle + '">' +
+    '<div style="' + hdrStyle + '"><span style="' + dotStyle + '"></span>' + escapeHtml(protocolName) + '</div>' +
+    '<div class="settings-grid" style="margin-bottom:12px;">' +
+      '<div class="settings-field"><label style="' + _lbl + '">Dose Amount <span style="color:rgba(200,80,80,0.7);">*</span></label><input data-reg="dose_amount" class="settings-input" type="number" placeholder="e.g. 250" oninput="_evalCheckSubmit()"/></div>' +
+      '<div class="settings-field"><label style="' + _lbl + '">Dose Unit <span style="color:rgba(200,80,80,0.7);">*</span></label><select data-reg="dose_unit" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="mL">mL</option></select></div>' +
+    '</div>' +
+    '<div class="settings-grid" style="margin-bottom:12px;">' +
+      '<div class="settings-field"><label style="' + _lbl + '">Frequency <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          '<input data-reg="freq_num" class="settings-input" type="number" min="1" max="10" placeholder="e.g. 1" oninput="_evalCheckSubmit()"/>' +
+          '<select data-reg="freq_period" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="daily">daily</option><option value="weekly">weekly</option><option value="monthly">monthly</option></select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="settings-field"><label style="' + _lbl + '">Timing <span style="color:rgba(200,80,80,0.7);">*</span></label><input data-reg="timing" class="settings-input" type="text" placeholder="e.g. Morning, before meals" oninput="_evalCheckSubmit()"/></div>' +
+    '</div>' +
+    '<div class="settings-grid" style="margin-bottom:12px;">' +
+      '<div class="settings-field"><label style="' + _lbl + '">Duration <span style="color:rgba(200,80,80,0.7);">*</span></label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          '<input data-reg="dur_num" class="settings-input" type="number" min="1" max="52" placeholder="e.g. 8" oninput="_evalCheckSubmit()"/>' +
+          '<select data-reg="dur_period" class="book-select" onchange="_evalCheckSubmit()"><option value="">Select...</option><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option></select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="settings-field"><label style="' + _lbl + '">Notes <span style="opacity:0.5;font-size:9px;">(optional)</span></label><textarea data-reg="other_notes" class="settings-input" rows="2" placeholder="Additional notes for this protocol…" style="resize:vertical;min-height:44px;line-height:1.55;"></textarea></div>' +
+    '</div>' +
+  '</div>';
+}
+
+// Sync the regimen card list with the current protocol toggle states.
+// Called after every toggle change. Preserves input values across
+// re-renders so a clinician who flips a protocol off and back on
+// doesn't lose what they typed.
+function _evalSyncRegimenList() {
+  var list = document.getElementById('evalRegimenList');
+  var emptyState = document.getElementById('evalRegimenEmpty');
+  if (!list) return;
+
+  // Snapshot current values from any existing cards so re-renders
+  // don't blow them away.
+  var existing = {};
+  list.querySelectorAll('.eval-regimen-card').forEach(function(card) {
+    var key = card.getAttribute('data-proto-key');
+    existing[key] = {};
+    card.querySelectorAll('[data-reg]').forEach(function(inp) {
+      existing[key][inp.getAttribute('data-reg')] = inp.value || '';
+    });
+  });
+
+  // Build cards for every protocol currently ticked Yes
+  var ticked = [];
+  document.querySelectorAll('.eval-proto-toggle').forEach(function(sel) {
+    if (sel.value !== 'yes') return;
+    var key = sel.getAttribute('data-proto');
+    var name = _EVAL_PROTOCOLS.find(function(p) {
+      return p.toLowerCase().replace(/\s+/g, '_') === key;
+    });
+    if (name) ticked.push({ key: key, name: name });
+  });
+
+  if (ticked.length === 0) {
+    list.innerHTML = '';
+    if (emptyState) emptyState.style.display = '';
+    _evalCheckSubmit();
+    return;
+  }
+  if (emptyState) emptyState.style.display = 'none';
+
+  list.innerHTML = ticked.map(function(t) { return _buildEvalRegimenCardHtml(t.name); }).join('');
+
+  // Restore snapshot values into the freshly-built cards
+  list.querySelectorAll('.eval-regimen-card').forEach(function(card) {
+    var key = card.getAttribute('data-proto-key');
+    var vals = existing[key];
+    if (!vals) return;
+    card.querySelectorAll('[data-reg]').forEach(function(inp) {
+      var regKey = inp.getAttribute('data-reg');
+      if (vals[regKey] != null) inp.value = vals[regKey];
+    });
+  });
+
+  _evalCheckSubmit();
+}
+
 function _onPrescriptionDecisionChange() {
   var val = document.getElementById('evalPrescriptionGiven').value;
   var rxSection = document.getElementById('evalRxSection');
@@ -17757,6 +17830,8 @@ function _onPrescriptionDecisionChange() {
     rxSection.style.opacity = '0.3'; rxSection.style.pointerEvents = 'none';
     noRxSection.style.display = 'none';
   }
+  // Re-sync regimen list (untoggling every protocol in "no" mode clears it)
+  if (typeof _evalSyncRegimenList === 'function') _evalSyncRegimenList();
   _evalCheckSubmit();
 }
 
@@ -17770,18 +17845,27 @@ function _evalCheckSubmit() {
     var reason = (document.getElementById('evalNoRxReason') || {}).value || '';
     valid = reason.trim().length > 0;
   } else if (decision === 'yes') {
-    // At least one protocol must be Yes
-    var anyProto = false;
-    document.querySelectorAll('.eval-proto-toggle').forEach(function(s){ if (s.value === 'yes') anyProto = true; });
-    var doseAmt = (document.getElementById('evalDoseAmount') || {}).value || '';
-    var doseUnit = (document.getElementById('evalDoseUnit') || {}).value || '';
-    var freq = (document.getElementById('evalFreqNum') || {}).value || '';
-    var freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
-    var timing = (document.getElementById('evalTiming') || {}).value || '';
-    var durNum = (document.getElementById('evalDurNum') || {}).value || '';
-    var durPeriod = (document.getElementById('evalDurPeriod') || {}).value || '';
-    var protoVer = (document.getElementById('evalProtoVersion') || {}).value || '';
-    valid = anyProto && doseAmt && doseUnit && freq && freqPeriod && timing && durNum && durPeriod && protoVer;
+    // Require at least one regimen card, and every card must have
+    // dose/freq/timing/duration filled in.
+    var cards = document.querySelectorAll('#evalRegimenList .eval-regimen-card');
+    if (cards.length === 0) {
+      valid = false;
+    } else {
+      valid = true;
+      cards.forEach(function(card) {
+        var q = function(name) { return (card.querySelector('[data-reg="' + name + '"]') || {}).value || ''; };
+        var doseAmt    = q('dose_amount');
+        var doseUnit   = q('dose_unit');
+        var freqNum    = q('freq_num');
+        var freqPeriod = q('freq_period');
+        var timing     = q('timing');
+        var durNum     = q('dur_num');
+        var durPeriod  = q('dur_period');
+        if (!(doseAmt && doseUnit && freqNum && freqPeriod && timing && durNum && durPeriod)) {
+          valid = false;
+        }
+      });
+    }
   }
 
   btn.disabled = !valid;
@@ -17819,48 +17903,47 @@ async function _submitEvaluation(apptId) {
     };
 
     var assignedNames = [];
+    // regimens: one per ticked protocol, each with its own dose/freq/
+    // timing/duration. Built from the Phase 6 eval-regimen-card blocks.
+    var regimens = [];
     if (decision === 'no') {
       evalData.no_prescription_reason = (document.getElementById('evalNoRxReason') || {}).value || '';
       evalData.prescribed_protocols = {};
       _EVAL_PROTOCOLS.forEach(function(p) { evalData.prescribed_protocols[p.toLowerCase().replace(/\s+/g,'_')] = false; });
-      // No regimen values when declining — leave dose/freq/timing/duration null.
-      evalData.dose_amount = null;
-      evalData.dose_unit = null;
-      evalData.frequency = null;
-      evalData.frequency_amount = null;
-      evalData.frequency_cadence = null;
-      evalData.timing = null;
-      evalData.timing_instructions = null;
-      evalData.duration = null;
-      evalData.duration_value = null;
-      evalData.duration_unit = null;
-      evalData.other_notes = null;
-      evalData.protocol_version = null;
+      evalData.regimens = [];
     } else {
       evalData.prescribed_protocols = {};
-      document.querySelectorAll('.eval-proto-toggle').forEach(function(s) {
-        var key = s.getAttribute('data-proto');
-        evalData.prescribed_protocols[key] = s.value === 'yes';
-        if (s.value === 'yes') {
-          var name = _EVAL_PROTOCOLS.find(function(p){ return p.toLowerCase().replace(/\s+/g,'_') === key; });
-          if (name) assignedNames.push(name);
-        }
+      _EVAL_PROTOCOLS.forEach(function(p) {
+        var k = p.toLowerCase().replace(/\s+/g,'_');
+        evalData.prescribed_protocols[k] = false;
       });
-      evalData.dose_amount = (document.getElementById('evalDoseAmount') || {}).value || '';
-      evalData.dose_unit = (document.getElementById('evalDoseUnit') || {}).value || '';
-      var _freqNum = (document.getElementById('evalFreqNum') || {}).value || '';
-      var _freqPeriod = (document.getElementById('evalFreqPeriod') || {}).value || '';
-      evalData.frequency_amount  = _freqNum ? parseInt(_freqNum, 10) : null;
-      evalData.frequency_cadence = _freqPeriod || null;
-      evalData.frequency = _fmtFrequency(evalData.frequency_amount, evalData.frequency_cadence) || '';
-      evalData.timing = (document.getElementById('evalTiming') || {}).value || '';
-      var _durNum = (document.getElementById('evalDurNum') || {}).value || '';
-      var _durPeriod = (document.getElementById('evalDurPeriod') || {}).value || '';
-      evalData.duration_value = _durNum ? parseInt(_durNum, 10) : null;
-      evalData.duration_unit  = _durPeriod || null;
-      evalData.duration = _fmtDuration(evalData.duration_value, evalData.duration_unit) || '';
-      evalData.other_notes = (document.getElementById('evalOtherNotes') || {}).value || '';
-      evalData.protocol_version = (document.getElementById('evalProtoVersion') || {}).value || '';
+      // Scrape every regimen card into a regimen object
+      var cards = document.querySelectorAll('#evalRegimenList .eval-regimen-card');
+      cards.forEach(function(card) {
+        var protoKey  = card.getAttribute('data-proto-key');
+        var protoName = card.getAttribute('data-proto-name');
+        var q = function(name) { return (card.querySelector('[data-reg="' + name + '"]') || {}).value || ''; };
+        var freqNum   = q('freq_num');
+        var durNum    = q('dur_num');
+        var reg = {
+          protocol_key:      protoName,
+          protocol_slug:     protoKey,
+          dose_amount:       q('dose_amount') || null,
+          dose_unit:         q('dose_unit') || null,
+          frequency_amount:  freqNum ? parseInt(freqNum, 10) : null,
+          frequency_cadence: q('freq_period') || null,
+          timing:            q('timing') || null,
+          duration_value:    durNum ? parseInt(durNum, 10) : null,
+          duration_unit:     q('dur_period') || null,
+          other_notes:       q('other_notes') || null
+        };
+        reg.frequency = _fmtFrequency(reg.frequency_amount, reg.frequency_cadence) || '';
+        reg.duration  = _fmtDuration(reg.duration_value, reg.duration_unit) || '';
+        regimens.push(reg);
+        evalData.prescribed_protocols[protoKey] = true;
+        assignedNames.push(protoName);
+      });
+      evalData.regimens = regimens;
     }
 
     // Update appointment with session data (skip for async reviews — no appointment)
@@ -17919,35 +18002,35 @@ async function _submitEvaluation(apptId) {
       }
       await db.from('consultations').update(consultUpdate).eq('id', cId);
 
-      // If prescribing, create one prescription per selected protocol.
-      // In Phase 1 every selected protocol gets the same regimen (the form
-      // only captures one set of dose/freq/timing/duration). Per-protocol
-      // regimens during initial consult lands in Phase 6.
-      if (decision === 'yes' && assignedNames.length > 0) {
+      // If prescribing, create one prescription per regimen card. Each
+      // card carries its own dose/frequency/timing/duration so protocols
+      // can have independent regimens from the very first prescribe.
+      if (decision === 'yes' && regimens.length > 0) {
         var clinicianName = _resolveCurrentClinicianName();
         var initialReason = 'Initial prescription' + (notes.trim() ? ' — ' + notes.trim() : '');
-        for (var i = 0; i < assignedNames.length; i++) {
+        for (var i = 0; i < regimens.length; i++) {
+          var reg = regimens[i];
           try {
             await pxCreate({
               consultId:         cId,
               userId:            consumerId,
               clinicianId:       currentUserId || null,
               clinicianName:     clinicianName,
-              protocolKey:       assignedNames[i],
-              dose_amount:       evalData.dose_amount,
-              dose_unit:         evalData.dose_unit,
-              frequency_amount:  evalData.frequency_amount,
-              frequency_cadence: evalData.frequency_cadence,
-              timing:            evalData.timing,
-              duration_value:    evalData.duration_value,
-              duration_unit:     evalData.duration_unit,
-              other_notes:       evalData.other_notes,
+              protocolKey:       reg.protocol_key,
+              dose_amount:       reg.dose_amount,
+              dose_unit:         reg.dose_unit,
+              frequency_amount:  reg.frequency_amount,
+              frequency_cadence: reg.frequency_cadence,
+              timing:            reg.timing,
+              duration_value:    reg.duration_value,
+              duration_unit:     reg.duration_unit,
+              other_notes:       reg.other_notes,
               adjustment_reason: initialReason
             });
           } catch (pe) {
             // Likely a duplicate-active-protocol constraint violation
             // (retry of a previously-submitted evaluation). Log and move on.
-            console.warn('[Pulse] pxCreate failed for', assignedNames[i], pe);
+            console.warn('[Pulse] pxCreate failed for', reg.protocol_key, pe);
           }
         }
       }

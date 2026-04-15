@@ -4992,7 +4992,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="cal-card">
               <div class="calendar-nav-row">
                 <button class="calendar-nav-btn" onclick="_trackerHistoryNavMonth(-1)">←</button>
-                <div id="trackerMonthLabel" class="calendar-month-label"></div>
+                <div id="trackerHistoryMonthLabel" class="calendar-month-label"></div>
                 <button class="calendar-nav-btn" onclick="_trackerHistoryNavMonth(1)">→</button>
               </div>
               <div class="cal-dow-row">
@@ -5000,7 +5000,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div>
                 <div class="cal-dow">Sa</div>
               </div>
-              <div class="cal-grid" id="calGrid"></div>
+              <div class="cal-grid" id="trackerHistoryGrid"></div>
             </div>
           </div>
         </div>
@@ -16972,12 +16972,240 @@ function renderTrackerAdherence() {
   section.style.display = '';
 }
 
-// Orchestrator for re-rendering every new Tracker section. Phases 2-3
-// wire the Today + Adherence surfaces; phase 4 will add the History
-// collapsible calendar.
+// ── Phase 4: Tracker History disclosure ──────────────────────────────
+// Per-Rx month calendar behind a click-to-expand header. Multi-Rx
+// members also get a pill row to switch which Rx the calendar reflects.
+// Retroactive click-to-log is enforced via _trackerLogRxForDate's
+// 7-day cap + _isRxScheduledOnDate scheduling check.
+
+// Local state for the History section.
+var _trackerHistorySelectedRxId = null;
+var _trackerHistoryNow = new Date();
+var _trackerHistoryMonth = _trackerHistoryNow.getMonth();
+var _trackerHistoryYear  = _trackerHistoryNow.getFullYear();
+
+// Toggle the History disclosure open/closed. On first open, make sure
+// the calendar is rendered against the currently-selected Rx.
+function _trackerHistoryToggle() {
+  var card = document.getElementById('trackerHistorySection');
+  if (!card) return;
+  var expanded = card.classList.toggle('is-expanded');
+  if (expanded) {
+    _trackerHistoryRenderMonth();
+  }
+}
+
+// Switch pills to the given Rx and re-render the month.
+function _trackerHistorySelectRx(rxId) {
+  if (!rxId) return;
+  _trackerHistorySelectedRxId = rxId;
+  var pills = document.querySelectorAll('#trackerHistoryPills .tracker-hist-pill');
+  pills.forEach(function(p) {
+    p.classList.toggle('is-active', p.getAttribute('data-rx-id') === rxId);
+  });
+  _trackerHistoryRenderMonth();
+}
+
+// Step the month forward/back and re-render.
+function _trackerHistoryNavMonth(dir) {
+  _trackerHistoryMonth += dir;
+  if (_trackerHistoryMonth > 11) { _trackerHistoryMonth = 0;  _trackerHistoryYear++; }
+  if (_trackerHistoryMonth < 0)  { _trackerHistoryMonth = 11; _trackerHistoryYear--; }
+  _trackerHistoryRenderMonth();
+}
+
+// Render the per-Rx month calendar into #trackerHistoryGrid. Cell
+// states mirror the legacy renderCalendar but are scoped to the
+// currently-selected Rx's dose_logs. Non-scheduled days for weekly/
+// monthly Rxs get a .not-scheduled dim style. Today's cell is
+// read-only — members log today from the Today checklist above.
+function _trackerHistoryRenderMonth() {
+  var grid = document.getElementById('trackerHistoryGrid');
+  var label = document.getElementById('trackerHistoryMonthLabel');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  var activeRxs = window._activeRxsForCarousel || [];
+  var rxId = _trackerHistorySelectedRxId;
+  var rx = null;
+  for (var k = 0; k < activeRxs.length; k++) {
+    if (activeRxs[k].id === rxId) { rx = activeRxs[k]; break; }
+  }
+  // No selected Rx yet (e.g., initial render or selection stale) —
+  // fall back to the first active Rx.
+  if (!rx && activeRxs.length) {
+    rx = activeRxs[0];
+    _trackerHistorySelectedRxId = rx.id;
+  }
+
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if (label) label.textContent = monthNames[_trackerHistoryMonth] + ' ' + _trackerHistoryYear;
+
+  if (!rx) return;
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var todayStr = localDateStr(today);
+  var rxLogged = new Set(_rxLoggedDates[rx.id] || []);
+  var rxStart = rx.started_at ? new Date(rx.started_at) : null;
+  if (rxStart) rxStart.setHours(0, 0, 0, 0);
+
+  var firstDay = new Date(_trackerHistoryYear, _trackerHistoryMonth, 1);
+  var lastDay  = new Date(_trackerHistoryYear, _trackerHistoryMonth + 1, 0);
+  var gridStart = new Date(firstDay); gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  var gridEnd   = new Date(lastDay);  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
+  var d = new Date(gridStart);
+  while (d <= gridEnd) {
+    var dStr = localDateStr(d);
+    var cell = document.createElement('div');
+    var inMonth   = d.getMonth() === _trackerHistoryMonth && d.getFullYear() === _trackerHistoryYear;
+    var isPast    = d < today;
+    var isToday   = dStr === todayStr;
+    var isLogged  = rxLogged.has(dStr);
+    var beforeRx  = rxStart && d < rxStart;
+    var isFuture  = d > today;
+    var scheduled = _isRxScheduledOnDate(rx, new Date(d));
+    // Retroactive-log cap (7 days back, today excluded).
+    var diffDays  = Math.round((today.getTime() - d.getTime()) / 86400000);
+    var withinCap = diffDays > 0 && diffDays <= 7;
+
+    if (!inMonth) {
+      cell.className = 'cal-cell empty';
+    } else if (beforeRx) {
+      cell.className = 'cal-cell disabled';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
+    } else if (!scheduled) {
+      cell.className = 'cal-cell not-scheduled';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
+    } else if (isToday && isLogged) {
+      cell.className = 'cal-cell today-done';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
+    } else if (isToday && !isLogged) {
+      // Today, not yet logged — READ-ONLY on the calendar; members
+      // log today via the Today checklist section above.
+      cell.className = 'cal-cell today-pending';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#2F6F55" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span>';
+    } else if (isLogged) {
+      cell.className = 'cal-cell logged';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
+    } else if (isPast && withinCap) {
+      // Past day, missed, within the 7-day retroactive cap — clickable.
+      cell.className = 'cal-cell missed';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon" style="display:flex;"><svg viewBox="0 0 24 24" stroke="rgba(200,70,60,0.5)"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg></span><div class="cal-tooltip">Log dose</div>';
+      (function(_dateStr, _rxId) {
+        cell.onclick = function() { _trackerHistoryClickCell(_rxId, _dateStr); };
+      })(dStr, rx.id);
+    } else if (isPast) {
+      // Past day, missed, beyond the cap — frozen.
+      cell.className = 'cal-cell missed';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon" style="display:flex;"><svg viewBox="0 0 24 24" stroke="rgba(200,70,60,0.5)"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg></span>';
+    } else if (isFuture) {
+      cell.className = 'cal-cell future';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
+    } else {
+      cell.className = 'cal-cell';
+      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
+    }
+    grid.appendChild(cell);
+    d.setDate(d.getDate() + 1);
+  }
+}
+
+// Handle a click on a past, missed, within-cap cell. Writes a dose_logs
+// row for the selected Rx + target date via _trackerLogRxForDate, then
+// re-renders Today / Adherence / History / Overview tiles.
+async function _trackerHistoryClickCell(rxId, dateStr) {
+  var res = await _trackerLogRxForDate(rxId, dateStr);
+  if (res && res.error) {
+    if (res.error === 'cap')   { showToast('You can only retro-log the last 7 days.'); return; }
+    if (res.error === 'already') return;
+    if (res.error === 'future' || res.error === 'missing args') return;
+    showToast('Failed to log dose.');
+    return;
+  }
+  renderTrackerAll();
+  _refreshOnTimeTiles();
+  showToast('Dose logged.');
+}
+
+// (Re)build the History section: pick/preserve a selected Rx, rebuild
+// the pill row (hidden for single-Rx members), and paint the current
+// month. Hides the whole section when there are no active Rxs.
+function renderTrackerHistory() {
+  var section = document.getElementById('trackerHistorySection');
+  var pillsWrap = document.getElementById('trackerHistoryPills');
+  if (!section) return;
+
+  var activeRxs = window._activeRxsForCarousel || [];
+  if (!activeRxs.length) {
+    section.style.display = 'none';
+    section.classList.remove('is-expanded');
+    if (pillsWrap) pillsWrap.innerHTML = '';
+    return;
+  }
+  section.style.display = '';
+
+  // Preserve selection across renders when possible, otherwise fall
+  // back to the first active Rx.
+  var stillValid = _trackerHistorySelectedRxId && activeRxs.some(function(r) {
+    return r.id === _trackerHistorySelectedRxId;
+  });
+  if (!stillValid) _trackerHistorySelectedRxId = activeRxs[0].id;
+
+  // Build pill row — only render pills when multi-Rx; single-Rx
+  // members get the calendar alone.
+  if (pillsWrap) {
+    if (activeRxs.length > 1) {
+      pillsWrap.innerHTML = activeRxs.map(function(rx) {
+        var active = rx.id === _trackerHistorySelectedRxId;
+        return '<button type="button" class="tracker-hist-pill' + (active ? ' is-active' : '') + '"' +
+               ' data-rx-id="' + escapeAttr(rx.id) + '"' +
+               ' onclick="_trackerHistorySelectRx(\'' + escapeAttr(rx.id) + '\')">' +
+                 escapeHtml(rx.protocol_key || 'Protocol') +
+               '</button>';
+      }).join('');
+    } else {
+      pillsWrap.innerHTML = '';
+    }
+  }
+
+  // Only repaint the month if the section is currently expanded —
+  // otherwise we defer until the user clicks the header.
+  if (section.classList.contains('is-expanded')) {
+    _trackerHistoryRenderMonth();
+  }
+}
+
+// Show the zero-Rx empty state and hide every other Tracker section.
+// Called from renderTrackerAll when activeRxs.length === 0.
+function renderTrackerEmptyState(shouldShow) {
+  var empty = document.getElementById('trackerEmptyState');
+  var today = document.getElementById('trackerTodaySection');
+  var adh   = document.getElementById('trackerAdherenceSection');
+  var hist  = document.getElementById('trackerHistorySection');
+  if (shouldShow) {
+    if (empty) empty.style.display = '';
+    if (today) today.style.display = 'none';
+    if (adh)   adh.style.display   = 'none';
+    if (hist)  hist.style.display  = 'none';
+  } else {
+    if (empty) empty.style.display = 'none';
+  }
+}
+
+// Orchestrator for re-rendering every new Tracker section. Phase 4
+// adds the History disclosure and empty-state dispatch; the Today
+// and Adherence renderers handle their own visibility.
 function renderTrackerAll() {
+  var activeRxs = window._activeRxsForCarousel || [];
+  if (!activeRxs.length) {
+    renderTrackerEmptyState(true);
+    return;
+  }
+  renderTrackerEmptyState(false);
   renderTrackerToday();
   renderTrackerAdherence();
+  renderTrackerHistory();
 }
 
 async function logDose() {

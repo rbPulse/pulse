@@ -290,11 +290,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .resources-body{font-size:13px;color:var(--grey);line-height:1.75;max-width:400px;margin:0 auto;}
 
 /* ── TRACKER ── */
-.log-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.log-card-info{flex:1;}
-.log-card-title{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;}
-.log-card-sub{font-size:12px;color:var(--grey2);}
-.log-card-logged{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.1em;color:var(--green);}
 /* ── Tracker Today checklist ─────────────────────────────────────
    Per-Rx "due today" list that sits above the legacy log card.
    Each row shows the protocol name, timing bucket, dose/freq
@@ -360,22 +355,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .tracker-empty-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:40px 28px;margin-bottom:16px;text-align:center;}
 .tracker-empty-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;}
 .tracker-empty-sub{font-family:'Inter',sans-serif;font-size:13px;color:var(--grey2);}
-/* Compact Log Today's Dose button on the Tracker tab — matches the
-   dimensions of .proto-slide-log-btn on the Protocol tab so it
-   doesn't fill the card width. Overrides the default .btn-green
-   sizing and the mobile full-width stretch that was previously
-   applied inside .log-card. */
-#logDoseBtn{
-  display:inline-flex;align-items:center;gap:6px;
-  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
-  letter-spacing:0.04em;
-  padding:8px 14px;border-radius:999px;
-  text-transform:none;
-  white-space:nowrap;
-  width:auto;min-height:auto;line-height:normal;
-}
-#logDoseBtn svg{width:12px;height:12px;flex-shrink:0;display:block;}
-#logDoseBtn:disabled svg{display:none;}
 .cal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .cal-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:16px;}
 .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px;}
@@ -1388,23 +1367,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   }
 }
 
-/* ── 31F: TRACKER — LOG CARD (stack layout + full-width button) ──────────────
-   On narrow screens the info + button row can be cramped; stack vertically.
-*/
-@media(max-width:480px) {
-  .log-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
-  }
-  /* Keep the button container spanning the card so the compact pill
-     can sit centered within the card's horizontal space. The button
-     itself stays compact via the #logDoseBtn rules above. */
-  .log-card > div:last-child { width: 100%; text-align: center; }
-  .log-card-sub { font-size: 12px; }
-}
-
 /* ── 31H: CONSUMER APPOINTMENT ROWS ─────────────────────────────────────────
    consumer-appt-row needs readable font and stacked layout on very narrow
    screens; appt-action-row buttons must have adequate touch targets.
@@ -2359,10 +2321,6 @@ body.member-mode .loading-icon svg{stroke:#2F6F55;}
 }
 
 /* ── Tracker tab specifics ── */
-body.member-mode .log-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
-body.member-mode .log-card-title{color:var(--m-text) !important;}
-body.member-mode .log-card-sub{color:var(--m-text2) !important;}
-body.member-mode .log-card-logged{color:#2F6F55 !important;}
 /* Tracker Today checklist — light-theme overrides. */
 body.member-mode .tracker-today-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;box-shadow:var(--m-shadow);}
 body.member-mode .tracker-today-eyebrow{color:#2F6F55 !important;}
@@ -2435,7 +2393,7 @@ body.member-mode .p-card,body.member-mode .p-card-sm,body.member-mode .ov-stat,
 body.member-mode .stat-tile,body.member-mode .member-card,body.member-mode .action-card,
 body.member-mode .compounds-card,
 body.member-mode .timeline-card,body.member-mode .resources-card,
-body.member-mode .log-card,body.member-mode .cal-card,
+body.member-mode .cal-card,
 body.member-mode .resource-card-item,body.member-mode .support-request-card,
 body.member-mode .setup-card,body.member-mode .res-card{
   background:var(--m-card) !important;border:1px solid var(--m-border) !important;color:var(--m-text) !important;
@@ -13065,7 +13023,6 @@ async function _logDoseForRx(rxId, btnEl) {
     if (loggedDates.indexOf(today) === -1) loggedDates.push(today);
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Logged today ✓'; }
     try { _refreshProtoCarouselProgress(); } catch (_) {}
-    try { renderCalendar(); } catch (_) {}
     try { _refreshOverviewData(); } catch (_) {}
     try { renderTrackerAll(); } catch (_) {}
     try { _refreshOnTimeTiles(); } catch (_) {}
@@ -16453,9 +16410,8 @@ async function loadDoseLogs() {
       fakeDates.push(localDateStr(d));
     });
     loggedDates = fakeDates;
-    renderCalendar();
-    checkTodayLogged();
     _refreshOnTimeTiles();
+    renderTrackerAll();
     return;
   }
   // Query last 90 days of dose logs (dose_date >= 90 days ago as YYYY-MM-DD string)
@@ -16481,8 +16437,6 @@ async function loadDoseLogs() {
       if (!_rxLoggedDates[r.prescription_id]) _rxLoggedDates[r.prescription_id] = [];
       _rxLoggedDates[r.prescription_id].push(String(r.dose_date).slice(0, 10));
     });
-    renderCalendar();
-    checkTodayLogged();
     _refreshOnTimeTiles();
     renderTrackerAll();
     _refreshOverviewData(); // re-derive all overview values from updated dose logs
@@ -16492,158 +16446,7 @@ async function loadDoseLogs() {
     handleSupabaseError(err, 'dose_logs load');
     console.error('[Pulse] dose_logs unavailable, using local state:', err && err.message);
     // Graceful fallback: keep whatever loggedDates already holds (or empty)
-    renderCalendar();
-    checkTodayLogged();
-  }
-}
-
-var _trackerMonth = new Date().getMonth();
-var _trackerYear = new Date().getFullYear();
-
-function _trackerNavMonth(dir) {
-  _trackerMonth += dir;
-  if (_trackerMonth > 11) { _trackerMonth = 0; _trackerYear++; }
-  if (_trackerMonth < 0) { _trackerMonth = 11; _trackerYear--; }
-  renderCalendar();
-}
-
-function renderCalendar() {
-  var grid = document.getElementById('calGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-
-  var today = new Date(); today.setHours(0,0,0,0);
-  var todayStr = localDateStr(today);
-  var loggedSet = new Set(loggedDates);
-
-  // Determine prescription start date (use evaluation date, consultation date, or earliest logged dose)
-  var protoStart = null;
-  if (window._protoStartDate) {
-    protoStart = new Date(window._protoStartDate); protoStart.setHours(0,0,0,0);
-  } else if (loggedDates.length > 0) {
-    // Fallback: use earliest logged dose date
-    var sorted = loggedDates.slice().sort();
-    protoStart = new Date(sorted[0] + 'T00:00:00');
-  }
-
-  // Month label
-  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var labelEl = document.getElementById('trackerMonthLabel');
-  if (labelEl) labelEl.textContent = monthNames[_trackerMonth] + ' ' + _trackerYear;
-
-  // First and last day of month
-  var firstDay = new Date(_trackerYear, _trackerMonth, 1);
-  var lastDay = new Date(_trackerYear, _trackerMonth + 1, 0);
-
-  // Grid starts on Sunday before first day
-  var gridStart = new Date(firstDay); gridStart.setDate(gridStart.getDate() - gridStart.getDay());
-  // Grid ends on Saturday after last day
-  var gridEnd = new Date(lastDay); gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
-
-  var d = new Date(gridStart);
-  while (d <= gridEnd) {
-    var dStr = localDateStr(d);
-    var cell = document.createElement('div');
-    var inMonth = d.getMonth() === _trackerMonth && d.getFullYear() === _trackerYear;
-    var isPast = d < today;
-    var isToday = dStr === todayStr;
-    var isLogged = loggedSet.has(dStr);
-    var beforeProto = protoStart && d < protoStart;
-    var isFuture = d > today;
-
-    if (!inMonth) {
-      cell.className = 'cal-cell empty';
-    } else if (beforeProto) {
-      cell.className = 'cal-cell disabled';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
-    } else if (isToday && isLogged) {
-      // Today, dose logged — green with gold border
-      cell.className = 'cal-cell today-done';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
-    } else if (isToday && !isLogged) {
-      // Today, not yet logged — pulsing, clickable
-      cell.className = 'cal-cell today-pending';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#2F6F55" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span><div class="cal-tooltip">Log dose</div>';
-      cell.onclick = function() { logDose(); };
-    } else if (isLogged) {
-      // Past day, logged — solid green
-      cell.className = 'cal-cell logged';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon"><svg viewBox="0 0 24 24" stroke="#fff"><polyline points="20 6 9 17 4 12"/></svg></span>';
-    } else if (isPast) {
-      // Past day, missed — red tint, hover tooltip
-      cell.className = 'cal-cell missed';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span><span class="cal-icon" style="display:flex;"><svg viewBox="0 0 24 24" stroke="rgba(200,70,60,0.5)"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg></span><div class="cal-tooltip">Log dose</div>';
-      (function(dateStr) {
-        cell.onclick = function() { _logPastDose(dateStr); };
-      })(dStr);
-    } else if (isFuture) {
-      cell.className = 'cal-cell future';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
-    } else {
-      cell.className = 'cal-cell';
-      cell.innerHTML = '<span class="cal-num">' + d.getDate() + '</span>';
-    }
-    grid.appendChild(cell);
-    d.setDate(d.getDate() + 1);
-  }
-
-  // Keep the Overview on-time tiles in sync whenever the calendar
-  // re-renders (typically right after a dose is logged or loaded).
-  _refreshOnTimeTiles();
-
-  var el = function(id){ return document.getElementById(id); };
-  if (window._userProto) {
-    var nextDoseEl2 = el('ovNextDose');
-    var nextDoseSubEl2 = el('ovNextDoseSub');
-    var loggedTodayNow = loggedSet.has(todayStr);
-    if (nextDoseEl2) nextDoseEl2.textContent = loggedTodayNow ? 'Today \u2713' : 'Tomorrow';
-    if (nextDoseSubEl2) nextDoseSubEl2.textContent = loggedTodayNow ? 'Dose logged' : 'Next scheduled dose';
-  }
-}
-
-async function _logPastDose(dateStr) {
-  if (!currentUserId || PREVIEW_MODE) return;
-  if (!window._protoPrescriptionId) {
-    showToast('No active prescription to log against.');
-    return;
-  }
-  try {
-    var res = await db.from('dose_logs').upsert({
-      user_id:         currentUserId,
-      prescription_id: window._protoPrescriptionId,
-      dose_date:       dateStr,
-      logged_at:       new Date().toISOString()
-    }, { onConflict: 'prescription_id,dose_date' });
-    if (res.error) { showToast('Failed to log dose.'); return; }
-    if (loggedDates.indexOf(dateStr) === -1) loggedDates.push(dateStr);
-    renderCalendar();
-    showToast('Dose logged for ' + new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) + '.');
-  } catch(e) { showToast('Failed to log dose.'); }
-}
-
-function checkTodayLogged() {
-  var todayStr = localDateStr(new Date());
-  if (loggedDates.indexOf(todayStr) !== -1) {
-    _setAlreadyLoggedState();
-  }
-}
-
-// Arrow SVG shared across every Tracker log-dose button state.
-// CSS hides it via #logDoseBtn:disabled svg so the disabled text
-// ("Logging..." / "Already logged ✓") is clean.
-var _LOG_DOSE_ARROW_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
-function _logDoseBtnHtml(label) {
-  return '<span class="log-dose-btn-label">' + label + '</span>' + _LOG_DOSE_ARROW_SVG;
-}
-
-// ── _setAlreadyLoggedState: disable the log button and show already-logged label ──
-function _setAlreadyLoggedState() {
-  var btn = document.getElementById('logDoseBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = _logDoseBtnHtml('Already logged today \u2713');
-    btn.style.opacity = '0.45';
-    btn.style.cursor = 'default';
+    renderTrackerAll();
   }
 }
 
@@ -17208,58 +17011,21 @@ function renderTrackerAll() {
   renderTrackerHistory();
 }
 
+// Wrapper kept so the Overview tab's "Log Today's Dose" hero buttons
+// (#moHeroCta, #mHeroCta) and their JS click-wires keep working
+// after the Tracker rewrite. Delegates to _logDoseForRx against the
+// primary Rx — the Overview is intentionally a single-button UX, so
+// members with multiple protocols log per-Rx from the Tracker's
+// Today checklist or the Protocol tab carousel.
 async function logDose() {
-  /* Supabase: table dose_logs already defined in schema comments; unique(user_id, dose_date) handles duplicates */
-  var today = localDateStr(new Date());
-
-  // Already logged today — apply already-logged state, do not insert
-  if (loggedDates.indexOf(today) !== -1) {
-    _setAlreadyLoggedState();
+  var activeRxs = window._activeRxsForCarousel || [];
+  var primaryId = activeRxs[0] && activeRxs[0].id;
+  if (!primaryId) primaryId = window._protoPrescriptionId || null;
+  if (!primaryId) {
+    if (typeof showToast === 'function') showToast('No active protocol to log against.');
     return;
   }
-
-  var btn = document.getElementById('logDoseBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = _logDoseBtnHtml('Logging...'); }
-
-  function onSuccess() {
-    loggedDates.push(today);
-    renderCalendar(); // optimistic re-render
-    _setAlreadyLoggedState();
-    _refreshOnTimeTiles();
-    _refreshOverviewData(); // immediately update overview with new log
-    // Reload from DB to confirm (non-blocking)
-    if (!PREVIEW_MODE) {
-      setTimeout(function() { loadDoseLogs(); }, 600);
-    }
-  }
-
-  if (PREVIEW_MODE) { onSuccess(); return; }
-
-  if (!window._protoPrescriptionId) {
-    console.warn('[Pulse] dose log: no active prescription id, skipping DB write');
-    onSuccess();
-    return;
-  }
-
-  // Upsert against the (prescription_id, dose_date) unique constraint
-  try {
-    var res = await db.from('dose_logs').upsert({
-      user_id:         currentUserId,
-      prescription_id: window._protoPrescriptionId,
-      dose_date:       today,
-      logged_at:       new Date().toISOString()
-    }, { onConflict: 'prescription_id,dose_date' });
-    if (res && res.error) {
-      console.error('[Pulse] dose log upsert error:', res.error.message);
-      if (btn) { btn.disabled = false; btn.innerHTML = _logDoseBtnHtml("Log Today's Dose"); btn.style.opacity = ''; btn.style.cursor = ''; }
-      return;
-    }
-    onSuccess();
-  } catch (err) {
-    console.error('[Pulse] dose log upsert failed, keeping local state:', err && err.message);
-    // Graceful fallback: optimistically record locally
-    onSuccess();
-  }
+  await _logDoseForRx(primaryId, null);
 }
 
 // ── CONSUMER SETTINGS SAVE ──

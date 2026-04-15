@@ -14051,24 +14051,12 @@ function renderPatientList(filter) {
     var displayCls   = isOverdue ? 'cl-ft-status-notrx' : meta.cls;
     var railCls      = isOverdue ? 'cl-ft-rail-red'     : meta.rail;
 
-    // Build a small protocol summary shown next to the patient name:
-    // e.g. "Sleep +1". Only appears when the patient has at least one
-    // active Rx; multi-protocol patients get "<first> +N".
-    var protoLabel = '';
-    var actRxs = p._activeRxs || [];
-    if (actRxs.length === 1) {
-      protoLabel = actRxs[0].protocol_key || '';
-    } else if (actRxs.length > 1) {
-      protoLabel = (actRxs[0].protocol_key || 'Protocol') + ' +' + (actRxs.length - 1);
-    }
-
     var wrapper = document.createElement('div');
     wrapper.className = 'cl-ft-row-wrap ' + railCls;
     wrapper.innerHTML =
       '<div class="cl-ft-row cl-ft-cols-patients">' +
         '<div class="cl-ft-cell-name">' +
           '<span>' + escapeHtml(p.name || 'Unknown') + '</span>' +
-          (protoLabel ? '<span class="cl-ft-cell-protocol">' + escapeHtml(protoLabel) + '</span>' : '') +
         '</div>' +
         '<div class="cl-ft-cell">' + escapeHtml(subRel) + '</div>' +
         '<div class="cl-ft-status ' + displayCls + '">' + displayLabel + '</div>' +

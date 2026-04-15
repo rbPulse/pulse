@@ -349,10 +349,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cal-icon{display:none;align-items:center;justify-content:center;margin-top:4px;}
 .cal-icon svg{width:22px;height:22px;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;}
 .cal-num{font-size:13px;font-weight:600;line-height:1;}
-.streak-row{display:flex;align-items:center;justify-content:center;gap:56px;padding-top:22px;margin-top:20px;border-top:1px solid var(--border);}
-.streak-block{text-align:center;}
-.streak-num{font-family:'Inter',sans-serif;font-size:20px;font-weight:500;color:#fff;line-height:1;}
-.streak-lbl{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey2);margin-top:4px;}
 
 /* ── RESOURCES (Phase 4) ── */
 .resource-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
@@ -437,8 +433,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .tl-dot{flex-shrink:0;margin-bottom:0;margin-top:2px;}
   .member-card{flex-direction:column;align-items:flex-start;}
   .resource-grid{grid-template-columns:1fr;}
-  .streak-row{gap:0;justify-content:space-around;}
-  .streak-block{flex:1;text-align:center;}
 }
 /* ── CLINICIAN PORTAL ── */
 .nav-role-badge{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.18);color:rgba(150,185,255,0.7);padding:3px 10px;border-radius:999px;font-weight:600;}
@@ -1346,16 +1340,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   .log-card-sub { font-size: 12px; }
 }
 
-/* ── 31G: TRACKER — STREAK ROW SPACING ──────────────────────────────────────
-   Three blocks side-by-side with gap:20px is tight at 320px.
-*/
-@media(max-width:480px) {
-  .streak-row { gap: 0; padding-top: 18px; justify-content: space-around; }
-  .streak-block { flex: 1; text-align: center; min-width: 0; }
-  .streak-num { font-size: 20px; }
-  .streak-lbl { font-size: 7px; }
-}
-
 /* ── 31H: CONSUMER APPOINTMENT ROWS ─────────────────────────────────────────
    consumer-appt-row needs readable font and stacked layout on very narrow
    screens; appt-action-row buttons must have adequate touch targets.
@@ -1974,7 +1958,6 @@ body.member-mode .sidebar-item.active svg{opacity:0.85;stroke:#2F6F55;}
 body.member-mode .sidebar-item:hover svg{opacity:0.7;}
 body.member-mode .sidebar-badge{background:var(--m-green);color:#fff;font-size:10px;}
 body.member-mode #mem-msg-dot{background:var(--m-green);box-shadow:0 0 6px rgba(70,185,122,0.4);}
-body.member-mode .sidebar-streak-row{color:var(--m-text3) !important;}
 
 /* ── Main content ── */
 body.member-mode .portal-main{max-width:1080px;padding:40px 48px;}
@@ -2206,9 +2189,6 @@ body.member-mode .compound-tag{background:var(--m-green-tint);border:1px solid v
 
 /* ── Tracker tab ── */
 body.member-mode .dose-log-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);box-shadow:var(--m-shadow);}
-body.member-mode .streak-row{border-top:1px solid var(--m-border);}
-body.member-mode .streak-num{color:var(--m-text);font-family:'Inter',sans-serif;}
-body.member-mode .streak-lbl{color:var(--m-text3);font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;}
 body.member-mode .dose-stat-val{color:var(--m-text);font-family:'Inter',sans-serif;font-size:15px;font-weight:600;}
 body.member-mode .dose-stat-lbl{color:var(--m-text3);font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;}
 body.member-mode .adh-ring-pct{color:var(--m-text) !important;font-family:'Inter',sans-serif !important;}
@@ -4423,9 +4403,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="sidebar-id-info">
           <div class="sidebar-id-name" id="sidebarName">Loading…</div>
           <div class="sidebar-id-role" id="sidebarRolePill">Member</div>
-          <div class="sidebar-streak-row" id="sidebarStreakRow" style="display:none;">
-            <span id="sidebarStreakNum">0</span>
-          </div>
         </div>
       </div>
 
@@ -4533,11 +4510,12 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="overview-stats" id="overviewStats" style="display:none;">
           <div class="ov-stat"><div class="ov-stat-val" id="statCategory">—</div><div class="ov-stat-sub" id="ovStatProtocolSub"></div></div>
           <div class="ov-stat"><div class="ov-stat-val" id="ovNextDose">—</div><div class="ov-stat-sub" id="ovNextDoseSub"></div></div>
-          <div class="ov-stat"><div class="ov-stat-val" id="statStreak">—</div><div class="ov-stat-sub" id="ovStreakSub"></div></div>
+          <div class="ov-stat"><div class="ov-stat-val" id="statOnTime30d">—</div><div class="ov-stat-sub">LAST 30 DAYS</div></div>
+          <div class="ov-stat"><div class="ov-stat-val" id="statOnTimeLifetime">—</div><div class="ov-stat-sub">LIFETIME</div></div>
         </div>
         <div class="member-card" style="display:none;"><div><div class="member-badge"><span class="member-badge-dot"></span>Founding Member</div><div class="member-since" id="memberSince">Member since —</div></div><div class="status-pill waitlist" id="statusPill">Waitlist Member</div></div>
         <div class="action-card" id="actionCard" style="display:none;"><div class="action-card-title">Start your protocol.</div><div class="action-card-sub" id="actionSub"></div><a href="consultation.html" class="btn-green" id="actionBtn">Book Your Consultation</a></div>
-        <div class="quick-stats" id="quickStats" style="display:none;"><div class="stat-tile"><div class="stat-tile-val" id="_statCategory2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCompounds2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCycle2">—</div></div><div class="stat-tile" id="streakTile" style="display:none;"><div class="stat-tile-val" id="_statStreak2">0</div></div></div>
+        <div class="quick-stats" id="quickStats" style="display:none;"><div class="stat-tile"><div class="stat-tile-val" id="_statCategory2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCompounds2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCycle2">—</div></div></div>
 
         <!-- ══════════════════════════════════════════════════════════════
              MOBILE-ONLY OVERVIEW — focused daily dashboard
@@ -4633,7 +4611,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="m-hero-row"><span class="m-hero-row-label">Dose today</span><span class="m-hero-row-val" id="mStatusDose">Not logged</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mStatusNext">—</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">Current phase</span><span class="m-hero-row-val" id="mStatusPhase">—</span></div>
-            <!-- Streak shown in Adherence card only -->
           </div>
           <!-- RIGHT: Coming up -->
           <div class="m-hero-col">
@@ -4717,7 +4694,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="m-card-label">Adherence</div>
             <div class="m-hero-row"><span class="m-hero-row-label">Doses logged</span><span class="m-hero-row-val" id="mAdhLogged">—</span></div>
             <div class="m-hero-row"><span class="m-hero-row-label">On-time rate</span><span class="m-hero-row-val green" id="mAdhRate">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Current streak</span><span class="m-hero-row-val green" id="mAdhStreak">—</span></div>
           </div>
 
           <!-- Pulse brand card -->
@@ -4903,20 +4879,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="cal-dow">Sa</div>
           </div>
           <div class="cal-grid" id="calGrid"></div>
-          <div class="streak-row">
-            <div class="streak-block">
-              <div class="streak-num" id="streakNum">—</div>
-              <div class="streak-lbl">Day Streak</div>
-            </div>
-            <div class="streak-block">
-              <div class="streak-num" id="consistencyNum">—</div>
-              <div class="streak-lbl">On-Time Rate</div>
-            </div>
-            <div class="streak-block">
-              <div class="streak-num" id="totalLogged">—</div>
-              <div class="streak-lbl">Total Logged</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -6411,12 +6373,12 @@ var MOCK_CLINICIAN = {
     { time: 'Tomorrow, 11:00 AM',   patient: 'Chris B.',  type: 'Follow-up',       dur: '20 min', status: 'confirmed' }
   ],
   patients: [
-    { name: 'Marcus T.', initials: 'MT', proto: 'Performance Stack',    started: '8 wk',  streak: 52 },
-    { name: 'Dana R.',   initials: 'DR', proto: 'Sleep + Recovery',     started: '12 wk', streak: 84 },
-    { name: 'Jake M.',   initials: 'JM', proto: 'Body Composition',     started: '4 wk',  streak: 23 },
-    { name: 'Alison F.', initials: 'AF', proto: 'Longevity Protocol',   started: '2 wk',  streak: 14 },
-    { name: 'Ryan K.',   initials: 'RK', proto: 'Recovery + Repair',    started: '6 wk',  streak: 38 },
-    { name: 'Chris B.',  initials: 'CB', proto: 'Performance Stack',    started: '3 wk',  streak: 19 }
+    { name: 'Marcus T.', initials: 'MT', proto: 'Performance Stack',    started: '8 wk'  },
+    { name: 'Dana R.',   initials: 'DR', proto: 'Sleep + Recovery',     started: '12 wk' },
+    { name: 'Jake M.',   initials: 'JM', proto: 'Body Composition',     started: '4 wk'  },
+    { name: 'Alison F.', initials: 'AF', proto: 'Longevity Protocol',   started: '2 wk'  },
+    { name: 'Ryan K.',   initials: 'RK', proto: 'Recovery + Repair',    started: '6 wk'  },
+    { name: 'Chris B.',  initials: 'CB', proto: 'Performance Stack',    started: '3 wk'  }
   ],
   messages: [
     { patient: 'Dana R.',   initials: 'DR', preview: 'Had a question about storage for the peptides during travel...', unread: 2, time: '2h ago' },
@@ -6749,7 +6711,7 @@ function _continuePortalInit(user, role) {
       last_seen:    new Date().toISOString()
     };
     db.from('profiles').upsert(profilePayload, { onConflict: 'user_id', ignoreDuplicates: false })
-      .select('display_name, first_name, last_name, subscription_status, notify_messages, current_streak')
+      .select('display_name, first_name, last_name, subscription_status, notify_messages')
       .then(function(pr) {
         if (!pr.error && pr.data && pr.data.length > 0) {
           var row = pr.data[0];
@@ -6768,8 +6730,6 @@ function _continuePortalInit(user, role) {
           _memberNotifyMessages = (row.notify_messages !== false);
           var nmEl = document.getElementById('consumerNotifyMessages');
           if (nmEl) nmEl.checked = _memberNotifyMessages;
-          // Phase 20: show stored streak instantly before dose_logs finish loading
-          if (row.current_streak != null) { _syncStreakToOverview(row.current_streak); }
         }
       })
       .catch(function(err) { handleSupabaseError(err, 'profiles upsert'); });
@@ -6784,7 +6744,7 @@ function _continuePortalInit(user, role) {
 
     // Show skeleton loading state on overview stat cards while consultation query runs
     (function() {
-      var skelIds = ['statCategory','ovNextDose','statStreak'];
+      var skelIds = ['statCategory','ovNextDose','statOnTime30d','statOnTimeLifetime'];
       skelIds.forEach(function(id) {
         var el = document.getElementById(id);
         if (el) {
@@ -12501,7 +12461,6 @@ function _refreshOverviewData() {
   var todayStr = localDateStr(new Date());
   var loggedToday = loggedDates.indexOf(todayStr) !== -1;
   var dosesLogged = loggedDates.length;
-  var streak = calcStreak(loggedDates);
   var freqPerDay = op.freqPerDay;
   var durWeeks = op.durationWeeks;
   var totalPrescribed = op.totalPrescribedDoses;
@@ -12605,7 +12564,9 @@ function _refreshOverviewData() {
   if (el) el.textContent = scheduledDoses > 0 ? dosesLoggedSinceStart + ' of ' + scheduledDoses + ' scheduled' : dosesLoggedSinceStart + ' logged';
   el = document.getElementById('mAdhRate');
   if (el) el.textContent = onTimeRate != null ? onTimeRate + '%' : 'No data';
-  el = document.getElementById('mAdhStreak'); if (el) el.textContent = streak + ' consecutive';
+
+  // Update the new Overview on-time tiles (replacing the old Day Streak tile).
+  _refreshOnTimeTiles();
 
   // ── MOBILE OVERVIEW — sync all data to the mobile layout ──
   // 1. Today Hero
@@ -13275,7 +13236,7 @@ function _maybeShowMemberWelcome(firstName, userId) {
         '<div class="m-welcome-sub">Your guide to your protocol.</div>' +
         '<div class="m-welcome-divider"></div>' +
         '<div class="m-welcome-list">' +
-          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_logIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Log your dose</div><div class="m-welcome-row-body">Keep track of your usage and we\u2019ll monitor your streak.</div></div></div>' +
+          '<div class="m-welcome-row"><div class="m-welcome-icon">'+_logIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Log your dose</div><div class="m-welcome-row-body">Keep track of your usage and we\u2019ll monitor your adherence.</div></div></div>' +
           '<div class="m-welcome-row"><div class="m-welcome-icon">'+_protoIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Your protocol</div><div class="m-welcome-row-body">Your prescription details and any updates live in the Protocol tab.</div></div></div>' +
           '<div class="m-welcome-row"><div class="m-welcome-icon">'+_apptIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Schedule a call</div><div class="m-welcome-row-body">Book a check-in or follow-up with your clinician anytime.</div></div></div>' +
           '<div class="m-welcome-row"><div class="m-welcome-icon">'+_msgIcon+'</div><div class="m-welcome-row-text"><div class="m-welcome-row-title">Message your care team</div><div class="m-welcome-row-body">Reach your clinician directly. Most replies &lt; 24hrs.</div></div></div>' +
@@ -13730,7 +13691,7 @@ function populatePortal(user, consultation, greeting) {
     pill2.className = 'status-pill waitlist';
 
     // Stat cards show "Pending"
-    ['statCategory','ovNextDose','statStreak'].forEach(function(id) {
+    ['statCategory','ovNextDose','statOnTime30d','statOnTimeLifetime'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.textContent = 'Pending';
     });
@@ -13738,8 +13699,6 @@ function populatePortal(user, consultation, greeting) {
     if (ovSubEl2) ovSubEl2.textContent = 'Awaiting review';
     var nextDoseSubEl2 = document.getElementById('ovNextDoseSub');
     if (nextDoseSubEl2) nextDoseSubEl2.textContent = 'Not yet assigned';
-    var ovStreakSubEl2 = document.getElementById('ovStreakSub');
-    if (ovStreakSubEl2) ovStreakSubEl2.textContent = 'days in a row';
 
     // Repurpose action card as pending-review state card
     var actionCard2 = document.getElementById('actionCard');
@@ -13769,7 +13728,6 @@ function populatePortal(user, consultation, greeting) {
     var _sd = document.getElementById('mStatusDose'); if (_sd) _sd.textContent = 'Pending review';
     var _sn = document.getElementById('mStatusNext'); if (_sn) _sn.textContent = '—';
     var _sp = document.getElementById('mStatusPhase'); if (_sp) _sp.textContent = 'Awaiting assignment';
-    var _ss = document.getElementById('mStatusStreak'); if (_ss) _ss.textContent = '—';
     // Hide grid cards that don't apply yet
     var _mGrid = document.getElementById('mGrid');
     if (_mGrid) _mGrid.style.display = 'none';
@@ -13835,7 +13793,7 @@ function initClPatients() {
       var ids = unique.map(function(c){ return c.user_id; });
       Promise.all([
         db.from('profiles')
-          .select('user_id, display_name, first_name, last_name, email, current_streak, subscription_status, notify_messages')
+          .select('user_id, display_name, first_name, last_name, email, subscription_status, notify_messages')
           .in('user_id', ids),
         db.from('prescriptions')
           .select('*, prescription_versions(*)')
@@ -13898,7 +13856,6 @@ function _normaliseMockPatients() {
       protocol:      p.protocol ? p.protocol.name : null,
       goal:          null,
       status:        p.status,
-      streak:        p.dosing ? p.dosing.adherence : 0,
       memberSince:   p.memberSince,
       email:         '',
       subStatus:     p.subscription_status || null,
@@ -13959,7 +13916,6 @@ function _normalisePatientRow(consultation, profile, activeRxs) {
     status:        status,
     review_status: reviewStatus,
     purchase_status: purchaseStatus,
-    streak:        (profile && profile.current_streak) ? profile.current_streak : 0,
     memberSince:   memberSince,
     email:         d.email || (profile && profile.email) || '',
     lastSeen:      (profile && profile.last_seen) ? profile.last_seen : null,
@@ -14524,10 +14480,6 @@ function buildPatientDetail(p) {
     }
   }
 
-  // Dose streak
-  var streakVal = (pr2.current_streak != null) ? pr2.current_streak : (p.streak || 0);
-  var streakStr = streakVal ? streakVal + ' day' + (streakVal === 1 ? '' : 's') : '0 days';
-
   // ── Two-column info grid ──────────────────────────────────────────────────
   // Status chips removed from clinician view
 
@@ -14555,8 +14507,7 @@ function buildPatientDetail(p) {
     _infoRow('Hormone Use',     _fv(hormoneUse)) +
     _infoRow('Protocol',        protocolName ? '<span style="color:var(--green);">' + escapeHtml(protocolName) + '</span>' : '<span style="color:rgba(255,255,255,0.22);">None assigned</span>') +
     _infoRow('Submitted',       _fv(submittedStr)) +
-    _infoRow('Last Login',      _fv(lastSeenStr)) +
-    _infoRow('Dose Streak',     '<span id="pdpStreak2-' + escapeAttr(p.id) + '">' + escapeHtml(streakStr) + '</span>');
+    _infoRow('Last Login',      _fv(lastSeenStr));
 
   var infoGridHtml =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;">' +
@@ -14696,7 +14647,7 @@ function buildPatientDetail(p) {
             _df('Height', heightStr) + _df('Weight', weight ? weight + ' lbs' : '—') + _df('DOB', dob || '—') +
           '</div>' +
           '<div class="crw-det-grid" style="opacity:0.5;margin-bottom:0;">' +
-            _df('Submitted', submittedStr || '—') + _df('Last Seen', lastSeenStr || '—') + _df('Streak', streakStr) +
+            _df('Submitted', submittedStr || '—') + _df('Last Seen', lastSeenStr || '—') +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -16317,7 +16268,7 @@ function switchTab(name) {
     clearInterval(_consumerMsgPollTimer); _consumerMsgPollTimer = null;
   }
   if (name === 'tracker')          { loadDoseLogs(); }
-  if (name === 'overview')         { _showStoredStreak(); }
+  if (name === 'overview')         { _refreshOnTimeTiles(); }
   if (name === 'appointments')     { initConsumerBooking(); }
   if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
   if (name === 'resources')        { initResourcesTab(); }
@@ -16365,7 +16316,7 @@ async function loadDoseLogs() {
     loggedDates = fakeDates;
     renderCalendar();
     checkTodayLogged();
-    _syncStreakToOverview(calcStreak(loggedDates));
+    _refreshOnTimeTiles();
     return;
   }
   // Query last 90 days of dose logs (dose_date >= 90 days ago as YYYY-MM-DD string)
@@ -16393,9 +16344,7 @@ async function loadDoseLogs() {
     });
     renderCalendar();
     checkTodayLogged();
-    var streak = calcStreak(loggedDates);
-    _syncStreakToOverview(streak);
-    _saveStreakToProfile(streak);
+    _refreshOnTimeTiles();
     _refreshOverviewData(); // re-derive all overview values from updated dose logs
     // Refresh any per-slide progress cards in the protocol rolodex
     if (typeof _refreshProtoCarouselProgress === 'function') _refreshProtoCarouselProgress();
@@ -16498,21 +16447,11 @@ function renderCalendar() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Stats — share the same adherence calc as the My Protocol Progress card
-  // so the on-time rate (and logged count) are always identical across tabs.
-  var streak = calcStreak(loggedDates);
-  var adh = _computeMemberAdherence();
-  var rate = adh.start ? adh.rate : (loggedDates.length > 0 ? 100 : 0);
+  // Keep the Overview on-time tiles in sync whenever the calendar
+  // re-renders (typically right after a dose is logged or loaded).
+  _refreshOnTimeTiles();
 
   var el = function(id){ return document.getElementById(id); };
-  if (el('streakNum')) el('streakNum').textContent = streak;
-  if (el('consistencyNum')) el('consistencyNum').textContent = rate + '%';
-  // Total logged shows doses since protocol start so it matches the Progress card
-  if (el('totalLogged')) el('totalLogged').textContent = adh.start ? adh.logged : loggedDates.length;
-
-  _syncStreakToOverview(streak);
-  if (el('streakTile') && streak > 0) el('streakTile').style.display = '';
-
   if (window._userProto) {
     var nextDoseEl2 = el('ovNextDose');
     var nextDoseSubEl2 = el('ovNextDoseSub');
@@ -16568,82 +16507,129 @@ function _setAlreadyLoggedState() {
   }
 }
 
-// ── calcStreak: count consecutive logged days ending at today (or yesterday) ──
-function calcStreak(dates) {
-  if (!dates || dates.length === 0) return 0;
-  var set = new Set(dates);
-  var today = new Date(); today.setHours(0,0,0,0);
-  var todayStr = localDateStr(today);
+// ══ Tracker helpers (Phase 1 of the Tracker rewrite) ══════════════════
+// Pure functions added up-front so phases 2-4 can wire them without any
+// additional helper churn. They're used by the new Overview on-time
+// tiles below, and will be used by the rewritten Tracker tab.
 
-  // Start from today if logged, otherwise start from yesterday
-  var cursor = new Date(today);
-  if (!set.has(todayStr)) {
-    cursor.setDate(cursor.getDate() - 1);
+// Rolling 30-day variant of _computeAdherenceForRx. Filters the dates
+// array to the last 30 days window before running the same math so
+// members with long protocols see a current-month view of adherence.
+function _computeAdherenceForRx30d(rx, datesArr) {
+  if (!rx) return { start: null, freqPerDay: 1, logged: 0, daysSince: 0, scheduled: 1, rate: 0 };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var windowStart = new Date(today); windowStart.setDate(windowStart.getDate() - 29);
+  var rxStart = rx.started_at ? new Date(rx.started_at) : null;
+  if (rxStart) rxStart.setHours(0, 0, 0, 0);
+  // Clamp the window to the Rx start date so brand-new Rxs don't show
+  // a 30-day denominator that includes days before they were prescribed.
+  var effectiveStart = (rxStart && rxStart > windowStart) ? rxStart : windowStart;
+  var freqPerDay = _freqPerDayFromRx(rx);
+  var logged = 0;
+  if (datesArr && datesArr.length) {
+    datesArr.forEach(function(d) {
+      var dd = new Date(String(d).slice(0, 10) + 'T00:00:00');
+      dd.setHours(0, 0, 0, 0);
+      if (dd >= effectiveStart && dd <= today) logged++;
+    });
   }
-
-  var streak = 0;
-  while (set.has(localDateStr(cursor))) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
+  var daysInWindow = Math.floor((today.getTime() - effectiveStart.getTime()) / 86400000) + 1;
+  if (daysInWindow < 1) daysInWindow = 1;
+  var scheduled = Math.max(1, Math.round(daysInWindow * freqPerDay));
+  var rate = Math.min(100, Math.round((logged / scheduled) * 100));
+  return { start: effectiveStart, freqPerDay: freqPerDay, logged: logged, daysSince: daysInWindow, scheduled: scheduled, rate: rate };
 }
 
-// ── _calcStreak: Phase 20 named entry-point — delegates to calcStreak ──
-function _calcStreak(doseDates) { return calcStreak(doseDates); }
+// Whether an Rx is "scheduled" to be logged on a given date.
+//   - daily: always scheduled
+//   - weekly: same day-of-week as started_at
+//   - monthly: same day-of-month as started_at
+// Returns false if the date is before the Rx started_at. Rxs with no
+// start date get permissive-true so we don't lock members out of a
+// row that lacks metadata.
+function _isRxScheduledOnDate(rx, date) {
+  if (!rx || !date) return false;
+  var start = rx.started_at ? new Date(rx.started_at) : null;
+  if (start) {
+    start.setHours(0, 0, 0, 0);
+    var d = new Date(date); d.setHours(0, 0, 0, 0);
+    if (d < start) return false;
+  }
+  var cadence = (rx.frequency_cadence || 'daily').toLowerCase();
+  if (cadence === 'daily')   return true;
+  if (cadence === 'weekly')  return start ? (date.getDay() === start.getDay()) : true;
+  if (cadence === 'monthly') return start ? (date.getDate() === start.getDate()) : true;
+  return true;
+}
 
-// ── _showStoredStreak: Phase 20 — read profiles.current_streak for instant Overview display ──
-function _showStoredStreak() {
-  if (!currentUserId || PREVIEW_MODE) return;
+// Per-Rx retroactive dose-log. Enforces the 7-day cap (today excluded —
+// today logs through the Today section of the Tracker, not the History
+// calendar). Returns a promise resolving to { error: string|null } so
+// callers can chain a re-render on success.
+async function _trackerLogRxForDate(rxId, dateStr) {
+  if (!rxId || !dateStr) return { error: 'missing args' };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var target = new Date(dateStr + 'T00:00:00'); target.setHours(0, 0, 0, 0);
+  var diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+  if (diffDays < 0) return { error: 'future' };
+  if (diffDays > 7) return { error: 'cap' };
+  var existing = _rxLoggedDates[rxId] || [];
+  if (existing.indexOf(dateStr) !== -1) return { error: 'already' };
+  if (PREVIEW_MODE) {
+    existing.push(dateStr);
+    _rxLoggedDates[rxId] = existing;
+    return { error: null };
+  }
   try {
-    db.from('profiles')
-      .select('current_streak')
-      .eq('user_id', currentUserId)
-      .limit(1)
-      .then(function(res) {
-        if (res && !res.error && res.data && res.data.length > 0) {
-          var stored = res.data[0].current_streak;
-          if (stored != null) { _syncStreakToOverview(stored); }
-        }
-      })
-      .catch(function(err) {
-        console.warn('[Pulse] _showStoredStreak fetch failed:', err && err.message);
-      });
-  } catch(err) {
-    console.warn('[Pulse] _showStoredStreak error:', err && err.message);
+    var res = await db.from('dose_logs').upsert({
+      user_id:         currentUserId,
+      prescription_id: rxId,
+      dose_date:       dateStr,
+      logged_at:       new Date().toISOString()
+    }, { onConflict: 'prescription_id,dose_date' });
+    if (res && res.error) return { error: res.error.message };
+    existing.push(dateStr);
+    _rxLoggedDates[rxId] = existing;
+    return { error: null };
+  } catch (err) {
+    return { error: (err && err.message) || 'upsert failed' };
   }
 }
 
-// ── _syncStreakToOverview: update the Overview tab Day Streak stat card + sidebar ──
-function _syncStreakToOverview(streak) {
-  var valEl = document.getElementById('statStreak');
-  var subEl = document.getElementById('ovStreakSub');
-  if (valEl) valEl.textContent = streak;
-  if (subEl) subEl.textContent = streak === 1 ? 'day in a row' : 'days in a row';
-  // Legacy tile
-  var legEl = document.getElementById('_statStreak2');
-  if (legEl) legEl.textContent = streak;
-  // Phase 20: sidebar streak display in the member identity block
-  var sbNumEl = document.getElementById('sidebarStreakNum');
-  var sbRowEl = document.getElementById('sidebarStreakRow');
-  if (sbNumEl) sbNumEl.textContent = streak;
-  // Streak display removed from sidebar — data kept for other uses
+// Aggregate on-time rate across every active Rx, weighted by each Rx's
+// scheduled-doses count so protocols with more scheduled doses influence
+// the number proportionally. Mode is 'lifetime' or '30d'. Returns null
+// when there's nothing to aggregate (zero active Rxs or zero scheduled).
+function _computeAggregatedOnTime(activeRxs, mode) {
+  if (!activeRxs || !activeRxs.length) return null;
+  var totalLogged = 0;
+  var totalScheduled = 0;
+  activeRxs.forEach(function(rx) {
+    var dates = (window._rxLoggedDates && _rxLoggedDates[rx.id]) || [];
+    var adh = (mode === '30d')
+      ? _computeAdherenceForRx30d(rx, dates)
+      : _computeAdherenceForRx(rx, dates);
+    if (adh && adh.scheduled > 0) {
+      totalLogged += adh.logged;
+      totalScheduled += adh.scheduled;
+    }
+  });
+  if (totalScheduled === 0) return null;
+  return Math.min(100, Math.round((totalLogged / totalScheduled) * 100));
 }
 
-// ── _saveStreakToProfile: upsert current_streak into profiles table ──
-function _saveStreakToProfile(streak) {
-  if (!currentUserId || PREVIEW_MODE) return;
-  db.from('profiles').upsert({
-    user_id: currentUserId,
-    current_streak: streak,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'user_id' }).then(function(res) {
-    if (res && res.error) {
-      console.warn('[Pulse] profiles streak upsert error:', res.error.message);
-    }
-  }).catch(function(err) {
-    console.warn('[Pulse] profiles streak upsert failed:', err && err.message);
-  });
+// Repaint the Overview "On-Time (30d)" + "On-Time (Lifetime)" tiles.
+// Called whenever the active-Rx list or _rxLoggedDates changes. Pulls
+// from window._activeRxsForCarousel — the same stash the Protocol tab
+// carousel uses — so both surfaces stay in sync without extra plumbing.
+function _refreshOnTimeTiles() {
+  var rxs = window._activeRxsForCarousel || [];
+  var rate30 = _computeAggregatedOnTime(rxs, '30d');
+  var rateLt = _computeAggregatedOnTime(rxs, 'lifetime');
+  var e30 = document.getElementById('statOnTime30d');
+  var eLt = document.getElementById('statOnTimeLifetime');
+  if (e30) e30.textContent = (rate30 == null) ? '—' : (rate30 + '%');
+  if (eLt) eLt.textContent = (rateLt == null) ? '—' : (rateLt + '%');
 }
 
 async function logDose() {
@@ -16663,10 +16649,7 @@ async function logDose() {
     loggedDates.push(today);
     renderCalendar(); // optimistic re-render
     _setAlreadyLoggedState();
-    // Sync streak to Overview
-    var streak = calcStreak(loggedDates);
-    _syncStreakToOverview(streak);
-    _saveStreakToProfile(streak);
+    _refreshOnTimeTiles();
     _refreshOverviewData(); // immediately update overview with new log
     // Reload from DB to confirm (non-blocking)
     if (!PREVIEW_MODE) {
@@ -18828,7 +18811,7 @@ function _showClSessionError(msg) {
   [ ] 4. PORTAL SHOWS PENDING STATE
       - Navigate to portal.html
       - Loading spinner appears briefly → portal loads
-      - Overview shows: protocol "—", compounds "—", streak "—"
+      - Overview shows: protocol "—", compounds "—", on-time rate "—"
       - Action card reads "Start your protocol" with booking CTA
       - Member card shows "Founding Member" badge
 
@@ -18848,7 +18831,7 @@ function _showClSessionError(msg) {
 
   [ ] 7. MEMBER SEES ACTIVE PROTOCOL
       - Switch back to consumer account
-      - Overview stat cards populate: protocol name, compound count, streak
+      - Overview stat cards populate: protocol name, compound count, on-time rate
       - Protocol tab shows: protocol name, category badge, compounds list
       - 30/60/90 timeline card is visible
       - Resources tab populates with protocol-specific content
@@ -18858,15 +18841,12 @@ function _showClSessionError(msg) {
       - Click "Log Dose" button
       - Button changes to "✓ Logged today"
       - Calendar grid shows today highlighted green
-      - Streak counter increments
-      - Overview "Day Streak" stat updates
-      - Sidebar streak row updates (desktop)
+      - Overview On-Time (30d) / On-Time (Lifetime) tiles refresh
 
-  [ ] 9. STREAK UPDATES
-      - Refresh page → streak value persists (read from profiles.current_streak)
-      - Log dose on consecutive days → streak increments
-      - Skip a day → streak resets to 1 on next log
-      - 28-Day Rate percentage calculates correctly
+  [ ] 9. ON-TIME RATE UPDATES
+      - Refresh page → on-time tiles recompute from dose_logs
+      - Log dose on consecutive days → 30d rate trends upward
+      - Skip a day → 30d rate adjusts on next render
 
   [ ] 10. MEMBER BOOKS APPOINTMENT
       - Go to Appointments tab

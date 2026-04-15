@@ -2063,6 +2063,65 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .m-plan-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
 .m-plan-link{background:none;border:none;padding:12px 0 0;font-family:'Inter',sans-serif;font-size:13px;color:#2F6F55;font-weight:600;cursor:pointer;text-align:left;display:block;margin-top:auto;}
 .m-plan-link:hover{color:#1a4a35;}
+/* ── Overview multi-protocol mode ─────────────────────────────────
+   Shared classes used by both the desktop Hero card (#mCardHero)
+   and the mobile Hero card (#moCardHero) when activeRxs.length > 1.
+   Same markup renders in both trees — the parent card supplies the
+   dark green background in both cases. */
+.ov-multi-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:14px;}
+.ov-multi-title{font-family:'Inter',sans-serif;font-size:clamp(22px,3vw,28px);font-weight:600;color:#fff;margin-bottom:6px;line-height:1.15;letter-spacing:-0.02em;text-shadow:0 1px 2px rgba(0,0,0,0.25);}
+.ov-multi-sub{font-family:'Inter',sans-serif;font-size:13px;color:rgba(255,255,255,0.62);font-weight:400;margin-bottom:22px;line-height:1.5;}
+.ov-multi-sub .ov-multi-sub-strong{color:#fff;font-weight:600;}
+.ov-multi-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px;}
+.ov-multi-tile{
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding:16px 16px 14px;border-radius:14px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.14);
+  color:#fff;
+  cursor:pointer;
+  text-align:left;
+  transition:background .18s ease,border-color .18s ease,transform .18s ease;
+  font-family:'Inter',sans-serif;
+  position:relative;
+  overflow:hidden;
+}
+.ov-multi-tile:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.28);transform:translateY(-1px);}
+.ov-multi-tile:active{transform:translateY(0);}
+.ov-multi-tile.is-logged{background:rgba(74,186,130,0.22);border-color:rgba(74,186,130,0.5);cursor:default;}
+.ov-multi-tile.is-logged:hover{background:rgba(74,186,130,0.26);transform:none;}
+.ov-multi-tile-dot{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(255,255,255,0.12);
+  border:1.5px solid rgba(255,255,255,0.35);
+  font-size:13px;font-weight:700;color:#fff;line-height:1;
+  margin-bottom:2px;
+}
+.ov-multi-tile.is-logged .ov-multi-tile-dot{background:#4aba82;border-color:#4aba82;color:#fff;}
+.ov-multi-tile-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-0.01em;line-height:1.2;}
+.ov-multi-tile-meta{font-size:11px;color:rgba(255,255,255,0.6);font-weight:500;line-height:1.3;}
+/* Aggregate stats row under the tiles — same visual language as
+   .m-hero-stats / .mo-hero-stats. */
+.ov-multi-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  margin-top:22px;padding-top:18px;
+  border-top:1px solid rgba(255,255,255,0.14);
+}
+.ov-multi-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:4px;}
+.ov-multi-stat-val{font-family:'Inter',sans-serif;font-size:14px;color:#fff;font-weight:600;letter-spacing:-0.01em;line-height:1.2;}
+/* ── Multi-protocol Your Plan card ────────────────────────────────
+   One row per Rx sorted by lowest doses-remaining first so a
+   low-supply protocol jumps out. Used in both desktop and mobile. */
+.ov-supplies{display:flex;flex-direction:column;gap:14px;margin-bottom:4px;}
+.ov-supply-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;}
+.ov-supply-row-name{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--m-text);grid-column:1;grid-row:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ov-supply-row-count{font-family:'Inter',sans-serif;font-size:12px;color:var(--m-text2);font-weight:500;grid-column:2;grid-row:1;white-space:nowrap;text-align:right;}
+.ov-supply-row-refill{font-family:'Inter',sans-serif;font-size:11px;color:var(--m-text3);font-weight:500;grid-column:2;grid-row:2;white-space:nowrap;text-align:right;}
+.ov-supply-row-bar{grid-column:1;grid-row:2;height:5px;background:rgba(20,20,20,0.06);border-radius:999px;overflow:hidden;align-self:center;}
+.ov-supply-row-bar-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
+.ov-supply-row.is-low .ov-supply-row-bar-fill{background:linear-gradient(90deg,#c14a4a,#e06060);}
+.ov-supply-row.is-low .ov-supply-row-count{color:#c14a4a;font-weight:700;}
 .m-hero-cta{
   display:flex;
   width:fit-content;
@@ -4626,7 +4685,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         ══════════════════════════════════════════════════════════════ -->
         <div class="m-mobile-overview" id="mMobileOverview">
           <!-- ─── 1. TODAY HERO CARD ─── -->
-          <div class="mo-hero">
+          <div class="mo-hero" id="moCardHero">
             <div class="mo-hero-eyebrow">Your Protocol</div>
             <div class="mo-hero-dose" id="moProtoName">Your Protocol</div>
             <div class="mo-hero-meta" id="moDoseMeta">—</div>
@@ -4650,7 +4709,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
 
           <!-- ─── 2. PLAN CARD (Protocol + Supply merged) ─── -->
-          <div class="mo-card">
+          <div class="mo-card" id="moCardPlan">
             <div class="mo-card-lbl">Your Plan</div>
             <div class="mo-plan-rows">
               <div class="mo-plan-row"><span>Duration</span><span id="moPlanDuration">—</span></div>
@@ -12732,6 +12791,11 @@ function _refreshOverviewData() {
 
   // ── Upcoming card — ONLY non-duplicate events ──
   el = document.getElementById('mUpNextAppt'); // appointment loaded separately via DB query
+
+  // Multi-protocol override — rebuilds the Hero + Your Plan cards
+  // (desktop + mobile) with per-Rx tiles and supply rows when the
+  // member has more than one active Rx. No-op for single-protocol.
+  try { _renderOverviewMulti(); } catch (e) { console.warn('[Pulse] multi overview render failed:', e); }
 }
 
 // Canonical protocol start date used by every adherence surface (Progress
@@ -13065,6 +13129,7 @@ async function _logDoseForRx(rxId, btnEl) {
     try { _refreshOverviewData(); } catch (_) {}
     try { renderTrackerAll(); } catch (_) {}
     try { _refreshOnTimeTiles(); } catch (_) {}
+    try { _renderOverviewMulti(); } catch (_) {}
   }
   if (PREVIEW_MODE || !currentUserId) {
     _applyLocal();
@@ -13397,6 +13462,182 @@ function _dismissMemberWelcome() {
     var flagKey = _memberWelcomeFlagKey(currentUserId || '');
     localStorage.setItem(flagKey, '1');
   } catch (_) {}
+}
+
+// ── Overview multi-protocol render ───────────────────────────────────
+// Rebuilds the Hero + Your Plan card contents when the member has more
+// than one active Rx. Single-protocol members keep the existing static
+// layouts that populatePortal writes directly. For multi, we replace
+// the card innerHTML on both the desktop (#mCardHero / #mCardPlan) and
+// mobile (#moCardHero / #moCardPlan) trees so both stay in sync.
+
+// Timing bucket label — reuses the Tracker's helper if available,
+// otherwise falls back to the raw rx.timing string.
+function _ovTimingLabel(rx) {
+  if (!rx) return 'Anytime';
+  var t = (rx.timing || '').trim();
+  if (t) return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  return 'Anytime';
+}
+
+// Build the multi-protocol Hero innerHTML. One tile per active Rx,
+// sorted by timing bucket (morning → afternoon → evening → anytime)
+// then by name. Aggregate stats row underneath.
+function _ovBuildMultiHeroHtml(activeRxs) {
+  var todayStr = localDateStr(new Date());
+  var rxs = (activeRxs || []).slice().sort(function(a, b) {
+    var ba = (typeof _timingBucket === 'function') ? _timingBucket(a) : 3;
+    var bb = (typeof _timingBucket === 'function') ? _timingBucket(b) : 3;
+    if (ba !== bb) return ba - bb;
+    return String(a.protocol_key || '').localeCompare(String(b.protocol_key || ''));
+  });
+
+  var loggedCount = 0;
+  var tilesHtml = rxs.map(function(rx) {
+    var loggedArr = _rxLoggedDates[rx.id] || [];
+    var isLogged = loggedArr.indexOf(todayStr) !== -1;
+    if (isLogged) loggedCount++;
+    var name = escapeHtml(rx.protocol_key || 'Protocol');
+    var timing = escapeHtml(_ovTimingLabel(rx));
+    var dose = (rx.dose_amount != null && rx.dose_unit)
+      ? escapeHtml(rx.dose_amount + ' ' + rx.dose_unit)
+      : '';
+    var metaParts = [timing];
+    if (dose) metaParts.push(dose);
+    var dotChar = isLogged ? '\u2713' : '\u25CB';
+    return '<button type="button" class="ov-multi-tile' + (isLogged ? ' is-logged' : '') + '" ' +
+             'data-rx-id="' + escapeAttr(rx.id) + '" ' +
+             'onclick="_ovToggleHeroTile(\'' + escapeAttr(rx.id) + '\')">' +
+             '<span class="ov-multi-tile-dot">' + dotChar + '</span>' +
+             '<span class="ov-multi-tile-name">' + name + '</span>' +
+             '<span class="ov-multi-tile-meta">' + metaParts.join(' \u00B7 ') + '</span>' +
+           '</button>';
+  }).join('');
+
+  // Next dose = first Rx in sort order that isn't logged yet today.
+  var nextLabel = 'All logged \u2713';
+  for (var i = 0; i < rxs.length; i++) {
+    var la = _rxLoggedDates[rxs[i].id] || [];
+    if (la.indexOf(todayStr) === -1) {
+      nextLabel = _ovTimingLabel(rxs[i]) + ' · ' + (rxs[i].protocol_key || 'Protocol');
+      break;
+    }
+  }
+
+  var rate30 = (typeof _computeAggregatedOnTime === 'function')
+    ? _computeAggregatedOnTime(rxs, '30d')
+    : null;
+  var onTimeText = (rate30 == null) ? '—' : (rate30 + '%');
+
+  return '' +
+    '<div class="ov-multi-label">Your Protocols</div>' +
+    '<div class="ov-multi-title">' + rxs.length + ' active protocols</div>' +
+    '<div class="ov-multi-sub"><span class="ov-multi-sub-strong">' + loggedCount + ' of ' + rxs.length + '</span> logged today</div>' +
+    '<div class="ov-multi-tiles">' + tilesHtml + '</div>' +
+    '<div class="ov-multi-stats">' +
+      '<div><div class="ov-multi-stat-lbl">Logged</div><div class="ov-multi-stat-val">' + loggedCount + ' of ' + rxs.length + '</div></div>' +
+      '<div><div class="ov-multi-stat-lbl">Next dose</div><div class="ov-multi-stat-val">' + escapeHtml(nextLabel) + '</div></div>' +
+      '<div><div class="ov-multi-stat-lbl">On-time</div><div class="ov-multi-stat-val">' + onTimeText + '</div></div>' +
+    '</div>';
+}
+
+// Build the multi-protocol Your Plan innerHTML. One row per Rx, sorted
+// by doses-remaining ascending so the lowest-supply protocol jumps to
+// the top. Low-supply threshold is ~14 days of scheduled dose supply.
+function _ovBuildMultiPlanHtml(activeRxs) {
+  var rxs = (activeRxs || []).slice();
+  var rowsWithMeta = rxs.map(function(rx) {
+    var freqPerDay = (typeof _freqPerDayFromRx === 'function') ? _freqPerDayFromRx(rx) : 1;
+    // Total doses in the protocol = duration_value * duration_unit in days * freqPerDay.
+    var durWeeks = null;
+    if (rx.duration_value != null && rx.duration_unit) {
+      var u = (rx.duration_unit || '').toLowerCase();
+      if (u === 'weeks') durWeeks = rx.duration_value;
+      else if (u === 'days')   durWeeks = rx.duration_value / 7;
+      else if (u === 'months') durWeeks = rx.duration_value * 4;
+    }
+    if (!durWeeks && typeof _durationToWeeks === 'function') {
+      durWeeks = _durationToWeeks(rx.duration);
+    }
+    var totalDays = (durWeeks || 12) * 7;
+    var totalDoses = Math.max(1, Math.round(totalDays * freqPerDay));
+    var loggedArr = _rxLoggedDates[rx.id] || [];
+    var adh = (typeof _computeAdherenceForRx === 'function')
+      ? _computeAdherenceForRx(rx, loggedArr)
+      : null;
+    var logged = adh ? adh.logged : loggedArr.length;
+    var remaining = Math.max(0, totalDoses - logged);
+    var pct = totalDoses > 0 ? Math.max(0, Math.min(100, Math.round((remaining / totalDoses) * 100))) : 0;
+    // Low-supply = fewer than 14 days of dose supply at current cadence.
+    var daysLeft = (freqPerDay > 0) ? (remaining / freqPerDay) : remaining;
+    var isLow = daysLeft < 14;
+    // Next refill = rx.started_at + totalDays (the protocol's end date).
+    var refillDateStr = '—';
+    if (rx.started_at) {
+      var start = new Date(rx.started_at);
+      var end = new Date(start); end.setDate(end.getDate() + totalDays);
+      refillDateStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    return {
+      rx: rx,
+      logged: logged,
+      remaining: remaining,
+      totalDoses: totalDoses,
+      pct: pct,
+      isLow: isLow,
+      refillDateStr: refillDateStr
+    };
+  }).sort(function(a, b) { return a.remaining - b.remaining; });
+
+  var rowsHtml = rowsWithMeta.map(function(r) {
+    var name = escapeHtml(r.rx.protocol_key || 'Protocol');
+    return '<div class="ov-supply-row' + (r.isLow ? ' is-low' : '') + '">' +
+             '<div class="ov-supply-row-name">' + name + '</div>' +
+             '<div class="ov-supply-row-count">' + r.remaining + ' doses</div>' +
+             '<div class="ov-supply-row-bar"><div class="ov-supply-row-bar-fill" style="width:' + r.pct + '%;"></div></div>' +
+             '<div class="ov-supply-row-refill">Refill ' + escapeHtml(r.refillDateStr) + '</div>' +
+           '</div>';
+  }).join('');
+
+  return '' +
+    '<div class="m-card-label">Your Protocols</div>' +
+    '<div class="ov-supplies">' + rowsHtml + '</div>' +
+    '<button class="m-plan-link" onclick="switchTab(\'protocol\')">View all protocols \u203A</button>';
+}
+
+// Main dispatcher. Called from populatePortal whenever the Overview
+// cards need to repaint. Detects multi-protocol and rebuilds the
+// Hero + Your Plan card contents; single-protocol is a no-op (the
+// existing populatePortal direct writes own those paths).
+function _renderOverviewMulti() {
+  var activeRxs = window._activeRxsForCarousel || [];
+  if (activeRxs.length <= 1) return; // single-protocol — nothing to do
+  var heroHtml = _ovBuildMultiHeroHtml(activeRxs);
+  var planHtml = _ovBuildMultiPlanHtml(activeRxs);
+  // Desktop targets
+  var mHero = document.getElementById('mCardHero');
+  if (mHero) mHero.innerHTML = heroHtml;
+  var mPlan = document.getElementById('mCardPlan');
+  if (mPlan) mPlan.innerHTML = planHtml;
+  // Mobile targets — same markup, same card chrome (green gradient
+  // hero + cream plan card on the mo-* side).
+  var moHero = document.getElementById('moCardHero');
+  if (moHero) moHero.innerHTML = heroHtml;
+  var moPlan = document.getElementById('moCardPlan');
+  if (moPlan) moPlan.innerHTML = planHtml;
+}
+
+// Tile tap → log today's dose for that Rx. Reuses _logDoseForRx (which
+// updates _rxLoggedDates + refreshes the Tracker / on-time tiles), then
+// repaints the Hero + Plan cards so the tile flips to ✓ and the
+// aggregate counts update.
+async function _ovToggleHeroTile(rxId) {
+  if (!rxId) return;
+  var todayStr = localDateStr(new Date());
+  var already = (_rxLoggedDates[rxId] || []).indexOf(todayStr) !== -1;
+  if (already) return; // logged already — no-op, no undo from the Overview
+  await _logDoseForRx(rxId, null);
+  _renderOverviewMulti();
 }
 
 function populatePortal(user, consultation, greeting) {
@@ -13804,6 +14045,13 @@ function populatePortal(user, consultation, greeting) {
     // Single-protocol members pass through with nothing changed.
     if (typeof _renderProtoCarousel === 'function') {
       _renderProtoCarousel(_activeRxs || []);
+    }
+
+    // Multi-protocol Overview override — runs after _renderProtoCarousel
+    // has stashed window._activeRxsForCarousel so the multi render has
+    // the Rx list to work with. No-op for single-protocol members.
+    if (typeof _renderOverviewMulti === 'function') {
+      try { _renderOverviewMulti(); } catch (e) { console.warn('[Pulse] multi overview render failed:', e); }
     }
 
     // ── Clinician Notes ──

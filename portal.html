@@ -2111,7 +2111,14 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
   border-top:1px solid rgba(255,255,255,0.14);
 }
 .ov-multi-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:4px;}
-.ov-multi-stat-val{font-family:'Inter',sans-serif;font-size:14px;color:#fff;font-weight:600;letter-spacing:-0.01em;line-height:1.2;}
+.ov-multi-stat-val{font-family:'Inter',sans-serif;font-size:14px;color:#fff;font-weight:600;letter-spacing:-0.01em;line-height:1.2;white-space:nowrap;}
+/* Mobile: widen the middle column so "Morning · Growth" (or any
+   longer "Next dose" string) fits on one line. Kept proportional
+   so the outer LOGGED / ON-TIME columns still read as equal. */
+@media(max-width:600px){
+  .m-hero-stats,.ov-multi-stats{grid-template-columns:1fr 1.8fr 1fr;}
+  .m-hero-stat-val,.ov-multi-stat-val{white-space:nowrap;font-size:13px;}
+}
 /* ── Multi-protocol Your Plan card ────────────────────────────────
    One row per Rx sorted by lowest doses-remaining first so a
    low-supply protocol jumps out. Used in both desktop and mobile. */

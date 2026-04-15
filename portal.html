@@ -12783,18 +12783,22 @@ function _refreshProtoProgress() {
   var el = function(id){ return document.getElementById(id); };
   var weeks = window._protoRxDurWeeks || null;
   if (!weeks) return;
-  // Prefer per-Rx dates when the map is populated — this matches the
-  // primary-slide Rx instead of double-counting doses from other Rxs
-  // that belong to different protocols.
+  // Always use the per-Rx logged-dates array for the primary Rx's
+  // progress card. Previously this guarded on _rxLoggedDates[id]
+  // being truthy and fell back to _computeMemberAdherence() (which
+  // reads the cross-Rx loggedDates flat array) when the primary Rx
+  // had zero logs — that caused the Protocol tab to show OTHER Rxs'
+  // dose counts under the primary Rx's progress card. Default to
+  // an empty array so a brand-new Rx correctly reports 0 logged.
   var primaryRxId = window._protoPrescriptionId;
   var adh;
-  if (primaryRxId && _rxLoggedDates && _rxLoggedDates[primaryRxId]) {
+  if (primaryRxId) {
     var primaryRxObj = {
       started_at: window._protoRxStartDate,
       frequency_amount: window._protoFreqAmount,
       frequency_cadence: window._protoFreqCadence
     };
-    adh = _computeAdherenceForRx(primaryRxObj, _rxLoggedDates[primaryRxId]);
+    adh = _computeAdherenceForRx(primaryRxObj, _rxLoggedDates[primaryRxId] || []);
   } else {
     adh = _computeMemberAdherence();
   }

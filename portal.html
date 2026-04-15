@@ -7934,8 +7934,20 @@ function _readDuration(row) {
   return { value: null, unit: null };
 }
 
-async function _openAdjustRxModal(consultId, userId) {
+async function _openAdjustRxModal(consultId, userId, evt) {
   try {
+    // Capture the panel the Adjust button was clicked from so we can
+    // targeted-reload it after save. Falls back to the currently-active
+    // patient panel (best effort) if the event isn't available.
+    var originPanel = null;
+    var panelSel = '.cl-attn-card-body, .patient-detail-panel, .appt-detail-panel, #clThreadPatientPanel, #sessionPatientCard';
+    if (evt && evt.target && evt.target.closest) {
+      originPanel = evt.target.closest(panelSel);
+    }
+    if (!originPanel) {
+      originPanel = document.getElementById('attn-body-' + consultId);
+    }
+
     // Fetch the current active prescription values + history
     var res = await db.from('consultations')
       .select('id, review_status, protocol_assigned, dose_amount, dose_unit, frequency, frequency_amount, frequency_cadence, timing, duration, duration_value, duration_unit, other_notes, evaluation_date, prescription_history, data')
@@ -7954,6 +7966,7 @@ async function _openAdjustRxModal(consultId, userId) {
       consultId: consultId,
       userId: userId,
       patientName: patientName,
+      originPanel: originPanel,
       isReprescribe: (row.review_status === 'discontinued'),
       current: {
         protocol_assigned: row.protocol_assigned || '',
@@ -8446,14 +8459,34 @@ async function _saveAdjustRx() {
 
     _closeAdjustRxModal();
 
-    // Refresh any patient card body currently mounted for this consultation
-    var bodyEls = document.querySelectorAll('[data-consult-id="' + ctx.consultId + '"] .cl-attn-card-body, #attn-body-' + ctx.consultId);
-    bodyEls.forEach(function(el) {
-      if (el) { el.dataset.loaded = ''; _loadAttentionCardBody(el, ctx.consultId, ctx.userId); }
+    // Refresh the exact panel the Adjust button was clicked from (captured
+    // at open time) so the clinician sees the new values immediately.
+    // Falls back to every known patient panel mount site if the origin
+    // panel isn't in the DOM anymore.
+    var refreshEls = [];
+    if (ctx.originPanel && document.body.contains(ctx.originPanel)) {
+      refreshEls.push(ctx.originPanel);
+    } else {
+      var fallbackSel = '#attn-body-' + ctx.consultId + ', .cl-weekly-row.expanded .cl-attn-card-body, .patient-detail-panel, .appt-detail-panel, #clThreadPatientPanel, #sessionPatientCard';
+      document.querySelectorAll(fallbackSel).forEach(function(el) { refreshEls.push(el); });
+    }
+    refreshEls.forEach(function(el) {
+      if (!el) return;
+      el.dataset.loaded = '';
+      _loadAttentionCardBody(el, ctx.consultId, ctx.userId);
     });
     // Also invalidate the cached patient rows on the Patients page so the
     // status pill reflects a discontinuation / re-prescription.
     _clPatientRows = null;
+
+    // Visible confirmation so the clinician knows the save went through.
+    try {
+      if (typeof showToast === 'function') {
+        showToast(isDiscontinue
+          ? 'Protocol discontinued.'
+          : (ctx.isReprescribe ? 'Protocol re-prescribed.' : 'Prescription updated.'));
+      }
+    } catch (_) {}
   } catch (err) {
     console.warn('[Pulse] _saveAdjustRx failed:', err);
     if (errEl) errEl.textContent = (err && err.message) || 'Failed to save. Please try again.';
@@ -8789,7 +8822,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
         '<div class="crw-outcome-title-row">'+
           '<div class="crw-outcome-title">Prescribed</div>'+
-          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\')">Adjust</button>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">Adjust</button>'+
         '</div>'+
         '<div class="crw-outcome-grid">'+
           _outcomeCell('Protocol', protoAssigned)+
@@ -8817,7 +8850,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-discontinued">'+
         '<div class="crw-outcome-title-row">'+
           '<div class="crw-outcome-title">Discontinued</div>'+
-          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\')">Re-prescribe</button>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAdjustRxModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">Re-prescribe</button>'+
         '</div>'+
         '<div class="crw-outcome-grid">'+
           _outcomeCell('Last protocol', _lastProto)+

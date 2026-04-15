@@ -338,6 +338,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .tracker-adh-bar{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;}
 .tracker-adh-bar-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
 .tracker-adh-row-count{font-family:'Inter',sans-serif;font-size:11px;color:var(--grey2);font-weight:500;flex-shrink:0;white-space:nowrap;}
+/* ── Tracker History disclosure ──────────────────────────────────
+   Collapsible section wrapping the per-Rx month calendar. Header
+   is a full-width button with a chevron that flips on expand. */
+.tracker-hist-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden;}
+.tracker-hist-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
+.tracker-hist-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
+.tracker-hist-chevron{color:var(--grey2);transition:transform .2s ease;flex-shrink:0;}
+.tracker-hist-card.is-expanded .tracker-hist-chevron{transform:rotate(90deg);}
+.tracker-hist-body{display:none;padding:0 24px 24px;}
+.tracker-hist-card.is-expanded .tracker-hist-body{display:block;}
+.tracker-hist-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.tracker-hist-pills:empty{display:none;}
+.tracker-hist-pill{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--grey2);cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
+.tracker-hist-pill:hover{background:rgba(58,122,92,0.1);border-color:rgba(58,122,92,0.35);color:#fff;}
+.tracker-hist-pill.is-active{background:rgba(58,122,92,0.2);border-color:var(--green);color:#fff;}
+/* Not-scheduled calendar days for weekly/monthly Rxs — dimmed so
+   missed-day math stays honest (only scheduled days count). */
+.cal-cell.not-scheduled{opacity:0.25;cursor:default;}
+/* ── Tracker empty state (zero active Rxs) ────────────────────── */
+.tracker-empty-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:40px 28px;margin-bottom:16px;text-align:center;}
+.tracker-empty-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;}
+.tracker-empty-sub{font-family:'Inter',sans-serif;font-size:13px;color:var(--grey2);}
 /* Compact Log Today's Dose button on the Tracker tab — matches the
    dimensions of .proto-slide-log-btn on the Protocol tab so it
    doesn't fill the card width. Overrides the default .btn-green
@@ -2364,6 +2386,18 @@ body.member-mode .tracker-adh-row-nums .tracker-adh-30d{color:var(--m-text) !imp
 body.member-mode .tracker-adh-row-nums .tracker-adh-sep{color:var(--m-text3) !important;}
 body.member-mode .tracker-adh-bar{background:rgba(0,0,0,0.06) !important;}
 body.member-mode .tracker-adh-row-count{color:var(--m-text2) !important;}
+/* Tracker History disclosure — light-theme overrides. */
+body.member-mode .tracker-hist-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;box-shadow:var(--m-shadow);}
+body.member-mode .tracker-hist-eyebrow{color:#2F6F55 !important;}
+body.member-mode .tracker-hist-chevron{color:var(--m-text3) !important;}
+body.member-mode .tracker-hist-pill{background:var(--m-card) !important;border:1px solid var(--m-border) !important;color:var(--m-text2) !important;}
+body.member-mode .tracker-hist-pill:hover{background:rgba(47,111,85,0.08) !important;border-color:rgba(47,111,85,0.3) !important;color:var(--m-text) !important;}
+body.member-mode .tracker-hist-pill.is-active{background:rgba(47,111,85,0.12) !important;border-color:rgba(47,111,85,0.45) !important;color:#1a4a35 !important;}
+body.member-mode .cal-cell.not-scheduled{opacity:0.25;}
+/* Tracker empty state. */
+body.member-mode .tracker-empty-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;box-shadow:var(--m-shadow);}
+body.member-mode .tracker-empty-title{color:var(--m-text) !important;}
+body.member-mode .tracker-empty-sub{color:var(--m-text2) !important;}
 /* ── Resources tab specifics ── */
 body.member-mode .res-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
 body.member-mode .res-card-title{color:var(--m-text) !important;}
@@ -4943,31 +4977,38 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="tracker-adh-list" id="trackerAdherenceList"></div>
         </div>
 
-        <!-- Log today (legacy single-Rx card — removed in Phase 4) -->
-        <div class="log-card">
-          <div class="log-card-info">
-            <div class="log-card-title">Log today's dose</div>
-            <div class="log-card-sub">Keep your protocol on track. Record each dose as you go.</div>
-          </div>
-          <div>
-            <button class="btn-green" id="logDoseBtn" onclick="logDose()"><span class="log-dose-btn-label">Log Today's Dose</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-            <div class="log-card-logged" id="loggedMsg" style="display:none;">✓ Logged today</div>
+        <!-- ── Phase 4: History disclosure ───────────────────────────
+             Click-to-expand section with a pill row (multi-Rx only)
+             and a per-Rx month calendar. Clicking a past cell within
+             7 days writes a retroactive dose_logs entry. Today's cell
+             is read-only — use the Today section above to log. -->
+        <div class="tracker-hist-card" id="trackerHistorySection" style="display:none;">
+          <button type="button" class="tracker-hist-header" id="trackerHistoryHeader" onclick="_trackerHistoryToggle()">
+            <span class="tracker-hist-eyebrow">History</span>
+            <svg class="tracker-hist-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+          </button>
+          <div class="tracker-hist-body" id="trackerHistoryBody">
+            <div class="tracker-hist-pills" id="trackerHistoryPills"></div>
+            <div class="cal-card">
+              <div class="calendar-nav-row">
+                <button class="calendar-nav-btn" onclick="_trackerHistoryNavMonth(-1)">←</button>
+                <div id="trackerMonthLabel" class="calendar-month-label"></div>
+                <button class="calendar-nav-btn" onclick="_trackerHistoryNavMonth(1)">→</button>
+              </div>
+              <div class="cal-dow-row">
+                <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+                <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div>
+                <div class="cal-dow">Sa</div>
+              </div>
+              <div class="cal-grid" id="calGrid"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Month Calendar -->
-        <div class="cal-card">
-          <div class="calendar-nav-row">
-            <button class="calendar-nav-btn" onclick="_trackerNavMonth(-1)">←</button>
-            <div id="trackerMonthLabel" class="calendar-month-label"></div>
-            <button class="calendar-nav-btn" onclick="_trackerNavMonth(1)">→</button>
-          </div>
-          <div class="cal-dow-row">
-            <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
-            <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div>
-            <div class="cal-dow">Sa</div>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
+        <!-- ── Phase 4: Empty state (zero active Rxs) ────────────── -->
+        <div class="tracker-empty-card" id="trackerEmptyState" style="display:none;">
+          <div class="tracker-empty-title">No active protocols to track yet.</div>
+          <div class="tracker-empty-sub">Your Tracker will light up once your clinician prescribes a protocol.</div>
         </div>
       </div>
 

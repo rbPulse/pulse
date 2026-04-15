@@ -295,6 +295,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .log-card-title{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px;}
 .log-card-sub{font-size:12px;color:var(--grey2);}
 .log-card-logged{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.1em;color:var(--green);}
+/* ── Tracker Today checklist ─────────────────────────────────────
+   Per-Rx "due today" list that sits above the legacy log card.
+   Each row shows the protocol name, timing bucket, dose/freq
+   subline, and a right-aligned log/undo pill. */
+.tracker-today-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+.tracker-today-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.tracker-today-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
+.tracker-today-date{font-family:'Inter',sans-serif;font-size:12px;color:var(--grey2);font-weight:500;}
+.tracker-today-list{display:flex;flex-direction:column;gap:10px;}
+.tracker-today-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);}
+.tracker-today-row.is-logged{background:rgba(58,122,92,0.07);border-color:rgba(58,122,92,0.28);}
+.tracker-today-row-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.tracker-today-row-title-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tracker-today-row-name{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#fff;}
+.tracker-today-row-timing{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey2);padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,0.03);}
+.tracker-today-row-timing.is-morning{color:#d4a24a;border-color:rgba(212,162,74,0.35);background:rgba(212,162,74,0.08);}
+.tracker-today-row-timing.is-afternoon{color:#d97757;border-color:rgba(217,119,87,0.35);background:rgba(217,119,87,0.08);}
+.tracker-today-row-timing.is-evening{color:#6a7fb8;border-color:rgba(106,127,184,0.35);background:rgba(106,127,184,0.08);}
+.tracker-today-row-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--grey2);}
+.tracker-today-row-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#F5F1E8 0%,#EDE7D6 100%);color:#1a3d2e;border:1px solid rgba(26,61,46,0.12);cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;flex-shrink:0;}
+.tracker-today-row-btn:hover{background:linear-gradient(180deg,#F8F4EB 0%,#F0EADB 100%);}
+.tracker-today-row-btn svg{width:12px;height:12px;flex-shrink:0;display:block;}
+.tracker-today-row.is-logged .tracker-today-row-btn{background:transparent;color:var(--grey2);border-color:var(--border);}
+.tracker-today-row.is-logged .tracker-today-row-btn:hover{background:rgba(255,255,255,0.04);color:#fff;}
+.tracker-today-row.is-logged .tracker-today-row-btn svg{display:none;}
 /* Compact Log Today's Dose button on the Tracker tab — matches the
    dimensions of .proto-slide-log-btn on the Protocol tab so it
    doesn't fill the card width. Overrides the default .btn-green
@@ -2298,6 +2323,20 @@ body.member-mode .log-card{background:var(--m-card) !important;border:1px solid 
 body.member-mode .log-card-title{color:var(--m-text) !important;}
 body.member-mode .log-card-sub{color:var(--m-text2) !important;}
 body.member-mode .log-card-logged{color:#2F6F55 !important;}
+/* Tracker Today checklist — light-theme overrides. */
+body.member-mode .tracker-today-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;box-shadow:var(--m-shadow);}
+body.member-mode .tracker-today-eyebrow{color:#2F6F55 !important;}
+body.member-mode .tracker-today-date{color:var(--m-text2) !important;}
+body.member-mode .tracker-today-row{background:rgba(47,111,85,0.03) !important;border:1px solid var(--m-border) !important;}
+body.member-mode .tracker-today-row.is-logged{background:rgba(47,111,85,0.08) !important;border-color:rgba(47,111,85,0.28) !important;}
+body.member-mode .tracker-today-row-name{color:var(--m-text) !important;}
+body.member-mode .tracker-today-row-sub{color:var(--m-text2) !important;}
+body.member-mode .tracker-today-row-timing{color:var(--m-text2) !important;border-color:var(--m-border) !important;background:rgba(0,0,0,0.03) !important;}
+body.member-mode .tracker-today-row-timing.is-morning{color:#c48a2e !important;border-color:rgba(196,138,46,0.35) !important;background:rgba(196,138,46,0.08) !important;}
+body.member-mode .tracker-today-row-timing.is-afternoon{color:#c25c3a !important;border-color:rgba(194,92,58,0.35) !important;background:rgba(194,92,58,0.08) !important;}
+body.member-mode .tracker-today-row-timing.is-evening{color:#4a5f9b !important;border-color:rgba(74,95,155,0.35) !important;background:rgba(74,95,155,0.08) !important;}
+body.member-mode .tracker-today-row.is-logged .tracker-today-row-btn{background:transparent !important;color:var(--m-text2) !important;border-color:var(--m-border) !important;}
+body.member-mode .tracker-today-row.is-logged .tracker-today-row-btn:hover{background:rgba(0,0,0,0.03) !important;color:var(--m-text) !important;}
 /* ── Resources tab specifics ── */
 body.member-mode .res-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;}
 body.member-mode .res-card-title{color:var(--m-text) !important;}
@@ -4854,7 +4893,19 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div class="tab-eyebrow">Dose Log</div>
         <div class="tab-title">Track your doses.</div>
 
-        <!-- Log today -->
+        <!-- ── Phase 2: Today checklist ──────────────────────────────
+             Per-Rx log checklist for doses scheduled today. Populated
+             by renderTrackerToday() from _activeRxsForCarousel. Hidden
+             until there's at least one active Rx scheduled today. -->
+        <div class="tracker-today-card" id="trackerTodaySection" style="display:none;">
+          <div class="tracker-today-header">
+            <div class="tracker-today-eyebrow">Today</div>
+            <div class="tracker-today-date" id="trackerTodayDate">—</div>
+          </div>
+          <div class="tracker-today-list" id="trackerTodayList"></div>
+        </div>
+
+        <!-- Log today (legacy single-Rx card — removed in Phase 4) -->
         <div class="log-card">
           <div class="log-card-info">
             <div class="log-card-title">Log today's dose</div>
@@ -12921,10 +12972,29 @@ function _buildExtraProtoSlide(rx, idx) {
 
 // Log today's dose for a specific prescription. Each slide in the rolodex
 // has its own Log button wired to this — members can log each protocol
-// independently without swiping.
+// independently without swiping. Phase 2: also refreshes the new
+// Tracker Today section and Overview on-time tiles so a dose logged
+// from the Protocol tab immediately updates every surface that cares.
 async function _logDoseForRx(rxId, btnEl) {
-  if (!currentUserId || PREVIEW_MODE || !rxId) return;
+  if (!rxId) return;
   var today = localDateStr(new Date());
+  // Local-state update shared between PREVIEW_MODE and live paths so
+  // both end up in the same place afterwards.
+  function _applyLocal() {
+    if (!_rxLoggedDates[rxId]) _rxLoggedDates[rxId] = [];
+    if (_rxLoggedDates[rxId].indexOf(today) === -1) _rxLoggedDates[rxId].push(today);
+    if (loggedDates.indexOf(today) === -1) loggedDates.push(today);
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Logged today ✓'; }
+    try { _refreshProtoCarouselProgress(); } catch (_) {}
+    try { renderCalendar(); } catch (_) {}
+    try { _refreshOverviewData(); } catch (_) {}
+    try { renderTrackerAll(); } catch (_) {}
+    try { _refreshOnTimeTiles(); } catch (_) {}
+  }
+  if (PREVIEW_MODE || !currentUserId) {
+    _applyLocal();
+    return;
+  }
   try {
     var res = await db.from('dose_logs').upsert({
       user_id:         currentUserId,
@@ -12933,18 +13003,8 @@ async function _logDoseForRx(rxId, btnEl) {
       logged_at:       new Date().toISOString()
     }, { onConflict: 'prescription_id,dose_date' });
     if (res && res.error) throw res.error;
-    // Update the local per-Rx map + combined loggedDates array
-    if (!_rxLoggedDates[rxId]) _rxLoggedDates[rxId] = [];
-    if (_rxLoggedDates[rxId].indexOf(today) === -1) _rxLoggedDates[rxId].push(today);
-    if (loggedDates.indexOf(today) === -1) loggedDates.push(today);
-    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Logged today ✓'; }
+    _applyLocal();
     showToast('Dose logged.');
-    // Recompute and re-render the affected slide's progress card + the
-    // combined summary strip above the carousel.
-    _refreshProtoCarouselProgress();
-    // Sync Tracker calendar + Overview stats if they're open
-    try { renderCalendar(); } catch (_) {}
-    try { _refreshOverviewData(); } catch (_) {}
   } catch (err) {
     console.warn('[Pulse] _logDoseForRx failed:', err);
     showToast('Failed to log dose.');
@@ -16267,7 +16327,7 @@ function switchTab(name) {
   if (name !== 'messages' && _consumerMsgPollTimer) {
     clearInterval(_consumerMsgPollTimer); _consumerMsgPollTimer = null;
   }
-  if (name === 'tracker')          { loadDoseLogs(); }
+  if (name === 'tracker')          { loadDoseLogs(); renderTrackerAll(); }
   if (name === 'overview')         { _refreshOnTimeTiles(); }
   if (name === 'appointments')     { initConsumerBooking(); }
   if (name === 'messages')         { initConsumerMessages(); _markConsumerMsgsRead(); }
@@ -16345,6 +16405,7 @@ async function loadDoseLogs() {
     renderCalendar();
     checkTodayLogged();
     _refreshOnTimeTiles();
+    renderTrackerAll();
     _refreshOverviewData(); // re-derive all overview values from updated dose logs
     // Refresh any per-slide progress cards in the protocol rolodex
     if (typeof _refreshProtoCarouselProgress === 'function') _refreshProtoCarouselProgress();
@@ -16630,6 +16691,157 @@ function _refreshOnTimeTiles() {
   var eLt = document.getElementById('statOnTimeLifetime');
   if (e30) e30.textContent = (rate30 == null) ? '—' : (rate30 + '%');
   if (eLt) eLt.textContent = (rateLt == null) ? '—' : (rateLt + '%');
+}
+
+// ── Phase 2: Tracker Today section ───────────────────────────────────
+// Bucket an Rx's timing string ("morning", "pre-workout", "evening",
+// ...) into one of four sort buckets so the Today checklist reads
+// top-to-bottom in roughly chronological order.
+function _timingBucket(rx) {
+  var t = (rx && rx.timing || '').toLowerCase();
+  if (t.indexOf('morning') !== -1 || t.indexOf('am') !== -1 || t.indexOf('breakfast') !== -1) return 0;
+  if (t.indexOf('afternoon') !== -1 || t.indexOf('lunch') !== -1 || t.indexOf('midday') !== -1) return 1;
+  if (t.indexOf('evening') !== -1 || t.indexOf('night') !== -1 || t.indexOf('pm') !== -1 || t.indexOf('bedtime') !== -1 || t.indexOf('dinner') !== -1) return 2;
+  return 3;
+}
+
+function _timingBadgeClass(bucket) {
+  if (bucket === 0) return 'is-morning';
+  if (bucket === 1) return 'is-afternoon';
+  if (bucket === 2) return 'is-evening';
+  return '';
+}
+
+function _timingBadgeLabel(rx, bucket) {
+  var t = (rx && rx.timing || '').trim();
+  if (t) return t.toUpperCase();
+  if (bucket === 0) return 'MORNING';
+  if (bucket === 1) return 'AFTERNOON';
+  if (bucket === 2) return 'EVENING';
+  return 'ANYTIME';
+}
+
+// Render the Today checklist. One row per active Rx that is scheduled
+// for today (daily, or weekly/monthly matching today's day-of-week /
+// day-of-month). Hidden entirely when no rows would render so the tab
+// falls back to the legacy log card below during phases 2 and 3.
+function renderTrackerToday() {
+  var section = document.getElementById('trackerTodaySection');
+  var list = document.getElementById('trackerTodayList');
+  var dateEl = document.getElementById('trackerTodayDate');
+  if (!section || !list) return;
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var todayStr = localDateStr(today);
+  if (dateEl) {
+    dateEl.textContent = today.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric'
+    });
+  }
+
+  var activeRxs = (window._activeRxsForCarousel || []).filter(function(rx) {
+    return rx && _isRxScheduledOnDate(rx, today);
+  });
+
+  if (!activeRxs.length) {
+    section.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+
+  // Sort by timing bucket (morning → afternoon → evening → other),
+  // then by protocol name for a stable secondary order.
+  activeRxs = activeRxs.slice().sort(function(a, b) {
+    var ba = _timingBucket(a), bb = _timingBucket(b);
+    if (ba !== bb) return ba - bb;
+    return String(a.protocol_key || '').localeCompare(String(b.protocol_key || ''));
+  });
+
+  list.innerHTML = activeRxs.map(function(rx) {
+    var loggedDatesForRx = _rxLoggedDates[rx.id] || [];
+    var isLogged = loggedDatesForRx.indexOf(todayStr) !== -1;
+    var bucket = _timingBucket(rx);
+    var badgeCls = _timingBadgeClass(bucket);
+    var badgeTxt = _timingBadgeLabel(rx, bucket);
+    var name = escapeHtml(rx.protocol_key || 'Protocol');
+    var doseStr = (rx.dose_amount != null && rx.dose_unit) ? (rx.dose_amount + ' ' + rx.dose_unit) : '';
+    var freqStr = rx.frequency || '';
+    var subParts = [doseStr, freqStr].filter(Boolean);
+    var subLine = escapeHtml(subParts.join(' · '));
+    var arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    var btnLabel = isLogged ? 'Undo' : 'Log';
+    var btnHtml = isLogged
+      ? '<button type="button" class="tracker-today-row-btn" onclick="_trackerUndoToday(\'' + escapeAttr(rx.id) + '\',this)">' + btnLabel + '</button>'
+      : '<button type="button" class="tracker-today-row-btn" onclick="_trackerLogToday(\'' + escapeAttr(rx.id) + '\',this)"><span>' + btnLabel + '</span>' + arrow + '</button>';
+    return '' +
+      '<div class="tracker-today-row' + (isLogged ? ' is-logged' : '') + '" data-rx-id="' + escapeAttr(rx.id) + '">' +
+        '<div class="tracker-today-row-info">' +
+          '<div class="tracker-today-row-title-line">' +
+            '<span class="tracker-today-row-name">' + name + '</span>' +
+            '<span class="tracker-today-row-timing ' + badgeCls + '">' + escapeHtml(badgeTxt) + '</span>' +
+          '</div>' +
+          (subLine ? '<div class="tracker-today-row-sub">' + subLine + '</div>' : '') +
+        '</div>' +
+        btnHtml +
+      '</div>';
+  }).join('');
+  section.style.display = '';
+}
+
+// Log today's dose for a specific Rx from the Today checklist. Reuses
+// the existing _logDoseForRx path (it already writes to dose_logs and
+// updates _rxLoggedDates); after success we re-render the Today list
+// to flip the row to its "logged" state.
+async function _trackerLogToday(rxId, btnEl) {
+  if (!rxId) return;
+  try { if (btnEl) btnEl.disabled = true; } catch(e){}
+  await _logDoseForRx(rxId, null);
+  renderTrackerToday();
+  _refreshOnTimeTiles();
+}
+
+// Delete today's dose log for a specific Rx — undoes an accidental
+// log without leaving the Today section. Only same-day logs are
+// undoable (retroactive edits happen via the History calendar).
+async function _trackerUndoToday(rxId, btnEl) {
+  if (!rxId) return;
+  var todayStr = localDateStr(new Date());
+  try { if (btnEl) btnEl.disabled = true; } catch(e){}
+  if (PREVIEW_MODE) {
+    var arr = _rxLoggedDates[rxId] || [];
+    var i = arr.indexOf(todayStr);
+    if (i !== -1) arr.splice(i, 1);
+    _rxLoggedDates[rxId] = arr;
+    renderTrackerToday();
+    _refreshOnTimeTiles();
+    return;
+  }
+  try {
+    var res = await db.from('dose_logs').delete()
+      .eq('prescription_id', rxId)
+      .eq('dose_date', todayStr);
+    if (res && res.error) {
+      console.warn('[Pulse] undo dose log failed:', res.error.message);
+      if (btnEl) btnEl.disabled = false;
+      return;
+    }
+    var arr2 = _rxLoggedDates[rxId] || [];
+    var j = arr2.indexOf(todayStr);
+    if (j !== -1) arr2.splice(j, 1);
+    _rxLoggedDates[rxId] = arr2;
+    renderTrackerToday();
+    _refreshOnTimeTiles();
+  } catch (err) {
+    console.warn('[Pulse] undo dose log exception:', err && err.message);
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
+// Orchestrator for re-rendering every new Tracker section. Phase 2
+// only wires the Today section; phases 3-4 will expand this to also
+// rebuild the Adherence strip and History calendar.
+function renderTrackerAll() {
+  renderTrackerToday();
 }
 
 async function logDose() {

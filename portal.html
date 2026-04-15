@@ -3818,6 +3818,38 @@ body.clinician-mode .crw-outcome-disc-divider{
   padding-top:10px;
   border-top:1px dashed rgba(0,0,0,0.1);
 }
+/* Collapsible Prescribed / Previously Discontinued sections inside
+   the prescribed-patient outcome box. The title row stays visible;
+   the card list underneath is hidden until the user clicks. */
+body.clinician-mode .crw-outcome-title-row.is-collapsible,
+body.clinician-mode .crw-outcome-disc-divider.is-collapsible{
+  cursor:pointer;
+  user-select:none;
+}
+body.clinician-mode .crw-outcome-disc-divider.is-collapsible{
+  display:flex;
+  align-items:center;
+}
+body.clinician-mode .crw-outcome-collapse{
+  display:none;
+}
+body.clinician-mode .crw-outcome-collapse.is-expanded{
+  display:block;
+}
+body.clinician-mode .crw-outcome-chevron{
+  display:inline-block;
+  width:10px;
+  margin-right:6px;
+  font-size:10px;
+  line-height:1;
+  color:currentColor;
+  transition:transform 0.15s ease;
+  transform:rotate(0deg);
+}
+body.clinician-mode .crw-outcome-title-row.is-expanded .crw-outcome-chevron,
+body.clinician-mode .crw-outcome-disc-divider.is-expanded .crw-outcome-chevron{
+  transform:rotate(90deg);
+}
 
 /* ── Adjust Prescription + History modals ─────────────────────────────────
    Shared .rx-adjust-overlay / .rx-adjust-card shell; the History modal
@@ -8534,6 +8566,20 @@ async function pxReprescribe(ctx) {
   if (vRes.error) throw vRes.error;
 }
 
+// Toggle handler for the collapsible Prescribed / Previously
+// Discontinued sections inside the prescribed-patient outcome box.
+// Wires the header's is-expanded class to its sibling .crw-outcome-collapse
+// wrapper. Called from an inline onclick on the header.
+function _toggleOutcomeSection(headerEl, evt) {
+  if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+  if (!headerEl) return;
+  headerEl.classList.toggle('is-expanded');
+  var next = headerEl.nextElementSibling;
+  if (next && next.classList && next.classList.contains('crw-outcome-collapse')) {
+    next.classList.toggle('is-expanded');
+  }
+}
+
 // Open the Adjust modal in "Add new protocol" mode. Reuses the same
 // modal chrome and save pipeline as _openAdjustRxModal, but the form
 // starts blank, the chip selector is hidden, and Save calls pxCreate.
@@ -9621,13 +9667,25 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
 
     var outcomeTopHtml = '';
     if (consultReviewStatus === 'prescribed' && activeRxs.length > 0) {
-      var headerCount = activeRxs.length > 1 ? ' (' + activeRxs.length + ')' : '';
-      var rxCardsHtml = activeRxs.map(function(r) { return _buildRxSubCard(r); }).join('');
-      // Discontinued Rxs on a prescribed patient get a muted footer strip
+      // Always show the count in the collapsible headers so users know
+      // what's hidden without expanding.
+      var headerCount = ' (' + activeRxs.length + ')';
+      var rxCardsHtml =
+        '<div class="crw-outcome-collapse">' +
+          activeRxs.map(function(r) { return _buildRxSubCard(r); }).join('') +
+        '</div>';
+      // Discontinued Rxs on a prescribed patient get a muted, collapsible
+      // footer strip with its own clickable header.
       var discStripHtml = '';
       if (discontinuedRxs.length > 0) {
-        discStripHtml = '<div class="crw-outcome-disc-divider">Previously discontinued</div>' +
-          discontinuedRxs.map(function(r) { return _buildRxSubCard(r); }).join('');
+        discStripHtml =
+          '<div class="crw-outcome-disc-divider is-collapsible" onclick="_toggleOutcomeSection(this,event)">' +
+            '<span class="crw-outcome-chevron">&#9656;</span>' +
+            'Previously discontinued (' + discontinuedRxs.length + ')' +
+          '</div>' +
+          '<div class="crw-outcome-collapse">' +
+            discontinuedRxs.map(function(r) { return _buildRxSubCard(r); }).join('') +
+          '</div>';
       }
       // Consultation-level "Last adjusted" line — points at the Rx with
       // the most recent non-initial version across all active Rxs.
@@ -9646,9 +9704,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>';
       }
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
-        '<div class="crw-outcome-title-row">'+
-          '<div class="crw-outcome-title">Prescribed'+headerCount+'</div>'+
-          '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
+        '<div class="crw-outcome-title-row is-collapsible" onclick="_toggleOutcomeSection(this,event)">'+
+          '<div class="crw-outcome-title"><span class="crw-outcome-chevron">&#9656;</span>Prescribed'+headerCount+'</div>'+
+          '<button type="button" class="crw-outcome-adjust-btn" onclick="event.stopPropagation();_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
         '</div>'+
         rxCardsHtml +
         discStripHtml +

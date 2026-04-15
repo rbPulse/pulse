@@ -8578,8 +8578,12 @@ async function _openRxHistoryModal(consultId) {
       });
     }
     var entriesHtml = '';
-    active.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, true); });
-    closed.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, false); });
+    // Fallback prescriber name for legacy entries saved before we started
+    // stamping prescribed_by_name. In practice the clinician viewing the
+    // modal is the one who created the entries.
+    var _fallbackWho = _resolveCurrentClinicianName();
+    active.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, true, _fallbackWho); });
+    closed.forEach(function(e) { entriesHtml += _rxHistoryEntryHtml(e, false, _fallbackWho); });
     if (!entriesHtml) entriesHtml = '<div class="rx-hist-empty">No prescription history yet.</div>';
 
     var modal = document.getElementById('rxHistoryModal');
@@ -8604,7 +8608,7 @@ async function _openRxHistoryModal(consultId) {
   } catch (e) { console.warn('[Pulse] history modal failed:', e); }
 }
 
-function _rxHistoryEntryHtml(entry, isCurrent) {
+function _rxHistoryEntryHtml(entry, isCurrent, fallbackWho) {
   var isDiscontinuation = entry.adjustment_type === 'discontinuation';
   var dateLabel;
   if (isCurrent) {
@@ -8614,7 +8618,7 @@ function _rxHistoryEntryHtml(entry, isCurrent) {
   } else {
     dateLabel = entry.effective_to ? _fmtClDate(entry.effective_to) : '—';
   }
-  var who = _formatDrLastName(entry.prescribed_by_name) || '';
+  var who = _formatDrLastName(entry.prescribed_by_name || fallbackWho || '') || '';
   var typeLabels = {
     dose_change:'Dose', frequency_change:'Frequency',
     timing_change:'Timing', protocol_change:'Protocol',

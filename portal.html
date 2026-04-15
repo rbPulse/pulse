@@ -11685,6 +11685,13 @@ function initConsumerBooking() {
   _selectedBookingSlot = null;
   resetBookConfirm();
 
+  // Kick off the member's own appointments query IMMEDIATELY so it
+  // runs in parallel with the booking-grid chain below instead of
+  // waiting for three sequential queries (availability → profiles →
+  // appointments) before the member ever sees their own cards. The
+  // function shows its own skeleton while loading.
+  _loadAndRenderConsumerAppts();
+
   // Populate appointment-type dropdown — exclude "Initial Consult" for active members
   var typeEl  = document.getElementById('bookType');
   var typeMenu = document.getElementById('bookTypeMenu');
@@ -11702,7 +11709,9 @@ function initConsumerBooking() {
   }
   // Clinician is auto-assigned on booking confirm (no dropdown needed)
 
-  // Load consumer's existing appointments, then render slot grid
+  // Booking slot grid path. The member's appointments query already
+  // started above, so it renders in parallel regardless of how long
+  // this availability chain takes.
   if (PREVIEW_MODE || !currentUserId) {
     _bookAvailRows = AVAIL_STATE.map(function(s) {
       return { day_of_week: _DOW_INDEX[s.day], active: s.on, slot_duration_minutes: APPT_DURATION };
@@ -11712,7 +11721,6 @@ function initConsumerBooking() {
       return { scheduled_at: b.date + 'T' + b.slot, duration_minutes: APPT_DURATION };
     });
     _renderBookingGrid();
-    _loadAndRenderConsumerAppts();
     return;
   }
 
@@ -11765,12 +11773,10 @@ function initConsumerBooking() {
     if (tr && tr.error) throw tr.error;
     _bookTakenSlots = (tr && tr.data) ? tr.data : [];
     _renderBookingGrid();
-    _loadAndRenderConsumerAppts();
   })
   .catch(function(err) {
     console.warn('[Pulse] booking init failed:', err && err.message);
     showListError('bookDateChips', 'initConsumerBooking');
-    _loadAndRenderConsumerAppts();
   });
 }
 

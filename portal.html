@@ -2207,6 +2207,31 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
    Your Plan, right: Care Team + Support). gap:24px matches .m-grid's
    horizontal gap so vertical rhythm stays consistent. */
 .m-ov-left-stack,.m-ov-right-stack{display:flex;flex-direction:column;gap:24px;min-width:0;}
+/* Height uniformity: the card marked with .m-card-grow absorbs any
+   extra vertical space in its column so both column stacks end at the
+   same Y. Left column grows the Hero (dynamic content), right column
+   grows the Next Appointment card (natural middle position). */
+.m-ov-left-stack .m-card-hero{flex:1;}
+.m-ov-right-stack #mCardNextAppt{flex:1;}
+/* ── Next Appointment card (desktop-only — lives inside .m-grid which
+     is display:none on mobile, so no explicit breakpoint needed). */
+.m-card-next-appt{cursor:pointer;transition:box-shadow .25s,transform .25s;}
+.m-card-next-appt:hover{box-shadow:var(--m-shadow-lg);transform:translateY(-1px);}
+.m-appt-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:4px 0 12px;}
+.m-appt-empty-title{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--m-text);margin-bottom:4px;}
+.m-appt-empty-sub{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text2);line-height:1.45;}
+.m-appt-detail{display:flex;flex-direction:column;gap:6px;}
+.m-appt-type{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#2F6F55;margin-bottom:2px;}
+.m-appt-when{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:var(--m-text);line-height:1.25;letter-spacing:-0.01em;}
+.m-appt-with{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text2);line-height:1.4;}
+.m-appt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:12px;}
+.m-appt-actions .m-card-btn{justify-content:center;font-weight:600;color:#1a1a1a;}
+.m-appt-actions .m-card-btn:hover{color:#2F6F55;}
+.m-appt-join-btn{background:#2F6F55 !important;color:#fff !important;border-color:#2F6F55 !important;}
+.m-appt-join-btn:hover{background:#256b4a !important;color:#fff !important;border-color:#256b4a !important;}
+.m-appt-join-btn:disabled{background:rgba(47,111,85,0.18) !important;color:rgba(47,111,85,0.5) !important;border-color:transparent !important;cursor:default;}
+.m-appt-empty-actions{margin-top:auto;padding-top:12px;}
+.m-appt-empty-actions .m-card-btn{width:100%;justify-content:center;font-weight:600;color:#1a1a1a;}
 
 /* ── ALL 6 standard cards — identical styling ── */
 .m-card{background:#FBFAF6;border:1px solid var(--m-border);border-radius:var(--m-radius);padding:24px;box-shadow:var(--m-shadow);display:flex;flex-direction:column;transition:box-shadow .3s,transform .3s;}
@@ -4847,6 +4872,30 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:16px;">
                 <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
                 <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+              </div>
+            </div>
+
+            <!-- Next Appointment -->
+            <div class="m-card m-card-next-appt" id="mCardNextAppt" onclick="switchTab('appointments')">
+              <div class="m-card-label">Next Appointment</div>
+              <div class="m-appt-body" id="mApptBody">
+                <!-- Populated by JS. Empty state renders when no upcoming appt. -->
+                <div class="m-appt-empty" id="mApptEmpty">
+                  <div class="m-appt-empty-title">No upcoming appointments</div>
+                  <div class="m-appt-empty-sub">Book a check-in with your clinician</div>
+                </div>
+                <div class="m-appt-detail" id="mApptDetail" style="display:none;">
+                  <div class="m-appt-type" id="mApptType">Check-in</div>
+                  <div class="m-appt-when" id="mApptWhen">—</div>
+                  <div class="m-appt-with" id="mApptWith">with —</div>
+                </div>
+              </div>
+              <div class="m-appt-actions" id="mApptActions" style="display:none;">
+                <button class="m-card-btn" id="mApptRescheduleBtn" onclick="event.stopPropagation();_openMemberRescheduleFromOverview()">Reschedule</button>
+                <button class="m-card-btn m-appt-join-btn" id="mApptJoinBtn" onclick="event.stopPropagation();switchTab('appointments')">Join</button>
+              </div>
+              <div class="m-appt-empty-actions" id="mApptEmptyActions">
+                <button class="m-card-btn" onclick="event.stopPropagation();switchTab('appointments')">Book a check-in</button>
               </div>
             </div>
 
@@ -13654,6 +13703,84 @@ function _renderOverviewMulti() {
   if (moPlan) moPlan.innerHTML = planHtml;
 }
 
+// ── Overview Next Appointment card ──────────────────────────────────
+// Populates the desktop-only #mCardNextAppt card in the right column.
+// Two states: upcoming appointment (detail + Reschedule/Join actions)
+// or empty state (no appointments + Book a check-in CTA). The Join
+// button is enabled only within a 15-min-before / 60-min-after window
+// of scheduled_at so members don't mash it early.
+var _ovNextApptId = null;
+
+function _renderOverviewNextAppt(appt) {
+  var card = document.getElementById('mCardNextAppt');
+  if (!card) return;
+  var bodyEmpty = document.getElementById('mApptEmpty');
+  var bodyDetail = document.getElementById('mApptDetail');
+  var actions = document.getElementById('mApptActions');
+  var emptyActions = document.getElementById('mApptEmptyActions');
+
+  if (!appt) {
+    _ovNextApptId = null;
+    if (bodyEmpty) bodyEmpty.style.display = '';
+    if (bodyDetail) bodyDetail.style.display = 'none';
+    if (actions) actions.style.display = 'none';
+    if (emptyActions) emptyActions.style.display = '';
+    return;
+  }
+
+  _ovNextApptId = appt.id || null;
+  if (bodyEmpty) bodyEmpty.style.display = 'none';
+  if (bodyDetail) bodyDetail.style.display = '';
+  if (actions) actions.style.display = '';
+  if (emptyActions) emptyActions.style.display = 'none';
+
+  // Parse appointment type from the notes JSON blob (monthly_checkin,
+  // initial_consult, follow_up, etc.), falling back to a generic label.
+  var typeLabel = 'Appointment';
+  var notesBlob = appt.notes || '';
+  if (notesBlob) {
+    var n = String(notesBlob).toLowerCase();
+    if (n.indexOf('monthly_checkin') !== -1)       typeLabel = 'Monthly Check-in';
+    else if (n.indexOf('initial_consult') !== -1)  typeLabel = 'Initial Consult';
+    else if (n.indexOf('follow_up') !== -1)        typeLabel = 'Follow-up';
+    else if (n.indexOf('protocol_review') !== -1)  typeLabel = 'Protocol Review';
+    else if (n.indexOf('check-in') !== -1 || n.indexOf('check_in') !== -1) typeLabel = 'Check-in';
+  }
+
+  var when = new Date(appt.scheduled_at);
+  var dayStr  = when.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  var timeStr = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  var durMin  = appt.duration_minutes || 20;
+
+  var clName = window._clinicianName || 'your clinician';
+  if (clName && !/^dr\.?\s/i.test(clName)) clName = 'Dr. ' + clName;
+
+  var typeEl = document.getElementById('mApptType');
+  if (typeEl) typeEl.textContent = typeLabel;
+  var whenEl = document.getElementById('mApptWhen');
+  if (whenEl) whenEl.textContent = dayStr + ' · ' + timeStr;
+  var withEl = document.getElementById('mApptWith');
+  if (withEl) withEl.textContent = 'with ' + clName + ' · ' + durMin + ' min';
+
+  // Join window: 15 min before → 60 min after scheduled_at.
+  var now = Date.now();
+  var startMs = when.getTime();
+  var joinOpen = (now >= startMs - 15 * 60000) && (now <= startMs + 60 * 60000);
+  var joinBtn = document.getElementById('mApptJoinBtn');
+  if (joinBtn) joinBtn.disabled = !joinOpen;
+}
+
+// Reschedule action wrapper — routes to the existing reschedule modal
+// with the stashed appointment id. Falls back to the Book tab if the
+// modal isn't available.
+function _openMemberRescheduleFromOverview() {
+  if (!_ovNextApptId) { switchTab('appointments'); return; }
+  if (typeof _openRescheduleModal === 'function') {
+    try { _openRescheduleModal(_ovNextApptId, 'Appointment', false); return; } catch (_) {}
+  }
+  switchTab('appointments');
+}
+
 // Tile tap → log today's dose for that Rx. Reuses _logDoseForRx (which
 // updates _rxLoggedDates + refreshes the Tracker / on-time tiles), then
 // repaints the Hero + Plan cards so the tile flips to ✓ and the
@@ -13980,18 +14107,27 @@ function populatePortal(user, consultation, greeting) {
 
     // Load upcoming appointment
     if (!PREVIEW_MODE && currentUserId) {
-      // Next upcoming appointment (any type)
-      db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
+      // Next upcoming appointment (any type) — populates the hidden
+      // mUpCheckin / mUpNextAppt elements (legacy JS compat) AND the
+      // new #mCardNextAppt card on the desktop Overview right column.
+      db.from('appointments').select('id, scheduled_at, duration_minutes, notes, clinician_id')
+        .eq('consumer_id', currentUserId)
         .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true }).limit(1)
         .then(function(r) {
           if (r.data && r.data.length) {
-            var apptDate = new Date(r.data[0].scheduled_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
+            var appt = r.data[0];
+            var apptDate = new Date(appt.scheduled_at).toLocaleDateString('en-US', {month:'short',day:'numeric'});
             var e1 = document.getElementById('mUpCheckin'); if (e1) e1.textContent = apptDate;
             var e3 = document.getElementById('mUpNextAppt'); if (e3) e3.textContent = apptDate;
+            if (typeof _renderOverviewNextAppt === 'function') _renderOverviewNextAppt(appt);
+          } else {
+            if (typeof _renderOverviewNextAppt === 'function') _renderOverviewNextAppt(null);
           }
-        }).catch(function(){});
+        }).catch(function(){
+          if (typeof _renderOverviewNextAppt === 'function') _renderOverviewNextAppt(null);
+        });
       // Next monthly check-in specifically
       db.from('appointments').select('scheduled_at').eq('consumer_id', currentUserId)
         .not('status', 'in', '("cancelled_by_member","cancelled_by_clinician","completed")')

@@ -9643,9 +9643,16 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var otherNotes = rx.other_notes || '';
       var evalDate = _fmtClDate(rx.started_at) || '—';
       var btnLabel = isActive ? 'Adjust' : 'Re-prescribe';
+      // Clinician attribution: both "Prescribed" and "Discontinued"
+      // sub-lines show "by Dr. <LastName>" when we have a name on the
+      // Rx. The flattened Rx carries prescribed_by_name from its
+      // latest version — for a discontinued Rx that's the clinician
+      // who owned it at the time of discontinuation.
+      var whoTxt = _formatDrLastName(rx.prescribed_by_name);
+      var bySuffix = whoTxt ? (' by ' + whoTxt) : '';
       var subText = isActive
-        ? ('Prescribed ' + evalDate)
-        : ('Discontinued ' + (rx.discontinued_at ? _fmtClDate(rx.discontinued_at) : '—'));
+        ? ('Prescribed ' + evalDate + bySuffix)
+        : ('Discontinued ' + (rx.discontinued_at ? _fmtClDate(rx.discontinued_at) : '—') + bySuffix);
       return '<div class="crw-outcome-rx'+(isActive ? '' : ' rx-discontinued')+'">'+
         '<div class="crw-outcome-rx-hdr">'+
           '<div>'+

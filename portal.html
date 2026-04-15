@@ -2008,19 +2008,61 @@ body.member-mode .tab-eyebrow{color:#2F6F55;font-family:'Inter',sans-serif;font-
 body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:-0.01em;}
 
 /* ══ HERO CARD (Today — 3 column command center) ══ */
-.m-hero{background:#EFEAE0;border:2px solid rgba(20,20,20,0.12);border-radius:var(--m-radius);padding:0;margin-bottom:32px;box-shadow:0 10px 30px rgba(0,0,0,0.08);position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr 1fr;}
-.m-hero-col{padding:32px;background:#EFEAE0;}
-.m-hero-col:not(:last-child){border-right:1px solid rgba(0,0,0,0.06);}
-.m-hero-col-primary{padding:36px;background:linear-gradient(to right,rgba(0,0,0,0) 75%,rgba(0,0,0,0.18) 100%),radial-gradient(circle at 45% 40%,rgba(255,255,255,0.10),transparent 50%),linear-gradient(135deg,#2F6A52 0%,#234A3B 45%,#1A342A 100%);border-right:none;position:relative;}
-.m-hero-col-primary::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:0.03;mix-blend-mode:overlay;pointer-events:none;}
-.m-hero-col-primary .m-hero-label{color:rgba(255,255,255,0.55);}
-.m-hero-col-primary .m-hero-title{color:rgba(255,255,255,0.75);}
-.m-hero-col-primary .m-hero-sub{color:#FFFFFF;text-shadow:0 1px 2px rgba(0,0,0,0.25);}
-.m-hero-col-primary .m-hero-dose{color:rgba(255,255,255,0.55);}
+/* Hero card — green gradient variant of .m-card used on the Overview
+   Row 1 left slot. Replaces the legacy .m-hero 3-col strip. */
+.m-card-hero{
+  padding:36px !important;
+  background:
+    linear-gradient(to right,rgba(0,0,0,0) 75%,rgba(0,0,0,0.18) 100%),
+    radial-gradient(circle at 45% 40%,rgba(255,255,255,0.10),transparent 50%),
+    linear-gradient(135deg,#2F6A52 0%,#234A3B 45%,#1A342A 100%) !important;
+  border:1px solid rgba(58,122,92,0.24) !important;
+  box-shadow:0 10px 30px rgba(34,77,58,0.22),0 2px 8px rgba(0,0,0,0.08) !important;
+  position:relative;
+  overflow:hidden;
+  color:#fff;
+}
+.m-card-hero::after{
+  content:'';
+  position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:0.03;mix-blend-mode:overlay;pointer-events:none;
+}
+.m-card-hero > *{position:relative;z-index:1;}
+.m-card-hero .m-hero-label{color:rgba(255,255,255,0.55);}
+.m-card-hero .m-hero-title{color:rgba(255,255,255,0.75);}
+.m-card-hero .m-hero-sub{color:#FFFFFF;text-shadow:0 1px 2px rgba(0,0,0,0.25);}
+.m-card-hero .m-hero-dose{color:rgba(255,255,255,0.55);}
 .m-hero-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:var(--m-text3);margin-bottom:14px;}
 .m-hero-title{font-family:'Inter',sans-serif;font-size:17px;font-weight:500;color:var(--m-text2);margin-bottom:10px;line-height:1.3;}
 .m-hero-sub{font-family:'Inter',sans-serif;font-size:clamp(26px,3.5vw,32px);font-weight:600;color:var(--m-text);margin-bottom:6px;line-height:1.15;letter-spacing:-0.02em;}
 .m-hero-dose{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text3);margin-bottom:28px;line-height:1.5;font-weight:400;}
+/* Inline 3-col mini-stats row at the bottom of the Hero card. */
+.m-hero-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  margin-top:24px;padding-top:18px;
+  border-top:1px solid rgba(255,255,255,0.14);
+}
+.m-hero-stat{text-align:left;}
+.m-hero-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:4px;}
+.m-hero-stat-val{font-family:'Inter',sans-serif;font-size:15px;color:#fff;font-weight:600;letter-spacing:-0.01em;}
+/* Your Plan card — merged Protocol + Supply. Same .m-card chrome with
+   a plan-rows list up top, supply block in the middle, link at the
+   bottom. Mirrors the mobile .mo-plan-* pattern on desktop. */
+.m-card-plan{padding:32px !important;}
+.m-plan-rows{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.m-plan-row{display:flex;align-items:center;justify-content:space-between;font-family:'Inter',sans-serif;font-size:14px;font-weight:400;padding:6px 0;}
+.m-plan-row > span:first-child{color:var(--m-text3);}
+.m-plan-row > span:last-child{color:var(--m-text);font-weight:600;}
+.m-plan-supply{padding:16px 0 0;border-top:1px solid var(--m-border-soft,rgba(20,20,20,0.06));margin-bottom:16px;}
+.m-plan-supply-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;gap:16px;}
+.m-plan-supply-num{font-family:'Inter',sans-serif;font-size:32px;font-weight:600;color:var(--m-text);letter-spacing:-0.02em;line-height:1;}
+.m-plan-supply-unit{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text3);margin-left:6px;}
+.m-plan-supply-refill{font-family:'Inter',sans-serif;font-size:12px;color:var(--m-text3);font-weight:500;}
+.m-plan-progress{height:6px;background:rgba(20,20,20,0.06);border-radius:999px;overflow:hidden;}
+.m-plan-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
+.m-plan-link{background:none;border:none;padding:12px 0 0;font-family:'Inter',sans-serif;font-size:13px;color:#2F6F55;font-weight:600;cursor:pointer;text-align:left;display:block;margin-top:auto;}
+.m-plan-link:hover{color:#1a4a35;}
 .m-hero-cta{
   display:flex;
   width:fit-content;
@@ -2088,6 +2130,10 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 
 /* ══ BELOW-HERO GRID ══ */
 .m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:32px;}
+/* 2-column variant used by the refactored Overview (Hero | Your Plan,
+   Care Team | Support). Scopes to .m-grid so every existing mobile
+   media-query rule for .m-grid still applies. */
+.m-grid.m-grid-2{grid-template-columns:1fr 1fr;}
 
 /* ── ALL 6 standard cards — identical styling ── */
 .m-card{background:#FBFAF6;border:1px solid var(--m-border);border-radius:var(--m-radius);padding:24px;box-shadow:var(--m-shadow);display:flex;flex-direction:column;transition:box-shadow .3s,transform .3s;}
@@ -2310,17 +2356,15 @@ body.member-mode .loading-icon svg{stroke:#2F6F55;}
 
 /* ── Responsive ── */
 @media(max-width:900px){
-  .m-hero{grid-template-columns:1fr;}
-  .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid var(--m-border-soft);}
   .m-grid{grid-template-columns:1fr 1fr;}
-  .m-pulse-brand-card{order:99;}
+  .m-grid.m-grid-2{grid-template-columns:1fr;}
   body.member-mode .portal-main{padding:28px 20px;}
 }
 @media(max-width:600px){
-  .m-hero-col{padding:24px 20px;}
-  .m-hero-col-primary{padding:28px 24px;}
   .m-grid{grid-template-columns:1fr;gap:14px;}
   .m-card{padding:22px;border-radius:16px;}
+  .m-card-hero{padding:28px 24px !important;}
+  .m-card-plan{padding:24px !important;}
   body.member-mode .portal-main{padding:20px 16px;}
 }
 
@@ -2619,8 +2663,8 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
 .m-mobile-overview{display:none;}
 @media(max-width:768px){
   body.member-mode .m-mobile-overview{display:flex;flex-direction:column;gap:14px;}
-  /* Hide legacy desktop-style cards on mobile */
-  body.member-mode #tab-overview .m-hero{display:none !important;}
+  /* Hide desktop Overview rows on mobile — the Overview on mobile
+     renders via .m-mobile-overview instead. */
   body.member-mode #tab-overview .m-grid{display:none !important;}
   /* ── Unified member-mode tab header on mobile ───────────────────────── */
   /* Every member tab's eyebrow/title renders at the same size regardless of
@@ -2777,10 +2821,7 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
 .mo-support-btn-primary>span{color:#2F6F55;}
 
 @media(max-width:600px){
-  body.member-mode .m-hero{grid-template-columns:1fr;}
-  body.member-mode .m-hero-col:not(:last-child){border-right:none;border-bottom:1px solid rgba(20,20,20,0.06);}
   body.member-mode .m-grid{grid-template-columns:1fr;gap:14px;}
-  body.member-mode .m-pulse-brand-card{order:99;}
   body.member-mode .portal-main{padding:16px 12px;}
   body.member-mode .m-card{padding:18px;}
 }
@@ -4657,70 +4698,51 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
         </div>
 
-        <!-- ══ HERO: Treatment Command Center ══ -->
-        <div class="m-hero" id="mHero">
-          <!-- LEFT: Today's action -->
-          <div class="m-hero-col m-hero-col-primary">
-            <div class="m-hero-label" id="mHeroLabel">TODAY</div>
+        <!-- ══ ROW 1: Hero + Your Plan (single-protocol) ══════════════
+             Hero card absorbs the old Status column (Next dose + Phase
+             inline under the log button). Your Plan card merges the
+             deleted Protocol + Supply cards — Duration / Frequency /
+             Started rows followed by supply + refill + progress bar. -->
+        <div class="m-grid m-grid-2" id="mOvRow1">
+          <!-- Hero -->
+          <div class="m-card m-card-hero" id="mCardHero">
+            <div class="m-hero-label" id="mHeroLabel">Your Protocol</div>
             <div class="m-hero-title" id="mHeroTitle">Your Protocol</div>
             <div class="m-hero-sub" id="mHeroSub">Loading...</div>
             <div class="m-hero-dose" id="mHeroDose"></div>
             <button class="m-hero-cta" id="mHeroCta" onclick="logDose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><span class="m-hero-cta-label">Log Today's Dose</span></button>
-          </div>
-          <!-- MIDDLE: Status -->
-          <div class="m-hero-col">
-            <div class="m-hero-section-title">Status</div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Dose today</span><span class="m-hero-row-val" id="mStatusDose">Not logged</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next dose</span><span class="m-hero-row-val" id="mStatusNext">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Current phase</span><span class="m-hero-row-val" id="mStatusPhase">—</span></div>
-          </div>
-          <!-- RIGHT: Coming up -->
-          <div class="m-hero-col">
-            <div class="m-hero-section-title">Coming Up</div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mUpRefill">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next check-in</span><span class="m-hero-row-val" id="mUpCheckin">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Messages</span><span class="m-hero-row-val" id="mUpMessages">No unread</span></div>
-          </div>
-        </div>
-
-        <!-- ══ ROW 2: Protocol / Supply / Care Team ══ -->
-        <div class="m-grid" id="mGrid">
-          <!-- Protocol Summary -->
-          <div class="m-card" id="mCardProtocol">
-            <div class="m-card-label">Protocol</div>
-            <div class="m-card-title" id="mProtoName">—</div>
-            <div class="m-hero-row" style="margin-top:12px;"><span class="m-hero-row-label">Duration</span><span class="m-hero-row-val" id="mProtoDuration">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Frequency</span><span class="m-hero-row-val" id="mProtoFreq">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Started</span><span class="m-hero-row-val" id="mProtoStarted">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Phase</span><span class="m-hero-row-val" id="mProtoPhase">—</span></div>
-            <button class="m-card-link" onclick="switchTab('protocol')">View full protocol</button>
-          </div>
-
-          <!-- Supply -->
-          <div class="m-card m-card-tier1" id="mCardSupply">
-            <div class="m-card-label">Supply</div>
-            <div style="margin-bottom:12px;"><span class="m-card-stat" id="mSupplyCount">—</span><span class="m-card-stat-unit">doses remaining</span></div>
-            <div class="m-card-progress"><div class="m-card-progress-fill" id="mSupplyBar" style="width:75%;"></div></div>
-            <div class="m-hero-row" style="margin-top:12px;"><span class="m-hero-row-label">Coverage</span><span class="m-hero-row-val" id="mSupplyCoverage">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Next refill</span><span class="m-hero-row-val" id="mSupplyRefill">—</span></div>
-          </div>
-
-          <!-- Care Team -->
-          <div class="m-card" id="mCardClinician">
-            <div class="m-card-label">Care Team</div>
-            <div class="m-cl-row">
-              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
-              <div>
-                <div class="m-cl-name" id="mClName">Your Clinician</div>
-                <a href="#" onclick="event.preventDefault();_openClinicianProfile()" style="font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;margin-top:6px;display:inline-flex;align-items:center;gap:4px;opacity:0.7;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+            <div class="m-hero-stats">
+              <div class="m-hero-stat">
+                <div class="m-hero-stat-lbl">Next dose</div>
+                <div class="m-hero-stat-val" id="mStatusNext">—</div>
+              </div>
+              <div class="m-hero-stat">
+                <div class="m-hero-stat-lbl">Phase</div>
+                <div class="m-hero-stat-val" id="mStatusPhase">—</div>
+              </div>
+              <div class="m-hero-stat">
+                <div class="m-hero-stat-lbl">On-time</div>
+                <div class="m-hero-stat-val" id="mHeroOnTime">—</div>
               </div>
             </div>
-            <div class="m-hero-row" style="margin-top:8px;"><span class="m-hero-row-label">New messages</span><span class="m-hero-row-val" id="mClUnread">None</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Monthly check-in</span><span class="m-hero-row-val" id="mClCheckin">—</span></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:12px;">
-              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
-              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+          </div>
+
+          <!-- Your Plan (merges old Protocol + Supply) -->
+          <div class="m-card m-card-plan" id="mCardPlan">
+            <div class="m-card-label">Your Plan</div>
+            <div class="m-plan-rows">
+              <div class="m-plan-row"><span>Duration</span><span id="mProtoDuration">—</span></div>
+              <div class="m-plan-row"><span>Frequency</span><span id="mProtoFreq">—</span></div>
+              <div class="m-plan-row"><span>Started</span><span id="mProtoStarted">—</span></div>
             </div>
+            <div class="m-plan-supply">
+              <div class="m-plan-supply-top">
+                <div><span class="m-plan-supply-num" id="mSupplyCount">—</span><span class="m-plan-supply-unit">doses remaining</span></div>
+                <div class="m-plan-supply-refill" id="mSupplyRefill">—</div>
+              </div>
+              <div class="m-plan-progress"><div class="m-plan-progress-fill" id="mSupplyBar" style="width:0%;"></div></div>
+            </div>
+            <button class="m-plan-link" onclick="switchTab('protocol')">View full protocol ›</button>
           </div>
         </div>
 
@@ -4749,31 +4771,28 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           </div>
         </div>
 
-        <!-- ══ ROW 3: Adherence / Upcoming / Support ══ -->
-        <div class="m-grid">
-          <!-- Adherence -->
-          <div class="m-card m-card-tier3">
-            <div class="m-card-label">Adherence</div>
-            <div class="m-hero-row"><span class="m-hero-row-label">Doses logged</span><span class="m-hero-row-val" id="mAdhLogged">—</span></div>
-            <div class="m-hero-row"><span class="m-hero-row-label">On-time rate</span><span class="m-hero-row-val green" id="mAdhRate">—</span></div>
-          </div>
-
-          <!-- Pulse brand card -->
-          <div class="m-card m-card-tier3 m-pulse-brand-card" style="display:flex;align-items:center;justify-content:center;min-height:160px;background:radial-gradient(circle at 50% 50%,#1a3d2e 0%,#122b20 40%,#0a1a13 75%,#060f0a 100%);border:1px solid rgba(58,122,92,0.15);box-shadow:var(--m-shadow,0 2px 8px rgba(20,20,20,0.04));position:relative;overflow:hidden;">
-            <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(58,122,92,0.12),transparent 55%);pointer-events:none;"></div>
-            <div style="position:relative;z-index:1;">
-              <div style="width:90px;height:90px;border:2px solid #3a7a5c;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(58,122,92,0.8),0 0 24px rgba(58,122,92,0.4);animation:heartbeatGlow 2.4s ease-in-out infinite;">
-                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" style="overflow:visible;">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#3a7a5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(58,122,92,0.8));animation:heartbeatStroke 2.4s ease-in-out infinite;"/>
-                </svg>
+        <!-- ══ ROW 2: Care Team + Support ═══════════════════════════
+             Care Team trimmed to just the clinician identity + the
+             Message/Schedule action buttons. Support unchanged. -->
+        <div class="m-grid m-grid-2" id="mOvRow2">
+          <!-- Care Team -->
+          <div class="m-card" id="mCardClinician">
+            <div class="m-card-label">Care Team</div>
+            <div class="m-cl-row">
+              <div class="m-cl-avatar" id="mClAvatar">Dr</div>
+              <div>
+                <div class="m-cl-name" id="mClName">Your Clinician</div>
+                <a href="#" onclick="event.preventDefault();_openClinicianProfile()" style="font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;margin-top:6px;display:inline-flex;align-items:center;gap:4px;opacity:0.7;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
               </div>
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:16px;">
+              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('messages')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</button>
+              <button class="m-card-btn" style="justify-content:center;white-space:nowrap;" onclick="switchTab('appointments')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Schedule</button>
+            </div>
           </div>
-          <!-- Hidden element for JS compat -->
-          <span id="mUpNextAppt" style="display:none;"></span>
 
           <!-- Support — routes to Resources first, Messages as escalation -->
-          <div class="m-card m-card-tier3">
+          <div class="m-card">
             <div class="m-card-label">Support</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
               <button class="m-card-btn" style="width:100%;justify-content:flex-start;" onclick="switchTab('resources')">Missed a dose?</button>
@@ -4782,6 +4801,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <button class="m-card-btn" style="width:100%;justify-content:flex-start;border-color:rgba(70,185,122,0.18);color:var(--m-green-dark,#224D3A);" onclick="switchTab('messages')">Contact clinician</button>
             </div>
           </div>
+          <!-- Hidden elements kept for JS compat with legacy paths -->
+          <span id="mUpNextAppt" style="display:none;"></span>
+          <span id="mUpRefill" style="display:none;"></span>
+          <span id="mUpCheckin" style="display:none;"></span>
         </div>
 
       </div>
@@ -12631,14 +12654,16 @@ function _refreshOverviewData() {
     }
   }
 
-  // ── HERO MIDDLE (status) ──
-  el = document.getElementById('mStatusDose');
-  if (el) { el.textContent = loggedToday ? 'Logged' : 'Not logged'; el.className = 'm-hero-row-val' + (loggedToday ? ' green' : ''); }
+  // ── HERO inline stats (Next dose · Phase · On-time) ──
   el = document.getElementById('mStatusNext'); if (el) el.textContent = nextDoseStr;
-  el = document.getElementById('mStatusPhase'); if (el) el.textContent = phaseStr || 'No data';
-
-  // ── HERO RIGHT (coming up) ──
-  el = document.getElementById('mUpRefill'); if (el) el.textContent = refillStr || 'No data';
+  el = document.getElementById('mStatusPhase'); if (el) el.textContent = phaseStr || '—';
+  el = document.getElementById('mHeroOnTime');
+  if (el) {
+    var _heroOnTime = (typeof _computeAggregatedOnTime === 'function')
+      ? _computeAggregatedOnTime(window._activeRxsForCarousel || [], '30d')
+      : null;
+    el.textContent = (_heroOnTime == null) ? '—' : (_heroOnTime + '%');
+  }
 
   // ── ROW 2: Protocol card ──
   el = document.getElementById('mProtoName'); if (el) el.textContent = op.displayName;

@@ -3,23 +3,25 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES
---   1. Wipes all test-member data (you paste the UUIDs before running)
---   2. Drops prescription-related columns from `consultations` and `profiles`
---   3. Creates `prescriptions` table (one row per active/past Rx)
---   4. Creates `prescription_versions` table (audit trail per Rx)
---   5. Updates `dose_logs` to reference prescriptions by id
---   6. Adds indexes + RLS policies
+--   1. Drops prescription-related columns from `consultations` and `profiles`
+--   2. Creates `prescriptions` table (one row per active/past Rx)
+--   3. Creates `prescription_versions` table (audit trail per Rx)
+--   4. Updates `dose_logs` to reference prescriptions by id
+--   5. Adds indexes + RLS policies
+--
+-- PRECONDITIONS
+--   - All test member rows have been deleted from the custom tables
+--     (profiles, consultations, appointments, messages, notifications,
+--     dose_logs, support_requests). The column drops in Section 1 would
+--     otherwise destroy data.
+--   - The corresponding auth.users rows are also deleted via the
+--     Supabase dashboard.
 --
 -- BEFORE RUNNING
---   - Take a database snapshot in Supabase (Database → Backups) for safety.
+--   - Take a database snapshot in Supabase (Database → Backups).
 --   - Open the Supabase SQL editor, paste this WHOLE file.
---   - Run Section 0 first to identify the three test members and copy
---     their UUIDs into Section 1.
---   - Run Section 1 to wipe those users' rows in the custom tables.
---   - Manually delete the three test users from the Supabase dashboard
---     (Authentication → Users). The SQL cannot touch `auth.users` directly.
---   - Run Sections 2–6 in order.
---   - Run Section 7 at the end to verify the migration succeeded.
+--   - Run Sections 1–5 in order.
+--   - Run Section 6 at the end to verify.
 --
 -- ROLLBACK
 --   None. This is destructive and one-way. The snapshot is your safety net.
@@ -28,74 +30,9 @@
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 0 — Identify test members (read-only, safe)
--- ─────────────────────────────────────────────────────────────────────────
--- Run this first. Copy the UUIDs of the three test members into Section 1.
-
-SELECT p.user_id, p.email, p.first_name, p.last_name, p.role, p.created_at
-  FROM profiles p
- WHERE p.role IN ('member', 'consumer')
-    OR p.email ILIKE '%test%'
- ORDER BY p.created_at DESC;
-
-
--- ─────────────────────────────────────────────────────────────────────────
--- Section 1 — Wipe test member data (DESTRUCTIVE)
--- ─────────────────────────────────────────────────────────────────────────
--- Fill in the UUIDs from Section 0, then run this block. Leave the array
--- empty to get a safety exception instead of wiping nothing silently.
-
-DO $$
-DECLARE
-  test_user_ids uuid[] := ARRAY[
-    -- '00000000-0000-0000-0000-000000000000'::uuid,  -- testmember1
-    -- '00000000-0000-0000-0000-000000000000'::uuid,  -- testmember2
-    -- '00000000-0000-0000-0000-000000000000'::uuid   -- testmember3
-  ]::uuid[];
-  deleted_count integer;
-BEGIN
-  IF test_user_ids IS NULL OR array_length(test_user_ids, 1) IS NULL THEN
-    RAISE EXCEPTION 'test_user_ids is empty — paste the UUIDs from Section 0 before running.';
-  END IF;
-
-  DELETE FROM notifications    WHERE user_id     = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'notifications: deleted %', deleted_count;
-
-  DELETE FROM messages         WHERE thread_id   = ANY(test_user_ids)
-                                  OR sender_id   = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'messages: deleted %', deleted_count;
-
-  DELETE FROM dose_logs        WHERE user_id     = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'dose_logs: deleted %', deleted_count;
-
-  DELETE FROM appointments     WHERE consumer_id = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'appointments: deleted %', deleted_count;
-
-  DELETE FROM support_requests WHERE user_id     = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'support_requests: deleted %', deleted_count;
-
-  DELETE FROM consultations    WHERE user_id     = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'consultations: deleted %', deleted_count;
-
-  DELETE FROM profiles         WHERE user_id     = ANY(test_user_ids);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'profiles: deleted %', deleted_count;
-
-  RAISE NOTICE 'Wiped data for % test users. Now delete the auth.users rows via the Supabase dashboard.', array_length(test_user_ids, 1);
-END $$;
-
-
--- ─────────────────────────────────────────────────────────────────────────
--- Section 2 — Drop legacy prescription columns
+-- Section 1 — Drop legacy prescription columns
 -- ─────────────────────────────────────────────────────────────────────────
 -- These are now owned by `prescriptions` and `prescription_versions`.
--- Safe to run after Section 1 since test data has been wiped.
 
 ALTER TABLE consultations
   DROP COLUMN IF EXISTS protocol_assigned,
@@ -130,7 +67,7 @@ ALTER TABLE profiles
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 3 — Create `prescriptions` table
+-- Section 2 — Create `prescriptions` table
 -- ─────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS prescriptions (
@@ -169,7 +106,7 @@ CREATE INDEX IF NOT EXISTS prescriptions_clinician
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 4 — Create `prescription_versions` table (audit trail)
+-- Section 3 — Create `prescription_versions` table (audit trail)
 -- ─────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS prescription_versions (
@@ -214,7 +151,7 @@ CREATE INDEX IF NOT EXISTS prescription_versions_timeline
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 5 — Update `dose_logs` to reference prescriptions
+-- Section 4 — Update `dose_logs` to reference prescriptions
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- Add the FK column
@@ -240,8 +177,8 @@ ALTER TABLE dose_logs
   UNIQUE (prescription_id, dose_date);
 
 -- Tighten NOT NULL on prescription_id. Safe only when the table is empty
--- (test data was wiped in Section 1). If you have production dose logs, this
--- DO block leaves the column nullable so nothing breaks.
+-- (all test data was already wiped). If the table has rows, this DO block
+-- leaves the column nullable so nothing breaks.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM dose_logs) THEN
@@ -257,7 +194,7 @@ CREATE INDEX IF NOT EXISTS dose_logs_prescription_date
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 6 — Row Level Security
+-- Section 5 — Row Level Security
 -- ─────────────────────────────────────────────────────────────────────────
 -- Matches the convention already used by dose_logs / availability:
 -- role check via auth.jwt() → user_metadata → role.
@@ -304,11 +241,11 @@ CREATE POLICY "clinicians write prescription versions"
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Section 7 — Sanity checks (run at the end to verify)
+-- Section 6 — Sanity checks (run at the end to verify)
 -- ─────────────────────────────────────────────────────────────────────────
 
--- Row counts. After a clean wipe + migration: prescriptions/versions = 0,
--- consultations/profiles = however many clinician/admin rows survived.
+-- Row counts. After migration: prescriptions/versions = 0, other tables
+-- reflect whatever clinician/admin rows survived the manual wipe.
 SELECT 'prescriptions'         AS table_name, COUNT(*) FROM prescriptions
 UNION ALL
 SELECT 'prescription_versions',                COUNT(*) FROM prescription_versions

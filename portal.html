@@ -2240,9 +2240,14 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 @keyframes heartbeatStroke{0%,100%{stroke:#3a7a5c;filter:drop-shadow(0 0 3px rgba(58,122,92,0.55));}50%{stroke:#3a7a5c;filter:drop-shadow(0 0 7px rgba(58,122,92,0.85));}}
 
 /* ── Clinician avatar ── */
-.m-cl-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
-.m-cl-avatar{width:88px;height:88px;border-radius:50%;background:rgba(47,111,85,0.08);border:2px solid rgba(47,111,85,0.15);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:#2F6F55;flex-shrink:0;letter-spacing:0.05em;overflow:hidden;}
-.m-cl-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--m-text);letter-spacing:-0.01em;margin-bottom:2px;}
+.m-cl-row{display:flex;align-items:center;gap:18px;margin-bottom:16px;}
+.m-cl-avatar{width:110px;height:110px;border-radius:50%;background:rgba(47,111,85,0.08);border:2px solid rgba(47,111,85,0.15);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:26px;font-weight:600;color:#2F6F55;flex-shrink:0;letter-spacing:0.05em;overflow:hidden;}
+.m-cl-info{min-width:0;flex:1;}
+.m-cl-name{font-family:'Inter',sans-serif;font-size:19px;font-weight:600;color:var(--m-text);letter-spacing:-0.01em;margin-bottom:4px;line-height:1.25;}
+.m-cl-meta{font-family:'Inter',sans-serif;font-size:13px;color:var(--m-text2);line-height:1.4;margin-bottom:8px;}
+.m-cl-meta:empty{display:none;margin-bottom:0;}
+.m-cl-profile-link{font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;display:inline-flex;align-items:center;gap:4px;opacity:0.8;transition:opacity .2s;font-weight:500;}
+.m-cl-profile-link:hover{opacity:1;}
 .m-cl-status{font-family:'Inter',sans-serif;font-size:12px;color:var(--m-text3);}
 
 /* ── Forms/inputs ── */
@@ -4833,9 +4838,10 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <div class="m-card-label">Care Team</div>
               <div class="m-cl-row">
                 <div class="m-cl-avatar" id="mClAvatar">Dr</div>
-                <div>
+                <div class="m-cl-info">
                   <div class="m-cl-name" id="mClName">Your Clinician</div>
-                  <a href="#" onclick="event.preventDefault();_openClinicianProfile()" style="font-family:'Inter',sans-serif;font-size:12px;color:#2F6F55;text-decoration:none;margin-top:6px;display:inline-flex;align-items:center;gap:4px;opacity:0.7;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <div class="m-cl-meta" id="mClMeta"></div>
+                  <a href="#" onclick="event.preventDefault();_openClinicianProfile()" class="m-cl-profile-link">View profile <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
                 </div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:16px;">
@@ -13807,7 +13813,18 @@ function populatePortal(user, consultation, greeting) {
             window._clinicianTimezone = cp.cl_timezone;
             if (typeof _reRenderMemberRxDates === 'function') _reRenderMemberRxDates();
           }
-          var clName = cp.display_name || ((cp.first_name || '') + ' ' + (cp.last_name || '')).trim() || null;
+          // Build a full "Dr. First Last" string for the care-team surfaces.
+          // Prefer explicit first_name + last_name (they read cleanest with
+          // the "Dr." prefix); fall back to display_name only if those are
+          // missing. Strip any duplicate "Dr." the display_name might carry.
+          var _clFirst = (cp.first_name || '').trim();
+          var _clLast  = (cp.last_name  || '').trim();
+          var _clFromParts = (_clFirst || _clLast) ? (_clFirst + ' ' + _clLast).trim() : '';
+          var _clDisplay = (cp.display_name || '').trim();
+          var clNameBare = _clFromParts || _clDisplay.replace(/^dr\.?\s+/i, '') || null;
+          var clName = clNameBare ? ('Dr. ' + clNameBare) : null;
+          // Bare name (no "Dr.") for messaging placeholders and sentences.
+          var clNameForSentence = clNameBare || null;
           if (clName) {
             var nameEl = document.getElementById('careTeamName');
             var subEl = document.getElementById('careTeamSub');
@@ -13818,7 +13835,17 @@ function populatePortal(user, consultation, greeting) {
             // Update overview grid clinician card
             var mClName = document.getElementById('mClName');
             if (mClName) mClName.textContent = clName;
-            var clInitials = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+            // Credentials + specialty line under the name (e.g. "MD · Peptide
+            // Therapeutics"). Hidden by the :empty CSS rule if neither field
+            // is set on the clinician profile.
+            var mClMeta = document.getElementById('mClMeta');
+            if (mClMeta) {
+              var _metaParts = [];
+              if (cp.cl_credentials) _metaParts.push(cp.cl_credentials);
+              if (cp.cl_specialty)   _metaParts.push(cp.cl_specialty);
+              mClMeta.textContent = _metaParts.join(' \u00B7 ');
+            }
+            var clInitials = clNameBare ? clNameBare.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2) : 'Dr';
             var mClAvatar = document.getElementById('mClAvatar');
             if (mClAvatar) {
               if (cp.photo_url) {
@@ -13844,7 +13871,7 @@ function populatePortal(user, consultation, greeting) {
               if (cp.photo_url) {
                 msgAvatar.innerHTML = '<img src="' + cp.photo_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
               } else {
-                msgAvatar.textContent = clName.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2);
+                msgAvatar.textContent = clInitials;
               }
             }
             window._clinicianPhotoUrl = cp.photo_url || null;

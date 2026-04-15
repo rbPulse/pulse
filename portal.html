@@ -17213,13 +17213,33 @@ async function _trackerUndoToday(rxId, btnEl) {
   if (!rxId) return;
   var todayStr = localDateStr(new Date());
   try { if (btnEl) btnEl.disabled = true; } catch(e){}
-  if (PREVIEW_MODE) {
+
+  // Shared local-state cleanup + cross-surface refresh. Matches the
+  // _logDoseForRx _applyLocal helper in reverse: remove today from
+  // _rxLoggedDates[rxId], rebuild the flat loggedDates array from
+  // the per-Rx map (so single-Rx paths still line up), and repaint
+  // every surface that cares (Tracker, Protocol carousel, Overview
+  // single-mode data, Overview on-time tiles, Overview multi tiles).
+  function _applyUndoLocal() {
     var arr = _rxLoggedDates[rxId] || [];
     var i = arr.indexOf(todayStr);
     if (i !== -1) arr.splice(i, 1);
     _rxLoggedDates[rxId] = arr;
-    renderTrackerToday();
-    _refreshOnTimeTiles();
+    // Rebuild loggedDates from the per-Rx map so it stays in sync.
+    var all = {};
+    Object.keys(_rxLoggedDates).forEach(function(k) {
+      (_rxLoggedDates[k] || []).forEach(function(d) { all[d] = true; });
+    });
+    loggedDates = Object.keys(all);
+    try { _refreshProtoCarouselProgress(); } catch (_) {}
+    try { _refreshOverviewData(); } catch (_) {}
+    try { renderTrackerAll(); } catch (_) {}
+    try { _refreshOnTimeTiles(); } catch (_) {}
+    try { _renderOverviewMulti(); } catch (_) {}
+  }
+
+  if (PREVIEW_MODE || !currentUserId) {
+    _applyUndoLocal();
     return;
   }
   try {
@@ -17231,12 +17251,7 @@ async function _trackerUndoToday(rxId, btnEl) {
       if (btnEl) btnEl.disabled = false;
       return;
     }
-    var arr2 = _rxLoggedDates[rxId] || [];
-    var j = arr2.indexOf(todayStr);
-    if (j !== -1) arr2.splice(j, 1);
-    _rxLoggedDates[rxId] = arr2;
-    renderTrackerToday();
-    _refreshOnTimeTiles();
+    _applyUndoLocal();
   } catch (err) {
     console.warn('[Pulse] undo dose log exception:', err && err.message);
     if (btnEl) btnEl.disabled = false;

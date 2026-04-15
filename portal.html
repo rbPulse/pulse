@@ -3132,6 +3132,19 @@ body.clinician-mode .cl-ft-row-wrap.cl-ft-rail-blue{border-left-color:#3B82F6 !i
 body.clinician-mode .cl-ft-row-wrap.cl-ft-rail-grey{border-left-color:#A1A1AA !important;}
 body.clinician-mode .cl-ft-row{padding:13px 14px;display:grid;gap:14px;align-items:center;}
 body.clinician-mode .cl-ft-cell-name{font-family:'Inter',sans-serif !important;font-size:13px !important;font-weight:600 !important;color:var(--cl-text) !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:flex;align-items:center;gap:8px;line-height:1.2;}
+/* Phase 7: protocol summary label next to the patient name */
+body.clinician-mode .cl-ft-cell-protocol{
+  font-family:'Inter',sans-serif !important;
+  font-size:10px !important;
+  font-weight:500 !important;
+  color:var(--cl-text3,rgba(0,0,0,0.45)) !important;
+  letter-spacing:0.03em !important;
+  flex:0 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 body.clinician-mode .cl-ft-cell{font-family:'Inter',sans-serif !important;font-size:13px !important;font-weight:500 !important;color:var(--cl-text2) !important;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 body.clinician-mode .cl-ft-cell-preview{color:rgba(0,0,0,0.5) !important;}
 body.clinician-mode .cl-ft-cell-chev{color:rgba(0,0,0,0.25) !important;font-size:14px;text-align:right;transition:transform .2s;}
@@ -3929,6 +3942,27 @@ body.clinician-mode .crw-outcome-disc-divider{
 
 /* Rx history timeline */
 .rx-hist-list{display:flex; flex-direction:column; gap:10px;}
+/* Phase 7: sections group versions by protocol in the history modal */
+.rx-hist-section{margin-bottom:18px;}
+.rx-hist-section:last-child{margin-bottom:0;}
+.rx-hist-section-hdr{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:0 0 10px; padding:0 2px 8px;
+  border-bottom:1px solid rgba(0,0,0,0.08);
+}
+.rx-hist-section-name{
+  font-family:'Inter',sans-serif;
+  font-size:14px; font-weight:700; color:var(--cl-text,#111111);
+  letter-spacing:-0.01em;
+}
+.rx-hist-section-pill{
+  font-family:'Inter',sans-serif;
+  font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  padding:3px 9px; border-radius:999px;
+  background:rgba(29,185,84,0.12); color:#17a34a;
+}
+.rx-hist-section.rx-hist-section-stopped .rx-hist-section-name{color:rgba(0,0,0,0.55);}
+.rx-hist-section.rx-hist-section-stopped .rx-hist-section-pill{background:rgba(185,28,28,0.12); color:#B91C1C;}
 .rx-hist-entry{
   padding:12px 14px; border:1px solid rgba(0,0,0,0.08);
   border-radius:10px; background:#FBFAF6;
@@ -8139,6 +8173,37 @@ function _resolveCurrentClinicianName() {
   return null;
 }
 
+// Diff helper for the Adjust-Rx notification body. Compares the values
+// that were in the modal's ctx.current (before) against the newValues
+// object the save handler built (after) and returns a short human
+// description of the most meaningful change — e.g. "Dose 250mg → 300mg"
+// or "Frequency 1x daily → 2x daily". Returns '' when nothing moved.
+function _diffRxValues(before, after) {
+  if (!before || !after) return '';
+  function _dose(v) { return [v.dose_amount, v.dose_unit].filter(Boolean).join(''); }
+  function _freq(v) {
+    var a = v.frequency_amount, c = v.frequency_cadence;
+    return (a != null && c) ? (a + 'x ' + c) : '';
+  }
+  function _dur(v) {
+    var n = v.duration_value, u = v.duration_unit;
+    return (n != null && u) ? (n + ' ' + u) : '';
+  }
+  var oldProto = before.protocol_assigned || '';
+  var newProto = after.protocol_key       || '';
+  var oldDose = _dose(before), newDose = _dose(after);
+  var oldFreq = _freq(before), newFreq = _freq(after);
+  var oldTim  = before.timing || '',  newTim  = after.timing || '';
+  var oldDur  = _dur(before),  newDur  = _dur(after);
+  // Priority order: dose → frequency → timing → duration → protocol
+  if (newDose && oldDose !== newDose) return 'Dose ' + (oldDose || '—') + ' → ' + newDose;
+  if (newFreq && oldFreq !== newFreq) return 'Frequency ' + (oldFreq || '—') + ' → ' + newFreq;
+  if (newTim  && oldTim  !== newTim ) return 'Timing ' + (oldTim || '—') + ' → ' + newTim;
+  if (newDur  && oldDur  !== newDur ) return 'Duration ' + (oldDur || '—') + ' → ' + newDur;
+  if (newProto && oldProto !== newProto) return 'Protocol ' + (oldProto || '—') + ' → ' + newProto;
+  return '';
+}
+
 // Format a stored full name as "Dr. <last word>" for display. Returns
 // null when we don't have anything usable so callers can fall back.
 function _formatDrLastName(fullName) {
@@ -9114,14 +9179,21 @@ async function _saveAdjustRx() {
       }
     }
 
-    // Notify patient — Phase 7 will add the diff summary back in.
+    // Notify patient. Body mentions the specific protocol that changed
+    // + a short diff summary of what actually moved (e.g. "Dose 250mg
+    // → 300mg") so members with multiple protocols can tell which Rx
+    // was touched without opening the portal.
+    var protoLabelForNotif = ctx.current.protocol_assigned || (newValues && newValues.protocol_key) || '';
     var notifBody;
     if (isDiscontinue) {
-      notifBody = 'Your clinician has discontinued your protocol. Reason: ' + reason;
+      notifBody = 'Your clinician has discontinued' + (protoLabelForNotif ? ' ' + protoLabelForNotif : ' your protocol') + '. Reason: ' + reason;
     } else if (ctx.isReprescribe) {
-      notifBody = 'Your clinician has re-prescribed your protocol. ' + reason;
+      notifBody = 'Your clinician has re-prescribed' + (protoLabelForNotif ? ' ' + protoLabelForNotif : ' your protocol') + '. ' + reason;
     } else {
-      notifBody = 'Your clinician updated your protocol. Reason: ' + reason;
+      var diffTxt = _diffRxValues(ctx.current, newValues);
+      notifBody = 'Your clinician updated ' + (protoLabelForNotif || 'your protocol') +
+        (diffTxt ? ' — ' + diffTxt : '') +
+        '. Reason: ' + reason;
     }
     try {
       await db.from('notifications').insert({
@@ -9181,22 +9253,21 @@ async function _openRxHistoryModal(consultId) {
     var d = cRes.data[0].data || {};
     var name = ((d.first_name || '') + ' ' + (d.last_name || '')).trim() || d.email || 'Patient';
 
-    // Phase 1 is single-protocol, so pick the first prescription (active or
-    // discontinued). In Phase 2 this modal will group by protocol and show
-    // a section per Rx.
-    var rx = allRxs[0] || null;
+    // Phase 7: group by protocol. Active Rxs first, then discontinued.
+    // Each Rx gets its own section with a protocol header + its version
+    // timeline below. Fallback prescriber name for legacy entries that
+    // lack prescribed_by_name.
+    var _fallbackWho = _resolveCurrentClinicianName();
 
-    var entriesHtml = '';
-    if (rx) {
+    function _renderOneRxSection(rx) {
       var versions = rx._versions || [];
       var activeVersions = versions.filter(function(v) { return v.effective_to == null; });
       var closedVersions = versions.filter(function(v) { return v.effective_to != null; })
         .slice().sort(function(a, b) {
           return new Date(b.effective_from) - new Date(a.effective_from);
         });
-
-      // Inject protocol_key onto each version so the render helper can
-      // display it (versions don't own it — the parent Rx does).
+      // Inject protocol_key + adjustment_type onto each version so the
+      // entry render helper can surface them (versions don't own them).
       function _hydrate(v) {
         var copy = Object.assign({}, v);
         copy.protocol_assigned = rx.protocol_key;
@@ -9205,14 +9276,10 @@ async function _openRxHistoryModal(consultId) {
         }
         return copy;
       }
-
-      // Fallback prescriber name for legacy entries that lack prescribed_by_name.
-      var _fallbackWho = _resolveCurrentClinicianName();
-
-      // If the Rx is discontinued, lead with a synthesized tombstone entry
-      // so the timeline starts with "what most recently happened".
+      var inner = '';
+      // Discontinued leads with a synthesized tombstone entry
       if (rx.status === 'discontinued') {
-        entriesHtml += _rxHistoryEntryHtml({
+        inner += _rxHistoryEntryHtml({
           protocol_assigned:  rx.protocol_key,
           effective_from:     rx.discontinued_at,
           effective_to:       rx.discontinued_at,
@@ -9222,17 +9289,36 @@ async function _openRxHistoryModal(consultId) {
           adjustment_reason:  rx.discontinued_reason || ''
         }, false, _fallbackWho);
       } else {
-        // Active: render the current version as "Current / Active"
         activeVersions.forEach(function(v) {
-          entriesHtml += _rxHistoryEntryHtml(_hydrate(v), true, _fallbackWho);
+          inner += _rxHistoryEntryHtml(_hydrate(v), true, _fallbackWho);
         });
       }
-
       closedVersions.forEach(function(v) {
-        entriesHtml += _rxHistoryEntryHtml(_hydrate(v), false, _fallbackWho);
+        inner += _rxHistoryEntryHtml(_hydrate(v), false, _fallbackWho);
       });
+
+      var headerPill = rx.status === 'active' ? 'ACTIVE' : 'DISCONTINUED';
+      var sectionCls = rx.status === 'active' ? 'rx-hist-section' : 'rx-hist-section rx-hist-section-stopped';
+      return '<div class="'+sectionCls+'">' +
+        '<div class="rx-hist-section-hdr">' +
+          '<div class="rx-hist-section-name">'+escapeHtml(rx.protocol_key || 'Protocol')+'</div>' +
+          '<div class="rx-hist-section-pill">'+headerPill+'</div>' +
+        '</div>' +
+        '<div class="rx-hist-list">'+inner+'</div>' +
+      '</div>';
     }
-    if (!entriesHtml) entriesHtml = '<div class="rx-hist-empty">No prescription history yet.</div>';
+
+    // Order: active Rxs first (in started_at order — already from pxGetAll),
+    // then discontinued Rxs (most recent first).
+    var actives = allRxs.filter(function(r) { return r.status === 'active'; });
+    var disconts = allRxs.filter(function(r) { return r.status === 'discontinued'; })
+      .slice().sort(function(a, b) {
+        return new Date(b.discontinued_at || 0) - new Date(a.discontinued_at || 0);
+      });
+    var sectionsHtml = '';
+    actives.forEach(function(rx) { sectionsHtml += _renderOneRxSection(rx); });
+    disconts.forEach(function(rx) { sectionsHtml += _renderOneRxSection(rx); });
+    if (!sectionsHtml) sectionsHtml = '<div class="rx-hist-empty">No prescription history yet.</div>';
 
     var modal = document.getElementById('rxHistoryModal');
     if (modal) modal.remove();
@@ -9249,7 +9335,7 @@ async function _openRxHistoryModal(consultId) {
           '</div>' +
           '<button type="button" class="rx-adjust-close" onclick="_closeRxHistoryModal()" aria-label="Close">&times;</button>' +
         '</div>' +
-        '<div class="rx-hist-list">'+entriesHtml+'</div>' +
+        sectionsHtml +
       '</div>';
     document.body.appendChild(modal);
     modal.addEventListener('click', function(e) { if (e.target === modal) _closeRxHistoryModal(); });
@@ -12037,11 +12123,26 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
       ? ' (' + dateLabels.join(', ') + ')'
       : '';
 
+    // Count how many active prescriptions the member has so the welcome
+    // message can acknowledge multi-protocol members explicitly.
+    var protoFragment = '';
+    try {
+      var rxRes = await db.from('prescriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', consumerId)
+        .eq('status', 'active');
+      var protoCount = (rxRes && rxRes.count) || 0;
+      if (protoCount >= 2) {
+        protoFragment = ' You\u2019re on ' + protoCount + ' protocols — you\u2019ll find all of them stacked on your Protocol tab.';
+      }
+    } catch (_) { /* non-blocking */ }
+
     var greeting = firstName
       ? ('Welcome to Pulse, ' + firstName + '. ')
       : 'Welcome to Pulse. ';
     var body = greeting +
-      'I\u2019m glad to have you on board. Please reach out anytime if you have questions about your protocol or need anything at all. I\u2019ve also gone ahead and scheduled a few monthly check-ins for us' + dateFragment +
+      'I\u2019m glad to have you on board.' + protoFragment +
+      ' Please reach out anytime if you have questions about your protocol or need anything at all. I\u2019ve also gone ahead and scheduled a few monthly check-ins for us' + dateFragment +
       ' so I can track how you\u2019re progressing. Feel free to reschedule any of them from the Appts tab if the timing doesn\u2019t work.';
 
     var insertRes = await db.from('messages').insert({
@@ -13805,11 +13906,25 @@ function renderPatientList(filter) {
     var displayCls   = isOverdue ? 'cl-ft-status-notrx' : meta.cls;
     var railCls      = isOverdue ? 'cl-ft-rail-red'     : meta.rail;
 
+    // Build a small protocol summary shown next to the patient name:
+    // e.g. "Sleep +1". Only appears when the patient has at least one
+    // active Rx; multi-protocol patients get "<first> +N".
+    var protoLabel = '';
+    var actRxs = p._activeRxs || [];
+    if (actRxs.length === 1) {
+      protoLabel = actRxs[0].protocol_key || '';
+    } else if (actRxs.length > 1) {
+      protoLabel = (actRxs[0].protocol_key || 'Protocol') + ' +' + (actRxs.length - 1);
+    }
+
     var wrapper = document.createElement('div');
     wrapper.className = 'cl-ft-row-wrap ' + railCls;
     wrapper.innerHTML =
       '<div class="cl-ft-row cl-ft-cols-patients">' +
-        '<div class="cl-ft-cell-name">' + escapeHtml(p.name || 'Unknown') + '</div>' +
+        '<div class="cl-ft-cell-name">' +
+          '<span>' + escapeHtml(p.name || 'Unknown') + '</span>' +
+          (protoLabel ? '<span class="cl-ft-cell-protocol">' + escapeHtml(protoLabel) + '</span>' : '') +
+        '</div>' +
         '<div class="cl-ft-cell">' + escapeHtml(subRel) + '</div>' +
         '<div class="cl-ft-status ' + displayCls + '">' + displayLabel + '</div>' +
         '<div class="cl-ft-cell-chev">\u203A</div>' +

@@ -306,11 +306,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:16px;
-    align-items:start;
+    align-items:stretch;
     margin-bottom:16px;
   }
   .tracker-top-row > .tracker-today-card,
   .tracker-top-row > .tracker-adh-card{margin-bottom:0;}
+  /* Adherence card on desktop becomes flex-column so the list can
+     stretch to fill whatever height the Today card sets, keeping
+     both cards at the same height. Rows distribute with
+     space-between so the vertical rhythm matches Today's visual
+     density instead of pooling blank space at the bottom. */
+  .tracker-top-row > .tracker-adh-card{display:flex;flex-direction:column;}
+  .tracker-top-row > .tracker-adh-card .tracker-adh-list{flex:1;justify-content:space-between;}
+  /* History disclosure is always-open on desktop. Force the body
+     visible and rotate the chevron down regardless of the
+     .is-expanded class. Mobile keeps the click-to-open behavior. */
+  #trackerHistorySection .tracker-hist-body{display:block;}
+  #trackerHistorySection .tracker-hist-chevron{transform:rotate(90deg);}
 }
 .tracker-today-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
 .tracker-today-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);}
@@ -17539,9 +17551,11 @@ function renderTrackerHistory() {
     }
   }
 
-  // Only repaint the month if the section is currently expanded —
-  // otherwise we defer until the user clicks the header.
-  if (section.classList.contains('is-expanded')) {
+  // Repaint the month when the section is expanded (mobile click)
+  // OR when we're on desktop (>=768px, where the body is always
+  // forced visible by CSS regardless of the .is-expanded flag).
+  var _desktopHistOpen = (window.innerWidth || 0) >= 768;
+  if (_desktopHistOpen || section.classList.contains('is-expanded')) {
     _trackerHistoryRenderMonth();
   }
 }

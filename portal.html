@@ -13758,9 +13758,18 @@ function _ovBuildMultiHeroHtml(activeRxs) {
   // card instead of pushing the hero card taller.
   var tilesCls = 'ov-multi-tiles' + (rxs.length > 4 ? ' ov-multi-tiles-scroll' : '');
 
+  // Premium headline — one warm, personal line instead of an
+  // eyebrow + bland "Your Protocols" stack. Pulls the first name
+  // from the global stash populatePortal sets on load and falls
+  // back gracefully to the un-named greeting when we don't have
+  // one yet. Period at the end closes the thought.
+  var _firstName = (window._memberFirstName || '').trim();
+  var _heroHeadline = _firstName
+    ? (_ovGreeting() + ', ' + _firstName + '.')
+    : (_ovGreeting() + '.');
+
   return '' +
-    '<div class="ov-multi-label">' + escapeHtml(_ovGreeting()) + '</div>' +
-    '<div class="ov-multi-title">Your Protocols</div>' +
+    '<div class="ov-multi-title">' + escapeHtml(_heroHeadline) + '</div>' +
     '<div class="' + tilesCls + '">' + tilesHtml + '</div>' +
     '<div class="ov-multi-stats">' +
       '<div><div class="ov-multi-stat-lbl">Logged</div><div class="ov-multi-stat-val">' + loggedCount + ' of ' + rxs.length + '</div></div>' +
@@ -13959,6 +13968,11 @@ function populatePortal(user, consultation, greeting) {
   if (consultation && consultation.data) {
     var d = consultation.data;
     firstName = d.first_name || '';
+    // Stash the first name globally so surfaces that render after
+    // populatePortal (e.g. _renderOverviewMulti's hero greeting) can
+    // pick it up without re-querying. Falls back to the display name
+    // when first_name is missing on the consultation row.
+    window._memberFirstName = firstName || (_memberDisplayName || '').split(/\s+/)[0] || '';
     // Store member's state for clinician state-matching in booking
     if (d.state) window._memberState = d.state.toUpperCase().trim();
 

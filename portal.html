@@ -10358,19 +10358,33 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     var consultRow = res.data[0];
     var d = consultRow.data || {};
 
-    // Protocol-request consultations don't carry the full intake data
-    // (demographics, goals, clinical summary). Load the member's
-    // original intake consultation so the clinician has full patient
-    // context alongside the request card.
+    // Detect protocol-request consultations.
     var _consultType = null;
     try {
       var _ctRes = await db.from('consultations').select('consultation_type').eq('id', consultId).limit(1);
       if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
     } catch (_) {}
-    if (_consultType === 'protocol_request' || (!d.first_name && d.request_category)) {
+    if (!_consultType && d.request_category) _consultType = 'protocol_request';
+
+    // Protocol-request consultations: Rxs belong to the ORIGINAL
+    // intake consultation (different ID). Fetch ALL Rxs for this
+    // USER, load the original consultation for demographics +
+    // review_status, and keep request fields for the banner.
+    if (_consultType === 'protocol_request') {
+      // Fetch all prescriptions by user_id
+      try {
+        var _userRxRes = await db.from('prescriptions')
+          .select('*, prescription_versions(*)')
+          .eq('user_id', userId)
+          .order('started_at', { ascending: true });
+        if (_userRxRes && !_userRxRes.error && _userRxRes.data) {
+          allRxs = _userRxRes.data.map(_pxFlattenCurrent).filter(Boolean);
+        }
+      } catch (_) {}
+      // Load original intake consultation
       try {
         var _origRes = await db.from('consultations')
-          .select('data, risk_status, risk_flag_reasons')
+          .select('data, risk_status, risk_flag_reasons, review_status')
           .eq('user_id', userId)
           .neq('id', consultId)
           .not('data', 'is', null)
@@ -10378,13 +10392,14 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           .limit(1);
         if (_origRes && _origRes.data && _origRes.data.length) {
           var _origData = _origRes.data[0].data || {};
-          // Merge: keep request fields from the new consultation,
-          // fill in demographics/goals/clinical from the original.
           var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_update_text: d.medical_update_text };
           d = Object.assign({}, _origData, _reqFields);
-          if (!riskStatus && _origRes.data[0].risk_status) {
-            riskStatus = _origRes.data[0].risk_status;
-            riskReasons = _origRes.data[0].risk_flag_reasons || [];
+          // Use original consultation's review_status so the card
+          // renders "Prescribed" section instead of the risk card
+          consultRow.review_status = _origRes.data[0].review_status || consultRow.review_status;
+          if (_origRes.data[0].risk_status) {
+            consultRow.risk_status = _origRes.data[0].risk_status;
+            consultRow.risk_flag_reasons = _origRes.data[0].risk_flag_reasons || [];
           }
         }
       } catch (_) {}
@@ -10429,16 +10444,6 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     else if (diffH < 24) { subRel = diffH + 'h'; }
     else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
 
-    // Risk card — always show the real risk assessment.
-    // Protocol-request details are shown as an inline banner inside
-    // the Prescribed section instead of replacing the risk card.
-    var _consultType = null;
-    try {
-      var _ctRes = await db.from('consultations').select('consultation_type').eq('id', consultId).limit(1);
-      if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
-    } catch (_) {}
-    // Also detect protocol requests from data payload (pre-migration fallback)
-    if (!_consultType && d.request_category) _consultType = 'protocol_request';
     var riskHtml = '';
     if(riskStatus==='high_risk'){
       riskHtml='<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div>'+

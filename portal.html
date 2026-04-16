@@ -7492,7 +7492,13 @@ function _continuePortalInit(user, role) {
       .order('created_at', {ascending: false}).limit(5)
       .then(function(res) {
         var _rows = (res.data || []).filter(function(r) {
-          return r.consultation_type !== 'protocol_request';
+          // Skip protocol_request consultations — identified by the
+          // consultation_type column (if migration has run) OR by the
+          // data payload having request_category without first_name
+          // (protocol requests don't carry intake demographics).
+          if (r.consultation_type === 'protocol_request') return false;
+          if (r.data && r.data.request_category && !r.data.first_name) return false;
+          return true;
         });
         var c = _rows.length > 0 ? _rows[0] : null;
         if (!c) {

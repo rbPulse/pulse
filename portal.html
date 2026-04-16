@@ -7524,8 +7524,9 @@ function _continuePortalInit(user, role) {
               window.location.href = 'consultation.html?new=1';
             });
         }
-        // Purchase completed — stay on portal, skip all redirect checks
-        var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed');
+        // Purchase completed OR already prescribed — stay on portal, skip all redirect checks.
+        // A prescribed/discontinued member is definitively past intake regardless of purchase_status.
+        var _purchaseDone = c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed') || c.review_status === 'prescribed' || c.review_status === 'discontinued';
         if (_purchaseDone) {
           // Pre-fetch active prescriptions so populatePortal can render the
           // hero protocol card on first paint without flashing empty.

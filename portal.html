@@ -7485,11 +7485,16 @@ function _continuePortalInit(user, role) {
       });
     })();
 
-    // Load consultation, but also check for pending appointments before redirecting
+    // Load consultation, but also check for pending appointments before redirecting.
+    // Fetch up to 5 recent consultations and skip any protocol_request rows —
+    // those are add-on requests, not the original intake that determines portal state.
     db.from('consultations').select('*').eq('user_id', user.id)
-      .order('created_at', {ascending: false}).limit(1)
+      .order('created_at', {ascending: false}).limit(5)
       .then(function(res) {
-        var c = res.data && res.data.length > 0 ? res.data[0] : null;
+        var _rows = (res.data || []).filter(function(r) {
+          return r.consultation_type !== 'protocol_request';
+        });
+        var c = _rows.length > 0 ? _rows[0] : null;
         if (!c) {
           // No consultation — check if they have a pending appointment anyway
           // (consultation insert may have failed but appointment succeeded, or RLS blocks consultation read)

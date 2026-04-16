@@ -9067,6 +9067,8 @@ async function pxCreate(ctx) {
     prescribed_by_name: ctx.clinicianName || null
   });
   if (vRes.error) throw vRes.error;
+  // Fire-and-forget: record the prescription event in the patient timeline.
+  try { db.from('patient_events').insert({ user_id: ctx.userId, event_type: 'rx_prescribed', event_data: { protocol_key: ctx.protocolKey, dose_amount: ctx.dose_amount, dose_unit: ctx.dose_unit, frequency_amount: ctx.frequency_amount, frequency_cadence: ctx.frequency_cadence, timing: ctx.timing, duration_value: ctx.duration_value, duration_unit: ctx.duration_unit }, created_by: ctx.clinicianId || null, created_by_name: ctx.clinicianName || null }).then(function(){}).catch(function(){}); } catch(_){}
   return rxId;
 }
 
@@ -9118,6 +9120,8 @@ async function pxAdjust(ctx) {
   await db.from('prescriptions')
     .update({ updated_at: now })
     .eq('id', ctx.prescriptionId);
+  // Fire-and-forget: record the adjustment in the patient timeline.
+  try { var _rxRow = await db.from('prescriptions').select('user_id, protocol_key').eq('id', ctx.prescriptionId).limit(1); var _rxd = (_rxRow && _rxRow.data && _rxRow.data[0]) || {}; db.from('patient_events').insert({ user_id: _rxd.user_id || null, event_type: 'rx_adjusted', event_data: { protocol_key: _rxd.protocol_key, adjustment_types: ctx.adjustmentTypes || [], reason: ctx.reason || null, dose_amount: ctx.dose_amount, dose_unit: ctx.dose_unit, frequency_amount: ctx.frequency_amount, frequency_cadence: ctx.frequency_cadence, timing: ctx.timing, duration_value: ctx.duration_value, duration_unit: ctx.duration_unit }, created_by: ctx.clinicianId || null, created_by_name: ctx.clinicianName || null }).then(function(){}).catch(function(){}); } catch(_){}
 }
 
 // Discontinue an active prescription — closes the current version and
@@ -9138,6 +9142,8 @@ async function pxDiscontinue(ctx) {
     updated_at:          now
   }).eq('id', ctx.prescriptionId);
   if (rxRes.error) throw rxRes.error;
+  // Fire-and-forget: record the discontinuation in the patient timeline.
+  try { var _rxRow2 = await db.from('prescriptions').select('user_id, protocol_key').eq('id', ctx.prescriptionId).limit(1); var _rxd2 = (_rxRow2 && _rxRow2.data && _rxRow2.data[0]) || {}; db.from('patient_events').insert({ user_id: _rxd2.user_id || null, event_type: 'rx_discontinued', event_data: { protocol_key: _rxd2.protocol_key, reason: ctx.reason || null }, created_by: ctx.clinicianId || null, created_by_name: ctx.clinicianName || null }).then(function(){}).catch(function(){}); } catch(_){}
 }
 
 // Re-prescribe a previously discontinued Rx — flips back to active and
@@ -9181,6 +9187,8 @@ async function pxReprescribe(ctx) {
     prescribed_by_name: ctx.clinicianName || null
   });
   if (vRes.error) throw vRes.error;
+  // Fire-and-forget: record the re-prescription in the patient timeline.
+  try { var _rxRow3 = await db.from('prescriptions').select('user_id, protocol_key').eq('id', ctx.prescriptionId).limit(1); var _rxd3 = (_rxRow3 && _rxRow3.data && _rxRow3.data[0]) || {}; db.from('patient_events').insert({ user_id: _rxd3.user_id || null, event_type: 'rx_represcribed', event_data: { protocol_key: _rxd3.protocol_key, dose_amount: ctx.dose_amount, dose_unit: ctx.dose_unit, frequency_amount: ctx.frequency_amount, frequency_cadence: ctx.frequency_cadence, timing: ctx.timing, duration_value: ctx.duration_value, duration_unit: ctx.duration_unit }, created_by: ctx.clinicianId || null, created_by_name: ctx.clinicianName || null }).then(function(){}).catch(function(){}); } catch(_){}
 }
 
 // Toggle handler for the collapsible Prescribed / Previously
@@ -16284,6 +16292,9 @@ async function _savePatientNote(userId) {
       db.from('consultations').update({ session_notes: text }).eq('id', consultId)
         .then(function(){}).catch(function(){});
     }
+
+    // Fire-and-forget: record the note in the patient timeline.
+    try { db.from('patient_events').insert({ user_id: userId, event_type: 'note', event_data: { note_text: text }, created_by: currentUserId || null, created_by_name: clinicianName || null }).then(function(){}).catch(function(){}); } catch(_){}
 
     // Refresh the cache and re-render view mode.
     await _loadPatientNotes(userId);

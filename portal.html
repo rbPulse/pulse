@@ -8661,7 +8661,7 @@ async function loadAttentionCards() {
   try {
     // Get all open consultations (any status that isn't decided or withdrawn)
     var res = await db.from('consultations')
-      .select('id, user_id, review_status, risk_status, data, created_at, consultation_type')
+      .select('id, user_id, review_status, risk_status, data, created_at')
       .eq('assigned_clinician_id', currentUserId)
       .not('review_status', 'in', '("prescribed","not_prescribed","withdrawn")')
       .order('created_at', { ascending: true });
@@ -8765,7 +8765,7 @@ async function loadAttentionCards() {
       else if (riskClass === 'moderate') railClass = 'rail-yellow';
       else if (riskClass === 'low')    railClass = 'rail-green';
 
-      var _isProtoRequest = c.consultation_type === 'protocol_request';
+      var _isProtoRequest = (c.consultation_type === 'protocol_request') || (c.data && c.data.request_category);
       var statusCell = isOverdue
         ? '<div class="cl-attn-row-status overdue">Overdue</div>'
         : _isProtoRequest
@@ -10295,7 +10295,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // prescription-related field lives on the prescriptions table now;
     // consultations only owns the intake event + review decision.
     var consultPromise = db.from('consultations')
-      .select('data, created_at, risk_status, risk_flag_reasons, review_status, no_prescription_reason, evaluation_date, session_notes, consultation_type')
+      .select('data, created_at, risk_status, risk_flag_reasons, review_status, no_prescription_reason, evaluation_date, session_notes')
       .eq('id', consultId).limit(1);
     var rxPromise = pxGetAllForConsultation(consultId);
     var res = await consultPromise;
@@ -10344,7 +10344,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
 
     // Risk / Protocol Request card
-    var _consultType = res.data[0].consultation_type || null;
+    // Fetch consultation_type separately so the main query doesn't
+    // break if the column hasn't been migrated yet.
+    var _consultType = null;
+    try {
+      var _ctRes = await db.from('consultations').select('consultation_type').eq('id', consultId).limit(1);
+      if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
+    } catch (_) {}
     var riskHtml = '';
     if (_consultType === 'protocol_request') {
       var _reqCat = (d.request_category || '—');

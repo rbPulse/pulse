@@ -13789,12 +13789,23 @@ function _attachSlideOneLogButton(primaryRxId) {
   if (existingWrap) existingWrap.remove();
   var todayStr = localDateStr(new Date());
   var todayLogged = (_rxLoggedDates[primaryRxId] || []).indexOf(todayStr) !== -1;
-  // Restyle the header to flex-column so buttons stack below the
-  // protocol name + prescribed-by line, centered.
+  // Restyle the header to flex-row so buttons sit on the right,
+  // vertically centered against the title + prescribed line.
   headerCard.style.display = 'flex';
-  headerCard.style.flexDirection = 'column';
-  headerCard.style.alignItems = 'stretch';
+  headerCard.style.alignItems = 'center';
+  headerCard.style.justifyContent = 'space-between';
   headerCard.style.gap = '16px';
+  headerCard.style.flexWrap = 'wrap';
+  // Wrap the existing children (name + meta) in a flex-1 block
+  var innerWrap = headerCard.querySelector('.proto-header-inner');
+  if (!innerWrap) {
+    innerWrap = document.createElement('div');
+    innerWrap.className = 'proto-header-inner';
+    innerWrap.style.flex = '1';
+    innerWrap.style.minWidth = '0';
+    while (headerCard.firstChild) innerWrap.appendChild(headerCard.firstChild);
+    headerCard.appendChild(innerWrap);
+  }
   // Log button
   var logBtn = document.createElement('button');
   logBtn.type = 'button';
@@ -13808,10 +13819,10 @@ function _attachSlideOneLogButton(primaryRxId) {
   reqBtn.id = 'protoRequestBtn';
   reqBtn.setAttribute('onclick', '_openProtocolRequestModal()');
   reqBtn.textContent = '+ Request New Protocol';
-  // Button wrapper — centered, stacked
+  // Button wrapper — stacked vertically on the right
   var btnWrap = document.createElement('div');
   btnWrap.className = 'proto-header-btns';
-  btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:4px;';
+  btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;';
   btnWrap.appendChild(logBtn);
   btnWrap.appendChild(reqBtn);
   headerCard.appendChild(btnWrap);

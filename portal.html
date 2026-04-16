@@ -7486,21 +7486,45 @@ function _continuePortalInit(user, role) {
     })();
 
     // Load consultation, but also check for pending appointments before redirecting.
-    // Fetch up to 5 recent consultations and skip any protocol_request rows —
-    // those are add-on requests, not the original intake that determines portal state.
+    // Pre-check: if the member has ANY prescribed consultation, they're an
+    // active member — skip all intake redirect logic and go straight to the
+    // portal. This prevents protocol-request consultations (which have
+    // review_status='pending_review') from triggering the intake flow.
+    var _decidedCheck = await db.from('consultations')
+      .select('id')
+      .eq('user_id', user.id)
+      .in('review_status', ['prescribed','not_prescribed','discontinued'])
+      .limit(1);
+    var _isActiveMember = _decidedCheck && _decidedCheck.data && _decidedCheck.data.length > 0;
+
     db.from('consultations').select('*').eq('user_id', user.id)
       .order('created_at', {ascending: false}).limit(5)
       .then(function(res) {
+        // Skip protocol-request consultations — they're add-on requests,
+        // not the intake that determines portal state.
         var _rows = (res.data || []).filter(function(r) {
-          // Skip protocol_request consultations — identified by the
-          // consultation_type column (if migration has run) OR by the
-          // data payload having request_category without first_name
-          // (protocol requests don't carry intake demographics).
           if (r.consultation_type === 'protocol_request') return false;
           if (r.data && r.data.request_category && !r.data.first_name) return false;
           return true;
         });
         var c = _rows.length > 0 ? _rows[0] : null;
+
+        // Active member shortcut: if they have a decided consultation,
+        // go straight to the portal regardless of other state checks.
+        if (_isActiveMember && c) {
+          return pxGetActiveForUser(user.id)
+            .then(function(activeRxs) {
+              c._activeRxs = activeRxs;
+              c._protoStartedAt = (activeRxs[0] && activeRxs[0].started_at) || null;
+              populatePortal(user, c, greeting);
+              var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
+              setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
+            })
+            .catch(function() {
+              c._activeRxs = [];
+              populatePortal(user, c, greeting);
+            });
+        }
         if (!c) {
           // No consultation — check if they have a pending appointment anyway
           // (consultation insert may have failed but appointment succeeded, or RLS blocks consultation read)

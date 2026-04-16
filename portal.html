@@ -11467,57 +11467,39 @@ var _openDetailRow = null;
 
 function toggleApptDetail(appt, role, rowWrapper) {
   var list = rowWrapper.parentNode;
-  var existing = list.querySelector('.appt-detail-panel,.patient-detail-panel');
+  // Consumer-side: clean up any existing inline detail panel (toggle).
+  var existing = list.querySelector('.appt-detail-panel');
   if (existing) {
     var wasThis = existing.parentNode === rowWrapper;
     existing.remove();
-    if (wasThis) { _openDetailRow = null; return; }
+    if (wasThis && role !== 'clinician') { _openDetailRow = null; return; }
   }
   _openDetailRow = rowWrapper;
 
-  // For clinician: show full patient detail panel (same as Patients tab)
+  // Clinician: open the patient-detail modal (Phase 3 migration).
+  // The full patient card renders inside the same centered modal
+  // used by the Patients tab and Overview attention cards.
   var _cid = appt.consumerId || appt.consumer_id;
   if (role === 'clinician' && _cid) {
-    appt.consumerId = _cid;
-    var panel = document.createElement('div');
-    panel.className = 'patient-detail-panel';
-    panel.innerHTML = '<div style="padding:20px;text-align:center;"><div class="skeleton-pulse" style="height:14px;width:50%;margin:0 auto 10px;"></div><div class="skeleton-pulse" style="height:10px;width:70%;margin:0 auto;"></div></div>';
-    rowWrapper.appendChild(panel);
-    // Trigger slide-in on mobile
-    requestAnimationFrame(function(){ panel.classList.add('open'); });
-    // Fetch patient data from consultations + profiles
-    _loadPatientDetailForAppt(appt, panel);
+    (async function() {
+      var consultId = null;
+      try {
+        var cRes = await db.from('consultations').select('id')
+          .eq('user_id', _cid)
+          .order('created_at', { ascending: false }).limit(1);
+        if (cRes && cRes.data && cRes.data.length) consultId = cRes.data[0].id;
+      } catch (e) { console.warn('[Pulse] appt consult lookup failed:', e); }
+      var patient = { id: _cid, _consultation: consultId ? { id: consultId } : null };
+      _openPatientDetailModal(patient, rowWrapper);
+    })();
     return;
   }
 
-  // Consumer view: standard appointment detail
+  // Consumer view: standard appointment detail (unchanged).
   var panel = document.createElement('div');
   panel.className = 'appt-detail-panel';
   panel.innerHTML = buildApptDetail(appt, role);
   rowWrapper.appendChild(panel);
-}
-
-// Load full patient detail for an appointment — reuse canonical CRW card
-function _loadPatientDetailForAppt(appt, panel) {
-  var consumerId = appt.consumerId;
-  if (!consumerId) { panel.innerHTML = buildApptDetail(appt, 'clinician'); return; }
-
-  // Find consultation ID to load the canonical patient card
-  db.from('consultations').select('id').eq('user_id', consumerId).order('created_at', { ascending: false }).limit(1)
-  .then(function(cRes) {
-    if (cRes.data && cRes.data.length > 0) {
-      var consultId = cRes.data[0].id;
-      _activePatientUserId = consumerId;
-      _activePatientConsultId = consultId;
-      _loadAttentionCardBody(panel, consultId, consumerId);
-    } else {
-      panel.innerHTML = '<div style="padding:20px;font-size:13px;color:rgba(0,0,0,0.45);">No consultation found for this patient.</div>';
-    }
-  })
-  .catch(function(e) {
-    console.warn('[Pulse] appt detail load failed:', e);
-    panel.innerHTML = '<div style="padding:20px;font-size:13px;">Failed to load patient details.</div>';
-  });
 }
 function buildApptDetail(a, role) {
   var name    = role === 'clinician' ? (a.patient || '—') : (a.clinician || 'Dr. Sarah Chen');

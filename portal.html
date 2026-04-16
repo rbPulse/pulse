@@ -2284,6 +2284,8 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .ov-add-tile-icon{font-size:24px;font-weight:300;color:rgba(255,255,255,0.5);line-height:1;}
 .ov-add-tile-label{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,0.55);letter-spacing:0.04em;}
 .ov-add-tile:hover .ov-add-tile-icon,.ov-add-tile:hover .ov-add-tile-label{color:rgba(255,255,255,0.85);}
+/* 2-protocol layout: add tile spans both columns as a full-width row. */
+.ov-add-tile-full{grid-column:1 / -1;flex-direction:row;padding:14px 20px;min-height:auto;}
 /* Add-protocol text link (multi-protocol) — sits below the tile grid,
    above the stats row. Matches the "View all protocols" link style. */
 .ov-add-link{text-align:center;margin:6px 0 0;}
@@ -14574,18 +14576,21 @@ function _ovBuildMultiHeroHtml(activeRxs) {
     ? (_ovGreeting() + ', ' + _firstName + '.')
     : (_ovGreeting() + '.');
 
-  // For single-protocol members: add a dashed "add" tile that fills the
-  // empty right slot. For multi-protocol: add a "+ Add protocol" text
-  // link below the tile grid. Both open the request modal.
+  // Add-protocol affordance:
+  //   1 protocol  → add tile in the right grid slot (same row)
+  //   2 protocols → add tile as full-width second row
+  //   3 protocols → add tile in the bottom-right quadrant
+  //   4+ protocols → text link below the grid (no tile)
   var addTileHtml = '';
-  if (rxs.length === 1) {
+  if (rxs.length < 4) {
+    var _addSpanCls = rxs.length === 2 ? ' ov-add-tile-full' : '';
     addTileHtml =
-      '<button type="button" class="ov-multi-tile ov-add-tile" onclick="_openProtocolRequestModal()">' +
+      '<button type="button" class="ov-multi-tile ov-add-tile' + _addSpanCls + '" onclick="_openProtocolRequestModal()">' +
         '<span class="ov-add-tile-icon">+</span>' +
         '<span class="ov-add-tile-label">Add Protocol</span>' +
       '</button>';
   }
-  var addLinkHtml = (rxs.length > 1)
+  var addLinkHtml = (rxs.length >= 4)
     ? '<div class="ov-add-link"><button type="button" onclick="_openProtocolRequestModal()">+ Add protocol</button></div>'
     : '';
 

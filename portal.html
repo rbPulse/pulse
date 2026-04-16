@@ -14431,6 +14431,9 @@ function _renderOverviewMulti() {
 var _ovNextApptId = null;
 
 function _renderOverviewNextAppt(appt) {
+  // Stash the data so a later clinician-profile fetch can re-render
+  // this card with the real clinician name.
+  window._ovNextApptData = appt || null;
   var card = document.getElementById('mCardNextAppt');
   if (!card) return;
   var bodyEmpty = document.getElementById('mApptEmpty');
@@ -14732,9 +14735,15 @@ function populatePortal(user, consultation, greeting) {
             window._clinicianCredentials = cp.cl_credentials || null;
             window._clinicianSpecialty = cp.cl_specialty || null;
             window._clinicianName = clName;
-            // Re-render the protocol header 'Prescribed by...' line now that
-            // we have the clinician name available.
+            // Re-render surfaces that show the clinician name and may
+            // have rendered before the profile fetch resolved.
             if (typeof _updateProtoPrescribedLine === 'function') _updateProtoPrescribedLine();
+            if (typeof _renderOverviewNextAppt === 'function' && window._ovNextApptData) {
+              try { _renderOverviewNextAppt(window._ovNextApptData); } catch (_) {}
+            }
+            if (typeof renderWellnessCheckIn === 'function') {
+              try { renderWellnessCheckIn(); } catch (_) {}
+            }
           }
         }
       }).catch(function() {});

@@ -5514,11 +5514,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             </div>
           </div>
 
-          <!-- Request New Protocol -->
-          <div style="text-align:center;margin:8px 0 4px;">
-            <button type="button" class="proto-request-btn" id="protoRequestBtn" onclick="_openProtocolRequestModal()">+ Request New Protocol</button>
-          </div>
-
           <!-- My History — timeline of past protocols, check-ins, notes -->
           <div class="p-card proto-history-card" id="protoHistorySection">
             <button type="button" class="proto-history-header" onclick="_toggleProtoHistory()">
@@ -13790,34 +13785,36 @@ function _attachSlideOneLogButton(primaryRxId) {
   var headerCard = document.querySelector('#protoCarouselTrack .proto-slide[data-slide-idx="0"] .proto-header-card');
   if (!headerCard || !primaryRxId) return;
   // Remove any previous injection (from a previous render)
-  var existing = headerCard.querySelector('.proto-slide-log-btn');
-  if (existing) existing.remove();
+  var existingWrap = headerCard.querySelector('.proto-header-btns');
+  if (existingWrap) existingWrap.remove();
   var todayStr = localDateStr(new Date());
   var todayLogged = (_rxLoggedDates[primaryRxId] || []).indexOf(todayStr) !== -1;
-  // Restyle the header to flex layout so the button sits in the right
-  // rail, vertically centered against the title + prescribed line.
+  // Restyle the header to flex-column so buttons stack below the
+  // protocol name + prescribed-by line, centered.
   headerCard.style.display = 'flex';
-  headerCard.style.alignItems = 'center';
-  headerCard.style.justifyContent = 'space-between';
+  headerCard.style.flexDirection = 'column';
+  headerCard.style.alignItems = 'stretch';
   headerCard.style.gap = '16px';
-  headerCard.style.flexWrap = 'wrap';
-  // Wrap the existing children (name + meta) in a single flex-1 block so
-  // the button ends up on the right
-  var innerWrap = headerCard.querySelector('.proto-header-inner');
-  if (!innerWrap) {
-    innerWrap = document.createElement('div');
-    innerWrap.className = 'proto-header-inner';
-    innerWrap.style.flex = '1';
-    innerWrap.style.minWidth = '0';
-    while (headerCard.firstChild) innerWrap.appendChild(headerCard.firstChild);
-    headerCard.appendChild(innerWrap);
-  }
-  var btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'proto-slide-log-btn';
-  btn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
-  _setProtoLogBtnState(btn, todayLogged);
-  headerCard.appendChild(btn);
+  // Log button
+  var logBtn = document.createElement('button');
+  logBtn.type = 'button';
+  logBtn.className = 'proto-slide-log-btn';
+  logBtn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
+  _setProtoLogBtnState(logBtn, todayLogged);
+  // Request button
+  var reqBtn = document.createElement('button');
+  reqBtn.type = 'button';
+  reqBtn.className = 'proto-request-btn';
+  reqBtn.id = 'protoRequestBtn';
+  reqBtn.setAttribute('onclick', '_openProtocolRequestModal()');
+  reqBtn.textContent = '+ Request New Protocol';
+  // Button wrapper — centered, stacked
+  var btnWrap = document.createElement('div');
+  btnWrap.className = 'proto-header-btns';
+  btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:4px;';
+  btnWrap.appendChild(logBtn);
+  btnWrap.appendChild(reqBtn);
+  headerCard.appendChild(btnWrap);
 }
 
 // Render (or re-render) the carousel shell for a given list of active Rxs.

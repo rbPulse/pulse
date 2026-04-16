@@ -14472,20 +14472,30 @@ async function _submitCheckIn(prefix) {
       if (!clinicianId) {
         try {
           var cRes = await db.from('consultations').select('assigned_clinician_id').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1);
-          if (cRes && cRes.data && cRes.data.length) clinicianId = cRes.data[0].assigned_clinician_id;
+          if (cRes && cRes.data && cRes.data.length) {
+            clinicianId = cRes.data[0].assigned_clinician_id;
+            window._assignedClinicianId = clinicianId;
+          }
         } catch (_) {}
       }
       if (clinicianId) {
+        var memberName = ((window._memberFirstName || '') + ' ' + (window._memberDisplayName || '').split(' ').pop()).trim() || 'Member';
         var msgBody = 'Check-in: ' + promptText + '\n\n' + response;
-        await db.from('messages').insert({
-          thread_id: currentUserId,
-          sender_id: currentUserId,
-          sender_role: 'consumer',
-          sender_name: (window._memberFirstName || '') + ' ' + (window._memberLastName || ''),
-          recipient_id: clinicianId,
-          body: msgBody,
-          read: false
-        });
+        try {
+          await db.from('messages').insert({
+            thread_id: currentUserId,
+            sender_id: currentUserId,
+            sender_role: 'consumer',
+            sender_name: memberName,
+            recipient_id: clinicianId,
+            body: msgBody,
+            read: false
+          });
+        } catch (msgErr) {
+          console.warn('[Pulse] check-in message insert failed:', msgErr);
+        }
+      } else {
+        console.warn('[Pulse] check-in: no clinician ID found, message not sent');
       }
     }
 

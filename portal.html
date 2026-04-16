@@ -13944,6 +13944,89 @@ function _dismissMemberWelcome() {
 // grouped by date in reverse chronological order. Collapsible disclosure
 // that loads on first expand so no query fires until the member taps it.
 
+// Shared renderer for patient_events rows → date-grouped timeline HTML.
+// Used by both the member "My History" section and the clinician
+// "Patient History" modal so the format is consistent across portals.
+function _renderPatientEventsTimeline(rows) {
+  if (!rows || !rows.length) return '<div class="proto-history-empty">No history found.</div>';
+  var grouped = {};
+  var order = [];
+  rows.forEach(function(r) {
+    var dateKey = (r.created_at || '').slice(0, 10);
+    if (!grouped[dateKey]) { grouped[dateKey] = []; order.push(dateKey); }
+    grouped[dateKey].push(r);
+  });
+  return order.map(function(dateKey) {
+    var events = grouped[dateKey];
+    var dateLabel = '';
+    try {
+      var d = new Date(dateKey + 'T12:00:00');
+      dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (_) { dateLabel = dateKey; }
+    var eventsHtml = events.map(function(ev) {
+      var d2 = ev.event_data || {};
+      var icon = '', iconCls = '', title = '', detail = '', meta = '';
+      var who = ev.created_by_name ? (_formatDrLastName(ev.created_by_name) || ev.created_by_name) : '';
+      switch (ev.event_type) {
+        case 'rx_prescribed':
+          icon = '\uD83D\uDC8A'; iconCls = 'is-rx';
+          title = (d2.protocol_key || 'Protocol') + ' prescribed';
+          var parts = [];
+          if (d2.dose_amount && d2.dose_unit) parts.push(d2.dose_amount + ' ' + d2.dose_unit);
+          if (d2.frequency_amount && d2.frequency_cadence) parts.push(d2.frequency_amount + 'x ' + d2.frequency_cadence);
+          if (d2.timing) parts.push(d2.timing);
+          if (d2.duration_value && d2.duration_unit) parts.push(d2.duration_value + ' ' + d2.duration_unit);
+          detail = parts.join(' \u00B7 ');
+          if (who) meta = 'by ' + who;
+          break;
+        case 'rx_adjusted':
+          icon = '\u2699'; iconCls = 'is-rx';
+          title = (d2.protocol_key || 'Protocol') + ' adjusted';
+          detail = d2.reason || '';
+          if (who) meta = 'by ' + who;
+          break;
+        case 'rx_discontinued':
+          icon = '\u2716'; iconCls = 'is-disc';
+          title = (d2.protocol_key || 'Protocol') + ' discontinued';
+          detail = d2.reason || '';
+          if (who) meta = 'by ' + who;
+          break;
+        case 'rx_represcribed':
+          icon = '\u21BB'; iconCls = 'is-rx';
+          title = (d2.protocol_key || 'Protocol') + ' re-prescribed';
+          if (who) meta = 'by ' + who;
+          break;
+        case 'checkin':
+          icon = '\uD83D\uDCAC'; iconCls = 'is-checkin';
+          title = 'Check-in response';
+          detail = d2.prompt ? ('\u201C' + d2.prompt + '\u201D\n' + (d2.response || '')) : (d2.response || '');
+          break;
+        case 'note':
+          icon = '\uD83D\uDCDD'; iconCls = 'is-note';
+          title = 'Clinician note';
+          detail = d2.note_text || '';
+          if (who) meta = 'by ' + who;
+          break;
+        default:
+          icon = '\u2022'; iconCls = '';
+          title = ev.event_type.replace(/_/g, ' ');
+      }
+      return '<div class="proto-history-event">' +
+        '<div class="proto-history-event-icon ' + iconCls + '">' + icon + '</div>' +
+        '<div class="proto-history-event-body">' +
+          '<div class="proto-history-event-title">' + escapeHtml(title) + '</div>' +
+          (meta ? '<div class="proto-history-event-meta">' + escapeHtml(meta) + '</div>' : '') +
+          (detail ? '<div class="proto-history-event-detail">' + escapeHtml(detail) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="proto-history-date-group">' +
+      '<div class="proto-history-date-label">' + escapeHtml(dateLabel) + '</div>' +
+      eventsHtml +
+    '</div>';
+  }).join('');
+}
+
 var _protoHistoryLoaded = false;
 
 function _toggleProtoHistory() {
@@ -13976,83 +14059,7 @@ async function _loadProtoHistory() {
       list.innerHTML = '<div class="proto-history-empty">Your history will appear here as you progress through your program.</div>';
       return;
     }
-    // Group by date (YYYY-MM-DD)
-    var grouped = {};
-    var order = [];
-    rows.forEach(function(r) {
-      var dateKey = (r.created_at || '').slice(0, 10);
-      if (!grouped[dateKey]) { grouped[dateKey] = []; order.push(dateKey); }
-      grouped[dateKey].push(r);
-    });
-    list.innerHTML = order.map(function(dateKey) {
-      var events = grouped[dateKey];
-      var dateLabel = '';
-      try {
-        var d = new Date(dateKey + 'T12:00:00');
-        dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-      } catch (_) { dateLabel = dateKey; }
-      var eventsHtml = events.map(function(ev) {
-        var d2 = ev.event_data || {};
-        var icon = '', iconCls = '', title = '', detail = '', meta = '';
-        var who = ev.created_by_name ? (_formatDrLastName(ev.created_by_name) || ev.created_by_name) : '';
-        switch (ev.event_type) {
-          case 'rx_prescribed':
-            icon = '\uD83D\uDC8A'; iconCls = 'is-rx';
-            title = (d2.protocol_key || 'Protocol') + ' prescribed';
-            var parts = [];
-            if (d2.dose_amount && d2.dose_unit) parts.push(d2.dose_amount + ' ' + d2.dose_unit);
-            if (d2.frequency_amount && d2.frequency_cadence) parts.push(d2.frequency_amount + 'x ' + d2.frequency_cadence);
-            if (d2.timing) parts.push(d2.timing);
-            if (d2.duration_value && d2.duration_unit) parts.push(d2.duration_value + ' ' + d2.duration_unit);
-            detail = parts.join(' · ');
-            if (who) meta = 'by ' + who;
-            break;
-          case 'rx_adjusted':
-            icon = '\u2699'; iconCls = 'is-rx';
-            title = (d2.protocol_key || 'Protocol') + ' adjusted';
-            detail = d2.reason || '';
-            if (who) meta = 'by ' + who;
-            break;
-          case 'rx_discontinued':
-            icon = '\u2716'; iconCls = 'is-disc';
-            title = (d2.protocol_key || 'Protocol') + ' discontinued';
-            detail = d2.reason || '';
-            if (who) meta = 'by ' + who;
-            break;
-          case 'rx_represcribed':
-            icon = '\u21BB'; iconCls = 'is-rx';
-            title = (d2.protocol_key || 'Protocol') + ' re-prescribed';
-            if (who) meta = 'by ' + who;
-            break;
-          case 'checkin':
-            icon = '\uD83D\uDCAC'; iconCls = 'is-checkin';
-            title = 'Check-in response';
-            detail = d2.prompt ? ('"' + d2.prompt + '"\n' + (d2.response || '')) : (d2.response || '');
-            break;
-          case 'note':
-            icon = '\uD83D\uDCDD'; iconCls = 'is-note';
-            title = 'Clinician note';
-            detail = d2.note_text || '';
-            if (who) meta = 'by ' + who;
-            break;
-          default:
-            icon = '\u2022'; iconCls = '';
-            title = ev.event_type.replace(/_/g, ' ');
-        }
-        return '<div class="proto-history-event">' +
-          '<div class="proto-history-event-icon ' + iconCls + '">' + icon + '</div>' +
-          '<div class="proto-history-event-body">' +
-            '<div class="proto-history-event-title">' + escapeHtml(title) + '</div>' +
-            (meta ? '<div class="proto-history-event-meta">' + escapeHtml(meta) + '</div>' : '') +
-            (detail ? '<div class="proto-history-event-detail">' + escapeHtml(detail) + '</div>' : '') +
-          '</div>' +
-        '</div>';
-      }).join('');
-      return '<div class="proto-history-date-group">' +
-        '<div class="proto-history-date-label">' + escapeHtml(dateLabel) + '</div>' +
-        eventsHtml +
-      '</div>';
-    }).join('');
+    list.innerHTML = _renderPatientEventsTimeline(rows);
   } catch (err) {
     console.warn('[Pulse] proto history load failed:', err);
     list.innerHTML = '<div class="proto-history-empty">Unable to load history. Please try again later.</div>';
@@ -16502,54 +16509,73 @@ function _renderPatientNotesFromCache(userId) {
 // Open the Patient History modal — mirrors the Rx history modal
 // chrome via the shared .rx-adjust-overlay / .rx-adjust-card shell.
 // Lists every saved note for the given patient, most recent first.
+// Open the unified Patient History modal — shows ALL event types from
+// patient_events (prescriptions, adjustments, discontinuations, notes,
+// check-ins) in a date-grouped timeline. Uses the same shared renderer
+// (_renderPatientEventsTimeline) as the member "My History" section for
+// visual consistency. Falls back to patient_notes if no events exist
+// (pre-migration notes).
 async function _openPatientHistoryModal(userId) {
   if (!userId) return;
-  // Make sure we have fresh data — cache might be stale if the clinician
-  // left and came back without touching the notes section.
-  try { await _loadPatientNotes(userId); } catch (_) {}
-  var rows = _patientNotesCache[userId] || [];
 
-  var entriesHtml = '';
-  if (rows.length === 0) {
-    entriesHtml = '<div class="pn-history-empty">No notes have been saved for this patient yet.</div>';
-  } else {
-    entriesHtml = '<div class="pn-history-list">' +
-      rows.map(function(r) {
-        var who = _formatDrLastName(r.clinician_name) || r.clinician_name || 'Clinician';
-        return '<div class="pn-history-entry">' +
-                 '<div class="pn-history-entry-meta">' +
-                   '<span class="pn-history-entry-date">' + escapeHtml(_fmtPatientNoteDate(r.created_at)) + '</span>' +
-                   '<span class="pn-history-entry-who">' + escapeHtml(who) + '</span>' +
-                 '</div>' +
-                 '<div class="pn-history-entry-body">' + escapeHtml(r.note_text || '') + '</div>' +
-               '</div>';
-      }).join('') +
-      '</div>';
-  }
-
-  // Remove any existing patient-notes modal first.
+  // Remove any existing modal first.
   var old = document.getElementById('pn-history-overlay');
   if (old && old.parentNode) old.parentNode.removeChild(old);
 
   var overlay = document.createElement('div');
   overlay.className = 'rx-adjust-overlay';
   overlay.id = 'pn-history-overlay';
-  overlay.style.zIndex = '9700'; // above the patient-detail modal (z-index 9600)
+  overlay.style.zIndex = '9700';
   overlay.innerHTML =
     '<div class="rx-adjust-card">' +
       '<div class="rx-adjust-hdr">' +
         '<div>' +
-          '<div class="rx-adjust-title">Patient Notes History</div>' +
-          '<div class="rx-adjust-sub">' + rows.length + (rows.length === 1 ? ' entry' : ' entries') + '</div>' +
+          '<div class="rx-adjust-title">Patient History</div>' +
+          '<div class="rx-adjust-sub" id="pn-history-count">Loading…</div>' +
         '</div>' +
         '<button type="button" class="rx-adjust-close" onclick="_closePatientHistoryModal()">&times;</button>' +
       '</div>' +
-      entriesHtml +
+      '<div id="pn-history-content" style="max-height:480px;overflow-y:auto;scrollbar-width:thin;padding:4px 0;"><div style="font-size:13px;color:rgba(0,0,0,0.35);padding:16px;">Loading history…</div></div>' +
     '</div>';
   overlay.addEventListener('click', function(e) {
     if (e.target === overlay) _closePatientHistoryModal();
   });
   document.body.appendChild(overlay);
+
+  // Query all events for this patient.
+  var contentEl = document.getElementById('pn-history-content');
+  var countEl = document.getElementById('pn-history-count');
+  try {
+    var rows = [];
+    if (!PREVIEW_MODE && currentUserId) {
+      var res = await db.from('patient_events')
+        .select('event_type, event_data, created_by_name, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (res && !res.error && res.data) rows = res.data;
+    }
+    // Fallback: if no events found, show patient_notes (pre-migration)
+    if (!rows.length) {
+      try { await _loadPatientNotes(userId); } catch (_) {}
+      var noteRows = _patientNotesCache[userId] || [];
+      if (noteRows.length) {
+        rows = noteRows.map(function(n) {
+          return { event_type: 'note', event_data: { note_text: n.note_text }, created_by_name: n.clinician_name, created_at: n.created_at };
+        });
+      }
+    }
+    if (countEl) countEl.textContent = rows.length + (rows.length === 1 ? ' event' : ' events');
+    if (!rows.length) {
+      if (contentEl) contentEl.innerHTML = '<div class="proto-history-empty">No history for this patient yet.</div>';
+      return;
+    }
+    if (contentEl) contentEl.innerHTML = _renderPatientEventsTimeline(rows);
+  } catch (err) {
+    console.warn('[Pulse] patient history modal load failed:', err);
+    if (contentEl) contentEl.innerHTML = '<div class="proto-history-empty">Unable to load history.</div>';
+    if (countEl) countEl.textContent = 'Error';
+  }
 }
 
 function _closePatientHistoryModal() {

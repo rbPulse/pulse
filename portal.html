@@ -163,6 +163,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 /* Actions card */
 .proto-actions-card{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+/* ── My History — member-facing patient timeline disclosure ────────
+   Collapsible card below the actions row on the Protocol tab.
+   Loads from patient_events on first expand. Matches the Tracker
+   History disclosure's chevron-toggle pattern. */
+.proto-history-card{overflow:hidden;padding:0 !important;margin-top:16px;}
+.proto-history-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
+.proto-history-eyebrow{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--green,#2F6F55);}
+.proto-history-chevron{color:var(--grey2,rgba(0,0,0,0.35));transition:transform .2s ease;flex-shrink:0;}
+.proto-history-card.is-expanded .proto-history-chevron{transform:rotate(90deg);}
+.proto-history-body{display:none;padding:0 24px 24px;}
+.proto-history-card.is-expanded .proto-history-body{display:block;}
+.proto-history-list{display:flex;flex-direction:column;gap:0;}
+.proto-history-date-group{padding-top:16px;margin-top:0;}
+.proto-history-date-group:first-child{padding-top:0;}
+.proto-history-date-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(0,0,0,0.06);}
+.proto-history-event{display:flex;gap:12px;padding:10px 0;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;line-height:1.5;}
+.proto-history-event:last-child{padding-bottom:0;}
+.proto-history-event-icon{flex-shrink:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:rgba(47,111,85,0.08);color:#2F6F55;margin-top:2px;}
+.proto-history-event-icon.is-rx{background:rgba(47,111,85,0.1);color:#2F6F55;}
+.proto-history-event-icon.is-disc{background:rgba(200,80,70,0.08);color:#c14a4a;}
+.proto-history-event-icon.is-checkin{background:rgba(100,140,220,0.08);color:#4a6fb8;}
+.proto-history-event-icon.is-note{background:rgba(180,160,100,0.08);color:#8a7a3a;}
+.proto-history-event-body{flex:1;min-width:0;}
+.proto-history-event-title{font-weight:600;margin-bottom:2px;}
+.proto-history-event-meta{font-size:12px;color:rgba(0,0,0,0.45);}
+.proto-history-event-detail{font-size:12px;color:rgba(0,0,0,0.55);margin-top:4px;white-space:pre-wrap;}
+.proto-history-empty{font-family:'Inter',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);text-align:center;padding:24px 16px;}
 .proto-actions-text{font-family:'Inter',sans-serif;font-size:14px;color:var(--grey);line-height:1.55;flex:1;}
 .proto-actions-btns{display:flex;gap:10px;flex-shrink:0;}
 
@@ -2439,6 +2466,14 @@ body.member-mode .proto-progress-stat-val{color:var(--m-text);}
 body.member-mode .proto-progress-stat-lbl{color:var(--m-text3);}
 body.member-mode .proto-notes-body{color:var(--m-text2);}
 body.member-mode .proto-actions-text{color:var(--m-text2);}
+body.member-mode .proto-history-card{background:var(--m-card) !important;border:1px solid var(--m-border) !important;border-radius:var(--m-radius) !important;box-shadow:var(--m-shadow);}
+body.member-mode .proto-history-eyebrow{color:#2F6F55 !important;}
+body.member-mode .proto-history-chevron{color:var(--m-text3) !important;}
+body.member-mode .proto-history-date-label{color:var(--m-text3) !important;border-bottom-color:var(--m-border) !important;}
+body.member-mode .proto-history-event-title{color:var(--m-text) !important;}
+body.member-mode .proto-history-event-meta{color:var(--m-text3) !important;}
+body.member-mode .proto-history-event-detail{color:var(--m-text2) !important;}
+body.member-mode .proto-history-empty{color:var(--m-text3) !important;}
 body.member-mode .proto-name{color:var(--m-text);font-family:'Inter',sans-serif;letter-spacing:-0.01em;}
 body.member-mode .proto-category-badge{background:var(--m-green-tint);border-color:var(--m-green-border);color:#2F6F55;}
 body.member-mode .compounds-card{background:var(--m-card);border:1px solid var(--m-border);border-radius:var(--m-radius);box-shadow:var(--m-shadow);}
@@ -5399,6 +5434,19 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
             <div class="proto-actions-btns">
               <button class="btn-green" onclick="switchTab('messages')">Message Clinician</button>
               <button class="btn-ghost" onclick="switchTab('tracker')">View Log</button>
+            </div>
+          </div>
+
+          <!-- My History — timeline of past protocols, check-ins, notes -->
+          <div class="p-card proto-history-card" id="protoHistorySection">
+            <button type="button" class="proto-history-header" onclick="_toggleProtoHistory()">
+              <span class="proto-history-eyebrow">My History</span>
+              <svg class="proto-history-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            </button>
+            <div class="proto-history-body" id="protoHistoryBody">
+              <div class="proto-history-list" id="protoHistoryList">
+                <div style="font-size:13px;color:var(--grey2);padding:12px 0;">Loading history…</div>
+              </div>
             </div>
           </div>
         </div>
@@ -13891,6 +13939,126 @@ function _dismissMemberWelcome() {
 // Time-of-day greeting for the multi-protocol Hero eyebrow.
 // Returns "Good morning" / "Good afternoon" / "Good evening" based
 // on the member's local hour. Callers uppercase it for display.
+// ══ My History — member-facing patient timeline on the Protocol tab ════
+// Loads all patient_events for the current member and renders them
+// grouped by date in reverse chronological order. Collapsible disclosure
+// that loads on first expand so no query fires until the member taps it.
+
+var _protoHistoryLoaded = false;
+
+function _toggleProtoHistory() {
+  var card = document.getElementById('protoHistorySection');
+  if (!card) return;
+  var expanded = card.classList.toggle('is-expanded');
+  if (expanded && !_protoHistoryLoaded) {
+    _loadProtoHistory();
+  }
+}
+
+async function _loadProtoHistory() {
+  var list = document.getElementById('protoHistoryList');
+  if (!list) return;
+  _protoHistoryLoaded = true;
+  if (PREVIEW_MODE || !currentUserId) {
+    list.innerHTML = '<div class="proto-history-empty">No history available in preview mode.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:13px;color:rgba(0,0,0,0.35);padding:12px 0;">Loading history…</div>';
+  try {
+    var res = await db.from('patient_events')
+      .select('event_type, event_data, created_by_name, created_at')
+      .eq('user_id', currentUserId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (res && res.error) throw res.error;
+    var rows = (res && res.data) || [];
+    if (!rows.length) {
+      list.innerHTML = '<div class="proto-history-empty">Your history will appear here as you progress through your program.</div>';
+      return;
+    }
+    // Group by date (YYYY-MM-DD)
+    var grouped = {};
+    var order = [];
+    rows.forEach(function(r) {
+      var dateKey = (r.created_at || '').slice(0, 10);
+      if (!grouped[dateKey]) { grouped[dateKey] = []; order.push(dateKey); }
+      grouped[dateKey].push(r);
+    });
+    list.innerHTML = order.map(function(dateKey) {
+      var events = grouped[dateKey];
+      var dateLabel = '';
+      try {
+        var d = new Date(dateKey + 'T12:00:00');
+        dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      } catch (_) { dateLabel = dateKey; }
+      var eventsHtml = events.map(function(ev) {
+        var d2 = ev.event_data || {};
+        var icon = '', iconCls = '', title = '', detail = '', meta = '';
+        var who = ev.created_by_name ? (_formatDrLastName(ev.created_by_name) || ev.created_by_name) : '';
+        switch (ev.event_type) {
+          case 'rx_prescribed':
+            icon = '\uD83D\uDC8A'; iconCls = 'is-rx';
+            title = (d2.protocol_key || 'Protocol') + ' prescribed';
+            var parts = [];
+            if (d2.dose_amount && d2.dose_unit) parts.push(d2.dose_amount + ' ' + d2.dose_unit);
+            if (d2.frequency_amount && d2.frequency_cadence) parts.push(d2.frequency_amount + 'x ' + d2.frequency_cadence);
+            if (d2.timing) parts.push(d2.timing);
+            if (d2.duration_value && d2.duration_unit) parts.push(d2.duration_value + ' ' + d2.duration_unit);
+            detail = parts.join(' · ');
+            if (who) meta = 'by ' + who;
+            break;
+          case 'rx_adjusted':
+            icon = '\u2699'; iconCls = 'is-rx';
+            title = (d2.protocol_key || 'Protocol') + ' adjusted';
+            detail = d2.reason || '';
+            if (who) meta = 'by ' + who;
+            break;
+          case 'rx_discontinued':
+            icon = '\u2716'; iconCls = 'is-disc';
+            title = (d2.protocol_key || 'Protocol') + ' discontinued';
+            detail = d2.reason || '';
+            if (who) meta = 'by ' + who;
+            break;
+          case 'rx_represcribed':
+            icon = '\u21BB'; iconCls = 'is-rx';
+            title = (d2.protocol_key || 'Protocol') + ' re-prescribed';
+            if (who) meta = 'by ' + who;
+            break;
+          case 'checkin':
+            icon = '\uD83D\uDCAC'; iconCls = 'is-checkin';
+            title = 'Check-in response';
+            detail = d2.prompt ? ('"' + d2.prompt + '"\n' + (d2.response || '')) : (d2.response || '');
+            break;
+          case 'note':
+            icon = '\uD83D\uDCDD'; iconCls = 'is-note';
+            title = 'Clinician note';
+            detail = d2.note_text || '';
+            if (who) meta = 'by ' + who;
+            break;
+          default:
+            icon = '\u2022'; iconCls = '';
+            title = ev.event_type.replace(/_/g, ' ');
+        }
+        return '<div class="proto-history-event">' +
+          '<div class="proto-history-event-icon ' + iconCls + '">' + icon + '</div>' +
+          '<div class="proto-history-event-body">' +
+            '<div class="proto-history-event-title">' + escapeHtml(title) + '</div>' +
+            (meta ? '<div class="proto-history-event-meta">' + escapeHtml(meta) + '</div>' : '') +
+            (detail ? '<div class="proto-history-event-detail">' + escapeHtml(detail) + '</div>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="proto-history-date-group">' +
+        '<div class="proto-history-date-label">' + escapeHtml(dateLabel) + '</div>' +
+        eventsHtml +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    console.warn('[Pulse] proto history load failed:', err);
+    list.innerHTML = '<div class="proto-history-empty">Unable to load history. Please try again later.</div>';
+  }
+}
+
 // ══ Wellness Check-in — prompts + render + submit ══════════════════════
 // Product-agnostic weekly prompt that surfaces on the member Overview.
 // Response inserts into patient_events (type: 'checkin') AND sends as

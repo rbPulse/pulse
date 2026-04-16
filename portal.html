@@ -3148,6 +3148,13 @@ body.clinician-mode .crw-meta{color:var(--cl-text2);font-size:14px;}
 body.clinician-mode .crw-meta-sep{color:rgba(0,0,0,0.2);}
 body.clinician-mode .crw-overdue{color:#E53E3E !important;font-weight:600 !important;}
 body.clinician-mode .crw-section{background:var(--cl-mid);border:1px solid rgba(0,0,0,0.14);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:14px;}
+/* Demographics grid — 4-column layout replacing the old single-line
+   "34 yrs · male · 5'10" · 170 lbs" with individual headers
+   (Age, Sex, Height, Weight) and centered values. */
+body.clinician-mode .crw-demo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;padding:16px 14px !important;}
+body.clinician-mode .crw-demo-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+body.clinician-mode .crw-demo-lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.45);}
+body.clinician-mode .crw-demo-val{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--cl-text,#1a1a1a);}
 body.clinician-mode .crw-section-title{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;border-bottom-color:var(--cl-border);}
 body.clinician-mode .crw-lbl{color:var(--cl-text3);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.08em;}
 body.clinician-mode .crw-val{color:var(--cl-text);font-family:'Inter',sans-serif;font-size:15px;font-weight:500;}
@@ -3377,6 +3384,10 @@ body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px s
 }
 .pd-modal-body > .crw > .crw-decided-top{grid-column:1; grid-row:1; padding:24px 24px 0;}
 .pd-modal-body > .crw > .crw-left{grid-column:1; grid-row:2; overflow-y:auto; min-height:0;}
+/* Halve the gap between the Prescribed card and the first left-
+   column section so the demographics header sits tighter below
+   the Rx card. */
+.pd-modal-body .crw.crw-decided .crw-left{padding-top:8px !important;}
 .pd-modal-body > .crw > .crw-right{grid-column:2; grid-row:1 / -1; overflow:hidden; min-height:0;}
 .pd-modal-body .crw-msg-expand-btn{display:none !important;}
 /* Row highlight — the Patients-tab row (or Overview card) that
@@ -10269,14 +10280,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       decidedTopHtml+
       '<div class="crw-left">'+
         topAlertHtml+
-        '<div class="crw-section">'+
-          '<div class="crw-section-title">Demographics</div>'+
-          '<div class="crw-val">'+
-            '<span>'+ageStr+' yrs</span><span class="crw-meta-sep">\u00B7</span>'+
-            '<span>'+escapeHtml(d.sex||'\u2014')+'</span>'+
-            (heightStr&&heightStr!=='\u2014'?'<span class="crw-meta-sep">\u00B7</span><span>'+escapeHtml(heightStr)+'</span>':'')+
-            (d.current_weight?'<span class="crw-meta-sep">\u00B7</span><span>'+escapeHtml(d.current_weight)+' lbs</span>':'')+
-          '</div>'+
+        '<div class="crw-section crw-demo-grid">'+
+          '<div class="crw-demo-col"><div class="crw-demo-lbl">Age</div><div class="crw-demo-val">'+ageStr+' yrs</div></div>'+
+          '<div class="crw-demo-col"><div class="crw-demo-lbl">Sex</div><div class="crw-demo-val">'+escapeHtml(d.sex||'\u2014')+'</div></div>'+
+          '<div class="crw-demo-col"><div class="crw-demo-lbl">Height</div><div class="crw-demo-val">'+escapeHtml(heightStr||'\u2014')+'</div></div>'+
+          '<div class="crw-demo-col"><div class="crw-demo-lbl">Weight</div><div class="crw-demo-val">'+(d.current_weight?escapeHtml(d.current_weight)+' lbs':'\u2014')+'</div></div>'+
         '</div>'+
         '<div class="crw-section">'+
           '<div class="crw-section-title">Goals</div>'+

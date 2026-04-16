@@ -209,10 +209,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pr-modal-sub{font-family:'Inter',sans-serif;font-size:13px;color:rgba(0,0,0,0.45);margin-bottom:24px;line-height:1.5;}
 .pr-field{margin-bottom:18px;}
 .pr-field-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(0,0,0,0.45);margin-bottom:8px;}
-.pr-field select,.pr-field textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.08);border-radius:10px;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;padding:10px 14px;outline:none;transition:border-color .15s;}
-.pr-field select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.pr-field textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.08);border-radius:10px;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;padding:10px 14px;outline:none;transition:border-color .15s;}
+.pr-field .book-select{width:100%;box-sizing:border-box;padding:12px 14px;font-size:13px;}
 .pr-field textarea{resize:vertical;min-height:64px;line-height:1.6;}
-.pr-field select:focus,.pr-field textarea:focus{border-color:#2F6F55;}
+.pr-field textarea:focus,.pr-field .book-select:focus{border-color:#2F6F55;}
 .pr-field-radio{display:flex;gap:16px;margin-top:6px;}
 .pr-field-radio label{display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;cursor:pointer;}
 .pr-field-radio input[type="radio"]{accent-color:#2F6F55;}
@@ -14039,7 +14039,7 @@ function _dismissMemberWelcome() {
 // with consultation_type='protocol_request', sends a message to the
 // clinician thread, and fires a notification.
 
-var PROTOCOL_CATEGORIES = ['Sleep','Recovery','Performance','Body Composition','Longevity','Other'];
+var PROTOCOL_CATEGORIES = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery Stack','Performance Stack','Optimize Stack'];
 
 function _openProtocolRequestModal() {
   // Don't open if there's already a pending request.
@@ -14064,7 +14064,7 @@ function _openProtocolRequestModal() {
       '<div class="pr-modal-sub">Your clinician will review your request and follow up with you.</div>' +
       '<div class="pr-field">' +
         '<div class="pr-field-label">What are you interested in?</div>' +
-        '<select id="prCategory" onchange="_validatePrForm()">' + optionsHtml + '</select>' +
+        '<select id="prCategory" class="book-select" onchange="_validatePrForm()">' + optionsHtml + '</select>' +
       '</div>' +
       '<div class="pr-field">' +
         '<div class="pr-field-label">What are you hoping to address?</div>' +

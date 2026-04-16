@@ -8522,26 +8522,24 @@ async function loadAttentionCards() {
 }
 
 function toggleAttentionCard(cardEl) {
-  var wasExpanded = cardEl.classList.contains('expanded');
-  // Collapse all cards
+  // Phase 2 migration: open the centered patient-detail modal
+  // instead of expanding the card inline. Collapse any inline-
+  // expanded cards first so nothing stays expanded behind the
+  // modal backdrop.
   document.querySelectorAll('.cl-attn-card.expanded').forEach(function(c) {
     c.classList.remove('expanded');
     var cId = c.dataset.consultId;
     if (cId) _stopAttnMsgPoll(cId);
   });
-  if (!wasExpanded) {
-    cardEl.classList.add('expanded');
-    var body = cardEl.querySelector('.cl-attn-card-body');
-    // Only load if not already loaded
-    if (body && body.dataset.loaded !== 'true') {
-      var consultId = cardEl.dataset.consultId;
-      var userId = cardEl.dataset.userId;
-      _loadAttentionCardBody(body, consultId, userId);
-    }
-  }
+  var consultId = cardEl.dataset.consultId || null;
+  var userId = cardEl.dataset.userId || null;
+  var patient = { id: userId, _consultation: consultId ? { id: consultId } : null };
+  _openPatientDetailModal(patient, cardEl);
 }
 
-// Weekly schedule row → expand inline patient detail (mirrors Open Reviews).
+// Weekly schedule row → open patient-detail modal (Phase 2 migration).
+// Previously expanded inline; now resolves the consultation id and
+// delegates to the same modal used by Patients + Open Reviews.
 async function _toggleWeeklyRowDetail(rowWrap, e) {
   if (!rowWrap) return;
   // Ignore clicks on action buttons / links inside the row
@@ -8549,27 +8547,16 @@ async function _toggleWeeklyRowDetail(rowWrap, e) {
     var t = e.target;
     if (t.closest && (t.closest('button') || t.closest('a'))) return;
   }
-  var wasExpanded = rowWrap.classList.contains('expanded');
-  // Collapse any other expanded weekly row
+  // Collapse any inline-expanded weekly rows behind the modal.
   document.querySelectorAll('.cl-weekly-row.expanded').forEach(function(r) {
-    if (r !== rowWrap) r.classList.remove('expanded');
+    r.classList.remove('expanded');
   });
-  if (wasExpanded) {
-    rowWrap.classList.remove('expanded');
-    return;
-  }
-  rowWrap.classList.add('expanded');
-  var body = rowWrap.querySelector('.cl-attn-card-body');
-  if (!body || body.dataset.loaded === 'true') return;
   var userId = rowWrap.dataset.userId;
-  if (!userId) {
-    body.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:16px 0;">No patient record linked.</div>';
-    return;
-  }
-  // Resolve the patient's most recent consultation id, then hand off to the
-  // canonical detail renderer used by Open Reviews / Patients / Messages.
+  if (!userId) return;
+  // Resolve the patient's most recent consultation id so the
+  // modal can render the full patient card.
+  var consultId = null;
   try {
-    var consultId = null;
     if (typeof db !== 'undefined' && db && db.from) {
       var res = await db.from('consultations')
         .select('id')
@@ -8578,11 +8565,11 @@ async function _toggleWeeklyRowDetail(rowWrap, e) {
         .limit(1);
       if (res && res.data && res.data.length) consultId = res.data[0].id;
     }
-    _loadAttentionCardBody(body, consultId, userId);
   } catch (err) {
-    console.warn('[Pulse] weekly row detail failed:', err);
-    body.innerHTML = '<div style="color:var(--cl-text3,rgba(0,0,0,0.4));font-size:12px;padding:16px 0;">Unable to load patient details.</div>';
+    console.warn('[Pulse] weekly row consult lookup failed:', err);
   }
+  var patient = { id: userId, _consultation: consultId ? { id: consultId } : null };
+  _openPatientDetailModal(patient, rowWrap);
 }
 
 // ── Prescription adjustment helpers ──────────────────────────────────────

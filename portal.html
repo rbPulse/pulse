@@ -2301,6 +2301,9 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .ov-add-tile:hover .ov-add-tile-icon,.ov-add-tile:hover .ov-add-tile-label{color:rgba(255,255,255,0.85);}
 /* 2-protocol layout: add tile spans both columns as a full-width row. */
 .ov-add-tile-full{grid-column:1 / -1;flex-direction:row;padding:14px 20px;min-height:auto;}
+/* Pending state — muted, no pulse, not clickable. */
+.ov-add-tile-pending{animation:none !important;cursor:default !important;opacity:0.5;border-color:rgba(255,255,255,0.15) !important;}
+.ov-add-tile-pending:hover{background:transparent !important;border-color:rgba(255,255,255,0.15) !important;transform:none !important;box-shadow:none !important;}
 /* Add-protocol text link (multi-protocol) — sits below the tile grid,
    above the stats row. Matches the "View all protocols" link style. */
 .ov-add-link{text-align:center;margin:6px 0 0;}
@@ -14206,10 +14209,15 @@ async function _submitProtocolRequest() {
       }
     }
 
-    // 5. Close modal + update button state
+    // 5. Close modal + update button state on Protocol tab
     _closeProtocolRequestModal();
     var reqBtn = document.getElementById('protoRequestBtn');
     if (reqBtn) { reqBtn.disabled = true; reqBtn.textContent = 'Request Pending'; }
+    // Update the Overview hero add tile to pending state
+    window._protocolRequestPending = true;
+    if (typeof _renderOverviewMulti === 'function') {
+      try { _renderOverviewMulti(); } catch (_) {}
+    }
     if (typeof showToast === 'function') showToast('Request submitted — your clinician will review it.');
 
   } catch (err) {
@@ -14621,18 +14629,33 @@ function _ovBuildMultiHeroHtml(activeRxs) {
   //   2 protocols → add tile as full-width second row
   //   3 protocols → add tile in the bottom-right quadrant
   //   4+ protocols → text link below the grid (no tile)
+  // When a request is pending, swap the add tile for a muted
+  // "Request Pending" tile (not clickable, no pulse animation).
+  var _isPending = !!window._protocolRequestPending;
   var addTileHtml = '';
   if (rxs.length < 4) {
     var _addSpanCls = rxs.length === 2 ? ' ov-add-tile-full' : '';
-    addTileHtml =
-      '<button type="button" class="ov-multi-tile ov-add-tile' + _addSpanCls + '" onclick="_openProtocolRequestModal()">' +
-        '<span class="ov-add-tile-icon">+</span>' +
-        '<span class="ov-add-tile-label">Add Protocol</span>' +
-      '</button>';
+    if (_isPending) {
+      addTileHtml =
+        '<div class="ov-multi-tile ov-add-tile ov-add-tile-pending' + _addSpanCls + '">' +
+          '<span class="ov-add-tile-label">Request Pending</span>' +
+        '</div>';
+    } else {
+      addTileHtml =
+        '<button type="button" class="ov-multi-tile ov-add-tile' + _addSpanCls + '" onclick="_openProtocolRequestModal()">' +
+          '<span class="ov-add-tile-icon">+</span>' +
+          '<span class="ov-add-tile-label">Add Protocol</span>' +
+        '</button>';
+    }
   }
-  var addLinkHtml = (rxs.length >= 4)
-    ? '<div class="ov-add-link"><button type="button" onclick="_openProtocolRequestModal()">+ Add protocol</button></div>'
-    : '';
+  var addLinkHtml = '';
+  if (rxs.length >= 4) {
+    if (_isPending) {
+      addLinkHtml = '<div class="ov-add-link"><span style="color:rgba(255,255,255,0.4);font-family:\'Inter\',sans-serif;font-size:11px;font-weight:500;">Request Pending</span></div>';
+    } else {
+      addLinkHtml = '<div class="ov-add-link"><button type="button" onclick="_openProtocolRequestModal()">+ Add protocol</button></div>';
+    }
+  }
 
   return '' +
     '<div class="ov-multi-title">' + escapeHtml(_heroHeadline) + '</div>' +

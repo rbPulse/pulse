@@ -14405,7 +14405,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
   return '' +
     '<div class="m-card-label">Supply</div>' +
     '<div class="ov-supplies">' + rowsHtml + '</div>' +
-    '<button class="m-plan-link" onclick="switchTab(\'protocol\')">View all protocols \u203A</button>';
+    '<button class="m-plan-link" onclick="switchTab(\'protocol\')">' + (rxs.length === 1 ? 'View protocol' : 'View all protocols') + ' \u203A</button>';
 }
 
 // Main dispatcher. Called from populatePortal whenever the Overview
@@ -14414,7 +14414,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
 // existing populatePortal direct writes own those paths).
 function _renderOverviewMulti() {
   var activeRxs = window._activeRxsForCarousel || [];
-  if (activeRxs.length <= 1) return; // single-protocol — nothing to do
+  if (!activeRxs.length) return; // no active Rxs — nothing to render
   var heroHtml = _ovBuildMultiHeroHtml(activeRxs);
   var planHtml = _ovBuildMultiPlanHtml(activeRxs);
   // Desktop targets

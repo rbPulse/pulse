@@ -3336,7 +3336,7 @@ body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px s
 .pd-modal-overlay.open{opacity:1;pointer-events:auto;}
 .pd-modal{
   width:min(90vw, 1200px);
-  max-height:min(90vh, 860px);
+  max-height:min(92vh, 920px);
   background:#FBFAF6;
   border:1px solid rgba(0,0,0,0.08);
   border-radius:18px;
@@ -3349,14 +3349,27 @@ body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px s
   transition:transform .22s cubic-bezier(.2,.9,.3,1);
 }
 .pd-modal-overlay.open .pd-modal{transform:scale(1);}
+.pd-modal-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 28px 14px;
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  flex-shrink:0;
+}
+.pd-modal-patient-name{
+  font-family:'Inter',sans-serif;
+  font-size:20px;
+  font-weight:600;
+  color:#1a1a1a;
+  letter-spacing:-0.02em;
+  line-height:1.2;
+}
 .pd-modal-close{
-  position:absolute; top:16px; right:18px;
   background:rgba(0,0,0,0.04);
   border:1px solid rgba(0,0,0,0.08);
   width:32px; height:32px; border-radius:50%;
   font-size:18px; line-height:1; color:rgba(0,0,0,0.55);
   cursor:pointer;
-  z-index:10;
+  flex-shrink:0;
   transition:background .15s, color .15s, border-color .15s;
   display:flex; align-items:center; justify-content:center;
 }
@@ -8554,7 +8567,9 @@ function toggleAttentionCard(cardEl) {
   });
   var consultId = cardEl.dataset.consultId || null;
   var userId = cardEl.dataset.userId || null;
-  var patient = { id: userId, _consultation: consultId ? { id: consultId } : null };
+  var nameEl = cardEl.querySelector('.cl-attn-row-name');
+  var patientName = nameEl ? nameEl.textContent.trim() : '';
+  var patient = { id: userId, name: patientName, _consultation: consultId ? { id: consultId } : null };
   _openPatientDetailModal(patient, cardEl);
 }
 
@@ -8589,7 +8604,9 @@ async function _toggleWeeklyRowDetail(rowWrap, e) {
   } catch (err) {
     console.warn('[Pulse] weekly row consult lookup failed:', err);
   }
-  var patient = { id: userId, _consultation: consultId ? { id: consultId } : null };
+  var nameEl = rowWrap.querySelector('.cl-ft-cell-name');
+  var patientName = nameEl ? nameEl.textContent.trim() : '';
+  var patient = { id: userId, name: patientName, _consultation: consultId ? { id: consultId } : null };
   _openPatientDetailModal(patient, rowWrap);
 }
 
@@ -11507,7 +11524,7 @@ function toggleApptDetail(appt, role, rowWrapper) {
           .order('created_at', { ascending: false }).limit(1);
         if (cRes && cRes.data && cRes.data.length) consultId = cRes.data[0].id;
       } catch (e) { console.warn('[Pulse] appt consult lookup failed:', e); }
-      var patient = { id: _cid, _consultation: consultId ? { id: consultId } : null };
+      var patient = { id: _cid, name: appt.patient || '', _consultation: consultId ? { id: consultId } : null };
       _openPatientDetailModal(patient, rowWrapper);
     })();
     return;
@@ -15129,9 +15146,13 @@ function _openPatientDetailModal(patient, rowEl) {
   var overlay = document.createElement('div');
   overlay.className = 'pd-modal-overlay';
   overlay.id = 'pdModalOverlay';
+  var _patientNameDisplay = escapeHtml((patient.name || '').trim()) || 'Patient Details';
   overlay.innerHTML =
     '<div class="pd-modal" role="dialog" aria-modal="true">' +
-      '<button type="button" class="pd-modal-close" aria-label="Close" onclick="_closePatientDetailModal()">&times;</button>' +
+      '<div class="pd-modal-header">' +
+        '<div class="pd-modal-patient-name">' + _patientNameDisplay + '</div>' +
+        '<button type="button" class="pd-modal-close" aria-label="Close" onclick="_closePatientDetailModal()">&times;</button>' +
+      '</div>' +
       '<div class="pd-modal-body" id="pdModalBody"><div style="padding:32px;font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);">Loading patient details…</div></div>' +
     '</div>';
 

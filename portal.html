@@ -20521,6 +20521,9 @@ function _attnPrescribe(consultId, userId) {
   _activePatientConsultId = consultId;
   _activePatientUserId = userId;
   _activePatientReviewStatus = 'pending_review';
+  // Close the patient modal first — the evaluation overlay needs
+  // the full page and its z-index (8500) sits below the modal (9600).
+  if (typeof _closePatientDetailModal === 'function') _closePatientDetailModal();
   _startAsyncEvaluation();
 }
 
@@ -20578,6 +20581,8 @@ async function _confirmAttnDecline(consultId, userId) {
     _loadClOverviewStats();
     loadRecentlyEvaluated();
     if (typeof loadAttentionCards === 'function') loadAttentionCards();
+    // Close the patient modal since the card is gone.
+    if (typeof _closePatientDetailModal === 'function') _closePatientDetailModal();
 
   } catch(e) {
     console.warn('[Pulse] decline failed:', e);
@@ -20622,7 +20627,7 @@ function _requestLiveConsult() {
   // Build modal overlay
   var modal = document.createElement('div');
   modal.id = 'liveConsultModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML =
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 24px;max-width:480px;width:100%;">' +
       '<div style="font-family:\'Inter\',sans-serif;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);margin-bottom:14px;font-weight:600;">Request Live Consult</div>' +

@@ -2293,12 +2293,11 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
    extra vertical space in its column so both column stacks end at the
    same Y. Left column grows the Hero (dynamic content), right column
    grows the Next Appointment card (natural middle position). */
-/* Left column: let the Plan/Supply card absorb any vertical slack
-   so the Hero sizes to its natural content (no empty space below
-   the tile grid). Right column: Next Appointment card absorbs the
-   slack so Support still bottom-aligns with the left column. */
-.m-ov-left-stack .m-card-plan{flex:1;}
-.m-ov-right-stack #mCardNextAppt{flex:1;}
+/* Both column stacks size to their natural content height. No flex:1
+   stretch on any card — prevents empty-space artifacts when a card
+   has little content (e.g. Supply with 1-2 protocols). The columns
+   don't need to match heights — the page background fills the gap. */
+.m-ov-right-stack #mCardNextAppt{display:flex;flex-direction:column;}
 /* ── Next Appointment card (desktop-only — lives inside .m-grid which
      is display:none on mobile, so no explicit breakpoint needed). */
 .m-card-next-appt{cursor:pointer;transition:box-shadow .25s,transform .25s;}

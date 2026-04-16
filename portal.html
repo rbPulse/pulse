@@ -15358,6 +15358,29 @@ function populatePortal(user, consultation, greeting) {
       _renderProtoCarousel(_activeRxs || []);
     }
 
+    // Check for a pending protocol request so the Overview add tile
+    // and Protocol tab button show "Request Pending" on page load
+    // (not just after in-session submit). Fire-and-forget query;
+    // the hero renders once, then re-renders when this resolves.
+    if (!PREVIEW_MODE && currentUserId) {
+      db.from('consultations').select('review_status, data')
+        .eq('user_id', currentUserId)
+        .eq('review_status', 'pending_review')
+        .order('created_at', { ascending: false }).limit(5)
+        .then(function(prRes) {
+          var _hasPending = (prRes.data || []).some(function(r) {
+            return (r.data && r.data.request_category);
+          });
+          if (_hasPending) {
+            window._protocolRequestPending = true;
+            // Re-render hero + protocol tab button with pending state
+            try { _renderOverviewMulti(); } catch (_) {}
+            var _reqBtn = document.getElementById('protoRequestBtn');
+            if (_reqBtn) { _reqBtn.disabled = true; _reqBtn.textContent = 'Request Pending'; }
+          }
+        }).catch(function(){});
+    }
+
     // Multi-protocol Overview override — runs after _renderProtoCarousel
     // has stashed window._activeRxsForCarousel so the multi render has
     // the Rx list to work with. No-op for single-protocol members.

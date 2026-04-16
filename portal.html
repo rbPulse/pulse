@@ -7354,15 +7354,25 @@ function initPortal(user) {
         if (role === 'clinician' || role === 'admin' || role === 'super_admin') {
           _continuePortalInit(user, role);
         } else {
-          // Member — verify completed purchase (check both column and JSONB data field)
+          // Member — verify completed purchase or active prescription.
+          // Fetch multiple rows and skip protocol-request consultations
+          // so a pending add-on request doesn't hijack the member to intake.
           db.from('consultations')
-            .select('purchase_status, data')
+            .select('purchase_status, data, review_status, consultation_type')
             .eq('user_id', currentUserId)
             .order('created_at', { ascending: false })
-            .limit(1)
+            .limit(10)
             .then(function(cr) {
-              var c = (cr.data && cr.data.length > 0) ? cr.data[0] : null;
-              var purchased = c && (c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed'));
+              // Find the intake consultation (skip protocol requests)
+              var _allC = (cr.data || []);
+              var c = null;
+              for (var _j = 0; _j < _allC.length; _j++) {
+                var _r = _allC[_j];
+                if (_r.consultation_type === 'protocol_request') continue;
+                if (_r.data && _r.data.request_category && !_r.data.first_name) continue;
+                c = _r; break;
+              }
+              var purchased = c && (c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed') || c.review_status === 'prescribed' || c.review_status === 'discontinued');
               if (!purchased) {
                 window.location.href = 'consultation.html';
                 return;

@@ -10330,7 +10330,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '<div class="pn-view" id="pn-view-'+escapeAttr(userId)+'">'+
             '<div class="pn-latest-body" id="pn-latest-body-'+escapeAttr(userId)+'"><span class="pn-empty-msg">No notes yet.</span></div>'+
             '<div class="pn-attribution" id="pn-attribution-'+escapeAttr(userId)+'" style="display:none;"></div>'+
-            '<button type="button" class="pn-history-link" id="pn-history-link-'+escapeAttr(userId)+'" style="display:none;" onclick="_openPatientHistoryModal(\''+escapeAttr(userId)+'\')">View patient history \u203A</button>'+
+            '<button type="button" class="pn-history-link" id="pn-history-link-'+escapeAttr(userId)+'" onclick="_openPatientHistoryModal(\''+escapeAttr(userId)+'\')">View patient history \u203A</button>'+
           '</div>'+
           '<!-- Edit mode -->' +
           '<div class="pn-edit" id="pn-edit-'+escapeAttr(userId)+'" style="display:none;">'+
@@ -15549,7 +15549,7 @@ function buildPatientDetail(p) {
           '<div class="pn-view" id="pn-view-' + escapeAttr(p.id) + '">'+
             '<div class="pn-latest-body" id="pn-latest-body-' + escapeAttr(p.id) + '"><span class="pn-empty-msg">No notes yet.</span></div>'+
             '<div class="pn-attribution" id="pn-attribution-' + escapeAttr(p.id) + '" style="display:none;"></div>'+
-            '<button type="button" class="pn-history-link" id="pn-history-link-' + escapeAttr(p.id) + '" style="display:none;" onclick="_openPatientHistoryModal(\'' + escapeAttr(p.id) + '\')">View patient history \u203A</button>'+
+            '<button type="button" class="pn-history-link" id="pn-history-link-' + escapeAttr(p.id) + '" onclick="_openPatientHistoryModal(\'' + escapeAttr(p.id) + '\')">View patient history \u203A</button>'+
           '</div>'+
           '<!-- Edit mode: editable textarea + Save/Cancel -->' +
           '<div class="pn-edit" id="pn-edit-' + escapeAttr(p.id) + '" style="display:none;">'+
@@ -15877,7 +15877,6 @@ async function _loadPatientNotes(userId) {
     _patientNotesCache[userId] = [];
     viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
     if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
-    if (histLink) histLink.style.display = 'none';
     return;
   }
 
@@ -15892,7 +15891,6 @@ async function _loadPatientNotes(userId) {
     if (rows.length === 0) {
       viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
       if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
-      if (histLink) histLink.style.display = 'none';
       return;
     }
     var latest = rows[0];
@@ -15902,7 +15900,6 @@ async function _loadPatientNotes(userId) {
       attrEl.textContent = 'Last updated ' + _fmtPatientNoteDate(latest.created_at) + ' \u00B7 ' + who;
       attrEl.style.display = '';
     }
-    if (histLink) histLink.style.display = '';
   } catch (err) {
     console.warn('[Pulse] patient_notes load failed:', err && err.message);
     viewBody.innerHTML = '<span class="pn-empty-msg">Could not load notes.</span>';
@@ -16036,7 +16033,6 @@ function _renderPatientNotesFromCache(userId) {
   if (rows.length === 0) {
     viewBody.innerHTML = '<span class="pn-empty-msg">No notes yet.</span>';
     if (attrEl) { attrEl.style.display = 'none'; attrEl.textContent = ''; }
-    if (histLink) histLink.style.display = 'none';
     return;
   }
   var latest = rows[0];
@@ -16046,7 +16042,6 @@ function _renderPatientNotesFromCache(userId) {
     attrEl.textContent = 'Last updated ' + _fmtPatientNoteDate(latest.created_at) + ' \u00B7 ' + who;
     attrEl.style.display = '';
   }
-  if (histLink) histLink.style.display = '';
 }
 
 // Open the Patient History modal — mirrors the Rx history modal

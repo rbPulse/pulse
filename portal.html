@@ -7354,25 +7354,25 @@ function initPortal(user) {
         if (role === 'clinician' || role === 'admin' || role === 'super_admin') {
           _continuePortalInit(user, role);
         } else {
-          // Member — verify completed purchase or active prescription.
-          // Fetch multiple rows and skip protocol-request consultations
-          // so a pending add-on request doesn't hijack the member to intake.
+          // Member — verify they have an active/decided consultation.
+          // If ANY consultation has review_status in the decided set,
+          // they're past intake — go to portal. This is bulletproof
+          // against protocol-request consultations (which have
+          // review_status='pending_review') because we check ALL rows,
+          // not just the most recent.
           db.from('consultations')
-            .select('purchase_status, data, review_status')
+            .select('purchase_status, review_status')
             .eq('user_id', currentUserId)
             .order('created_at', { ascending: false })
             .limit(10)
             .then(function(cr) {
-              // Find the intake consultation (skip protocol requests)
               var _allC = (cr.data || []);
-              var c = null;
-              for (var _j = 0; _j < _allC.length; _j++) {
-                var _r = _allC[_j];
-                if (_r.consultation_type === 'protocol_request') continue;
-                if (_r.data && _r.data.request_category && !_r.data.first_name) continue;
-                c = _r; break;
-              }
-              var purchased = c && (c.purchase_status === 'completed' || (c.data && c.data.purchase_status === 'completed') || c.review_status === 'prescribed' || c.review_status === 'discontinued');
+              var purchased = _allC.some(function(r) {
+                return r.purchase_status === 'completed'
+                    || r.review_status === 'prescribed'
+                    || r.review_status === 'not_prescribed'
+                    || r.review_status === 'discontinued';
+              });
               if (!purchased) {
                 window.location.href = 'consultation.html';
                 return;

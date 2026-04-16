@@ -20518,12 +20518,13 @@ async function _submitEvaluation(apptId) {
 //                  updates to live_consult_requested, refreshes attention + live consults sections
 
 function _attnPrescribe(consultId, userId) {
-  _activePatientConsultId = consultId;
-  _activePatientUserId = userId;
-  _activePatientReviewStatus = 'pending_review';
   // Close the patient modal first — the evaluation overlay needs
   // the full page and its z-index (8500) sits below the modal (9600).
   if (typeof _closePatientDetailModal === 'function') _closePatientDetailModal();
+  // Set active patient AFTER closing (close clears these globals).
+  _activePatientConsultId = consultId;
+  _activePatientUserId = userId;
+  _activePatientReviewStatus = 'pending_review';
   _startAsyncEvaluation();
 }
 

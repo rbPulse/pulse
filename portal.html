@@ -2338,11 +2338,15 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
    extra vertical space in its column so both column stacks end at the
    same Y. Left column grows the Hero (dynamic content), right column
    grows the Next Appointment card (natural middle position). */
-/* Both column stacks size to their natural content height. No flex:1
-   stretch on any card — prevents empty-space artifacts when a card
-   has little content (e.g. Supply with 1-2 protocols). The columns
-   don't need to match heights — the page background fills the gap. */
-.m-ov-right-stack #mCardNextAppt{display:flex;flex-direction:column;}
+/* Uniform column height: the last card in each column stretches so
+   both columns always end at the same Y position. The grid's default
+   align-items:stretch makes both cells the same height; flex:1 on
+   the last card fills the remaining space inside each stack. */
+.m-ov-left-stack > :last-child{flex:1;}
+.m-ov-right-stack > :last-child{flex:1;}
+/* Check-in card sits in its own full-width row below both columns
+   so it's independent of left-column height fluctuations. */
+.m-checkin-row{margin-top:24px;max-width:640px;}
 /* ── Next Appointment card (desktop-only — lives inside .m-grid which
      is display:none on mobile, so no explicit breakpoint needed). */
 .m-card-next-appt{cursor:pointer;transition:box-shadow .25s,transform .25s;}
@@ -5210,20 +5214,6 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <button class="m-plan-link" onclick="switchTab('protocol')">View full protocol ›</button>
             </div>
 
-            <!-- Wellness Check-in card -->
-            <div class="m-card" id="mCardCheckIn" style="display:none;">
-              <button type="button" class="m-checkin-dismiss" id="mCheckInDismiss" onclick="_dismissCheckIn()" aria-label="Dismiss">&times;</button>
-              <div class="m-card-label">How Are You Feeling?</div>
-              <div class="m-checkin-prompt" id="mCheckInPrompt"></div>
-              <textarea class="m-checkin-textarea" id="mCheckInTextarea" placeholder="Type your response..." oninput="_onCheckInInput('m')"></textarea>
-              <div class="m-checkin-actions">
-                <button type="button" class="m-checkin-send" id="mCheckInSend" disabled onclick="_submitCheckIn('m')">Send to clinician →</button>
-              </div>
-              <div class="m-checkin-confirmed" id="mCheckInConfirmed" style="display:none;">
-                <span class="m-checkin-confirmed-icon">✓</span>
-                <span class="m-checkin-confirmed-text">Thanks — your clinician will see your response.</span>
-              </div>
-            </div>
           </div>
 
           <!-- RIGHT column: Care Team on top, Support below -->
@@ -5311,6 +5301,24 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <span id="mUpNextAppt" style="display:none;"></span>
         <span id="mUpRefill" style="display:none;"></span>
         <span id="mUpCheckin" style="display:none;"></span>
+
+        <!-- Wellness Check-in card — full-width row below both columns
+             so it doesn't fight the left column's variable height. -->
+        <div class="m-checkin-row">
+          <div class="m-card" id="mCardCheckIn" style="display:none;">
+            <button type="button" class="m-checkin-dismiss" id="mCheckInDismiss" onclick="_dismissCheckIn()" aria-label="Dismiss">&times;</button>
+            <div class="m-card-label">How Are You Feeling?</div>
+            <div class="m-checkin-prompt" id="mCheckInPrompt"></div>
+            <textarea class="m-checkin-textarea" id="mCheckInTextarea" placeholder="Type your response..." oninput="_onCheckInInput('m')"></textarea>
+            <div class="m-checkin-actions">
+              <button type="button" class="m-checkin-send" id="mCheckInSend" disabled onclick="_submitCheckIn('m')">Send to clinician →</button>
+            </div>
+            <div class="m-checkin-confirmed" id="mCheckInConfirmed" style="display:none;">
+              <span class="m-checkin-confirmed-icon">✓</span>
+              <span class="m-checkin-confirmed-text">Thanks — your clinician will see your response.</span>
+            </div>
+          </div>
+        </div>
 
       </div>
 

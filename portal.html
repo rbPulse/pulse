@@ -4497,28 +4497,31 @@ body.clinician-mode .crw-outcome-rx.rx-discontinued .crw-outcome-adjust-btn{
   color:#17a34a;
 }
 /* Divider above the discontinued strip when it follows an active block */
-/* Protocol-request banner inside the Prescribed section. Collapsed
-   by default = one-line summary (category + "View details"). Expanded
-   on click = full reason + medical update text. */
-body.clinician-mode .crw-req-banner{
-  margin:8px 0 10px;padding:10px 14px;
-  background:rgba(47,111,85,0.06);
-  border:1px solid rgba(47,111,85,0.2);
-  border-radius:8px;cursor:pointer;
+/* Protocol-request card — standalone card above the Prescribed section */
+body.clinician-mode .crw-req-card{
+  border-radius:10px;padding:16px 18px;margin:0 0 14px;
+  background:linear-gradient(135deg,rgba(234,179,8,0.07) 0%,rgba(234,179,8,0.02) 100%);
+  border:1px solid rgba(234,179,8,0.25);
   font-family:'Inter',sans-serif;font-size:12px;color:#1a1a1a;
-  transition:background .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-body.clinician-mode .crw-req-banner:hover{background:rgba(47,111,85,0.1);}
-body.clinician-mode .crw-req-banner-collapsed{display:flex;align-items:center;gap:8px;}
-body.clinician-mode .crw-req-banner.is-expanded .crw-req-banner-collapsed{display:none;}
-body.clinician-mode .crw-req-banner-expanded{display:none;line-height:1.6;}
-body.clinician-mode .crw-req-banner.is-expanded .crw-req-banner-expanded{display:block;}
-body.clinician-mode .crw-req-banner-dot{width:8px;height:8px;border-radius:50%;background:#2F6F55;flex-shrink:0;}
-body.clinician-mode .crw-req-banner-label{font-weight:700;letter-spacing:0.08em;font-size:9px;text-transform:uppercase;color:#2F6F55;flex:1;}
-body.clinician-mode .crw-req-banner-link{font-size:11px;font-weight:600;color:#2F6F55;flex-shrink:0;}
-body.clinician-mode .crw-req-banner-row{margin-bottom:6px;}
-body.clinician-mode .crw-req-banner-row:last-child{margin-bottom:0;}
-body.clinician-mode .crw-req-banner-key{font-weight:600;}
+body.clinician-mode .crw-req-card-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(234,179,8,0.13);padding:4px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a6508;
+}
+body.clinician-mode .crw-req-card-dot{width:6px;height:6px;border-radius:50%;background:#d4a017;flex-shrink:0;}
+body.clinician-mode .crw-req-card-cat{font-size:15px;font-weight:600;color:#1a1a1a;margin:12px 0 10px;}
+body.clinician-mode .crw-req-card-detail{font-size:12px;color:#555;line-height:1.7;}
+body.clinician-mode .crw-req-card-detail-row{margin-bottom:2px;}
+body.clinician-mode .crw-req-card-detail-label{font-weight:600;color:#333;}
+body.clinician-mode .crw-req-card-footer{display:flex;justify-content:flex-end;margin-top:14px;}
+body.clinician-mode .crw-req-card-btn{
+  background:#2F6F55;color:#fff;border:none;border-radius:6px;
+  padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;letter-spacing:0.02em;transition:background .15s;
+}
+body.clinician-mode .crw-req-card-btn:hover{background:#245a44;}
 body.clinician-mode .crw-outcome-disc-divider{
   font-family:'Inter',sans-serif;
   font-size:9px;
@@ -10583,36 +10586,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalAllVersions+')</button>'+
           '</div>';
       }
-      // Protocol-request banner — collapsible inline notification inside
-      // the Prescribed section. Collapsed: one-line category + "View details".
-      // Expanded: full reason + medical update text.
-      var _prReqBannerHtml = '';
-      if (_consultType === 'protocol_request' && d.request_category) {
-        var _prCat = escapeHtml(d.request_category);
-        var _prReason = d.request_reason || '';
-        var _prMedUp = d.medical_update || 'no';
-        var _prMedText = d.medical_update_text || '';
-        _prReqBannerHtml =
-          '<div class="crw-req-banner" onclick="this.classList.toggle(\'is-expanded\')">' +
-            '<div class="crw-req-banner-collapsed">' +
-              '<span class="crw-req-banner-dot"></span>' +
-              '<span class="crw-req-banner-label">NEW REQUEST \u00B7 ' + _prCat + '</span>' +
-              '<span class="crw-req-banner-link">View details \u203A</span>' +
-            '</div>' +
-            '<div class="crw-req-banner-expanded">' +
-              '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Category:</span> ' + _prCat + '</div>' +
-              (_prReason ? '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Reason:</span> \u201C' + escapeHtml(_prReason) + '\u201D</div>' : '') +
-              '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Medical update:</span> ' + (_prMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_prMedText) : 'No changes') + '</div>' +
-            '</div>' +
-          '</div>';
-      }
-
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
         '<div class="crw-outcome-title-row is-collapsible" onclick="_toggleOutcomeSection(this,event)">'+
           '<div class="crw-outcome-title"><span class="crw-outcome-chevron">&#9656;</span>Prescribed'+headerCount+'</div>'+
           '<button type="button" class="crw-outcome-adjust-btn" onclick="event.stopPropagation();_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
         '</div>'+
-        _prReqBannerHtml +
         rxCardsHtml +
         discStripHtml +
         historyLineHtml+
@@ -10651,7 +10629,26 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // .crw-decided-top → grid-column: 1 / -1, so the Rx stack doesn't
     // create variable empty space next to the messaging column. Pending
     // patients still show Risk inside .crw-left.
-    var decidedTopHtml = isDecided ? '<div class="crw-decided-top">'+outcomeTopHtml+'</div>' : '';
+    var _reqCardHtml = '';
+    if (_consultType === 'protocol_request' && d.request_category) {
+      var _rcCat = escapeHtml(d.request_category);
+      var _rcReason = d.request_reason || '';
+      var _rcMedUp = d.medical_update || 'no';
+      var _rcMedText = d.medical_update_text || '';
+      _reqCardHtml =
+        '<div class="crw-req-card">' +
+          '<span class="crw-req-card-badge"><span class="crw-req-card-dot"></span>New Protocol Request</span>' +
+          '<div class="crw-req-card-cat">' + _rcCat + '</div>' +
+          '<div class="crw-req-card-detail">' +
+            (_rcReason ? '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Reason:</span> \u201C' + escapeHtml(_rcReason) + '\u201D</div>' : '') +
+            '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Medical update:</span> ' + (_rcMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_rcMedText) : 'No changes reported') + '</div>' +
+          '</div>' +
+          '<div class="crw-req-card-footer">' +
+            '<button type="button" class="crw-req-card-btn" onclick="_openAddProtocolModal(\'' + escapeAttr(consultId) + '\',\'' + escapeAttr(userId) + '\',event)">+ Add Protocol</button>' +
+          '</div>' +
+        '</div>';
+    }
+    var decidedTopHtml = isDecided ? '<div class="crw-decided-top">' + _reqCardHtml + outcomeTopHtml + '</div>' : '';
     var topAlertHtml   = isDecided ? '' : riskHtml;
 
     // Patient Details block — for decided patients it lives at the bottom

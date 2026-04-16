@@ -335,6 +335,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .proto-slide-log-btn svg{width:12px;height:12px;flex-shrink:0;display:block;}
 .proto-slide-log-btn:disabled{opacity:0.45;cursor:default;}
 .proto-slide-log-btn:disabled svg{display:none;}
+/* "+ Add New" button in the hero — dashed border + pulse animation
+   matching the Overview add tile. Same pill size as the log button
+   so they stack uniformly. */
+.proto-slide-add-btn{
+  background:transparent !important;
+  border:1.5px dashed rgba(255,255,255,0.35) !important;
+  color:rgba(255,255,255,0.6) !important;
+  animation:ov-add-pulse 2s ease-in-out infinite;
+}
+.proto-slide-add-btn:hover{
+  background:rgba(255,255,255,0.08) !important;
+  border-color:rgba(255,255,255,0.55) !important;
+  color:#fff !important;
+  animation:none;
+}
 
 .compounds-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
 .compounds-label{font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.28em;text-transform:uppercase;color:var(--green);margin-bottom:14px;}
@@ -13812,13 +13827,14 @@ function _attachSlideOneLogButton(primaryRxId) {
   logBtn.className = 'proto-slide-log-btn';
   logBtn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
   _setProtoLogBtnState(logBtn, todayLogged);
-  // Request button
+  // Request button — matches the log button dimensions with dashed
+  // border + pulse animation (same treatment as the Overview add tile).
   var reqBtn = document.createElement('button');
   reqBtn.type = 'button';
-  reqBtn.className = 'proto-request-btn';
+  reqBtn.className = 'proto-slide-log-btn proto-slide-add-btn';
   reqBtn.id = 'protoRequestBtn';
   reqBtn.setAttribute('onclick', '_openProtocolRequestModal()');
-  reqBtn.textContent = '+ Request New Protocol';
+  reqBtn.innerHTML = '<span>+ Add New</span>';
   // Button wrapper — stacked vertically on the right
   var btnWrap = document.createElement('div');
   btnWrap.className = 'proto-header-btns';

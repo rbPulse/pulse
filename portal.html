@@ -2104,6 +2104,24 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .m-plan-progress-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
 .m-plan-link{background:none;border:none;padding:12px 0 0;font-family:'Inter',sans-serif;font-size:13px;color:#2F6F55;font-weight:600;cursor:pointer;text-align:left;display:block;margin-top:auto;}
 .m-plan-link:hover{color:#1a4a35;}
+/* ── Wellness Check-in card (desktop) ─────────────────────────────
+   Matches the .m-card chrome used by Care Team / Support / Supply
+   so it reads as a peer card, not a foreign widget. Textarea and
+   button styles match the Patient Notes flow in the clinician
+   portal and the Protocol-tab log button's cream-gradient pill. */
+#mCardCheckIn{position:relative;}
+.m-checkin-dismiss{position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:rgba(0,0,0,0.25);cursor:pointer;padding:2px;line-height:1;transition:color .15s;}
+.m-checkin-dismiss:hover{color:rgba(0,0,0,0.55);}
+.m-checkin-prompt{font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:var(--m-text,#1a1a1a);line-height:1.55;margin-bottom:14px;}
+.m-checkin-textarea{width:100%;background:rgba(0,0,0,0.03);border:1px solid var(--m-border,rgba(0,0,0,0.06));border-radius:10px;color:var(--m-text,#1a1a1a);font-family:'Inter',sans-serif;font-size:13px;padding:12px 14px;resize:vertical;min-height:64px;outline:none;line-height:1.6;transition:border-color .15s;box-sizing:border-box;}
+.m-checkin-textarea::placeholder{color:rgba(0,0,0,0.35);}
+.m-checkin-textarea:focus{border-color:#2F6F55;}
+.m-checkin-actions{display:flex;justify-content:flex-end;margin-top:10px;}
+.m-checkin-send{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:9px 18px;border-radius:999px;background:#2F6F55;color:#fff;border:none;cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;}
+.m-checkin-send:hover{background:#1a4a35;}
+.m-checkin-send:disabled{background:rgba(47,111,85,0.25);color:rgba(255,255,255,0.7);cursor:default;}
+.m-checkin-confirmed{display:flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:13px;color:#2F6F55;font-weight:500;padding:8px 0 0;}
+.m-checkin-confirmed-icon{font-size:16px;font-weight:700;}
 /* ── Overview multi-protocol mode ─────────────────────────────────
    Shared classes used by both the desktop Hero card (#mCardHero)
    and the mobile Hero card (#moCardHero) when activeRxs.length > 1.
@@ -3011,6 +3029,23 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
 .mo-support-btn:active{transform:scale(0.99);background:rgba(47,111,85,0.04);}
 .mo-support-btn-primary{background:rgba(47,111,85,0.06);border-color:rgba(47,111,85,0.18);color:#2F6F55;}
 .mo-support-btn-primary>span{color:#2F6F55;}
+/* ── Wellness Check-in card (mobile) ──────────────────────────────
+   Uses .mo-card chrome + .mo-card-lbl eyebrow so it reads as a
+   peer of Care Team / Support cards in the mobile stack. Textarea
+   and button styles match the mobile input + .mo-btn patterns. */
+#moCardCheckIn{position:relative;}
+.mo-checkin-dismiss{position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:rgba(20,20,20,0.25);cursor:pointer;padding:2px;line-height:1;transition:color .15s;}
+.mo-checkin-dismiss:hover{color:rgba(20,20,20,0.55);}
+.mo-checkin-prompt{font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:#1a1a1a;line-height:1.55;margin-bottom:14px;}
+.mo-checkin-textarea{width:100%;background:#fff;border:1px solid rgba(20,20,20,0.08);border-radius:10px;color:#1a1a1a;font-family:'Inter',sans-serif;font-size:14px;padding:12px 14px;resize:vertical;min-height:64px;outline:none;line-height:1.6;transition:border-color .15s;box-sizing:border-box;}
+.mo-checkin-textarea::placeholder{color:rgba(20,20,20,0.35);}
+.mo-checkin-textarea:focus{border-color:#2F6F55;}
+.mo-checkin-actions{display:flex;justify-content:flex-end;margin-top:10px;}
+.mo-checkin-send{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;background:#2F6F55;border:none;border-radius:999px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:#fff;cursor:pointer;transition:background .15s;}
+.mo-checkin-send:active{transform:scale(0.98);}
+.mo-checkin-send:disabled{background:rgba(47,111,85,0.25);color:rgba(255,255,255,0.7);cursor:default;}
+.mo-checkin-confirmed{display:flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:13px;color:#2F6F55;font-weight:500;padding:8px 0 0;}
+.mo-checkin-confirmed-icon{font-size:16px;font-weight:700;}
 
 @media(max-width:600px){
   body.member-mode .m-grid{grid-template-columns:1fr;gap:14px;}
@@ -5073,6 +5108,21 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
               <button class="mo-support-btn mo-support-btn-primary" onclick="switchTab('messages')">Contact clinician <span>›</span></button>
             </div>
           </div>
+
+          <!-- ─── 5. WELLNESS CHECK-IN CARD ─── -->
+          <div class="mo-card" id="moCardCheckIn" style="display:none;">
+            <button type="button" class="mo-checkin-dismiss" id="moCheckInDismiss" onclick="_dismissCheckIn()" aria-label="Dismiss">&times;</button>
+            <div class="mo-card-lbl">How Are You Feeling?</div>
+            <div class="mo-checkin-prompt" id="moCheckInPrompt"></div>
+            <textarea class="mo-checkin-textarea" id="moCheckInTextarea" placeholder="Type your response..." oninput="_onCheckInInput('mo')"></textarea>
+            <div class="mo-checkin-actions">
+              <button type="button" class="mo-checkin-send" id="moCheckInSend" disabled onclick="_submitCheckIn('mo')">Send to clinician →</button>
+            </div>
+            <div class="mo-checkin-confirmed" id="moCheckInConfirmed" style="display:none;">
+              <span class="mo-checkin-confirmed-icon">✓</span>
+              <span class="mo-checkin-confirmed-text">Thanks — your clinician will see your response.</span>
+            </div>
+          </div>
         </div>
 
         <!-- ══ ROW 1: Hero + Your Plan (single-protocol) ══════════════
@@ -5123,6 +5173,21 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <div class="m-plan-progress"><div class="m-plan-progress-fill" id="mSupplyBar" style="width:0%;"></div></div>
               </div>
               <button class="m-plan-link" onclick="switchTab('protocol')">View full protocol ›</button>
+            </div>
+
+            <!-- Wellness Check-in card -->
+            <div class="m-card" id="mCardCheckIn" style="display:none;">
+              <button type="button" class="m-checkin-dismiss" id="mCheckInDismiss" onclick="_dismissCheckIn()" aria-label="Dismiss">&times;</button>
+              <div class="m-card-label">How Are You Feeling?</div>
+              <div class="m-checkin-prompt" id="mCheckInPrompt"></div>
+              <textarea class="m-checkin-textarea" id="mCheckInTextarea" placeholder="Type your response..." oninput="_onCheckInInput('m')"></textarea>
+              <div class="m-checkin-actions">
+                <button type="button" class="m-checkin-send" id="mCheckInSend" disabled onclick="_submitCheckIn('m')">Send to clinician →</button>
+              </div>
+              <div class="m-checkin-confirmed" id="mCheckInConfirmed" style="display:none;">
+                <span class="m-checkin-confirmed-icon">✓</span>
+                <span class="m-checkin-confirmed-text">Thanks — your clinician will see your response.</span>
+              </div>
             </div>
           </div>
 
@@ -13818,6 +13883,180 @@ function _dismissMemberWelcome() {
 // Time-of-day greeting for the multi-protocol Hero eyebrow.
 // Returns "Good morning" / "Good afternoon" / "Good evening" based
 // on the member's local hour. Callers uppercase it for display.
+// ══ Wellness Check-in — prompts + render + submit ══════════════════════
+// Product-agnostic weekly prompt that surfaces on the member Overview.
+// Response inserts into patient_events (type: 'checkin') AND sends as
+// a regular message in the clinician thread. localStorage tracks
+// responded/dismissed per ISO week so the prompt reappears Monday.
+
+var WELLNESS_PROMPTS = [
+  { id: 1, text: 'How are you feeling this week?', category: 'general' },
+  { id: 2, text: 'Noticed any changes since starting your program?', category: 'progress' },
+  { id: 3, text: 'How would you rate your energy level lately?', category: 'wellness' },
+  { id: 4, text: 'How are you sleeping?', category: 'wellness' },
+  { id: 5, text: 'Anything your care team should know about?', category: 'concerns' },
+  { id: 6, text: 'Any concerns or side effects to report?', category: 'concerns' },
+  { id: 7, text: "What's been going well with your routine?", category: 'progress' },
+  { id: 8, text: 'How would you describe your progress so far?', category: 'progress' },
+  { id: 9, text: 'Any questions for your clinician?', category: 'concerns' },
+  { id: 10, text: 'Anything we could do better for you?', category: 'feedback' }
+];
+
+function _checkInWeekKey() {
+  var now = new Date();
+  var start = new Date(now.getFullYear(), 0, 1);
+  var weekNum = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
+  return now.getFullYear() + '-W' + weekNum;
+}
+
+function _hasRespondedThisWeek() {
+  if (!currentUserId) return false;
+  try { return localStorage.getItem('pulseCheckIn_' + currentUserId + '_' + _checkInWeekKey()) === '1'; } catch (_) { return false; }
+}
+
+function _markCheckInDone() {
+  if (!currentUserId) return;
+  try { localStorage.setItem('pulseCheckIn_' + currentUserId + '_' + _checkInWeekKey(), '1'); } catch (_) {}
+}
+
+function _getWeeklyPrompt() {
+  var uid = currentUserId || 'anon';
+  var hash = 0;
+  for (var i = 0; i < uid.length; i++) {
+    hash = ((hash << 5) - hash) + uid.charCodeAt(i);
+    hash |= 0;
+  }
+  var now = new Date();
+  var start = new Date(now.getFullYear(), 0, 1);
+  var weekNum = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
+  var idx = Math.abs(hash + weekNum) % WELLNESS_PROMPTS.length;
+  return WELLNESS_PROMPTS[idx];
+}
+
+// Render the check-in card on both desktop (#mCardCheckIn) and mobile
+// (#moCardCheckIn). Hides the card if the member already responded or
+// dismissed this week. Called from populatePortal after the Overview
+// data has loaded.
+function renderWellnessCheckIn() {
+  var mCard = document.getElementById('mCardCheckIn');
+  var moCard = document.getElementById('moCardCheckIn');
+  if (_hasRespondedThisWeek()) {
+    if (mCard) mCard.style.display = 'none';
+    if (moCard) moCard.style.display = 'none';
+    return;
+  }
+  var prompt = _getWeeklyPrompt();
+  if (!prompt) return;
+  // Desktop
+  if (mCard) {
+    mCard.style.display = '';
+    var mPrompt = document.getElementById('mCheckInPrompt');
+    if (mPrompt) mPrompt.textContent = '"' + prompt.text + '"';
+    // Update send button label with clinician name if available
+    var sendBtn = document.getElementById('mCheckInSend');
+    var clName = _formatDrLastName(window._clinicianName) || 'your clinician';
+    if (sendBtn) sendBtn.textContent = 'Send to ' + clName + ' →';
+  }
+  // Mobile
+  if (moCard) {
+    moCard.style.display = '';
+    var moPrompt = document.getElementById('moCheckInPrompt');
+    if (moPrompt) moPrompt.textContent = '"' + prompt.text + '"';
+    var moSendBtn = document.getElementById('moCheckInSend');
+    var clName2 = _formatDrLastName(window._clinicianName) || 'your clinician';
+    if (moSendBtn) moSendBtn.textContent = 'Send to ' + clName2 + ' →';
+  }
+}
+
+// Textarea input — enable/disable the send button based on content.
+function _onCheckInInput(prefix) {
+  var ta = document.getElementById(prefix + 'CheckInTextarea');
+  var btn = document.getElementById(prefix + 'CheckInSend');
+  if (!ta || !btn) return;
+  btn.disabled = ta.value.trim().length === 0;
+}
+
+// Submit the check-in response. Writes to patient_events table +
+// sends as a message in the clinician thread.
+async function _submitCheckIn(prefix) {
+  var ta = document.getElementById(prefix + 'CheckInTextarea');
+  var btn = document.getElementById(prefix + 'CheckInSend');
+  if (!ta || !btn) return;
+  var response = ta.value.trim();
+  if (!response) return;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  var prompt = _getWeeklyPrompt();
+  var promptText = prompt ? prompt.text : 'How are you feeling?';
+
+  try {
+    // 1. Insert into patient_events
+    if (!PREVIEW_MODE && currentUserId) {
+      var firstName = (window._memberFirstName || '').trim();
+      await db.from('patient_events').insert({
+        user_id: currentUserId,
+        event_type: 'checkin',
+        event_data: { prompt: promptText, response: response, prompt_id: prompt ? prompt.id : null },
+        created_by: currentUserId,
+        created_by_name: firstName || null
+      });
+    }
+
+    // 2. Send as a message in the clinician thread
+    if (!PREVIEW_MODE && currentUserId) {
+      var clinicianId = (window._assignedClinicianId) || null;
+      // Resolve clinician ID if not stashed
+      if (!clinicianId) {
+        try {
+          var cRes = await db.from('consultations').select('assigned_clinician_id').eq('user_id', currentUserId).order('created_at', { ascending: false }).limit(1);
+          if (cRes && cRes.data && cRes.data.length) clinicianId = cRes.data[0].assigned_clinician_id;
+        } catch (_) {}
+      }
+      if (clinicianId) {
+        var msgBody = 'Check-in: ' + promptText + '\n\n' + response;
+        await db.from('messages').insert({
+          thread_id: currentUserId,
+          sender_id: currentUserId,
+          sender_role: 'consumer',
+          sender_name: (window._memberFirstName || '') + ' ' + (window._memberLastName || ''),
+          recipient_id: clinicianId,
+          body: msgBody,
+          read: false
+        });
+      }
+    }
+
+    // 3. Mark as done for this week
+    _markCheckInDone();
+
+    // 4. Show confirmation, hide the input area
+    ['m', 'mo'].forEach(function(p) {
+      var taEl = document.getElementById(p + 'CheckInTextarea');
+      var actEl = document.getElementById(p + 'CheckInSend');
+      var confEl = document.getElementById(p + 'CheckInConfirmed');
+      var dismissEl = document.getElementById(p + 'CheckInDismiss');
+      if (taEl) taEl.style.display = 'none';
+      if (actEl) actEl.parentElement.style.display = 'none';
+      if (confEl) confEl.style.display = '';
+      if (dismissEl) dismissEl.style.display = 'none';
+    });
+  } catch (err) {
+    console.warn('[Pulse] check-in submit failed:', err && err.message);
+    btn.disabled = false;
+    btn.textContent = 'Send to clinician →';
+    if (typeof showToast === 'function') showToast('Failed to send. Please try again.');
+  }
+}
+
+// Dismiss the check-in card for this week without responding.
+function _dismissCheckIn() {
+  _markCheckInDone();
+  var mCard = document.getElementById('mCardCheckIn');
+  var moCard = document.getElementById('moCardCheckIn');
+  if (mCard) mCard.style.display = 'none';
+  if (moCard) moCard.style.display = 'none';
+}
+
 function _ovGreeting() {
   var h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -14230,6 +14469,8 @@ function populatePortal(user, consultation, greeting) {
 
   // Resolve assigned clinician name for care team header
   var clinicianId = consultation && consultation.assigned_clinician_id;
+  // Stash for the wellness check-in message sender.
+  window._assignedClinicianId = clinicianId || null;
   if (clinicianId && !PREVIEW_MODE) {
     db.from('profiles').select('display_name, first_name, last_name, photo_url, cl_bio, cl_credentials, cl_specialty, cl_timezone').eq('user_id', clinicianId).limit(1)
       .then(function(pr) {
@@ -14538,6 +14779,11 @@ function populatePortal(user, consultation, greeting) {
     // the Rx list to work with. No-op for single-protocol members.
     if (typeof _renderOverviewMulti === 'function') {
       try { _renderOverviewMulti(); } catch (e) { console.warn('[Pulse] multi overview render failed:', e); }
+    }
+
+    // Wellness check-in card — weekly prompt for the member
+    if (typeof renderWellnessCheckIn === 'function') {
+      try { renderWellnessCheckIn(); } catch (_) {}
     }
 
     // ── Clinician Notes ──

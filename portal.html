@@ -10306,6 +10306,38 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="font-size:12px;">No intake data found.</div>'; return; }
     var consultRow = res.data[0];
     var d = consultRow.data || {};
+
+    // Protocol-request consultations don't carry the full intake data
+    // (demographics, goals, clinical summary). Load the member's
+    // original intake consultation so the clinician has full patient
+    // context alongside the request card.
+    var _consultType = null;
+    try {
+      var _ctRes = await db.from('consultations').select('consultation_type').eq('id', consultId).limit(1);
+      if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
+    } catch (_) {}
+    if (_consultType === 'protocol_request' || (!d.first_name && d.request_category)) {
+      try {
+        var _origRes = await db.from('consultations')
+          .select('data, risk_status, risk_flag_reasons')
+          .eq('user_id', userId)
+          .neq('id', consultId)
+          .not('data', 'is', null)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (_origRes && _origRes.data && _origRes.data.length) {
+          var _origData = _origRes.data[0].data || {};
+          // Merge: keep request fields from the new consultation,
+          // fill in demographics/goals/clinical from the original.
+          var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_update_text: d.medical_update_text };
+          d = Object.assign({}, _origData, _reqFields);
+          if (!riskStatus && _origRes.data[0].risk_status) {
+            riskStatus = _origRes.data[0].risk_status;
+            riskReasons = _origRes.data[0].risk_flag_reasons || [];
+          }
+        }
+      } catch (_) {}
+    }
     // Split prescriptions by status for the outcome renderer below.
     var activeRxs       = allRxs.filter(function(r) { return r.status === 'active'; });
     var discontinuedRxs = allRxs.filter(function(r) { return r.status === 'discontinued'; });

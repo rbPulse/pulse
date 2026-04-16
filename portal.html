@@ -7490,41 +7490,40 @@ function _continuePortalInit(user, role) {
     // active member — skip all intake redirect logic and go straight to the
     // portal. This prevents protocol-request consultations (which have
     // review_status='pending_review') from triggering the intake flow.
-    var _decidedCheck = await db.from('consultations')
-      .select('id')
+    db.from('consultations').select('id, review_status')
       .eq('user_id', user.id)
       .in('review_status', ['prescribed','not_prescribed','discontinued'])
-      .limit(1);
-    var _isActiveMember = _decidedCheck && _decidedCheck.data && _decidedCheck.data.length > 0;
+      .limit(1)
+    .then(function(_decidedCheck) {
+      var _isActiveMember = _decidedCheck && _decidedCheck.data && _decidedCheck.data.length > 0;
+      return db.from('consultations').select('*').eq('user_id', user.id)
+        .order('created_at', {ascending: false}).limit(5)
+        .then(function(res) {
+          // Skip protocol-request consultations — they're add-on requests,
+          // not the intake that determines portal state.
+          var _rows = (res.data || []).filter(function(r) {
+            if (r.consultation_type === 'protocol_request') return false;
+            if (r.data && r.data.request_category && !r.data.first_name) return false;
+            return true;
+          });
+          var c = _rows.length > 0 ? _rows[0] : null;
 
-    db.from('consultations').select('*').eq('user_id', user.id)
-      .order('created_at', {ascending: false}).limit(5)
-      .then(function(res) {
-        // Skip protocol-request consultations — they're add-on requests,
-        // not the intake that determines portal state.
-        var _rows = (res.data || []).filter(function(r) {
-          if (r.consultation_type === 'protocol_request') return false;
-          if (r.data && r.data.request_category && !r.data.first_name) return false;
-          return true;
-        });
-        var c = _rows.length > 0 ? _rows[0] : null;
-
-        // Active member shortcut: if they have a decided consultation,
-        // go straight to the portal regardless of other state checks.
-        if (_isActiveMember && c) {
-          return pxGetActiveForUser(user.id)
-            .then(function(activeRxs) {
-              c._activeRxs = activeRxs;
-              c._protoStartedAt = (activeRxs[0] && activeRxs[0].started_at) || null;
-              populatePortal(user, c, greeting);
-              var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
-              setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
-            })
-            .catch(function() {
-              c._activeRxs = [];
-              populatePortal(user, c, greeting);
-            });
-        }
+          // Active member shortcut: if they have a decided consultation,
+          // go straight to the portal regardless of other state checks.
+          if (_isActiveMember && c) {
+            return pxGetActiveForUser(user.id)
+              .then(function(activeRxs) {
+                c._activeRxs = activeRxs;
+                c._protoStartedAt = (activeRxs[0] && activeRxs[0].started_at) || null;
+                populatePortal(user, c, greeting);
+                var _mwFirst = (c.data && c.data.first_name) || (user.user_metadata && user.user_metadata.first_name) || '';
+                setTimeout(function(){ _maybeShowMemberWelcome(_mwFirst, user.id); }, 400);
+              })
+              .catch(function() {
+                c._activeRxs = [];
+                populatePortal(user, c, greeting);
+              });
+          }
         if (!c) {
           // No consultation — check if they have a pending appointment anyway
           // (consultation insert may have failed but appointment succeeded, or RLS blocks consultation read)
@@ -7600,8 +7599,9 @@ function _continuePortalInit(user, role) {
             populatePortal(user, c, greeting);
           })
           .catch(function(err) { console.warn('[Pulse] appointment check failed:', err); populatePortal(user, c, greeting); });
-      })
-      .catch(function(err) { handleSupabaseError(err, 'consultations load'); populatePortal(user, null, greeting); });
+        });
+      });
+    }).catch(function(err) { handleSupabaseError(err, 'consultations load'); populatePortal(user, null, greeting); });
     loadDoseLogs();
     _startConsumerUnreadPoll();
     loadNotifications();

@@ -4497,6 +4497,28 @@ body.clinician-mode .crw-outcome-rx.rx-discontinued .crw-outcome-adjust-btn{
   color:#17a34a;
 }
 /* Divider above the discontinued strip when it follows an active block */
+/* Protocol-request banner inside the Prescribed section. Collapsed
+   by default = one-line summary (category + "View details"). Expanded
+   on click = full reason + medical update text. */
+body.clinician-mode .crw-req-banner{
+  margin:8px 0 10px;padding:10px 14px;
+  background:rgba(47,111,85,0.06);
+  border:1px solid rgba(47,111,85,0.2);
+  border-radius:8px;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:12px;color:#1a1a1a;
+  transition:background .15s;
+}
+body.clinician-mode .crw-req-banner:hover{background:rgba(47,111,85,0.1);}
+body.clinician-mode .crw-req-banner-collapsed{display:flex;align-items:center;gap:8px;}
+body.clinician-mode .crw-req-banner.is-expanded .crw-req-banner-collapsed{display:none;}
+body.clinician-mode .crw-req-banner-expanded{display:none;line-height:1.6;}
+body.clinician-mode .crw-req-banner.is-expanded .crw-req-banner-expanded{display:block;}
+body.clinician-mode .crw-req-banner-dot{width:8px;height:8px;border-radius:50%;background:#2F6F55;flex-shrink:0;}
+body.clinician-mode .crw-req-banner-label{font-weight:700;letter-spacing:0.08em;font-size:9px;text-transform:uppercase;color:#2F6F55;flex:1;}
+body.clinician-mode .crw-req-banner-link{font-size:11px;font-weight:600;color:#2F6F55;flex-shrink:0;}
+body.clinician-mode .crw-req-banner-row{margin-bottom:6px;}
+body.clinician-mode .crw-req-banner-row:last-child{margin-bottom:0;}
+body.clinician-mode .crw-req-banner-key{font-weight:600;}
 body.clinician-mode .crw-outcome-disc-divider{
   font-family:'Inter',sans-serif;
   font-size:9px;
@@ -10407,30 +10429,18 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     else if (diffH < 24) { subRel = diffH + 'h'; }
     else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
 
-    // Risk / Protocol Request card
-    // Fetch consultation_type separately so the main query doesn't
-    // break if the column hasn't been migrated yet.
+    // Risk card — always show the real risk assessment.
+    // Protocol-request details are shown as an inline banner inside
+    // the Prescribed section instead of replacing the risk card.
     var _consultType = null;
     try {
       var _ctRes = await db.from('consultations').select('consultation_type').eq('id', consultId).limit(1);
       if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
     } catch (_) {}
+    // Also detect protocol requests from data payload (pre-migration fallback)
+    if (!_consultType && d.request_category) _consultType = 'protocol_request';
     var riskHtml = '';
-    if (_consultType === 'protocol_request') {
-      var _reqCat = (d.request_category || '—');
-      var _reqReason = (d.request_reason || '');
-      var _reqMedUp = (d.medical_update || 'no');
-      var _reqMedText = (d.medical_update_text || '');
-      riskHtml =
-        '<div class="crw-risk" style="background:rgba(47,111,85,0.06);border:1px solid rgba(47,111,85,0.25);border-radius:10px;padding:16px 18px;">' +
-          '<div class="crw-risk-title" style="color:#2F6F55;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:12px;">NEW PROTOCOL REQUEST</div>' +
-          '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:#1a1a1a;line-height:1.6;">' +
-            '<div style="margin-bottom:8px;"><span style="font-weight:600;">Category:</span> ' + escapeHtml(_reqCat) + '</div>' +
-            (_reqReason ? '<div style="margin-bottom:8px;"><span style="font-weight:600;">Reason:</span> \u201C' + escapeHtml(_reqReason) + '\u201D</div>' : '') +
-            '<div><span style="font-weight:600;">Medical update:</span> ' + (_reqMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_reqMedText) : 'No changes') + '</div>' +
-          '</div>' +
-        '</div>';
-    } else if(riskStatus==='high_risk'){
+    if(riskStatus==='high_risk'){
       riskHtml='<div class="crw-risk crw-risk-high"><div class="crw-risk-title" style="color:#EF4444;">HIGH RISK</div>'+
         '<ul class="crw-risk-list" style="color:#EF4444;">'+riskReasons.map(function(r){return '<li>'+escapeHtml(r)+'</li>';}).join('')+'</ul></div>';
     }else if(riskStatus==='moderate_risk'){
@@ -10568,11 +10578,36 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             '<button type="button" class="crw-outcome-history-link" onclick="_openRxHistoryModal(\''+escapeAttr(consultId)+'\')">View history ('+totalAllVersions+')</button>'+
           '</div>';
       }
+      // Protocol-request banner — collapsible inline notification inside
+      // the Prescribed section. Collapsed: one-line category + "View details".
+      // Expanded: full reason + medical update text.
+      var _prReqBannerHtml = '';
+      if (_consultType === 'protocol_request' && d.request_category) {
+        var _prCat = escapeHtml(d.request_category);
+        var _prReason = d.request_reason || '';
+        var _prMedUp = d.medical_update || 'no';
+        var _prMedText = d.medical_update_text || '';
+        _prReqBannerHtml =
+          '<div class="crw-req-banner" onclick="this.classList.toggle(\'is-expanded\')">' +
+            '<div class="crw-req-banner-collapsed">' +
+              '<span class="crw-req-banner-dot"></span>' +
+              '<span class="crw-req-banner-label">NEW REQUEST \u00B7 ' + _prCat + '</span>' +
+              '<span class="crw-req-banner-link">View details \u203A</span>' +
+            '</div>' +
+            '<div class="crw-req-banner-expanded">' +
+              '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Category:</span> ' + _prCat + '</div>' +
+              (_prReason ? '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Reason:</span> \u201C' + escapeHtml(_prReason) + '\u201D</div>' : '') +
+              '<div class="crw-req-banner-row"><span class="crw-req-banner-key">Medical update:</span> ' + (_prMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_prMedText) : 'No changes') + '</div>' +
+            '</div>' +
+          '</div>';
+      }
+
       outcomeTopHtml = '<div class="crw-outcome crw-outcome-prescribed">'+
         '<div class="crw-outcome-title-row is-collapsible" onclick="_toggleOutcomeSection(this,event)">'+
           '<div class="crw-outcome-title"><span class="crw-outcome-chevron">&#9656;</span>Prescribed'+headerCount+'</div>'+
           '<button type="button" class="crw-outcome-adjust-btn" onclick="event.stopPropagation();_openAddProtocolModal(\''+escapeAttr(consultId)+'\',\''+escapeAttr(userId)+'\',event)">+ Add Protocol</button>'+
         '</div>'+
+        _prReqBannerHtml +
         rxCardsHtml +
         discStripHtml +
         historyLineHtml+
@@ -10674,9 +10709,11 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         // Decided patients get Patient Details in the left column here
         (isDecided ? patientDetailsHtml : '')+
         (function(){
-          // Pre-decision only: show action buttons. Prescribed/declined render
-          // in the full-width .crw-bottom row below both columns.
+          // Pre-decision only: show action buttons. Prescribed/declined
+          // render in the full-width .crw-bottom row. Protocol-request
+          // consultations skip the buttons (clinician uses "+ Add Protocol").
           if (isDecided) return '';
+          if (_consultType === 'protocol_request') return '';
           return '<div class="crw-actions">'+
             '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
             '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+

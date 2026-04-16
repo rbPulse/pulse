@@ -3362,14 +3362,23 @@ body.clinician-mode .patient-detail-panel{background:var(--cl-high);border:1px s
   display:flex;
   flex-direction:column;
 }
-/* Card renderer lives inside .pd-modal-body. It uses the existing
-   .crw grid (1fr + 380px). Give it full height so .crw-right can
-   anchor the message thread scroll to its column instead of the
-   page. Left column gets its own overflow guardrail so an
-   unusually tall patient can't break the modal envelope. */
-.pd-modal-body > .crw{height:100%; min-height:0;}
-.pd-modal-body > .crw > .crw-left{overflow-y:auto; min-height:0;}
-.pd-modal-body > .crw > .crw-right{overflow:hidden; min-height:0;}
+/* Card renderer lives inside .pd-modal-body. Override the grid to
+   (1) make the left column ~15% narrower (1fr 500px instead of the
+   base 1fr 380px) so the message thread column has more room,
+   (2) keep the Prescribed/Discontinued card inside the left column
+   instead of spanning full width so the right column can extend up
+   to the very top of the modal, and
+   (3) hide the expand button on the Patient Communication header
+   since the modal itself IS the expanded view. */
+.pd-modal-body > .crw{
+  height:100%; min-height:0;
+  grid-template-columns:1fr 500px;
+  grid-template-rows:auto 1fr;
+}
+.pd-modal-body > .crw > .crw-decided-top{grid-column:1; grid-row:1; padding:24px 24px 0;}
+.pd-modal-body > .crw > .crw-left{grid-column:1; grid-row:2; overflow-y:auto; min-height:0;}
+.pd-modal-body > .crw > .crw-right{grid-column:2; grid-row:1 / -1; overflow:hidden; min-height:0;}
+.pd-modal-body .crw-msg-expand-btn{display:none !important;}
 /* Row highlight — the Patients-tab row (or Overview card) that
    opened the modal stays visually flagged until the modal closes. */
 .cl-ft-row-wrap.is-modal-active,

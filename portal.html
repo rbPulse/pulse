@@ -13837,10 +13837,7 @@ function _updateProtoPrescribedLine() {
   var el = document.getElementById('protoReviewed');
   if (!el) return;
   var reviewDate = window._protoReviewDate || null;
-  var prescriberName = window._clinicianName || null;
-  if (prescriberName && !/^dr\.?\s/i.test(prescriberName)) {
-    prescriberName = 'Dr. ' + prescriberName;
-  }
+  var prescriberName = _formatDrLastName(window._clinicianName) || window._clinicianName || null;
   var text = '';
   if (prescriberName && reviewDate) {
     text = 'Prescribed by ' + prescriberName + ' on ' + reviewDate;

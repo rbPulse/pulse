@@ -216,6 +216,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pr-field-radio{display:flex;gap:16px;margin-top:6px;}
 .pr-field-radio label{display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;cursor:pointer;}
 .pr-field-radio input[type="radio"]{accent-color:#2F6F55;}
+.pr-med-fields{display:none;margin-top:12px;display:none;flex-direction:column;gap:12px;}
+.pr-med-fields.is-visible{display:flex;}
+.pr-med-row{display:flex;gap:12px;}
+.pr-med-row .pr-med-col{flex:1;min-width:0;}
+.pr-med-col label{display:block;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:5px;}
+.pr-med-col input,.pr-med-col textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.08);border-radius:10px;font-family:'Inter',sans-serif;font-size:13px;color:#1a1a1a;padding:10px 14px;outline:none;transition:border-color .15s;}
+.pr-med-col input:focus,.pr-med-col textarea:focus{border-color:#2F6F55;}
+.pr-med-col textarea{resize:vertical;min-height:52px;line-height:1.5;}
+.pr-med-col .pr-med-suffix{font-size:11px;color:rgba(0,0,0,0.35);margin-top:3px;}
 .pr-submit{display:block;margin:24px auto 0;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:12px 28px;border-radius:999px;background:#2F6F55;color:#fff;border:none;cursor:pointer;transition:background .15s;}
 .pr-submit:hover{background:#1a4a35;}
 .pr-submit:disabled{background:rgba(47,111,85,0.25);color:rgba(255,255,255,0.7);cursor:default;}
@@ -10404,8 +10413,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           .limit(1);
         if (_origRes && _origRes.data && _origRes.data.length) {
           var _origData = _origRes.data[0].data || {};
-          var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_update_text: d.medical_update_text };
+          var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_changes: d.medical_changes, medical_update_text: d.medical_update_text };
+          var _origWeight = _origData.current_weight || null;
           d = Object.assign({}, _origData, _reqFields);
+          d._original_weight = _origWeight;
+          if (d.medical_changes && d.medical_changes.weight) {
+            d.current_weight = d.medical_changes.weight;
+          }
           // Use original consultation's review_status so the card
           // renders "Prescribed" section instead of the risk card
           consultRow.review_status = _origRes.data[0].review_status || consultRow.review_status;
@@ -10643,8 +10657,24 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _rcCat = escapeHtml(d.request_category);
       var _rcReason = d.request_reason || '';
       var _rcMedUp = d.medical_update || 'no';
+      var _rcChanges = d.medical_changes || null;
       var _rcMedText = d.medical_update_text || '';
       var _rcReqDate = consultCreatedAt ? _fmtClDate(consultCreatedAt) : '';
+      var _rcMedHtml = '';
+      if (_rcMedUp === 'yes' && _rcChanges) {
+        var _rows = [];
+        if (_rcChanges.weight) {
+          var _ow = d._original_weight ? escapeHtml(String(d._original_weight)) + ' lbs' : '\u2014';
+          _rows.push('<span class="crw-req-card-detail-label">Weight:</span> ' + _ow + ' \u2192 ' + escapeHtml(String(_rcChanges.weight)) + ' lbs');
+        }
+        if (_rcChanges.new_medications) _rows.push('<span class="crw-req-card-detail-label">New medications:</span> ' + escapeHtml(_rcChanges.new_medications));
+        if (_rcChanges.new_conditions) _rows.push('<span class="crw-req-card-detail-label">New conditions:</span> ' + escapeHtml(_rcChanges.new_conditions));
+        if (_rcChanges.other) _rows.push('<span class="crw-req-card-detail-label">Other:</span> ' + escapeHtml(_rcChanges.other));
+        if (_rows.length) _rcMedHtml = _rows.map(function(r) { return '<div class="crw-req-card-detail-row">' + r + '</div>'; }).join('');
+      } else if (_rcMedUp === 'yes' && _rcMedText) {
+        _rcMedHtml = '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Medical update:</span> ' + escapeHtml(_rcMedText) + '</div>';
+      }
+      if (!_rcMedHtml) _rcMedHtml = '<div class="crw-req-card-detail-row" style="color:rgba(0,0,0,0.35);">No medical changes reported</div>';
       _reqCardHtml =
         '<div class="crw-req-card">' +
           '<div class="crw-req-card-hdr">' +
@@ -10656,7 +10686,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
               '<div class="crw-req-card-cat">Patient requested to add ' + _rcCat + (_rcReqDate ? ' on ' + escapeHtml(_rcReqDate) : '') + '</div>' +
               '<div class="crw-req-card-detail">' +
                 (_rcReason ? '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Reason:</span> \u201C' + escapeHtml(_rcReason) + '\u201D</div>' : '') +
-                '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Medical update:</span> ' + (_rcMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_rcMedText) : 'No changes reported') + '</div>' +
+                _rcMedHtml +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -14190,7 +14220,7 @@ function _dismissMemberWelcome() {
 
 var PROTOCOL_CATEGORIES = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery','Performance','Longevity','Optimize'];
 
-function _openProtocolRequestModal() {
+async function _openProtocolRequestModal() {
   // Don't open if there's already a pending request.
   var btn = document.getElementById('protoRequestBtn');
   if (btn && btn.disabled) return;
@@ -14198,10 +14228,18 @@ function _openProtocolRequestModal() {
   var old = document.getElementById('prRequestOverlay');
   if (old && old.parentNode) old.parentNode.removeChild(old);
 
-  var optionsHtml = '<option value="">Select a category…</option>' +
+  var optionsHtml = '<option value="">Select a category\u2026</option>' +
     PROTOCOL_CATEGORIES.map(function(c) {
       return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>';
     }).join('');
+
+  var _prCurrentWeight = '';
+  try {
+    var _cwRes = await db.from('consultations').select('data')
+      .eq('user_id', currentUserId).not('data', 'is', null)
+      .order('created_at', { ascending: true }).limit(1);
+    if (_cwRes && _cwRes.data && _cwRes.data[0]) _prCurrentWeight = (_cwRes.data[0].data || {}).current_weight || '';
+  } catch (_) {}
 
   var overlay = document.createElement('div');
   overlay.className = 'pr-modal-overlay';
@@ -14222,10 +14260,36 @@ function _openProtocolRequestModal() {
       '<div class="pr-field">' +
         '<div class="pr-field-label">Has anything changed in your medical history since your last intake?</div>' +
         '<div class="pr-field-radio">' +
-          '<label><input type="radio" name="prMedUpdate" value="no" checked onchange="_validatePrForm();document.getElementById(\'prMedUpdateText\').style.display=\'none\';">No</label>' +
-          '<label><input type="radio" name="prMedUpdate" value="yes" onchange="_validatePrForm();document.getElementById(\'prMedUpdateText\').style.display=\'\';">Yes</label>' +
+          '<label><input type="radio" name="prMedUpdate" value="no" checked onchange="_validatePrForm();document.querySelector(\'.pr-med-fields\').classList.remove(\'is-visible\');">No</label>' +
+          '<label><input type="radio" name="prMedUpdate" value="yes" onchange="_validatePrForm();document.querySelector(\'.pr-med-fields\').classList.add(\'is-visible\');">Yes</label>' +
         '</div>' +
-        '<textarea id="prMedUpdateText" style="display:none;margin-top:10px;" placeholder="Please describe what has changed…" oninput="_validatePrForm()"></textarea>' +
+        '<div class="pr-med-fields">' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="prMedWeight">Current Weight</label>' +
+              '<input type="number" id="prMedWeight" placeholder="' + escapeAttr(_prCurrentWeight || 'lbs') + '" oninput="_validatePrForm()">' +
+              '<div class="pr-med-suffix">Previously: ' + (_prCurrentWeight ? escapeHtml(String(_prCurrentWeight)) + ' lbs' : 'not recorded') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="prMedMeds">New Medications</label>' +
+              '<input type="text" id="prMedMeds" placeholder="Any new medications since last visit\u2026" oninput="_validatePrForm()">' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="prMedConditions">New Medical Conditions</label>' +
+              '<input type="text" id="prMedConditions" placeholder="Any new diagnoses or conditions\u2026" oninput="_validatePrForm()">' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="prMedOther">Other Changes</label>' +
+              '<textarea id="prMedOther" placeholder="Anything else your clinician should know\u2026" oninput="_validatePrForm()"></textarea>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<button type="button" class="pr-submit" id="prSubmitBtn" disabled onclick="_submitProtocolRequest()">Submit Request</button>' +
     '</div>';
@@ -14246,14 +14310,16 @@ function _closeProtocolRequestModal() {
 
 function _validatePrForm() {
   var cat = (document.getElementById('prCategory') || {}).value || '';
-  var reason = ((document.getElementById('prReason') || {}).value || '').trim();
   var medUpdate = document.querySelector('input[name="prMedUpdate"]:checked');
   var medVal = medUpdate ? medUpdate.value : 'no';
-  var medText = ((document.getElementById('prMedUpdateText') || {}).value || '').trim();
-  // Category required. Reason encouraged but not blocking.
-  // If medical update = yes, the text field must have content.
   var valid = !!cat;
-  if (medVal === 'yes' && !medText) valid = false;
+  if (medVal === 'yes') {
+    var w = ((document.getElementById('prMedWeight') || {}).value || '').trim();
+    var m = ((document.getElementById('prMedMeds') || {}).value || '').trim();
+    var c = ((document.getElementById('prMedConditions') || {}).value || '').trim();
+    var o = ((document.getElementById('prMedOther') || {}).value || '').trim();
+    if (!w && !m && !c && !o) valid = false;
+  }
   var btn = document.getElementById('prSubmitBtn');
   if (btn) btn.disabled = !valid;
 }
@@ -14263,15 +14329,26 @@ async function _submitProtocolRequest() {
   var reason = ((document.getElementById('prReason') || {}).value || '').trim();
   var medUpdate = document.querySelector('input[name="prMedUpdate"]:checked');
   var medVal = medUpdate ? medUpdate.value : 'no';
-  var medText = ((document.getElementById('prMedUpdateText') || {}).value || '').trim();
+  var medWeight = ((document.getElementById('prMedWeight') || {}).value || '').trim();
+  var medMeds = ((document.getElementById('prMedMeds') || {}).value || '').trim();
+  var medConditions = ((document.getElementById('prMedConditions') || {}).value || '').trim();
+  var medOther = ((document.getElementById('prMedOther') || {}).value || '').trim();
   if (!cat) return;
 
+  var medChanges = null;
+  if (medVal === 'yes') {
+    medChanges = {};
+    if (medWeight) medChanges.weight = medWeight;
+    if (medMeds) medChanges.new_medications = medMeds;
+    if (medConditions) medChanges.new_conditions = medConditions;
+    if (medOther) medChanges.other = medOther;
+  }
+
   var btn = document.getElementById('prSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting\u2026'; }
 
   try {
     if (!PREVIEW_MODE && currentUserId) {
-      // 1. Create a consultation row with type='protocol_request'
       var clinicianId = window._assignedClinicianId || null;
       var consultPayload = {
         user_id: currentUserId,
@@ -14282,17 +14359,16 @@ async function _submitProtocolRequest() {
           request_category: cat,
           request_reason: reason,
           medical_update: medVal,
-          medical_update_text: medVal === 'yes' ? medText : null
+          medical_changes: medChanges
         },
         created_at: new Date().toISOString()
       };
       await db.from('consultations').insert(consultPayload);
 
-      // 2. Record in patient_events
       db.from('patient_events').insert({
         user_id: currentUserId,
         event_type: 'protocol_request',
-        event_data: { category: cat, reason: reason, medical_update: medVal, medical_update_text: medVal === 'yes' ? medText : null },
+        event_data: { category: cat, reason: reason, medical_update: medVal, medical_changes: medChanges },
         created_by: currentUserId,
         created_by_name: window._memberFirstName || null
       }).then(function(){}).catch(function(){});

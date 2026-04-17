@@ -7561,8 +7561,9 @@ function _continuePortalInit(user, role) {
         var allRows = res.data || [];
         // Filter out protocol-request consultations
         var _rows = allRows.filter(function(r) {
-          if (r.consultation_type === 'protocol_request') return false;
+          if (r.consultation_type === 'protocol_request' || r.consultation_type === 'refill_request') return false;
           if (r.data && r.data.request_category && !r.data.first_name) return false;
+          if (r.data && r.data.refill_protocol && !r.data.first_name) return false;
           return true;
         });
         // Prefer a decided consultation (prescribed/declined/discontinued)
@@ -8855,11 +8856,14 @@ async function loadAttentionCards() {
       else if (riskClass === 'low')    railClass = 'rail-green';
 
       var _isProtoRequest = (c.consultation_type === 'protocol_request') || (c.data && c.data.request_category);
+      var _isRefillRequest = (c.consultation_type === 'refill_request') || (c.data && c.data.refill_protocol);
       var statusCell = isOverdue
         ? '<div class="cl-attn-row-status overdue">Overdue</div>'
-        : _isProtoRequest
-          ? '<div class="cl-attn-row-status" style="color:#2F6F55;font-weight:600;">New Protocol Request</div>'
-          : '<div class="cl-attn-row-status pending">Pending</div>';
+        : _isRefillRequest
+          ? '<div class="cl-attn-row-status" style="color:#92710a;font-weight:600;">Refill Request</div>'
+          : _isProtoRequest
+            ? '<div class="cl-attn-row-status" style="color:#2F6F55;font-weight:600;">New Protocol Request</div>'
+            : '<div class="cl-attn-row-status pending">Pending</div>';
       var riskCell = rs
         ? '<div class="cl-attn-row-cell cl-attn-row-risk ' + riskClass + '">' + riskText + ' Risk</div>'
         : '<div class="cl-attn-row-cell">—</div>';
@@ -10409,12 +10413,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       if (_ctRes && !_ctRes.error && _ctRes.data && _ctRes.data[0]) _consultType = _ctRes.data[0].consultation_type || null;
     } catch (_) {}
     if (!_consultType && d.request_category) _consultType = 'protocol_request';
+    if (!_consultType && d.refill_protocol) _consultType = 'refill_request';
 
-    // Protocol-request consultations: Rxs belong to the ORIGINAL
+    // Protocol-request and refill-request consultations: Rxs belong to the ORIGINAL
     // intake consultation (different ID). Fetch ALL Rxs for this
     // USER, load the original consultation for demographics +
     // review_status, and keep request fields for the banner.
-    if (_consultType === 'protocol_request') {
+    if (_consultType === 'protocol_request' || _consultType === 'refill_request') {
       // Fetch all prescriptions by user_id
       try {
         var _userRxRes = await db.from('prescriptions')
@@ -10436,7 +10441,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           .limit(1);
         if (_origRes && _origRes.data && _origRes.data.length) {
           var _origData = _origRes.data[0].data || {};
-          var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_changes: d.medical_changes, medical_update_text: d.medical_update_text };
+          var _reqFields = { request_category: d.request_category, request_reason: d.request_reason, medical_update: d.medical_update, medical_changes: d.medical_changes, medical_update_text: d.medical_update_text, refill_protocol: d.refill_protocol, refill_prescription_id: d.refill_prescription_id, refill_doses_remaining: d.refill_doses_remaining, refill_notes: d.refill_notes };
           var _origWeight = _origData.current_weight || null;
           d = Object.assign({}, _origData, _reqFields);
           d._original_weight = _origWeight;
@@ -10714,6 +10719,42 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             '</div>' +
           '</div>' +
         '</div>';
+    } else if (_consultType === 'refill_request' && d.refill_protocol) {
+      var _rfProto = escapeHtml(d.refill_protocol);
+      var _rfRemaining = d.refill_doses_remaining != null ? d.refill_doses_remaining : '';
+      var _rfMedUp = d.medical_update || 'no';
+      var _rfChanges = d.medical_changes || null;
+      var _rfNotes = d.refill_notes || '';
+      var _rfReqDate = consultCreatedAt ? _fmtClDate(consultCreatedAt) : '';
+      var _rfMedHtml = '';
+      if (_rfMedUp === 'yes' && _rfChanges) {
+        var _rfRows = [];
+        if (_rfChanges.weight) {
+          var _rfOw = d._original_weight ? escapeHtml(String(d._original_weight)) + ' lbs' : '\u2014';
+          _rfRows.push('<span class="crw-req-card-detail-label">Weight:</span> ' + _rfOw + ' \u2192 ' + escapeHtml(String(_rfChanges.weight)) + ' lbs');
+        }
+        if (_rfChanges.new_medications) _rfRows.push('<span class="crw-req-card-detail-label">New medications:</span> ' + escapeHtml(_rfChanges.new_medications));
+        if (_rfChanges.new_conditions) _rfRows.push('<span class="crw-req-card-detail-label">New conditions:</span> ' + escapeHtml(_rfChanges.new_conditions));
+        if (_rfChanges.other) _rfRows.push('<span class="crw-req-card-detail-label">Other:</span> ' + escapeHtml(_rfChanges.other));
+        if (_rfRows.length) _rfMedHtml = _rfRows.map(function(r) { return '<div class="crw-req-card-detail-row">' + r + '</div>'; }).join('');
+      }
+      if (!_rfMedHtml) _rfMedHtml = '<div class="crw-req-card-detail-row" style="color:rgba(0,0,0,0.35);">No medical changes reported</div>';
+      _reqCardHtml =
+        '<div class="crw-req-card">' +
+          '<div class="crw-req-card-hdr">' +
+            '<span class="crw-req-card-badge"><span class="crw-req-card-dot"></span>Refill Request</span>' +
+            '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAddProtocolModal(\'' + escapeAttr(consultId) + '\',\'' + escapeAttr(userId) + '\',event)">+ Add Protocol</button>' +
+          '</div>' +
+          '<div class="crw-req-card-body">' +
+            '<div class="crw-req-card-info">' +
+              '<div class="crw-req-card-cat">Patient requested refill for ' + _rfProto + (_rfReqDate ? ' on ' + escapeHtml(_rfReqDate) : '') + (_rfRemaining !== '' ? ' \u00B7 ' + _rfRemaining + ' doses remaining' : '') + '</div>' +
+              '<div class="crw-req-card-detail">' +
+                (_rfNotes ? '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Notes:</span> ' + escapeHtml(_rfNotes) + '</div>' : '') +
+                _rfMedHtml +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
     }
     var decidedTopHtml = isDecided ? '<div class="crw-decided-top">' + _reqCardHtml + outcomeTopHtml + '</div>' : '';
     var topAlertHtml   = isDecided ? '' : riskHtml;
@@ -10782,7 +10823,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           // render in the full-width .crw-bottom row. Protocol-request
           // consultations skip the buttons (clinician uses "+ Add Protocol").
           if (isDecided) return '';
-          if (_consultType === 'protocol_request') return '';
+          if (_consultType === 'protocol_request' || _consultType === 'refill_request') return '';
           return '<div class="crw-actions">'+
             '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
             '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
@@ -13671,7 +13712,7 @@ function _refreshProtoProgress() {
     var _rfRxId = primaryRxId || '';
     var _rfName = window._protoKey || 'Protocol';
     var _rfPending = window._refillPendingRxIds && window._refillPendingRxIds[_rfRxId];
-    if (_rfRxId) {
+    if (_rfDaysLeft < 14 && _rfRxId) {
       _rfWrap.style.display = '';
       _rfWrap.innerHTML = _rfPending
         ? '<button class="proto-refill-btn" disabled>Refill Requested</button>'
@@ -14584,42 +14625,61 @@ async function _submitRefillRequest() {
     var clinicianId = window._assignedClinicianId || null;
     var memberName = ((window._memberFirstName || '') + ' ' + (window._memberLastName || '')).trim() || 'A member';
 
-    db.from('patient_events').insert({
-      user_id: currentUserId,
-      event_type: 'refill_request',
-      event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining, medical_update: medVal, medical_changes: medChanges, notes: notes || null },
-      created_by: currentUserId,
-      created_by_name: window._memberFirstName || null
-    }).then(function(){}).catch(function(){});
+    if (!PREVIEW_MODE && currentUserId) {
+      var consultPayload = {
+        user_id: currentUserId,
+        consultation_type: 'refill_request',
+        review_status: 'pending_review',
+        assigned_clinician_id: clinicianId,
+        data: {
+          refill_protocol: protocolName,
+          refill_prescription_id: rxId,
+          refill_doses_remaining: dosesRemaining,
+          medical_update: medVal,
+          medical_changes: medChanges,
+          refill_notes: notes || null
+        },
+        created_at: new Date().toISOString()
+      };
+      await db.from('consultations').insert(consultPayload);
 
-    if (clinicianId) {
-      var msgBody = 'Refill Request: ' + protocolName + ' \u2014 ' + dosesRemaining + ' doses remaining';
-      if (medVal === 'yes' && medChanges) {
-        var parts = [];
-        if (medChanges.weight) parts.push('Weight: ' + medChanges.weight + ' lbs');
-        if (medChanges.new_medications) parts.push('New meds: ' + medChanges.new_medications);
-        if (medChanges.new_conditions) parts.push('New conditions: ' + medChanges.new_conditions);
-        if (medChanges.other) parts.push('Other: ' + medChanges.other);
-        if (parts.length) msgBody += '\n\nMedical updates:\n' + parts.join('\n');
+      db.from('patient_events').insert({
+        user_id: currentUserId,
+        event_type: 'refill_request',
+        event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining, medical_update: medVal, medical_changes: medChanges, notes: notes || null },
+        created_by: currentUserId,
+        created_by_name: window._memberFirstName || null
+      }).then(function(){}).catch(function(){});
+
+      if (clinicianId) {
+        var msgBody = 'Refill Request: ' + protocolName + ' \u2014 ' + dosesRemaining + ' doses remaining';
+        if (medVal === 'yes' && medChanges) {
+          var parts = [];
+          if (medChanges.weight) parts.push('Weight: ' + medChanges.weight + ' lbs');
+          if (medChanges.new_medications) parts.push('New meds: ' + medChanges.new_medications);
+          if (medChanges.new_conditions) parts.push('New conditions: ' + medChanges.new_conditions);
+          if (medChanges.other) parts.push('Other: ' + medChanges.other);
+          if (parts.length) msgBody += '\n\nMedical updates:\n' + parts.join('\n');
+        }
+        if (notes) msgBody += '\n\nNotes: ' + notes;
+
+        db.from('messages').insert({
+          thread_id: currentUserId,
+          sender_id: currentUserId,
+          sender_role: 'consumer',
+          sender_name: memberName,
+          recipient_id: clinicianId,
+          body: msgBody,
+          read: false
+        }).then(function(){}).catch(function(){});
+
+        db.from('notifications').insert({
+          user_id: clinicianId,
+          type: 'refill_request',
+          body: memberName + ' requested a refill: ' + protocolName + ' (' + dosesRemaining + ' doses left)',
+          read: false
+        }).then(function(){}).catch(function(){});
       }
-      if (notes) msgBody += '\n\nNotes: ' + notes;
-
-      db.from('messages').insert({
-        thread_id: currentUserId,
-        sender_id: currentUserId,
-        sender_role: 'consumer',
-        sender_name: memberName,
-        recipient_id: clinicianId,
-        body: msgBody,
-        read: false
-      }).then(function(){}).catch(function(){});
-
-      db.from('notifications').insert({
-        user_id: clinicianId,
-        type: 'refill_request',
-        body: memberName + ' requested a refill: ' + protocolName + ' (' + dosesRemaining + ' doses left)',
-        read: false
-      }).then(function(){}).catch(function(){});
     }
 
     window._refillPendingRxIds[rxId] = true;
@@ -15138,7 +15198,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
     var rxId = r.rx.id || '';
     var _pending = window._refillPendingRxIds && window._refillPendingRxIds[rxId];
     var refillBtnHtml = '';
-    if (true) {
+    if (r.isLow) {
       refillBtnHtml = _pending
         ? '<button class="ov-supply-refill-btn" disabled>Refill Requested</button>'
         : '<button class="ov-supply-refill-btn" onclick="_requestRefill(\'' + escapeAttr(rxId) + '\',\'' + escapeAttr(name) + '\',' + r.remaining + ')">Request Refill</button>';

@@ -14457,14 +14457,128 @@ async function _submitProtocolRequest() {
 
 // ══ Refill request ═══════════════════════════════════════════════════
 window._refillPendingRxIds = {};
+var _refillCtx = null;
 
 async function _requestRefill(rxId, protocolName, dosesRemaining) {
   if (!rxId || !currentUserId || PREVIEW_MODE) return;
   if (window._refillPendingRxIds[rxId]) return;
 
-  window._refillPendingRxIds[rxId] = true;
-  try { _renderOverviewMulti(); } catch (_) {}
-  try { _refreshProtoProgress(); } catch (_) {}
+  var old = document.getElementById('rfRequestOverlay');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  _refillCtx = { rxId: rxId, protocol: protocolName, remaining: dosesRemaining };
+
+  var _rfCurrentWeight = '';
+  try {
+    var _cwRes = await db.from('consultations').select('data')
+      .eq('user_id', currentUserId).not('data', 'is', null)
+      .order('created_at', { ascending: true }).limit(1);
+    if (_cwRes && _cwRes.data && _cwRes.data[0]) _rfCurrentWeight = (_cwRes.data[0].data || {}).current_weight || '';
+  } catch (_) {}
+
+  var overlay = document.createElement('div');
+  overlay.className = 'pr-modal-overlay';
+  overlay.id = 'rfRequestOverlay';
+  overlay.innerHTML =
+    '<div class="pr-modal">' +
+      '<button type="button" class="pr-modal-close" onclick="_closeRefillModal()">&times;</button>' +
+      '<div class="pr-modal-title">Request Refill</div>' +
+      '<div class="pr-modal-sub">' + escapeHtml(protocolName) + ' \u00B7 ' + dosesRemaining + ' doses remaining</div>' +
+      '<div class="pr-field">' +
+        '<div class="pr-field-label">Has anything changed in your medical history since your last visit?</div>' +
+        '<div class="pr-field-radio">' +
+          '<label><input type="radio" name="rfMedUpdate" value="no" checked onchange="_validateRefillForm();document.querySelector(\'#rfRequestOverlay .pr-med-fields\').classList.remove(\'is-visible\');">No</label>' +
+          '<label><input type="radio" name="rfMedUpdate" value="yes" onchange="_validateRefillForm();document.querySelector(\'#rfRequestOverlay .pr-med-fields\').classList.add(\'is-visible\');">Yes</label>' +
+        '</div>' +
+        '<div class="pr-med-fields">' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="rfMedWeight">Current Weight</label>' +
+              '<input type="number" id="rfMedWeight" placeholder="' + escapeAttr(_rfCurrentWeight || 'lbs') + '" oninput="_validateRefillForm()">' +
+              '<div class="pr-med-suffix">Previously: ' + (_rfCurrentWeight ? escapeHtml(String(_rfCurrentWeight)) + ' lbs' : 'not recorded') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="rfMedMeds">New Medications</label>' +
+              '<input type="text" id="rfMedMeds" placeholder="Any new medications since last visit\u2026" oninput="_validateRefillForm()">' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="rfMedConditions">New Medical Conditions</label>' +
+              '<input type="text" id="rfMedConditions" placeholder="Any new diagnoses or conditions\u2026" oninput="_validateRefillForm()">' +
+            '</div>' +
+          '</div>' +
+          '<div class="pr-med-row">' +
+            '<div class="pr-med-col">' +
+              '<label for="rfMedOther">Other Changes</label>' +
+              '<textarea id="rfMedOther" placeholder="Anything else your clinician should know\u2026" oninput="_validateRefillForm()"></textarea>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="pr-field">' +
+        '<div class="pr-field-label">Additional notes (optional)</div>' +
+        '<textarea id="rfNotes" placeholder="Anything specific about this refill\u2026" style="min-height:48px;"></textarea>' +
+      '</div>' +
+      '<button type="button" class="pr-submit" id="rfSubmitBtn" onclick="_submitRefillRequest()">Submit Request</button>' +
+    '</div>';
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) _closeRefillModal();
+  });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() { overlay.classList.add('open'); });
+}
+
+function _closeRefillModal() {
+  var overlay = document.getElementById('rfRequestOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 230);
+}
+
+function _validateRefillForm() {
+  var medUpdate = document.querySelector('input[name="rfMedUpdate"]:checked');
+  var medVal = medUpdate ? medUpdate.value : 'no';
+  var valid = true;
+  if (medVal === 'yes') {
+    var w = ((document.getElementById('rfMedWeight') || {}).value || '').trim();
+    var m = ((document.getElementById('rfMedMeds') || {}).value || '').trim();
+    var c = ((document.getElementById('rfMedConditions') || {}).value || '').trim();
+    var o = ((document.getElementById('rfMedOther') || {}).value || '').trim();
+    if (!w && !m && !c && !o) valid = false;
+  }
+  var btn = document.getElementById('rfSubmitBtn');
+  if (btn) btn.disabled = !valid;
+}
+
+async function _submitRefillRequest() {
+  if (!_refillCtx || !currentUserId || PREVIEW_MODE) return;
+  var rxId = _refillCtx.rxId;
+  var protocolName = _refillCtx.protocol;
+  var dosesRemaining = _refillCtx.remaining;
+
+  var medUpdate = document.querySelector('input[name="rfMedUpdate"]:checked');
+  var medVal = medUpdate ? medUpdate.value : 'no';
+  var medWeight = ((document.getElementById('rfMedWeight') || {}).value || '').trim();
+  var medMeds = ((document.getElementById('rfMedMeds') || {}).value || '').trim();
+  var medConditions = ((document.getElementById('rfMedConditions') || {}).value || '').trim();
+  var medOther = ((document.getElementById('rfMedOther') || {}).value || '').trim();
+  var notes = ((document.getElementById('rfNotes') || {}).value || '').trim();
+
+  var medChanges = null;
+  if (medVal === 'yes') {
+    medChanges = {};
+    if (medWeight) medChanges.weight = medWeight;
+    if (medMeds) medChanges.new_medications = medMeds;
+    if (medConditions) medChanges.new_conditions = medConditions;
+    if (medOther) medChanges.other = medOther;
+  }
+
+  var btn = document.getElementById('rfSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting\u2026'; }
 
   try {
     var clinicianId = window._assignedClinicianId || null;
@@ -14473,19 +14587,30 @@ async function _requestRefill(rxId, protocolName, dosesRemaining) {
     db.from('patient_events').insert({
       user_id: currentUserId,
       event_type: 'refill_request',
-      event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining },
+      event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining, medical_update: medVal, medical_changes: medChanges, notes: notes || null },
       created_by: currentUserId,
       created_by_name: window._memberFirstName || null
     }).then(function(){}).catch(function(){});
 
     if (clinicianId) {
+      var msgBody = 'Refill Request: ' + protocolName + ' \u2014 ' + dosesRemaining + ' doses remaining';
+      if (medVal === 'yes' && medChanges) {
+        var parts = [];
+        if (medChanges.weight) parts.push('Weight: ' + medChanges.weight + ' lbs');
+        if (medChanges.new_medications) parts.push('New meds: ' + medChanges.new_medications);
+        if (medChanges.new_conditions) parts.push('New conditions: ' + medChanges.new_conditions);
+        if (medChanges.other) parts.push('Other: ' + medChanges.other);
+        if (parts.length) msgBody += '\n\nMedical updates:\n' + parts.join('\n');
+      }
+      if (notes) msgBody += '\n\nNotes: ' + notes;
+
       db.from('messages').insert({
         thread_id: currentUserId,
         sender_id: currentUserId,
         sender_role: 'consumer',
         sender_name: memberName,
         recipient_id: clinicianId,
-        body: 'Refill Request: ' + protocolName + ' \u2014 ' + dosesRemaining + ' doses remaining',
+        body: msgBody,
         read: false
       }).then(function(){}).catch(function(){});
 
@@ -14497,13 +14622,17 @@ async function _requestRefill(rxId, protocolName, dosesRemaining) {
       }).then(function(){}).catch(function(){});
     }
 
+    window._refillPendingRxIds[rxId] = true;
+    _closeRefillModal();
+    try { _renderOverviewMulti(); } catch (_) {}
+    try { _refreshProtoProgress(); } catch (_) {}
     if (typeof showToast === 'function') showToast('Refill request sent to your care team.');
   } catch (err) {
     console.warn('[Pulse] refill request failed:', err);
-    delete window._refillPendingRxIds[rxId];
-    try { _renderOverviewMulti(); } catch (_) {}
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
     if (typeof showToast === 'function') showToast('Failed to submit. Please try again.');
   }
+}
 }
 
 // ══ My History — member-facing patient timeline on the Protocol tab ════

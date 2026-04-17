@@ -2353,6 +2353,26 @@ body.member-mode .tab-title{color:var(--m-text);font-family:'Inter',sans-serif;f
 .ov-supply-row-bar-fill{height:100%;background:linear-gradient(90deg,#3a7a5c,#4aba82);border-radius:999px;transition:width .3s ease;}
 .ov-supply-row.is-low .ov-supply-row-bar-fill{background:linear-gradient(90deg,#c14a4a,#e06060);}
 .ov-supply-row.is-low .ov-supply-row-count{color:#c14a4a;font-weight:700;}
+.ov-supply-refill-btn{
+  grid-column:1 / -1;grid-row:3;
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  color:#c14a4a;background:rgba(193,74,74,0.08);
+  border:1px solid rgba(193,74,74,0.2);border-radius:999px;
+  padding:5px 14px;margin-top:4px;cursor:pointer;
+  transition:background .15s,border-color .15s;
+  justify-self:start;
+}
+.ov-supply-refill-btn:hover{background:rgba(193,74,74,0.14);border-color:rgba(193,74,74,0.35);}
+.ov-supply-refill-btn:disabled{opacity:0.5;cursor:default;background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.08);color:var(--m-text3);}
+.proto-refill-btn{
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  color:#c14a4a;background:rgba(193,74,74,0.08);
+  border:1px solid rgba(193,74,74,0.2);border-radius:999px;
+  padding:6px 16px;margin-top:12px;cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.proto-refill-btn:hover{background:rgba(193,74,74,0.14);border-color:rgba(193,74,74,0.35);}
+.proto-refill-btn:disabled{opacity:0.5;cursor:default;background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.08);color:var(--m-text3);}
 .m-hero-cta{
   display:flex;
   width:fit-content;
@@ -5538,6 +5558,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
                 <div class="proto-progress-stat-lbl">On-time rate</div>
               </div>
             </div>
+            <div id="protoRefillWrap" style="display:none;text-align:center;"></div>
           </div>
 
           <!-- Hidden compounds elements kept for JS compatibility -->
@@ -13643,6 +13664,21 @@ function _refreshProtoProgress() {
   if (el('protoStatLogged')) el('protoStatLogged').textContent = adh.logged;
   if (el('protoStatRemaining')) el('protoStatRemaining').textContent = dosesRemaining;
   if (el('protoStatRate')) el('protoStatRate').textContent = adh.rate + '%';
+  var _rfWrap = el('protoRefillWrap');
+  if (_rfWrap) {
+    var _rfDaysLeft = (adh.freqPerDay > 0) ? (dosesRemaining / adh.freqPerDay) : dosesRemaining;
+    var _rfRxId = primaryRxId || '';
+    var _rfName = window._protoKey || 'Protocol';
+    var _rfPending = window._refillPendingRxIds && window._refillPendingRxIds[_rfRxId];
+    if (_rfDaysLeft < 14 && _rfRxId) {
+      _rfWrap.style.display = '';
+      _rfWrap.innerHTML = _rfPending
+        ? '<button class="proto-refill-btn" disabled>Refill Requested</button>'
+        : '<button class="proto-refill-btn" onclick="_requestRefill(\'' + escapeAttr(_rfRxId) + '\',\'' + escapeAttr(_rfName) + '\',' + dosesRemaining + ')">Request Refill</button>';
+    } else {
+      _rfWrap.style.display = 'none';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -14418,6 +14454,57 @@ async function _submitProtocolRequest() {
   }
 }
 
+// ══ Refill request ═══════════════════════════════════════════════════
+window._refillPendingRxIds = {};
+
+async function _requestRefill(rxId, protocolName, dosesRemaining) {
+  if (!rxId || !currentUserId || PREVIEW_MODE) return;
+  if (window._refillPendingRxIds[rxId]) return;
+
+  window._refillPendingRxIds[rxId] = true;
+  try { _renderOverviewMulti(); } catch (_) {}
+  try { _refreshProtoProgress(); } catch (_) {}
+
+  try {
+    var clinicianId = window._assignedClinicianId || null;
+    var memberName = ((window._memberFirstName || '') + ' ' + (window._memberLastName || '')).trim() || 'A member';
+
+    db.from('patient_events').insert({
+      user_id: currentUserId,
+      event_type: 'refill_request',
+      event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining },
+      created_by: currentUserId,
+      created_by_name: window._memberFirstName || null
+    }).then(function(){}).catch(function(){});
+
+    if (clinicianId) {
+      db.from('messages').insert({
+        thread_id: currentUserId,
+        sender_id: currentUserId,
+        sender_role: 'consumer',
+        sender_name: memberName,
+        recipient_id: clinicianId,
+        body: 'Refill Request: ' + protocolName + ' \u2014 ' + dosesRemaining + ' doses remaining',
+        read: false
+      }).then(function(){}).catch(function(){});
+
+      db.from('notifications').insert({
+        user_id: clinicianId,
+        type: 'refill_request',
+        body: memberName + ' requested a refill: ' + protocolName + ' (' + dosesRemaining + ' doses left)',
+        read: false
+      }).then(function(){}).catch(function(){});
+    }
+
+    if (typeof showToast === 'function') showToast('Refill request sent to your care team.');
+  } catch (err) {
+    console.warn('[Pulse] refill request failed:', err);
+    delete window._refillPendingRxIds[rxId];
+    try { _renderOverviewMulti(); } catch (_) {}
+    if (typeof showToast === 'function') showToast('Failed to submit. Please try again.');
+  }
+}
+
 // ══ My History — member-facing patient timeline on the Protocol tab ════
 // Loads all patient_events for the current member and renders them
 // grouped by date in reverse chronological order. Collapsible disclosure
@@ -14485,6 +14572,16 @@ function _renderPatientEventsTimeline(rows) {
           title = 'Clinician note';
           detail = d2.note_text || '';
           if (who) meta = 'by ' + who;
+          break;
+        case 'protocol_request':
+          icon = '\u2795'; iconCls = 'is-rx';
+          title = 'Protocol request: ' + (d2.category || '');
+          detail = d2.reason || '';
+          break;
+        case 'refill_request':
+          icon = '\uD83D\uDD04'; iconCls = 'is-rx';
+          title = 'Refill requested: ' + (d2.protocol || '');
+          detail = d2.doses_remaining != null ? d2.doses_remaining + ' doses remaining' : '';
           break;
         default:
           icon = '\u2022'; iconCls = '';
@@ -14909,11 +15006,20 @@ function _ovBuildMultiPlanHtml(activeRxs) {
 
   var rowsHtml = rowsWithMeta.map(function(r) {
     var name = escapeHtml(r.rx.protocol_key || 'Protocol');
+    var rxId = r.rx.id || '';
+    var _pending = window._refillPendingRxIds && window._refillPendingRxIds[rxId];
+    var refillBtnHtml = '';
+    if (r.isLow) {
+      refillBtnHtml = _pending
+        ? '<button class="ov-supply-refill-btn" disabled>Refill Requested</button>'
+        : '<button class="ov-supply-refill-btn" onclick="_requestRefill(\'' + escapeAttr(rxId) + '\',\'' + escapeAttr(name) + '\',' + r.remaining + ')">Request Refill</button>';
+    }
     return '<div class="ov-supply-row' + (r.isLow ? ' is-low' : '') + '">' +
              '<div class="ov-supply-row-name">' + name + '</div>' +
              '<div class="ov-supply-row-count">' + r.remaining + ' doses</div>' +
              '<div class="ov-supply-row-bar"><div class="ov-supply-row-bar-fill" style="width:' + r.pct + '%;"></div></div>' +
              '<div class="ov-supply-row-refill">Refill ' + escapeHtml(r.refillDateStr) + '</div>' +
+             refillBtnHtml +
            '</div>';
   }).join('');
 
@@ -15507,6 +15613,26 @@ function populatePortal(user, consultation, greeting) {
             try { _renderOverviewMulti(); } catch (_) {}
             var _reqBtn = document.getElementById('protoRequestBtn');
             if (_reqBtn) { _reqBtn.disabled = true; _reqBtn.textContent = 'Request Pending'; }
+          }
+        }).catch(function(){});
+
+      // Check for pending refill requests (patient_events with no
+      // corresponding "refill resolved" event yet). Simple approach:
+      // if a refill_request event exists in the last 30 days, treat
+      // that Rx as pending.
+      db.from('patient_events').select('event_data')
+        .eq('user_id', currentUserId)
+        .eq('event_type', 'refill_request')
+        .order('created_at', { ascending: false }).limit(20)
+        .then(function(rfRes) {
+          var rows = rfRes.data || [];
+          rows.forEach(function(r) {
+            var ed = r.event_data || {};
+            if (ed.prescription_id) window._refillPendingRxIds[ed.prescription_id] = true;
+          });
+          if (rows.length) {
+            try { _renderOverviewMulti(); } catch (_) {}
+            try { _refreshProtoProgress(); } catch (_) {}
           }
         }).catch(function(){});
     }

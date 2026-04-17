@@ -10644,6 +10644,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _rcReason = d.request_reason || '';
       var _rcMedUp = d.medical_update || 'no';
       var _rcMedText = d.medical_update_text || '';
+      var _rcReqDate = consultCreatedAt ? _fmtClDate(consultCreatedAt) : '';
       _reqCardHtml =
         '<div class="crw-req-card">' +
           '<div class="crw-req-card-hdr">' +
@@ -10652,7 +10653,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           '</div>' +
           '<div class="crw-req-card-body">' +
             '<div class="crw-req-card-info">' +
-              '<div class="crw-req-card-cat">' + _rcCat + '</div>' +
+              '<div class="crw-req-card-cat">Patient requested to add ' + _rcCat + (_rcReqDate ? ' on ' + escapeHtml(_rcReqDate) : '') + '</div>' +
               '<div class="crw-req-card-detail">' +
                 (_rcReason ? '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Reason:</span> \u201C' + escapeHtml(_rcReason) + '\u201D</div>' : '') +
                 '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Medical update:</span> ' + (_rcMedUp === 'yes' ? 'Yes \u2014 ' + escapeHtml(_rcMedText) : 'No changes reported') + '</div>' +

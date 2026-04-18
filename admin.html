@@ -251,6 +251,60 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .empty-state svg{display:block;margin:0 auto 12px;opacity:0.25;}
 .empty-state p{font-family:'Inter',sans-serif;font-size:13px;}
 
+/* ── COMMAND CENTER SECTIONS (Phase 2) ── */
+.cc-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px;box-shadow:var(--shadow);}
+.cc-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cc-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);}
+.cc-section-sub{font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:var(--text4);}
+.cc-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:900px){.cc-two-col{grid-template-columns:1fr;}}
+
+/* Intake funnel */
+.cc-funnel{display:flex;align-items:stretch;gap:0;}
+.cc-funnel-step{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:14px 16px;border-right:1px solid var(--border);position:relative;min-height:80px;}
+.cc-funnel-step:last-child{border-right:none;}
+.cc-funnel-step-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.cc-funnel-step-val{font-family:'Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em;color:var(--text);line-height:1;}
+.cc-funnel-step-sub{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);margin-top:4px;}
+.cc-funnel-step-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--green);border-radius:0;opacity:0.15;}
+.cc-funnel-step.active .cc-funnel-step-bar{opacity:0.55;}
+.cc-funnel-step.warning .cc-funnel-step-bar{background:var(--amber);opacity:0.55;}
+
+/* Clinician queue */
+.cc-clinician-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.cc-clinician-row:last-child{border-bottom:none;}
+.cc-clinician-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-tint);border:1px solid var(--blue-border);color:var(--blue);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;flex-shrink:0;text-transform:uppercase;}
+.cc-clinician-info{flex:1;min-width:0;}
+.cc-clinician-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc-clinician-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
+.cc-clinician-count{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);padding:4px 12px;border-radius:var(--radius-pill);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
+.cc-clinician-count.overdue{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
+
+/* Flagged items */
+.cc-flag-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.cc-flag-row:last-child{border-bottom:none;}
+.cc-flag-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.cc-flag-icon.high{background:var(--red-tint);color:var(--red);border:1px solid var(--red-border);}
+.cc-flag-icon.mod{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
+.cc-flag-info{flex:1;min-width:0;}
+.cc-flag-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc-flag-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
+.cc-flag-time{font-family:'Inter',sans-serif;font-size:11px;color:var(--text4);white-space:nowrap;flex-shrink:0;}
+
+/* Activity stream */
+.cc-activity-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.cc-activity-row:last-child{border-bottom:none;}
+.cc-activity-icon{width:28px;height:28px;border-radius:50%;background:var(--green-tint);color:var(--green);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;}
+.cc-activity-icon.is-rx{background:var(--green-tint);color:var(--green);border-color:var(--green-border);}
+.cc-activity-icon.is-checkin{background:var(--blue-tint);color:var(--blue);border-color:var(--blue-border);}
+.cc-activity-icon.is-request{background:var(--amber-tint);color:var(--amber);border-color:var(--amber-border);}
+.cc-activity-icon.is-disc{background:var(--red-tint);color:var(--red);border-color:var(--red-border);}
+.cc-activity-body{flex:1;min-width:0;}
+.cc-activity-title{font-family:'Inter',sans-serif;font-size:13px;color:var(--text);line-height:1.5;}
+.cc-activity-title strong{font-weight:600;}
+.cc-activity-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
+.cc-empty{padding:20px 0;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:12px;}
+
 /* ── MOBILE ── */
 @media(max-width:900px){
   nav{padding:0 16px;height:52px;}
@@ -355,9 +409,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- OVERVIEW TAB -->
       <div class="admin-tab active" id="tab-overview">
         <div class="tab-header">
-          <div class="tab-title">Admin Dashboard</div>
+          <div class="tab-title">Command Center</div>
           <div class="tab-subtitle" id="welcomeMsg">Welcome back.</div>
         </div>
+
+        <!-- Top stat strip -->
         <div class="stat-grid" id="overviewStats">
           <div class="stat-card">
             <div class="stat-card-label">Total Users</div>
@@ -381,15 +437,57 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="stat-card-sub" style="color:var(--red);opacity:0.8;">No clinician response in 24h+</div>
           </div>
         </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>Recent Users</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
-            <tbody id="recentUsersBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
-            </tbody>
-          </table>
+
+        <!-- Intake funnel -->
+        <div class="cc-section">
+          <div class="cc-section-hdr">
+            <div class="cc-section-title">Intake Funnel</div>
+            <div class="cc-section-sub" id="funnelSub">All-time</div>
+          </div>
+          <div class="cc-funnel" id="intakeFunnel">
+            <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="under_review"><div class="cc-funnel-step-label">Under Review</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="prescribed"><div class="cc-funnel-step-label">Prescribed</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="purchased"><div class="cc-funnel-step-label">Purchased</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="declined"><div class="cc-funnel-step-label">Declined</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+          </div>
         </div>
-        <div id="overdueSection" style="display:none;margin-top:24px;">
+
+        <!-- Two-column: clinician queues + flagged items -->
+        <div class="cc-two-col">
+          <div class="cc-section">
+            <div class="cc-section-hdr">
+              <div class="cc-section-title">Clinician Queues</div>
+              <div class="cc-section-sub">Open reviews per clinician</div>
+            </div>
+            <div id="clinicianQueues">
+              <div class="cc-empty">Loading...</div>
+            </div>
+          </div>
+          <div class="cc-section">
+            <div class="cc-section-hdr">
+              <div class="cc-section-title">Flagged Items</div>
+              <div class="cc-section-sub">High-risk &amp; stuck</div>
+            </div>
+            <div id="flaggedItems">
+              <div class="cc-empty">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent activity stream -->
+        <div class="cc-section">
+          <div class="cc-section-hdr">
+            <div class="cc-section-title">Recent Activity</div>
+            <div class="cc-section-sub">Last 20 events across the platform</div>
+          </div>
+          <div id="activityStream">
+            <div class="cc-empty">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Overdue Reviews section (existing — kept below) -->
+        <div id="overdueSection" style="display:none;margin-top:8px;">
           <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">&#9888; Overdue Reviews</div>
           <div class="admin-table-wrap" style="border-color:var(--red-border);">
             <table class="admin-table">
@@ -465,6 +563,18 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
           </table>
+        </div>
+        <!-- User detail modal -->
+        <div class="detail-panel-backdrop" id="userDetailBackdrop" onclick="closeUserDetail()"></div>
+        <div class="detail-panel" id="userDetailPanel">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title" id="userDetailTitle">User</div>
+            <button class="detail-close" onclick="closeUserDetail()">Close</button>
+          </div>
+          <div class="detail-section-title">Profile</div>
+          <div class="detail-grid" id="userDetailGrid"></div>
+          <div class="detail-divider"></div>
+          <div id="userDetailSummary"></div>
         </div>
       </div>
 
@@ -821,7 +931,14 @@ function initAdmin(user, profile) {
   document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + displayName + '.';
 
   loadOverviewStats();
-  loadRecentUsers();
+  loadIntakeFunnel();
+  loadClinicianQueues();
+  // Flagged items and activity stream rely on profileCache for friendly
+  // patient names — prefetch it, then render.
+  cacheProfiles().then(function() {
+    loadFlaggedItems();
+    loadActivityStream();
+  });
 }
 
 // ── Tab switching ──
@@ -848,27 +965,214 @@ function loadOverviewStats() {
     .then(function(r) { document.getElementById('statMessages').textContent = r.count || 0; });
 }
 
-// ── Load recent users ──
-function loadRecentUsers() {
-  db.from('profiles').select('user_id, email, first_name, last_name, display_name, role, admin_role, created_at')
-    .order('created_at', { ascending: false }).limit(10)
+// Legacy no-op: Recent Users table was replaced by the command center
+// sections (funnel / queues / flagged / activity). Keep the function so
+// existing call sites in createUser + role-change don't break.
+function loadRecentUsers() { /* no-op */ }
+
+// ══ Phase 2: Command Center sections ══════════════════════════════════
+
+// ── Intake funnel ──
+// Counts consultations by status so the admin sees the pipeline at a
+// glance. Submitted = total intakes; Under Review = pending_review;
+// Prescribed / Declined = terminal states; Purchased = prescribed with
+// purchase_status completed.
+function loadIntakeFunnel() {
+  db.from('consultations').select('review_status, purchase_status, consultation_type, data')
     .then(function(r) {
-      var tbody = document.getElementById('recentUsersBody');
-      if (!r.data || !r.data.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">No users found.</td></tr>';
+      var rows = (r.data || []).filter(function(c) {
+        // Intakes only — protocol/refill requests are separate pipelines
+        if (c.consultation_type === 'protocol_request') return false;
+        if (c.consultation_type === 'refill_request') return false;
+        if (c.data && c.data.request_category && !(c.data.first_name)) return false;
+        if (c.data && c.data.refill_protocol && !(c.data.first_name)) return false;
+        return true;
+      });
+      var counts = { submitted: rows.length, under_review: 0, prescribed: 0, purchased: 0, declined: 0 };
+      rows.forEach(function(c) {
+        if (c.review_status === 'pending_review') counts.under_review++;
+        else if (c.review_status === 'prescribed') { counts.prescribed++; if (c.purchase_status === 'completed') counts.purchased++; }
+        else if (c.review_status === 'not_prescribed' || c.review_status === 'discontinued') counts.declined++;
+      });
+      var total = Math.max(1, counts.submitted);
+      function setStep(step, val, sub, warning) {
+        var el = document.querySelector('.cc-funnel-step[data-step="' + step + '"]');
+        if (!el) return;
+        el.querySelector('.cc-funnel-step-val').textContent = val;
+        var subEl = el.querySelector('.cc-funnel-step-sub');
+        if (subEl) subEl.innerHTML = sub || '&nbsp;';
+        el.classList.toggle('active', val > 0);
+        el.classList.toggle('warning', !!warning);
+      }
+      setStep('submitted', counts.submitted, '&nbsp;');
+      setStep('under_review', counts.under_review, counts.under_review > 0 ? Math.round(counts.under_review/total*100) + '% of total' : '&nbsp;');
+      setStep('prescribed', counts.prescribed, counts.prescribed > 0 ? Math.round(counts.prescribed/total*100) + '% of total' : '&nbsp;');
+      setStep('purchased', counts.purchased, counts.prescribed > 0 ? Math.round(counts.purchased/Math.max(1,counts.prescribed)*100) + '% of prescribed' : '&nbsp;');
+      setStep('declined', counts.declined, counts.declined > 0 ? Math.round(counts.declined/total*100) + '% of total' : '&nbsp;', true);
+    });
+}
+
+// ── Clinician queues ──
+// For each clinician, counts open reviews (pending_review consultations
+// assigned to them) and the oldest submission date to flag overdue.
+function loadClinicianQueues() {
+  var container = document.getElementById('clinicianQueues');
+  if (!container) return;
+  Promise.all([
+    db.from('profiles').select('user_id, display_name, first_name, last_name, email').eq('role', 'clinician'),
+    db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review')
+  ]).then(function(results) {
+    var clinicians = (results[0].data || []);
+    var pending = (results[1].data || []);
+    if (!clinicians.length) {
+      container.innerHTML = '<div class="cc-empty">No clinicians yet.</div>';
+      return;
+    }
+    var byClinId = {};
+    pending.forEach(function(c) {
+      if (!c.assigned_clinician_id) return;
+      if (!byClinId[c.assigned_clinician_id]) byClinId[c.assigned_clinician_id] = { count: 0, oldest: null };
+      byClinId[c.assigned_clinician_id].count++;
+      var ts = c.created_at ? new Date(c.created_at).getTime() : 0;
+      if (!byClinId[c.assigned_clinician_id].oldest || ts < byClinId[c.assigned_clinician_id].oldest) {
+        byClinId[c.assigned_clinician_id].oldest = ts;
+      }
+    });
+    var rows = clinicians.map(function(c) {
+      var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
+      var bucket = byClinId[c.user_id] || { count: 0, oldest: null };
+      var ageH = bucket.oldest ? Math.floor((Date.now() - bucket.oldest) / 3600000) : 0;
+      var overdue = ageH >= 24;
+      var meta = bucket.count === 0 ? 'All caught up' : ('Oldest: ' + (ageH < 1 ? '<1h' : ageH < 24 ? ageH + 'h' : Math.floor(ageH/24) + 'd') + ' ago');
+      var initial = name.charAt(0).toUpperCase();
+      return {
+        html:
+          '<div class="cc-clinician-row">' +
+            '<div class="cc-clinician-avatar">' + escHtml(initial) + '</div>' +
+            '<div class="cc-clinician-info">' +
+              '<div class="cc-clinician-name">' + escHtml(name) + '</div>' +
+              '<div class="cc-clinician-meta">' + escHtml(meta) + '</div>' +
+            '</div>' +
+            '<div class="cc-clinician-count' + (overdue ? ' overdue' : '') + '">' + bucket.count + '</div>' +
+          '</div>',
+        sortKey: -bucket.count
+      };
+    });
+    rows.sort(function(a, b) { return a.sortKey - b.sortKey; });
+    container.innerHTML = rows.map(function(r) { return r.html; }).join('') || '<div class="cc-empty">No clinicians yet.</div>';
+  }).catch(function() {
+    container.innerHTML = '<div class="cc-empty">Failed to load clinician queues.</div>';
+  });
+}
+
+// ── Flagged items ──
+// Surfaces things that need admin attention: high-risk pending intakes,
+// moderate-risk stuck intakes, and stale protocol/refill requests.
+function loadFlaggedItems() {
+  var container = document.getElementById('flaggedItems');
+  if (!container) return;
+  db.from('consultations').select('id, user_id, review_status, risk_status, consultation_type, data, created_at')
+    .eq('review_status', 'pending_review')
+    .order('created_at', { ascending: true }).limit(50)
+    .then(function(r) {
+      var rows = r.data || [];
+      var flagged = [];
+      rows.forEach(function(c) {
+        var d = c.data || {};
+        var ageH = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 3600000);
+        var isRequest = c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request' || d.request_category || d.refill_protocol;
+        if (c.risk_status === 'high_risk') {
+          flagged.push({ sev: 0, icon: '!', cls: 'high', title: 'High-risk intake', user: c.user_id, age: ageH });
+        } else if (c.risk_status === 'moderate_risk' && ageH >= 12) {
+          flagged.push({ sev: 1, icon: '!', cls: 'mod', title: 'Moderate-risk intake · ' + ageH + 'h stale', user: c.user_id, age: ageH });
+        } else if (isRequest && ageH >= 24) {
+          var label = c.consultation_type === 'refill_request' || d.refill_protocol ? 'Refill request' : 'Protocol request';
+          flagged.push({ sev: 2, icon: '\u25CB', cls: 'mod', title: label + ' · ' + ageH + 'h stale', user: c.user_id, age: ageH });
+        }
+      });
+      flagged.sort(function(a, b) { return a.sev - b.sev || b.age - a.age; });
+      if (!flagged.length) {
+        container.innerHTML = '<div class="cc-empty">Nothing flagged. All clear.</div>';
         return;
       }
-      tbody.innerHTML = r.data.map(function(u) {
-        var role = u.role || 'member';
-        var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
-        var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
-        return '<tr>' +
-          '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + '</td>' +
-          '<td>' + escHtml(u.email || '--') + '</td>' +
-          '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
-          '<td>' + date + '</td>' +
-          '</tr>';
+      container.innerHTML = flagged.slice(0, 8).map(function(f) {
+        var name = profileName(f.user) || 'Patient';
+        return '<div class="cc-flag-row">' +
+                 '<div class="cc-flag-icon ' + f.cls + '">' + f.icon + '</div>' +
+                 '<div class="cc-flag-info">' +
+                   '<div class="cc-flag-title">' + escHtml(f.title) + '</div>' +
+                   '<div class="cc-flag-meta">' + escHtml(name) + '</div>' +
+                 '</div>' +
+                 '<div class="cc-flag-time">' + (f.age < 24 ? f.age + 'h' : Math.floor(f.age/24) + 'd') + '</div>' +
+               '</div>';
       }).join('');
+    }).catch(function() {
+      container.innerHTML = '<div class="cc-empty">Failed to load flagged items.</div>';
+    });
+}
+
+// ── Recent activity stream ──
+// Pulls the latest patient_events across all members and renders as a
+// unified timeline. Gives admins a live view of the platform pulse.
+function loadActivityStream() {
+  var container = document.getElementById('activityStream');
+  if (!container) return;
+  db.from('patient_events').select('user_id, event_type, event_data, created_by_name, created_at')
+    .order('created_at', { ascending: false }).limit(20)
+    .then(function(r) {
+      var rows = r.data || [];
+      if (!rows.length) {
+        container.innerHTML = '<div class="cc-empty">No recent activity.</div>';
+        return;
+      }
+      container.innerHTML = rows.map(function(ev) {
+        var d = ev.event_data || {};
+        var icon = '\u2022', iconCls = '', title = '', who = ev.created_by_name || '';
+        switch (ev.event_type) {
+          case 'rx_prescribed':
+            icon = 'Rx'; iconCls = 'is-rx';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong> prescribed ' + escHtml(d.protocol_key || 'protocol');
+            if (who) title += ' by ' + escHtml(who);
+            break;
+          case 'rx_adjusted':
+            icon = '\u270E'; iconCls = 'is-rx';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong>\u2019s ' + escHtml(d.protocol_key || 'protocol') + ' adjusted';
+            if (who) title += ' by ' + escHtml(who);
+            break;
+          case 'rx_discontinued':
+            icon = '\u2716'; iconCls = 'is-disc';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong>\u2019s ' + escHtml(d.protocol_key || 'protocol') + ' discontinued';
+            break;
+          case 'checkin':
+            icon = '\u2713'; iconCls = 'is-checkin';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong> completed a check-in';
+            break;
+          case 'protocol_request':
+            icon = '+'; iconCls = 'is-request';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong> requested protocol: ' + escHtml(d.category || '');
+            break;
+          case 'refill_request':
+            icon = '\u21BB'; iconCls = 'is-request';
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong> requested refill: ' + escHtml(d.protocol || '');
+            break;
+          case 'note':
+            icon = '\u270E'; iconCls = 'is-rx';
+            title = 'Note added to <strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong>';
+            if (who) title += ' by ' + escHtml(who);
+            break;
+          default:
+            title = '<strong>' + escHtml(profileName(ev.user_id) || 'Patient') + '</strong> \u00B7 ' + escHtml((ev.event_type || '').replace(/_/g, ' '));
+        }
+        return '<div class="cc-activity-row">' +
+                 '<div class="cc-activity-icon ' + iconCls + '">' + icon + '</div>' +
+                 '<div class="cc-activity-body">' +
+                   '<div class="cc-activity-title">' + title + '</div>' +
+                   '<div class="cc-activity-meta">' + timeAgo(ev.created_at) + '</div>' +
+                 '</div>' +
+               '</div>';
+      }).join('');
+    }).catch(function() {
+      container.innerHTML = '<div class="cc-empty">Failed to load activity.</div>';
     });
 }
 
@@ -1114,7 +1418,7 @@ function renderUsersTable(users) {
     var name = u.display_name || u.email || 'Unknown';
     var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
     var seen = timeAgo(u.last_seen);
-    return '<tr>' +
+    return '<tr class="clickable" onclick="openUserDetail(\'' + escHtml(u.user_id) + '\')">' +
       '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + '</td>' +
       '<td>' + escHtml(u.email || '--') + '</td>' +
       '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
@@ -1122,6 +1426,95 @@ function renderUsersTable(users) {
       '<td>' + date + '</td>' +
       '</tr>';
   }).join('');
+}
+
+// ══ Phase 2: User detail modal ══════════════════════════════════════
+function openUserDetail(userId) {
+  var u = (allUsers || []).find(function(x) { return x.user_id === userId; });
+  if (!u) return;
+  var role = u.role || 'member';
+  var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
+  var joined = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
+  var lastSeen = timeAgo(u.last_seen);
+
+  document.getElementById('userDetailTitle').textContent = name;
+  document.getElementById('userDetailGrid').innerHTML =
+    '<div class="detail-field"><div class="detail-label">Email</div><div class="detail-value">' + escHtml(u.email || '--') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Role</div><div class="detail-value"><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></div></div>' +
+    '<div class="detail-field"><div class="detail-label">User ID</div><div class="detail-value" style="font-size:11px;color:var(--text3);">' + escHtml(u.user_id) + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">First Name</div><div class="detail-value">' + escHtml(u.first_name || '--') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Last Name</div><div class="detail-value">' + escHtml(u.last_name || '--') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Display Name</div><div class="detail-value">' + escHtml(u.display_name || '--') + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Joined</div><div class="detail-value">' + joined + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Last Seen</div><div class="detail-value">' + lastSeen + '</div></div>' +
+    '<div class="detail-field"><div class="detail-label">Admin Role</div><div class="detail-value">' + escHtml(u.admin_role || '--') + '</div></div>';
+
+  // Role-specific summary section
+  var summaryEl = document.getElementById('userDetailSummary');
+  summaryEl.innerHTML = '<div class="cc-empty">Loading activity\u2026</div>';
+  _loadUserDetailSummary(u);
+
+  document.getElementById('userDetailPanel').classList.add('show');
+  document.getElementById('userDetailBackdrop').classList.add('show');
+}
+
+function closeUserDetail() {
+  document.getElementById('userDetailPanel').classList.remove('show');
+  document.getElementById('userDetailBackdrop').classList.remove('show');
+}
+
+// Pulls role-specific context into the user detail modal:
+//   member    → recent consultations + active Rx count
+//   clinician → current open reviews + prescriptions written
+//   admin     → permissions summary
+function _loadUserDetailSummary(u) {
+  var el = document.getElementById('userDetailSummary');
+  var role = u.role || 'member';
+  if (role === 'member') {
+    Promise.all([
+      db.from('consultations').select('id, review_status, created_at').eq('user_id', u.user_id).order('created_at', { ascending: false }).limit(5),
+      db.from('prescriptions').select('id, protocol_key, status').eq('user_id', u.user_id)
+    ]).then(function(results) {
+      var consults = results[0].data || [];
+      var rxs = results[1].data || [];
+      var active = rxs.filter(function(r) { return r.status === 'active'; });
+      var html =
+        '<div class="detail-section-title">Member Activity</div>' +
+        '<div class="detail-grid">' +
+          '<div class="detail-field"><div class="detail-label">Consultations</div><div class="detail-value">' + consults.length + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Active Rx</div><div class="detail-value">' + active.length + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Total Rx</div><div class="detail-value">' + rxs.length + '</div></div>' +
+        '</div>';
+      if (active.length) {
+        html += '<div class="detail-section-title" style="margin-top:8px;">Active Protocols</div>' +
+                '<div class="detail-value" style="line-height:1.8;">' +
+                  active.map(function(r) { return escHtml(r.protocol_key || 'Protocol'); }).join(' \u00B7 ') +
+                '</div>';
+      }
+      el.innerHTML = html;
+    }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load member activity.</div>'; });
+  } else if (role === 'clinician') {
+    Promise.all([
+      db.from('consultations').select('id, review_status', { count: 'exact' }).eq('assigned_clinician_id', u.user_id).eq('review_status', 'pending_review'),
+      db.from('consultations').select('id', { count: 'exact', head: true }).eq('assigned_clinician_id', u.user_id).eq('review_status', 'prescribed'),
+      db.from('prescriptions').select('id', { count: 'exact', head: true }).eq('prescribed_by', u.user_id)
+    ]).then(function(results) {
+      var pending = results[0].count || 0;
+      var prescribed = results[1].count || 0;
+      var totalRx = results[2].count || 0;
+      el.innerHTML =
+        '<div class="detail-section-title">Clinician Workload</div>' +
+        '<div class="detail-grid">' +
+          '<div class="detail-field"><div class="detail-label">Open Reviews</div><div class="detail-value">' + pending + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Prescribed</div><div class="detail-value">' + prescribed + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Total Rx Written</div><div class="detail-value">' + totalRx + '</div></div>' +
+        '</div>';
+    }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load clinician activity.</div>'; });
+  } else {
+    el.innerHTML =
+      '<div class="detail-section-title">Admin Permissions</div>' +
+      '<div class="detail-value">' + (u.admin_role === 'super_admin' ? 'Full platform control — all management surfaces.' : 'Standard admin access.') + '</div>';
+  }
 }
 
 // ══════════════════════════════════
@@ -1959,7 +2352,10 @@ function _startAdminPoll() {
   if (_adminPollTimer) clearInterval(_adminPollTimer);
   _adminPollTimer = setInterval(function() {
     loadOverviewStats();
-    loadRecentUsers();
+    loadIntakeFunnel();
+    loadClinicianQueues();
+    loadFlaggedItems();
+    loadActivityStream();
     loadUsers();
     loadRoles();
     loadConsultations();

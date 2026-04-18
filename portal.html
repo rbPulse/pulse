@@ -10456,7 +10456,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // prescription-related field lives on the prescriptions table now;
     // consultations only owns the intake event + review decision.
     var consultPromise = db.from('consultations')
-      .select('data, created_at, risk_status, risk_flag_reasons, review_status, no_prescription_reason, evaluation_date, session_notes')
+      .select('data, created_at, risk_status, risk_flag_reasons, review_status, no_prescription_reason, session_notes')
       .eq('id', consultId).limit(1);
     var rxPromise = pxGetAllForConsultation(consultId);
     var res = await consultPromise;
@@ -11203,10 +11203,10 @@ async function loadRecentlyEvaluated() {
 
   try {
     var res = await db.from('consultations')
-      .select('id, user_id, review_status, purchase_status, evaluation_date, updated_at')
+      .select('id, user_id, review_status, purchase_status, data, created_at')
       .eq('assigned_clinician_id', currentUserId)
       .in('review_status', ['prescribed', 'not_prescribed'])
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(10);
 
     var consults = res.data || [];
@@ -11243,7 +11243,8 @@ async function loadRecentlyEvaluated() {
       var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
       var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';
       var protocol = protoByUser[c.user_id] || '';
-      var evalDate = c.evaluation_date ? _fmtClDate(c.evaluation_date) : (c.updated_at ? _fmtClDate(c.updated_at) : '--');
+      var _cData = c.data || {};
+      var evalDate = _cData.evaluation_date ? _fmtClDate(_cData.evaluation_date) : (c.created_at ? _fmtClDate(c.created_at) : '--');
 
       var purchaseHtml = '';
       if (c.review_status === 'prescribed') {

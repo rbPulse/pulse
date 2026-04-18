@@ -343,6 +343,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cfg-migration-note code{font-family:'Menlo','Monaco',monospace;font-size:11px;background:rgba(20,20,20,0.05);padding:1px 6px;border-radius:4px;color:var(--text);}
 
 /* Product card grid + category filter bar (Phase 1 unification) */
+/* Portal-style custom dropdown (used for catalog filters). Ported from
+   portal.html so admin uses the same chrome. */
+.pd-dropdown{position:relative;display:inline-block;}
+.pd-dropdown-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:140px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:9px 16px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;outline:none;transition:all .15s;white-space:nowrap;}
+.pd-dropdown-toggle:hover{border-color:var(--border-strong);}
+.pd-dropdown.open .pd-dropdown-toggle{border-color:var(--green);background:var(--green-tint);color:var(--green);}
+.pd-dropdown-value{flex:1;text-align:left;}
+.pd-dropdown-chevron{transition:transform .2s;flex-shrink:0;color:var(--text3);}
+.pd-dropdown.open .pd-dropdown-chevron{transform:rotate(180deg);color:var(--green);}
+.pd-dropdown-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:180px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:6px;z-index:60;opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s,transform .15s;max-height:320px;overflow-y:auto;}
+.pd-dropdown.open .pd-dropdown-menu{opacity:1;transform:translateY(0);pointer-events:auto;}
+.pd-dropdown-option{display:block;width:100%;text-align:left;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:9px 12px;border-radius:var(--radius-sm);background:none;border:none;color:var(--text);cursor:pointer;transition:background .1s;white-space:nowrap;}
+.pd-dropdown-option:hover{background:rgba(20,20,20,0.04);}
+.pd-dropdown-option.active{background:var(--green-tint);color:var(--green);font-weight:600;}
+
 .cfg-cat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);}
 .cfg-cat-manage-btn{margin-left:auto;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
@@ -1358,6 +1373,36 @@ function loadRecentUsers() { /* no-op */ }
 var _allProtocols = [];
 var _allCategories = [];
 var _editingProtocolId = null;
+
+// Portal-style dropdown toggle/select helpers. Ported from portal.html
+// so catalog filters use the same interaction model.
+function _pdToggle(id) {
+  var dd = document.getElementById(id);
+  if (!dd) return;
+  var wasOpen = dd.classList.contains('open');
+  document.querySelectorAll('.pd-dropdown.open').forEach(function(el) {
+    if (el !== dd) el.classList.remove('open');
+  });
+  dd.classList.toggle('open', !wasOpen);
+}
+function _pdSelect(id, value, label, callback) {
+  var dd = document.getElementById(id);
+  if (!dd) return;
+  dd.setAttribute('data-value', value);
+  var valEl = dd.querySelector('.pd-dropdown-value');
+  if (valEl) valEl.textContent = label;
+  dd.querySelectorAll('.pd-dropdown-option').forEach(function(opt) {
+    opt.classList.toggle('active', opt.getAttribute('data-value') === String(value));
+  });
+  dd.classList.remove('open');
+  if (typeof callback === 'function') { try { callback(value); } catch (_) {} }
+}
+// Close any open pd-dropdowns on outside click
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.pd-dropdown.open').forEach(function(dd) {
+    if (!dd.contains(e.target)) dd.classList.remove('open');
+  });
+});
 
 function switchConfigSection(section) {
   document.querySelectorAll('.cfg-section').forEach(function(el) { el.classList.remove('active'); });

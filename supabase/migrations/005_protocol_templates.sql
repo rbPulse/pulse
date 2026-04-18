@@ -94,12 +94,13 @@ CREATE POLICY "admin write protocol categories"
 
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Seed: insert the current hardcoded protocols and categories so the
--- admin portal isn't empty on first load. Only seeds if the table is
--- empty (safe to re-run).
+-- Seed: upsert so re-running the migration updates existing rows that
+-- were seeded with the old schema (e.g. "Sleep Protocol" → "Sleep").
+-- Clean product names, Pod/Stack type, Performance/Longevity/Recovery/
+-- Body Comp categories, $100 baseline price.
 -- ─────────────────────────────────────────────────────────────────────────
 INSERT INTO protocol_templates (key, name, product_type, category, compounds, price, note)
-SELECT * FROM (VALUES
+VALUES
   ('sleep',      'Sleep',      'Pod',   'Longevity',   '["Epithalon 10mg","DSIP 500mcg"]'::jsonb,                             100.00, 'Take 30 min before bed.'),
   ('repair',     'Repair',     'Pod',   'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            100.00, 'Rotate injection sites.'),
   ('growth',     'Growth',     'Pod',   'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg"]'::jsonb,                         100.00, 'Fasted, before bed.'),
@@ -110,17 +111,31 @@ SELECT * FROM (VALUES
   ('recovery',   'Recovery',   'Stack', 'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            100.00, 'Combined repair stack.'),
   ('performance','Performance','Stack', 'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","AOD-9604 300mcg"]'::jsonb,       100.00, 'Fasted.'),
   ('optimize',   'Optimize',   'Stack', 'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","Epithalon 10mg"]'::jsonb,        100.00, 'Growth + longevity.')
-) AS v(key, name, product_type, category, compounds, price, note)
-WHERE NOT EXISTS (SELECT 1 FROM protocol_templates);
+ON CONFLICT (key) DO UPDATE SET
+  name         = EXCLUDED.name,
+  product_type = EXCLUDED.product_type,
+  category     = EXCLUDED.category,
+  compounds    = EXCLUDED.compounds,
+  price        = EXCLUDED.price,
+  note         = EXCLUDED.note,
+  updated_at   = now();
 
 INSERT INTO protocol_categories (name, display_order)
-SELECT * FROM (VALUES
+VALUES
   ('Performance',  1),
   ('Longevity',    2),
   ('Recovery',     3),
   ('Body Comp',    4)
-) AS v(name, display_order)
-WHERE NOT EXISTS (SELECT 1 FROM protocol_categories);
+ON CONFLICT (name) DO UPDATE SET
+  display_order = EXCLUDED.display_order;
+
+-- Archive the OLD category names left over from the initial seed
+-- (Sleep, Repair, Growth, etc. were stored as categories before we
+-- restructured — they are now product names, not categories).
+UPDATE protocol_categories
+  SET is_archived = true
+  WHERE name IN ('Sleep','Repair','Growth','Endurance','Shred','Vitality','Longevity','Recovery','Performance','Optimize')
+    AND name NOT IN ('Performance','Longevity','Recovery','Body Comp');
 
 
 -- ─────────────────────────────────────────────────────────────────────────

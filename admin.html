@@ -318,6 +318,25 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .admin-msg-ta:focus{border-color:var(--green);}
 .admin-msg-ta::placeholder{color:var(--text4);}
 
+/* ── CONFIGURE TAB (Phase 4) ── */
+.cfg-subnav{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+.cfg-subnav-pill{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:8px 16px;border-radius:var(--radius-pill);background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s;}
+.cfg-subnav-pill:hover{border-color:var(--border-strong);color:var(--text);}
+.cfg-subnav-pill.active{background:var(--amber-tint);border-color:var(--amber-border);color:var(--amber);}
+.cfg-section{display:none;}
+.cfg-section.active{display:block;}
+.cfg-row-actions{display:flex;gap:6px;align-items:center;}
+.cfg-icon-btn{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 12px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.04em;color:var(--text2);cursor:pointer;transition:all .15s;}
+.cfg-icon-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.cfg-icon-btn.danger{color:var(--red);border-color:var(--red-border);}
+.cfg-icon-btn.danger:hover{background:var(--red-tint);}
+.cfg-compound-tag{display:inline-block;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:3px 10px;border-radius:var(--radius-pill);background:var(--green-tint);border:1px solid var(--green-border);color:var(--green);margin-right:4px;margin-bottom:4px;}
+.cfg-placeholder{padding:40px 20px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;background:var(--card);border:1px dashed var(--border-strong);border-radius:var(--radius);}
+.cfg-placeholder strong{color:var(--text);display:block;margin-bottom:6px;font-weight:600;}
+.cfg-migration-note{background:var(--amber-tint);border:1px solid var(--amber-border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;}
+.cfg-migration-note strong{color:var(--amber);font-weight:700;}
+.cfg-migration-note code{font-family:'Menlo','Monaco',monospace;font-size:11px;background:rgba(20,20,20,0.05);padding:1px 6px;border-radius:4px;color:var(--text);}
+
 /* ── MOBILE ── */
 @media(max-width:900px){
   nav{padding:0 16px;height:52px;}
@@ -403,6 +422,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-analytics" onclick="switchTab('analytics')">
           <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span class="sidebar-item-label">Analytics</span>
+        </div>
+        <div class="sidebar-section-label">Configure</div>
+        <div class="sidebar-item" id="nav-configure" onclick="switchTab('configure')">
+          <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
+          <span class="sidebar-item-label">Configuration</span>
         </div>
         <div class="sidebar-section-label">System</div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
@@ -892,6 +916,134 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
 
+      <!-- CONFIGURE TAB (Phase 4) -->
+      <div class="admin-tab" id="tab-configure">
+        <div class="tab-header">
+          <div class="tab-title">Configuration</div>
+          <div class="tab-subtitle">Platform-level settings for protocols, categories, and workflows</div>
+        </div>
+
+        <div class="cfg-subnav">
+          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Protocol Library</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="categories" onclick="switchConfigSection('categories')">Categories</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Notifications</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="business" onclick="switchConfigSection('business')">Business</button>
+        </div>
+
+        <!-- Protocols sub-section -->
+        <div class="cfg-section active" id="cfg-protocols">
+          <div class="toolbar">
+            <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Protocol</button>
+            <input type="text" class="search-input" id="protocolSearch" placeholder="Search protocols..." oninput="filterProtocols()"/>
+            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()">
+              <option value="active">Active only</option>
+              <option value="all">Active + archived</option>
+              <option value="archived">Archived only</option>
+            </select>
+            <span class="toolbar-count" id="protocolCount"></span>
+          </div>
+          <div id="protocolsNotReady" style="display:none;">
+            <div class="cfg-migration-note">
+              <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Category</th><th>Compounds</th><th>Cycle</th><th>Status</th><th></th></tr></thead>
+              <tbody id="protocolsBody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Categories sub-section -->
+        <div class="cfg-section" id="cfg-categories">
+          <div class="toolbar">
+            <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;max-width:280px;"/>
+            <button class="toolbar-btn" onclick="addCategory()">+ Add Category</button>
+            <span class="toolbar-count" id="categoryCount"></span>
+          </div>
+          <div id="categoriesNotReady" style="display:none;">
+            <div class="cfg-migration-note">
+              <strong>Migration required.</strong> The <code>protocol_categories</code> table isn't initialized yet. Run <code>005_protocol_templates.sql</code> to enable.
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Order</th><th>Status</th><th></th></tr></thead>
+              <tbody id="categoriesBody">
+                <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Clinician capacity sub-section -->
+        <div class="cfg-section" id="cfg-clinicians">
+          <div class="cfg-placeholder">
+            <strong>Clinician capacity controls coming soon.</strong>
+            Set maximum concurrent patients, working hours, and vacation windows per clinician. For now, open a clinician from the Users tab to see their current workload.
+          </div>
+        </div>
+
+        <!-- Notification templates sub-section -->
+        <div class="cfg-section" id="cfg-notifications">
+          <div class="cfg-placeholder">
+            <strong>Notification template editor coming soon.</strong>
+            Edit the copy for check-in prompts, refill reminders, and system messages. Templates currently live in <code>portal.html</code>.
+          </div>
+        </div>
+
+        <!-- Business settings sub-section -->
+        <div class="cfg-section" id="cfg-business">
+          <div class="cfg-placeholder">
+            <strong>Business settings coming soon.</strong>
+            Operating hours, SLA thresholds, auto-escalation rules, and global platform toggles.
+          </div>
+        </div>
+
+        <!-- Protocol editor modal -->
+        <div class="detail-panel-backdrop" id="protoEditorBackdrop" onclick="closeProtocolEditor()"></div>
+        <div class="detail-panel" id="protoEditorPanel">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title" id="protoEditorTitle">New Protocol</div>
+            <button class="detail-close" onclick="closeProtocolEditor()">Close</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Key (slug)</label>
+              <input type="text" id="protoFieldKey" placeholder="e.g. sleep"/>
+            </div>
+            <div class="form-field">
+              <label>Display Name</label>
+              <input type="text" id="protoFieldName" placeholder="e.g. Sleep Protocol"/>
+            </div>
+            <div class="form-field">
+              <label>Category</label>
+              <input type="text" id="protoFieldCategory" placeholder="e.g. Longevity"/>
+            </div>
+            <div class="form-field">
+              <label>Cycle</label>
+              <input type="text" id="protoFieldCycle" placeholder="e.g. 12 weeks"/>
+            </div>
+            <div class="form-field" style="grid-column:1 / -1;">
+              <label>Compounds (one per line)</label>
+              <textarea id="protoFieldCompounds" class="admin-msg-ta" style="min-height:90px;" placeholder="Epithalon 10mg&#10;DSIP 500mcg"></textarea>
+            </div>
+            <div class="form-field" style="grid-column:1 / -1;">
+              <label>Clinical Note</label>
+              <textarea id="protoFieldNote" class="admin-msg-ta" placeholder="Default timing, dosing guidance, etc."></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="form-btn secondary" onclick="closeProtocolEditor()">Cancel</button>
+            <button class="form-btn primary" id="protoSaveBtn" onclick="saveProtocol()">Save Protocol</button>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -1025,6 +1177,222 @@ function loadOverviewStats() {
 // sections (funnel / queues / flagged / activity). Keep the function so
 // existing call sites in createUser + role-change don't break.
 function loadRecentUsers() { /* no-op */ }
+
+// ══ Phase 4: Configuration surfaces ═══════════════════════════════════
+// Protocol library + categories are backed by protocol_templates /
+// protocol_categories tables (migration 005). If those tables don't
+// exist yet the UI shows a migration-required banner and stays empty
+// without erroring.
+var _allProtocols = [];
+var _allCategories = [];
+var _editingProtocolId = null;
+
+function switchConfigSection(section) {
+  document.querySelectorAll('.cfg-section').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.cfg-subnav-pill').forEach(function(el) { el.classList.remove('active'); });
+  var target = document.getElementById('cfg-' + section);
+  var pill = document.querySelector('.cfg-subnav-pill[data-cfg="' + section + '"]');
+  if (target) target.classList.add('active');
+  if (pill) pill.classList.add('active');
+}
+
+function loadConfigure() {
+  loadProtocols();
+  loadCategories();
+}
+
+function loadProtocols() {
+  db.from('protocol_templates').select('*').order('name', { ascending: true }).then(function(r) {
+    if (r.error) {
+      _allProtocols = [];
+      document.getElementById('protocolsNotReady').style.display = '';
+      document.getElementById('protocolsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+      return;
+    }
+    document.getElementById('protocolsNotReady').style.display = 'none';
+    _allProtocols = r.data || [];
+    filterProtocols();
+  }).catch(function() {
+    _allProtocols = [];
+    document.getElementById('protocolsNotReady').style.display = '';
+    document.getElementById('protocolsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+  });
+}
+
+function filterProtocols() {
+  var q = ((document.getElementById('protocolSearch') || {}).value || '').toLowerCase();
+  var arch = (document.getElementById('protocolArchiveFilter') || {}).value || 'active';
+  var rows = _allProtocols.filter(function(p) {
+    if (arch === 'active' && p.is_archived) return false;
+    if (arch === 'archived' && !p.is_archived) return false;
+    if (q && (p.name || '').toLowerCase().indexOf(q) === -1 && (p.key || '').toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  var cnt = document.getElementById('protocolCount');
+  if (cnt) cnt.textContent = rows.length + ' of ' + _allProtocols.length + ' protocols';
+  var tbody = document.getElementById('protocolsBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No protocols match your filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(p) {
+    var compounds = Array.isArray(p.compounds) ? p.compounds : [];
+    var compoundHtml = compounds.slice(0, 3).map(function(c) { return '<span class="cfg-compound-tag">' + escHtml(c) + '</span>'; }).join('') +
+                       (compounds.length > 3 ? '<span class="cfg-compound-tag" style="background:transparent;border-color:var(--border);color:var(--text3);">+' + (compounds.length - 3) + '</span>' : '');
+    var statusPill = p.is_archived
+      ? '<span class="status-pill cancelled">Archived</span>'
+      : '<span class="status-pill active">Active</span>';
+    return '<tr>' +
+      '<td style="color:var(--text);font-weight:600;">' + escHtml(p.name || '') + '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">' + escHtml(p.key || '') + '</div></td>' +
+      '<td>' + escHtml(p.category || '--') + '</td>' +
+      '<td>' + compoundHtml + '</td>' +
+      '<td>' + escHtml(p.cycle || '--') + '</td>' +
+      '<td>' + statusPill + '</td>' +
+      '<td><div class="cfg-row-actions">' +
+        '<button class="cfg-icon-btn" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +
+        '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
+      '</div></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function openProtocolEditor(id) {
+  _editingProtocolId = id || null;
+  var p = id ? _allProtocols.find(function(x) { return x.id === id; }) : null;
+  document.getElementById('protoEditorTitle').textContent = id ? 'Edit Protocol' : 'New Protocol';
+  document.getElementById('protoFieldKey').value = p ? (p.key || '') : '';
+  document.getElementById('protoFieldName').value = p ? (p.name || '') : '';
+  document.getElementById('protoFieldCategory').value = p ? (p.category || '') : '';
+  document.getElementById('protoFieldCycle').value = p ? (p.cycle || '') : '';
+  document.getElementById('protoFieldCompounds').value = p && Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
+  document.getElementById('protoFieldNote').value = p ? (p.note || '') : '';
+  // Editing: key field is immutable to avoid breaking existing references
+  document.getElementById('protoFieldKey').disabled = !!id;
+  document.getElementById('protoEditorPanel').classList.add('show');
+  document.getElementById('protoEditorBackdrop').classList.add('show');
+}
+
+function closeProtocolEditor() {
+  document.getElementById('protoEditorPanel').classList.remove('show');
+  document.getElementById('protoEditorBackdrop').classList.remove('show');
+  _editingProtocolId = null;
+}
+
+function saveProtocol() {
+  var key = (document.getElementById('protoFieldKey').value || '').trim().toLowerCase();
+  var name = (document.getElementById('protoFieldName').value || '').trim();
+  var category = (document.getElementById('protoFieldCategory').value || '').trim();
+  var cycle = (document.getElementById('protoFieldCycle').value || '').trim();
+  var compoundsText = (document.getElementById('protoFieldCompounds').value || '').trim();
+  var note = (document.getElementById('protoFieldNote').value || '').trim();
+  if (!key || !name) { showToast('Key and name are required.', 'error'); return; }
+  var compounds = compoundsText ? compoundsText.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  var payload = {
+    key: key, name: name, category: category || null, cycle: cycle || null,
+    compounds: compounds, note: note || null, updated_at: new Date().toISOString()
+  };
+  var btn = document.getElementById('protoSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  var op;
+  if (_editingProtocolId) {
+    op = db.from('protocol_templates').update(payload).eq('id', _editingProtocolId);
+  } else {
+    payload.created_by = currentUserId || null;
+    op = db.from('protocol_templates').insert(payload);
+  }
+  op.then(function(r) {
+    if (r.error) { showToast('Save failed: ' + (r.error.message || 'unknown'), 'error'); }
+    else {
+      writeAuditLog(_editingProtocolId ? 'protocol.updated' : 'protocol.created', null, { key: key, name: name });
+      showToast('Protocol saved.', 'success');
+      closeProtocolEditor();
+      loadProtocols();
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Protocol'; }
+  }).catch(function(e) {
+    showToast('Save failed.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Protocol'; }
+  });
+}
+
+function toggleArchiveProtocol(id) {
+  var p = _allProtocols.find(function(x) { return x.id === id; });
+  if (!p) return;
+  var nextState = !p.is_archived;
+  db.from('protocol_templates').update({ is_archived: nextState, updated_at: new Date().toISOString() }).eq('id', id).then(function(r) {
+    if (r.error) { showToast('Update failed.', 'error'); return; }
+    writeAuditLog(nextState ? 'protocol.archived' : 'protocol.restored', null, { key: p.key });
+    showToast(nextState ? 'Protocol archived.' : 'Protocol restored.', 'success');
+    loadProtocols();
+  }).catch(function() { showToast('Update failed.', 'error'); });
+}
+
+function loadCategories() {
+  db.from('protocol_categories').select('*').order('display_order', { ascending: true }).then(function(r) {
+    if (r.error) {
+      _allCategories = [];
+      document.getElementById('categoriesNotReady').style.display = '';
+      document.getElementById('categoriesBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+      return;
+    }
+    document.getElementById('categoriesNotReady').style.display = 'none';
+    _allCategories = r.data || [];
+    renderCategories();
+  }).catch(function() {
+    _allCategories = [];
+    document.getElementById('categoriesNotReady').style.display = '';
+    document.getElementById('categoriesBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+  });
+}
+
+function renderCategories() {
+  var cntEl = document.getElementById('categoryCount');
+  if (cntEl) cntEl.textContent = _allCategories.length + ' categories';
+  var tbody = document.getElementById('categoriesBody');
+  if (!_allCategories.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">No categories yet. Add one above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _allCategories.map(function(c) {
+    var statusPill = c.is_archived
+      ? '<span class="status-pill cancelled">Archived</span>'
+      : '<span class="status-pill active">Active</span>';
+    return '<tr>' +
+      '<td style="color:var(--text);font-weight:600;">' + escHtml(c.name) + '</td>' +
+      '<td>' + (c.display_order != null ? c.display_order : '--') + '</td>' +
+      '<td>' + statusPill + '</td>' +
+      '<td><div class="cfg-row-actions">' +
+        '<button class="cfg-icon-btn ' + (c.is_archived ? '' : 'danger') + '" onclick="toggleArchiveCategory(\'' + escHtml(c.id) + '\')">' + (c.is_archived ? 'Restore' : 'Archive') + '</button>' +
+      '</div></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function addCategory() {
+  var input = document.getElementById('newCategoryInput');
+  var name = (input.value || '').trim();
+  if (!name) { showToast('Enter a category name.', 'error'); return; }
+  var maxOrder = _allCategories.reduce(function(m, c) { return Math.max(m, c.display_order || 0); }, 0);
+  db.from('protocol_categories').insert({ name: name, display_order: maxOrder + 1 }).then(function(r) {
+    if (r.error) { showToast('Add failed: ' + (r.error.message || 'unknown'), 'error'); return; }
+    writeAuditLog('category.created', null, { name: name });
+    showToast('Category added.', 'success');
+    input.value = '';
+    loadCategories();
+  }).catch(function() { showToast('Add failed.', 'error'); });
+}
+
+function toggleArchiveCategory(id) {
+  var c = _allCategories.find(function(x) { return x.id === id; });
+  if (!c) return;
+  var nextState = !c.is_archived;
+  db.from('protocol_categories').update({ is_archived: nextState }).eq('id', id).then(function(r) {
+    if (r.error) { showToast('Update failed.', 'error'); return; }
+    writeAuditLog(nextState ? 'category.archived' : 'category.restored', null, { name: c.name });
+    showToast(nextState ? 'Category archived.' : 'Category restored.', 'success');
+    loadCategories();
+  }).catch(function() { showToast('Update failed.', 'error'); });
+}
 
 // ══ Phase 3: Admin action helpers ═════════════════════════════════════
 
@@ -2567,6 +2935,7 @@ initAdmin = function(user, profile) {
     loadOverdueReviews();
   });
   loadAuditLogs();
+  loadConfigure();
   // Analytics loads after a short delay to let other data populate
   setTimeout(loadAnalytics, 1500);
   // Start auto-refresh polling

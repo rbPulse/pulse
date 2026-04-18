@@ -126,6 +126,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 .toolbar-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 18px;border-radius:var(--radius-pill);border:none;cursor:pointer;background:var(--green);color:#fff;transition:background .15s;white-space:nowrap;}
 .toolbar-btn:hover{background:#245a44;}
+.toolbar-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
+.toolbar-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);border-color:var(--text3);}
 @media(max-width:900px){
   .form-grid{grid-template-columns:1fr;}
 }
@@ -613,6 +615,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <option value="admin">Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>
+          <button class="toolbar-btn secondary" onclick="exportUsersCSV()">Export CSV</button>
           <span class="toolbar-count" id="userCount"></span>
         </div>
         <div class="admin-table-wrap">
@@ -690,6 +693,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <option value="prescribed">Prescribed</option>
             <option value="not_prescribed">Not Prescribed</option>
           </select>
+          <button class="toolbar-btn secondary" onclick="exportConsultationsCSV()">Export CSV</button>
           <span class="toolbar-count" id="consultCount"></span>
         </div>
         <div class="admin-table-wrap">
@@ -829,6 +833,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="toolbar">
           <input type="text" class="search-input" id="auditSearch" placeholder="Search by action or actor..." oninput="filterAudit()"/>
+          <select class="filter-select" id="auditRangeFilter" onchange="filterAudit()">
+            <option value="7">Last 7 days</option>
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="all">All time</option>
+          </select>
+          <select class="filter-select" id="auditActionFilter" onchange="filterAudit()">
+            <option value="">All actions</option>
+          </select>
+          <button class="toolbar-btn secondary" onclick="exportAuditCSV()">Export CSV</button>
           <span class="toolbar-count" id="auditCount"></span>
         </div>
         <div class="admin-table-wrap">
@@ -985,6 +999,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Notifications</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="business" onclick="switchConfigSection('business')">Business</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="scale" onclick="switchConfigSection('scale')">Scale</button>
         </div>
 
         <!-- Protocols sub-section -->
@@ -1057,6 +1072,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="cfg-placeholder">
             <strong>Business settings coming soon.</strong>
             Operating hours, SLA thresholds, auto-escalation rules, and global platform toggles.
+          </div>
+        </div>
+
+        <!-- Scale / compliance sub-section (Phase 6) -->
+        <div class="cfg-section" id="cfg-scale">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="cfg-placeholder">
+              <strong>Granular Roles</strong>
+              Scoped admin roles (finance, support, clinical-ops) beyond the current admin / super-admin split. Needs a role-permissions mapping layer before it ships.
+            </div>
+            <div class="cfg-placeholder">
+              <strong>API Keys &amp; Webhooks</strong>
+              Generate scoped API keys and outbound webhook destinations for future integrations (pharmacy, billing, EMR). Requires dedicated tables + rotation policy.
+            </div>
+            <div class="cfg-placeholder">
+              <strong>SSO / Enterprise Auth</strong>
+              SAML and OIDC support for enterprise customers. Deferred until a concrete enterprise need lands.
+            </div>
+            <div class="cfg-placeholder">
+              <strong>Exports &amp; Reporting</strong>
+              CSV exports are live on Users, Patients, and Audit Log tabs. Scheduled exports, PDF reports, and compliance snapshots will ship here.
+            </div>
           </div>
         </div>
 
@@ -1448,6 +1485,85 @@ function toggleArchiveCategory(id) {
     showToast(nextState ? 'Category archived.' : 'Category restored.', 'success');
     loadCategories();
   }).catch(function() { showToast('Update failed.', 'error'); });
+}
+
+// ══ Phase 6: CSV export helper ════════════════════════════════════════
+// Builds a CSV string from a column spec + row array and triggers a
+// browser download. Columns are { label, value } where value can be a
+// function receiving the row. Fields are quoted and escaped safely.
+function _csvEscape(v) {
+  if (v == null) return '';
+  var s = String(v);
+  if (s.indexOf('"') !== -1 || s.indexOf(',') !== -1 || s.indexOf('\n') !== -1) {
+    s = '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function exportToCSV(filename, rows, columns) {
+  if (!rows || !rows.length) { showToast('Nothing to export.', 'error'); return; }
+  var header = columns.map(function(c) { return _csvEscape(c.label); }).join(',');
+  var body = rows.map(function(r) {
+    return columns.map(function(c) {
+      var v = typeof c.value === 'function' ? c.value(r) : r[c.value];
+      return _csvEscape(v);
+    }).join(',');
+  }).join('\n');
+  var csv = '\uFEFF' + header + '\n' + body; // BOM so Excel reads UTF-8
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  writeAuditLog('admin.export_csv', null, { filename: filename, row_count: rows.length });
+}
+
+// Per-tab export entry points. Each exports whatever is currently
+// visible after filtering, so the CSV matches what the admin sees.
+function exportUsersCSV() {
+  var rows = window._filteredUserRows || allUsers || [];
+  exportToCSV('pulse-users-' + new Date().toISOString().slice(0, 10) + '.csv', rows, [
+    { label: 'User ID',     value: 'user_id' },
+    { label: 'Display Name',value: 'display_name' },
+    { label: 'First Name',  value: 'first_name' },
+    { label: 'Last Name',   value: 'last_name' },
+    { label: 'Email',       value: 'email' },
+    { label: 'Role',        value: 'role' },
+    { label: 'Admin Role',  value: 'admin_role' },
+    { label: 'Joined',      value: function(r) { return r.created_at ? new Date(r.created_at).toISOString() : ''; } },
+    { label: 'Last Seen',   value: function(r) { return r.last_seen ? new Date(r.last_seen).toISOString() : ''; } }
+  ]);
+}
+
+function exportConsultationsCSV() {
+  var rows = window._filteredConsultRows || allConsultations || [];
+  exportToCSV('pulse-patients-' + new Date().toISOString().slice(0, 10) + '.csv', rows, [
+    { label: 'Consultation ID', value: 'id' },
+    { label: 'Patient Name',    value: '_name' },
+    { label: 'Email',           value: '_email' },
+    { label: 'Status',          value: function(r) { return getConsultStatusLabel(getConsultStatus(r)); } },
+    { label: 'Type',            value: 'consultation_type' },
+    { label: 'Risk',            value: 'risk_status' },
+    { label: 'Protocol',        value: 'protocol_assigned' },
+    { label: 'Clinician',       value: function(r) { return r.assigned_clinician_id ? profileName(r.assigned_clinician_id) : ''; } },
+    { label: 'Submitted',       value: function(r) { return r.created_at ? new Date(r.created_at).toISOString() : ''; } }
+  ]);
+}
+
+function exportAuditCSV() {
+  var rows = window._filteredAuditRows || allAuditLogs || [];
+  exportToCSV('pulse-audit-' + new Date().toISOString().slice(0, 10) + '.csv', rows, [
+    { label: 'Action',    value: 'action' },
+    { label: 'Actor',     value: function(r) { return r.actor_email || (r.actor_id ? profileName(r.actor_id) : ''); } },
+    { label: 'Actor ID',  value: 'actor_id' },
+    { label: 'Target',    value: function(r) { return r.target_id ? profileName(r.target_id) : ''; } },
+    { label: 'Target ID', value: 'target_id' },
+    { label: 'Details',   value: function(r) { return r.details ? (typeof r.details === 'string' ? r.details : JSON.stringify(r.details)) : ''; } },
+    { label: 'Timestamp', value: function(r) { return r.created_at ? new Date(r.created_at).toISOString() : ''; } }
+  ]);
 }
 
 // ══ Phase 3: Admin action helpers ═════════════════════════════════════
@@ -2021,6 +2137,7 @@ function filterUsers() {
 
   document.getElementById('userCount').textContent = filtered.length + ' of ' + allUsers.length + ' users';
   renderUsersTable(filtered);
+  window._filteredUserRows = filtered;
 }
 
 function renderUsersTable(users) {
@@ -2379,6 +2496,7 @@ function filterConsultations() {
 
   document.getElementById('consultCount').textContent = filtered.length + ' of ' + allConsultations.length + ' patients';
   renderConsultTable(filtered);
+  window._filteredConsultRows = filtered;
 }
 
 function renderConsultTable(consultations) {
@@ -2719,27 +2837,54 @@ function openThread(threadId) {
 var allAuditLogs = [];
 
 function loadAuditLogs() {
-  db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
+  db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500)
     .then(function(r) {
       allAuditLogs = r.data || [];
+      _refreshAuditActionFilter();
       filterAudit();
     }).catch(function() {
       // Table might not exist
       allAuditLogs = [];
+      _refreshAuditActionFilter();
       filterAudit();
     });
 }
 
+// Populates the action-type dropdown from the distinct action values
+// in the current audit log set. Preserves the current selection if
+// still valid after reload.
+function _refreshAuditActionFilter() {
+  var sel = document.getElementById('auditActionFilter');
+  if (!sel) return;
+  var prev = sel.value;
+  var actions = {};
+  allAuditLogs.forEach(function(a) { if (a.action) actions[a.action] = true; });
+  var keys = Object.keys(actions).sort();
+  sel.innerHTML = '<option value="">All actions</option>' +
+    keys.map(function(k) { return '<option value="' + escHtml(k) + '">' + escHtml(k) + '</option>'; }).join('');
+  if (prev && actions[prev]) sel.value = prev;
+}
+
 function filterAudit() {
-  var q = (document.getElementById('auditSearch').value || '').toLowerCase();
+  var q = ((document.getElementById('auditSearch') || {}).value || '').toLowerCase();
+  var range = (document.getElementById('auditRangeFilter') || {}).value || '30';
+  var actionF = (document.getElementById('auditActionFilter') || {}).value || '';
+  var cutoffMs = null;
+  if (range !== 'all') cutoffMs = Date.now() - parseInt(range, 10) * 86400000;
   var filtered = allAuditLogs.filter(function(a) {
-    if (!q) return true;
-    var action = (a.action || '').toLowerCase();
-    var actor = (a.actor_email || '').toLowerCase();
-    return action.indexOf(q) !== -1 || actor.indexOf(q) !== -1;
+    if (cutoffMs !== null && a.created_at && new Date(a.created_at).getTime() < cutoffMs) return false;
+    if (actionF && a.action !== actionF) return false;
+    if (q) {
+      var action = (a.action || '').toLowerCase();
+      var actor = (a.actor_email || '').toLowerCase();
+      if (action.indexOf(q) === -1 && actor.indexOf(q) === -1) return false;
+    }
+    return true;
   });
-  document.getElementById('auditCount').textContent = filtered.length + ' entries';
+  document.getElementById('auditCount').textContent = filtered.length + ' of ' + allAuditLogs.length + ' entries';
   renderAuditTable(filtered);
+  // Stash filtered rows for CSV export to match what's currently visible
+  window._filteredAuditRows = filtered;
 }
 
 function renderAuditTable(logs) {

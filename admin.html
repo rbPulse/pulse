@@ -1084,6 +1084,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <button class="form-btn primary" onclick="addProductType()">Add</button>
           </div>
           <div class="cat-mgr-list" id="typeMgrList"></div>
+          <button type="button" class="cfg-cat-manage-btn" id="typeMgrArchiveToggle" onclick="toggleTypeMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
 
           <div class="detail-divider"></div>
 
@@ -1481,14 +1482,14 @@ function _cfgTypeSelect(val, label) {
 }
 
 function _renderTypeDropdown() {
-  _loadProductTypes();
   var dd = document.getElementById('cfgTypeDD');
   if (!dd) return;
   var menu = dd.querySelector('.pd-dropdown-menu');
   if (!menu) return;
+  var active = _allProductTypes.filter(function(t) { return !t.is_archived; });
   var html = '<button type="button" class="pd-dropdown-option' + (_activeTypeFilter === 'all' ? ' active' : '') + '" data-value="all" onclick="_cfgTypeSelect(\'all\',\'All types\')">All types</button>';
-  html += _allProductTypes.map(function(t) {
-    return '<button type="button" class="pd-dropdown-option' + (_activeTypeFilter === t ? ' active' : '') + '" data-value="' + escHtml(t) + '" onclick="_cfgTypeSelect(\'' + escHtml(t) + '\',\'' + escHtml(t) + 's\')">' + escHtml(t) + 's</button>';
+  html += active.map(function(t) {
+    return '<button type="button" class="pd-dropdown-option' + (_activeTypeFilter === t.name ? ' active' : '') + '" data-value="' + escHtml(t.name) + '" onclick="_cfgTypeSelect(\'' + escHtml(t.name) + '\',\'' + escHtml(t.name) + 's\')">' + escHtml(t.name) + 's</button>';
   }).join('');
   menu.innerHTML = html;
 }
@@ -1564,15 +1565,18 @@ function openProtocolEditor(id) {
   document.getElementById('protoFieldCompounds').value = p && Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
   document.getElementById('protoFieldNote').value = p ? (p.note || '') : '';
   document.getElementById('protoFieldPrice').value = (p && p.price != null) ? p.price : '';
-  // Type dropdown — populate from discovered product types
-  _loadProductTypes();
-  var typeSel = document.getElementById('protoFieldType');
-  if (typeSel) {
+  // Type dropdown — populate from active product types. Always include
+  // the current value even if archived so editing preserves it.
+  _loadProductTypes().then(function() {
+    var typeSel = document.getElementById('protoFieldType');
+    if (!typeSel) return;
+    var currentVal = (p && p.product_type) || '';
+    var active = _allProductTypes.filter(function(t) { return !t.is_archived || t.name === currentVal; });
     var typeOpts = '<option value="">Select type...</option>' +
-      _allProductTypes.map(function(t) { return '<option value="' + escHtml(t) + '">' + escHtml(t) + '</option>'; }).join('');
+      active.map(function(t) { return '<option value="' + escHtml(t.name) + '">' + escHtml(t.name) + (t.is_archived ? ' (archived)' : '') + '</option>'; }).join('');
     typeSel.innerHTML = typeOpts;
-    typeSel.value = (p && p.product_type) || '';
-  }
+    typeSel.value = currentVal;
+  });
   // Category dropdown — populate from _allCategories
   _populateEditorCategorySelect();
   var catSel = document.getElementById('protoFieldCategory');
@@ -1663,8 +1667,8 @@ var _showArchivedCats = false;
 
 function renderCategories() {
   _renderCategoryDropdown();
-  _renderTypeDropdown();
   _renderCatMgrList();
+  // _renderTypeMgrList loads types from DB and re-renders the dropdown
   _renderTypeMgrList();
 }
 
@@ -1696,54 +1700,110 @@ function toggleCatMgrArchived() {
   _renderCatMgrList();
 }
 
-// Product types — derived from distinct values on protocol_templates.
-// Admin can add new ones; they persist as values on products.
-var _allProductTypes = [];
+// Product types — backed by protocol_product_types table. If the table
+// isn't initialized, falls back to distinct values on protocol_templates.
+var _allProductTypes = []; // array of { id, name, display_order, is_archived }
+var _showArchivedTypes = false;
 
 function _loadProductTypes() {
-  _allProductTypes = [];
-  var seen = {};
-  (_allProtocols || []).forEach(function(p) {
-    if (p.product_type && !seen[p.product_type]) {
-      seen[p.product_type] = true;
-      _allProductTypes.push(p.product_type);
-    }
-  });
-  _allProductTypes.sort();
+  return db.from('protocol_product_types').select('*').order('display_order', { ascending: true })
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _allProductTypes = (r.data || []).map(function(t) { return { id: t.id, name: t.name, display_order: t.display_order, is_archived: !!t.is_archived }; });
+      // Also fold in any legacy types present on products but not in the table
+      var seen = {};
+      _allProductTypes.forEach(function(t) { seen[t.name] = true; });
+      (_allProtocols || []).forEach(function(p) {
+        if (p.product_type && !seen[p.product_type]) {
+          seen[p.product_type] = true;
+          _allProductTypes.push({ id: null, name: p.product_type, display_order: 999, is_archived: false, _legacy: true });
+        }
+      });
+    })
+    .catch(function() {
+      // Table missing — fall back to derived list from products
+      _allProductTypes = [];
+      var seen = {};
+      (_allProtocols || []).forEach(function(p) {
+        if (p.product_type && !seen[p.product_type]) {
+          seen[p.product_type] = true;
+          _allProductTypes.push({ id: null, name: p.product_type, display_order: 0, is_archived: false, _legacy: true });
+        }
+      });
+      _allProductTypes.sort(function(a, b) { return a.name.localeCompare(b.name); });
+    });
 }
 
 function _renderTypeMgrList() {
-  _loadProductTypes();
-  var list = document.getElementById('typeMgrList');
-  if (!list) return;
-  if (!_allProductTypes.length) {
-    list.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text3);font-size:12px;">No types yet. Add one above (e.g. Pod, Stack).</div>';
-    return;
-  }
-  var usedCounts = {};
-  (_allProtocols || []).forEach(function(p) {
-    if (p.product_type) usedCounts[p.product_type] = (usedCounts[p.product_type] || 0) + 1;
+  _loadProductTypes().then(function() {
+    var list = document.getElementById('typeMgrList');
+    if (!list) return;
+    var active = _allProductTypes.filter(function(t) { return !t.is_archived; });
+    var archived = _allProductTypes.filter(function(t) { return t.is_archived; });
+    var toggle = document.getElementById('typeMgrArchiveToggle');
+    if (toggle) toggle.style.display = archived.length ? '' : 'none';
+    if (toggle) toggle.textContent = _showArchivedTypes ? 'Hide archived (' + archived.length + ')' : 'Show archived (' + archived.length + ')';
+    var rows = _showArchivedTypes ? _allProductTypes : active;
+    if (!rows.length) {
+      list.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text3);font-size:12px;">No types yet. Add one above (e.g. Pod, Stack).</div>';
+      _renderTypeDropdown();
+      return;
+    }
+    var usedCounts = {};
+    (_allProtocols || []).forEach(function(p) {
+      if (p.product_type) usedCounts[p.product_type] = (usedCounts[p.product_type] || 0) + 1;
+    });
+    list.innerHTML = rows.map(function(t) {
+      var cnt = usedCounts[t.name] || 0;
+      var cls = t.is_archived ? 'archived' : '';
+      var archiveBtn = t.id
+        ? '<button class="cfg-icon-btn ' + (t.is_archived ? '' : 'danger') + '" onclick="toggleArchiveProductType(\'' + escHtml(t.id) + '\')">' + (t.is_archived ? 'Restore' : 'Archive') + '</button>'
+        : '<span class="cat-mgr-order" style="color:var(--amber);">Legacy</span>';
+      return '<div class="cat-mgr-row">' +
+        '<div class="cat-mgr-name ' + cls + '">' + escHtml(t.name) + '</div>' +
+        '<div class="cat-mgr-order">' + cnt + ' product' + (cnt !== 1 ? 's' : '') + '</div>' +
+        archiveBtn +
+      '</div>';
+    }).join('');
+    _renderTypeDropdown();
   });
-  list.innerHTML = _allProductTypes.map(function(t) {
-    var cnt = usedCounts[t] || 0;
-    return '<div class="cat-mgr-row">' +
-      '<div class="cat-mgr-name">' + escHtml(t) + '</div>' +
-      '<div class="cat-mgr-order">' + cnt + ' product' + (cnt !== 1 ? 's' : '') + '</div>' +
-    '</div>';
-  }).join('');
+}
+
+function toggleTypeMgrArchived() {
+  _showArchivedTypes = !_showArchivedTypes;
+  _renderTypeMgrList();
 }
 
 function addProductType() {
   var input = document.getElementById('newTypeInput');
   var name = (input.value || '').trim();
   if (!name) { showToast('Enter a type name.', 'error'); return; }
-  if (_allProductTypes.indexOf(name) !== -1) { showToast('Type already exists.', 'error'); return; }
-  _allProductTypes.push(name);
-  _allProductTypes.sort();
-  input.value = '';
-  _renderTypeMgrList();
-  _renderTypeDropdown();
-  showToast('Type added. Assign it to products in the editor.', 'success');
+  var exists = _allProductTypes.some(function(t) { return t.name.toLowerCase() === name.toLowerCase(); });
+  if (exists) { showToast('Type already exists.', 'error'); return; }
+  var maxOrder = _allProductTypes.reduce(function(m, t) { return Math.max(m, t.display_order || 0); }, 0);
+  db.from('protocol_product_types').insert({ name: name, display_order: maxOrder + 1 })
+    .then(function(r) {
+      if (r.error) { showToast('Add failed: ' + (r.error.message || 'unknown'), 'error'); return; }
+      writeAuditLog('product_type.created', null, { name: name });
+      showToast('Type added.', 'success');
+      input.value = '';
+      _renderTypeMgrList();
+    })
+    .catch(function() { showToast('Add failed. Run migration 006.', 'error'); });
+}
+
+function toggleArchiveProductType(id) {
+  var t = _allProductTypes.find(function(x) { return x.id === id; });
+  if (!t) return;
+  var nextState = !t.is_archived;
+  db.from('protocol_product_types').update({ is_archived: nextState }).eq('id', id)
+    .then(function(r) {
+      if (r.error) { showToast('Update failed.', 'error'); return; }
+      writeAuditLog(nextState ? 'product_type.archived' : 'product_type.restored', null, { name: t.name });
+      showToast(nextState ? 'Type archived.' : 'Type restored.', 'success');
+      _renderTypeMgrList();
+    })
+    .catch(function() { showToast('Update failed.', 'error'); });
 }
 
 function openCategoryManager() {
@@ -1751,6 +1811,7 @@ function openCategoryManager() {
   var backdrop = document.getElementById('catMgrBackdrop');
   if (!panel || !backdrop) return;
   _showArchivedCats = false;
+  _showArchivedTypes = false;
   loadCategories();
   _renderTypeMgrList();
   panel.classList.add('show');
@@ -1775,12 +1836,14 @@ function duplicateProduct(id) {
   document.getElementById('protoFieldKey').disabled = false;
   document.getElementById('protoFieldName').value = (p.name || '') + ' (copy)';
   _populateEditorCategorySelect();
-  _loadProductTypes();
-  var typeSel = document.getElementById('protoFieldType');
-  if (typeSel) {
-    typeSel.innerHTML = '<option value="">Select type...</option>' + _allProductTypes.map(function(t) { return '<option value="' + escHtml(t) + '">' + escHtml(t) + '</option>'; }).join('');
-    typeSel.value = p.product_type || '';
-  }
+  _loadProductTypes().then(function() {
+    var typeSel = document.getElementById('protoFieldType');
+    if (!typeSel) return;
+    var currentVal = p.product_type || '';
+    var active = _allProductTypes.filter(function(t) { return !t.is_archived || t.name === currentVal; });
+    typeSel.innerHTML = '<option value="">Select type...</option>' + active.map(function(t) { return '<option value="' + escHtml(t.name) + '">' + escHtml(t.name) + (t.is_archived ? ' (archived)' : '') + '</option>'; }).join('');
+    typeSel.value = currentVal;
+  });
   var catSel = document.getElementById('protoFieldCategory');
   if (catSel) catSel.value = p.category || '';
   document.getElementById('protoFieldPrice').value = (p.price != null) ? p.price : '';

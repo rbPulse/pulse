@@ -342,6 +342,40 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cfg-migration-note strong{color:var(--amber);font-weight:700;}
 .cfg-migration-note code{font-family:'Menlo','Monaco',monospace;font-size:11px;background:rgba(20,20,20,0.05);padding:1px 6px;border-radius:4px;color:var(--text);}
 
+/* Product card grid + category filter bar (Phase 1 unification) */
+.cfg-cat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);}
+.cfg-cat-bar-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);flex-shrink:0;margin-right:4px;}
+.cfg-cat-chip{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.cfg-cat-chip:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.cfg-cat-chip.active{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
+.cfg-cat-manage-btn{margin-left:auto;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+
+.cfg-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.cfg-product-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s,border-color .15s;cursor:pointer;}
+.cfg-product-card:hover{box-shadow:var(--shadow-lg);border-color:var(--border-strong);}
+.cfg-product-card.archived{opacity:0.6;}
+.cfg-product-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.cfg-product-card-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.01em;line-height:1.3;}
+.cfg-product-card-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;}
+.cfg-product-card-cat{display:inline-block;font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:3px 9px;border-radius:var(--radius-pill);background:var(--amber-tint);border:1px solid var(--amber-border);color:var(--amber);flex-shrink:0;}
+.cfg-product-card-desc{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;}
+.cfg-product-card-desc-item{display:inline-block;background:var(--green-tint);border:1px solid var(--green-border);color:var(--green);font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--radius-pill);margin:0 4px 4px 0;}
+.cfg-product-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--border);}
+.cfg-product-card-status{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.cfg-product-card-status.active{color:var(--green);}
+.cfg-product-card-status.archived{color:var(--text4);}
+.cfg-product-card-actions{display:flex;gap:6px;}
+
+/* Category manager modal */
+.cat-mgr-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.cat-mgr-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.cat-mgr-name{flex:1;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);}
+.cat-mgr-name.archived{color:var(--text4);text-decoration:line-through;}
+.cat-mgr-order{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);min-width:30px;}
+.cat-mgr-add{display:flex;gap:8px;margin-top:4px;}
+.cat-mgr-add input{flex:1;}
+
 /* ── ANALYTICS (Phase 5) additions ── */
 .anx-section-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .anx-perf-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;}
@@ -966,15 +1000,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
 
         <div class="cfg-subnav">
-          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Product Library</button>
-          <button type="button" class="cfg-subnav-pill" data-cfg="categories" onclick="switchConfigSection('categories')">Categories</button>
+          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Product Catalog</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Notifications</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="business" onclick="switchConfigSection('business')">Business</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="scale" onclick="switchConfigSection('scale')">Scale</button>
         </div>
 
-        <!-- Protocols sub-section -->
+        <!-- Product Catalog (unified products + categories) -->
         <div class="cfg-section active" id="cfg-protocols">
           <div class="toolbar">
             <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Product</button>
@@ -991,59 +1024,111 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
             </div>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Name</th><th>Category</th><th>Description</th><th>Duration</th><th>Status</th><th></th></tr></thead>
-              <tbody id="protocolsBody">
-                <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
-              </tbody>
-            </table>
+          <div class="cfg-cat-bar" id="cfgCatBar">
+            <span class="cfg-cat-bar-label">Category:</span>
+            <div id="cfgCatChips" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;"></div>
+            <button class="cfg-cat-manage-btn" onclick="openCategoryManager()">Manage Categories</button>
+          </div>
+          <div class="cfg-product-grid" id="protocolsGrid"></div>
+          <div id="protocolsEmpty" class="cfg-placeholder" style="display:none;">
+            <strong>No products match your filters.</strong>
+            Try clearing the search or category filter, or add a new product above.
           </div>
         </div>
 
-        <!-- Categories sub-section -->
-        <div class="cfg-section" id="cfg-categories">
-          <div class="toolbar">
-            <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;max-width:280px;"/>
-            <button class="toolbar-btn" onclick="addCategory()">+ Add Category</button>
-            <span class="toolbar-count" id="categoryCount"></span>
+        <!-- Category manager modal (opened from the Manage Categories button) -->
+        <div class="detail-panel-backdrop" id="catMgrBackdrop" onclick="closeCategoryManager()"></div>
+        <div class="detail-panel" id="catMgrPanel" style="max-width:520px;">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title">Manage Categories</div>
+            <button class="detail-close" onclick="closeCategoryManager()">Close</button>
           </div>
-          <div id="categoriesNotReady" style="display:none;">
+          <div id="catMgrNotReady" style="display:none;margin-bottom:12px;">
             <div class="cfg-migration-note">
-              <strong>Migration required.</strong> The <code>protocol_categories</code> table isn't initialized yet. Run <code>005_protocol_templates.sql</code> to enable.
+              <strong>Migration required.</strong> Run <code>005_protocol_templates.sql</code> to enable.
             </div>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr><th>Name</th><th>Order</th><th>Status</th><th></th></tr></thead>
-              <tbody id="categoriesBody">
-                <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
-              </tbody>
-            </table>
+          <div class="cat-mgr-add">
+            <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;"/>
+            <button class="form-btn primary" onclick="addCategory()">Add</button>
           </div>
+          <div class="cat-mgr-list" id="catMgrList"></div>
         </div>
 
         <!-- Clinician capacity sub-section -->
         <div class="cfg-section" id="cfg-clinicians">
-          <div class="cfg-placeholder">
-            <strong>Clinician capacity controls coming soon.</strong>
-            Set maximum concurrent patients, working hours, and vacation windows per clinician. For now, open a clinician from the Users tab to see their current workload.
+          <div class="toolbar">
+            <input type="text" class="search-input" id="clinicianCapSearch" placeholder="Search clinicians..." oninput="renderClinicianCapacity()"/>
+            <span class="toolbar-count" id="clinicianCapCount"></span>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Clinician</th><th>Open Reviews</th><th>Max Concurrent</th><th>Working Hours</th><th>Status</th></tr></thead>
+              <tbody id="clinicianCapBody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="cfg-placeholder" style="margin-top:14px;">
+            <strong>Coming soon:</strong> Editable max-concurrent patient cap, per-day working hours, and vacation windows. Needs a <code>clinician_settings</code> table. For now, this view surfaces the current real workload so you can manually rebalance via the Users tab.
           </div>
         </div>
 
         <!-- Notification templates sub-section -->
         <div class="cfg-section" id="cfg-notifications">
           <div class="cfg-placeholder">
-            <strong>Notification template editor coming soon.</strong>
-            Edit the copy for check-in prompts, refill reminders, and system messages. Templates currently live in <code>portal.html</code>.
+            <strong>Notification template editor</strong>
+            These are the prompts and messages the platform sends to members. Editing them here will let you customize copy per vertical.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+            <div class="chart-card">
+              <div class="chart-card-title">Weekly Check-in Prompts</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
+                Rotating weekly questions shown to members on their Overview. Currently <strong>10 prompts</strong> defined in portal code. Will move to a <code>notification_templates</code> table so admins can add or edit them inline.
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-title">System Messages</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
+                Templated text for refill requests, protocol approvals, and welcome messages. Each will become an editable row with merge fields (member name, product, etc.).
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Business settings sub-section -->
         <div class="cfg-section" id="cfg-business">
-          <div class="cfg-placeholder">
-            <strong>Business settings coming soon.</strong>
-            Operating hours, SLA thresholds, auto-escalation rules, and global platform toggles.
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="chart-card">
+              <div class="chart-card-title">Review SLA Thresholds</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;">
+                Current thresholds (read-only):
+              </div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;line-height:2;">
+                <div><span style="color:var(--text3);">Flag moderate-risk as stale after</span> <strong style="color:var(--text);">12h</strong></div>
+                <div><span style="color:var(--text3);">Flag consult as overdue after</span> <strong style="color:var(--text);">24h</strong></div>
+                <div><span style="color:var(--text3);">Flag protocol/refill request as stuck after</span> <strong style="color:var(--text);">24h</strong></div>
+                <div><span style="color:var(--text3);">Low-supply refill threshold</span> <strong style="color:var(--text);">14 days</strong></div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-title">Auto-Assignment</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
+                Currently: all new intakes are assigned to the single active clinician at signup time. Round-robin and load-balancing modes will be selectable here once a clinician-capacity table is live.
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-title">Operating Hours</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
+                SLAs currently apply 24/7. Business-hours-only mode is planned — reviews submitted outside hours won't count toward overdue flags until the next business day.
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-title">Member Experience</div>
+              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
+                Wellness check-in cadence, retention nudges, and supply-low reminders will have their timing configurable per clinic.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1087,7 +1172,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </div>
             <div class="form-field">
               <label>Category</label>
-              <input type="text" id="protoFieldCategory" placeholder="e.g. Cognitive"/>
+              <input type="text" id="protoFieldCategory" placeholder="Pick or type new..." list="protoCatList"/>
+              <datalist id="protoCatList"></datalist>
             </div>
             <div class="form-field">
               <label>Duration</label>
@@ -1259,11 +1345,14 @@ function switchConfigSection(section) {
   var pill = document.querySelector('.cfg-subnav-pill[data-cfg="' + section + '"]');
   if (target) target.classList.add('active');
   if (pill) pill.classList.add('active');
+  // Refresh live-data sub-sections when opened
+  if (section === 'clinicians') renderClinicianCapacity();
 }
 
 function loadConfigure() {
   loadProtocols();
   loadCategories();
+  renderClinicianCapacity();
 }
 
 function loadProtocols() {
@@ -1284,40 +1373,75 @@ function loadProtocols() {
   });
 }
 
+// Active category filter for the catalog view. 'all' = no filter.
+var _activeCategoryFilter = 'all';
+
+function _renderCategoryChips() {
+  var wrap = document.getElementById('cfgCatChips');
+  if (!wrap) return;
+  var cats = (_allCategories || []).filter(function(c) { return !c.is_archived; });
+  var chips = '<button type="button" class="cfg-cat-chip' + (_activeCategoryFilter === 'all' ? ' active' : '') + '" onclick="setCategoryFilter(\'all\')">All</button>';
+  chips += cats.map(function(c) {
+    var isActive = _activeCategoryFilter === c.name;
+    return '<button type="button" class="cfg-cat-chip' + (isActive ? ' active' : '') + '" onclick="setCategoryFilter(\'' + escHtml(c.name) + '\')">' + escHtml(c.name) + '</button>';
+  }).join('');
+  wrap.innerHTML = chips;
+}
+
+function setCategoryFilter(cat) {
+  _activeCategoryFilter = cat;
+  _renderCategoryChips();
+  filterProtocols();
+}
+
 function filterProtocols() {
   var q = ((document.getElementById('protocolSearch') || {}).value || '').toLowerCase();
   var arch = (document.getElementById('protocolArchiveFilter') || {}).value || 'active';
   var rows = _allProtocols.filter(function(p) {
     if (arch === 'active' && p.is_archived) return false;
     if (arch === 'archived' && !p.is_archived) return false;
+    if (_activeCategoryFilter && _activeCategoryFilter !== 'all' && (p.category || '') !== _activeCategoryFilter) return false;
     if (q && (p.name || '').toLowerCase().indexOf(q) === -1 && (p.key || '').toLowerCase().indexOf(q) === -1) return false;
     return true;
   });
   var cnt = document.getElementById('protocolCount');
   if (cnt) cnt.textContent = rows.length + ' of ' + _allProtocols.length + ' products';
-  var tbody = document.getElementById('protocolsBody');
+  var grid = document.getElementById('protocolsGrid');
+  var empty = document.getElementById('protocolsEmpty');
+  if (!grid) return;
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No products match your filters.</td></tr>';
+    grid.innerHTML = '';
+    if (empty) empty.style.display = '';
     return;
   }
-  tbody.innerHTML = rows.map(function(p) {
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = rows.map(function(p) {
     var compounds = Array.isArray(p.compounds) ? p.compounds : [];
-    var compoundHtml = compounds.slice(0, 3).map(function(c) { return '<span class="cfg-compound-tag">' + escHtml(c) + '</span>'; }).join('') +
-                       (compounds.length > 3 ? '<span class="cfg-compound-tag" style="background:transparent;border-color:var(--border);color:var(--text3);">+' + (compounds.length - 3) + '</span>' : '');
-    var statusPill = p.is_archived
-      ? '<span class="status-pill cancelled">Archived</span>'
-      : '<span class="status-pill active">Active</span>';
-    return '<tr>' +
-      '<td style="color:var(--text);font-weight:600;">' + escHtml(p.name || '') + '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">' + escHtml(p.key || '') + '</div></td>' +
-      '<td>' + escHtml(p.category || '--') + '</td>' +
-      '<td>' + compoundHtml + '</td>' +
-      '<td>' + escHtml(p.cycle || '--') + '</td>' +
-      '<td>' + statusPill + '</td>' +
-      '<td><div class="cfg-row-actions">' +
-        '<button class="cfg-icon-btn" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +
-        '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
-      '</div></td>' +
-      '</tr>';
+    var descHtml = compounds.length
+      ? compounds.slice(0, 4).map(function(c) { return '<span class="cfg-product-card-desc-item">' + escHtml(c) + '</span>'; }).join('') +
+        (compounds.length > 4 ? '<span class="cfg-product-card-desc-item" style="background:transparent;border-color:var(--border);color:var(--text3);">+' + (compounds.length - 4) + ' more</span>' : '')
+      : '<span style="color:var(--text4);font-size:11px;">No description yet.</span>';
+    var catPill = p.category
+      ? '<span class="cfg-product-card-cat">' + escHtml(p.category) + '</span>'
+      : '';
+    return '<div class="cfg-product-card' + (p.is_archived ? ' archived' : '') + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
+      '<div class="cfg-product-card-top">' +
+        '<div style="min-width:0;flex:1;">' +
+          '<div class="cfg-product-card-name">' + escHtml(p.name || '') + '</div>' +
+          '<div class="cfg-product-card-meta">' + escHtml(p.key || '') + (p.cycle ? ' \u00B7 ' + escHtml(p.cycle) : '') + '</div>' +
+        '</div>' +
+        catPill +
+      '</div>' +
+      '<div class="cfg-product-card-desc">' + descHtml + '</div>' +
+      '<div class="cfg-product-card-foot">' +
+        '<div class="cfg-product-card-status ' + (p.is_archived ? 'archived' : 'active') + '">' + (p.is_archived ? 'Archived' : 'Active') + '</div>' +
+        '<div class="cfg-product-card-actions" onclick="event.stopPropagation()">' +
+          '<button class="cfg-icon-btn" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +
+          '<button class="cfg-icon-btn" onclick="duplicateProduct(\'' + escHtml(p.id) + '\')">Duplicate</button>' +
+          '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
@@ -1331,6 +1455,13 @@ function openProtocolEditor(id) {
   document.getElementById('protoFieldCycle').value = p ? (p.cycle || '') : '';
   document.getElementById('protoFieldCompounds').value = p && Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
   document.getElementById('protoFieldNote').value = p ? (p.note || '') : '';
+  // Populate the category datalist from _allCategories so the admin can
+  // pick an existing category or type a new one.
+  var dl = document.getElementById('protoCatList');
+  if (dl) {
+    dl.innerHTML = (_allCategories || []).filter(function(c) { return !c.is_archived; })
+      .map(function(c) { return '<option value="' + escHtml(c.name) + '">'; }).join('');
+  }
   // Editing: key field is immutable to avoid breaking existing references
   document.getElementById('protoFieldKey').disabled = !!id;
   document.getElementById('protoEditorPanel').classList.add('show');
@@ -1393,44 +1524,78 @@ function toggleArchiveProtocol(id) {
 }
 
 function loadCategories() {
+  var notReady = document.getElementById('catMgrNotReady');
   db.from('protocol_categories').select('*').order('display_order', { ascending: true }).then(function(r) {
     if (r.error) {
       _allCategories = [];
-      document.getElementById('categoriesNotReady').style.display = '';
-      document.getElementById('categoriesBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+      if (notReady) notReady.style.display = '';
+      renderCategories();
       return;
     }
-    document.getElementById('categoriesNotReady').style.display = 'none';
+    if (notReady) notReady.style.display = 'none';
     _allCategories = r.data || [];
     renderCategories();
   }).catch(function() {
     _allCategories = [];
-    document.getElementById('categoriesNotReady').style.display = '';
-    document.getElementById('categoriesBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">Migration pending.</td></tr>';
+    if (notReady) notReady.style.display = '';
+    renderCategories();
   });
 }
 
 function renderCategories() {
-  var cntEl = document.getElementById('categoryCount');
-  if (cntEl) cntEl.textContent = _allCategories.length + ' categories';
-  var tbody = document.getElementById('categoriesBody');
+  // Categories now live inside the "Manage Categories" modal list.
+  // Also refresh the chip filter bar above the product grid.
+  _renderCategoryChips();
+  var list = document.getElementById('catMgrList');
+  if (!list) return;
   if (!_allCategories.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">No categories yet. Add one above.</td></tr>';
+    list.innerHTML = '<div class="cfg-placeholder" style="padding:20px;"><strong>No categories yet.</strong>Add one above to organize your products.</div>';
     return;
   }
-  tbody.innerHTML = _allCategories.map(function(c) {
-    var statusPill = c.is_archived
-      ? '<span class="status-pill cancelled">Archived</span>'
-      : '<span class="status-pill active">Active</span>';
-    return '<tr>' +
-      '<td style="color:var(--text);font-weight:600;">' + escHtml(c.name) + '</td>' +
-      '<td>' + (c.display_order != null ? c.display_order : '--') + '</td>' +
-      '<td>' + statusPill + '</td>' +
-      '<td><div class="cfg-row-actions">' +
-        '<button class="cfg-icon-btn ' + (c.is_archived ? '' : 'danger') + '" onclick="toggleArchiveCategory(\'' + escHtml(c.id) + '\')">' + (c.is_archived ? 'Restore' : 'Archive') + '</button>' +
-      '</div></td>' +
-      '</tr>';
+  list.innerHTML = _allCategories.map(function(c) {
+    var cls = c.is_archived ? 'archived' : '';
+    return '<div class="cat-mgr-row">' +
+      '<div class="cat-mgr-order">#' + (c.display_order != null ? c.display_order : '-') + '</div>' +
+      '<div class="cat-mgr-name ' + cls + '">' + escHtml(c.name) + '</div>' +
+      '<button class="cfg-icon-btn ' + (c.is_archived ? '' : 'danger') + '" onclick="toggleArchiveCategory(\'' + escHtml(c.id) + '\')">' + (c.is_archived ? 'Restore' : 'Archive') + '</button>' +
+    '</div>';
   }).join('');
+}
+
+// Opens the category manager modal. Also refreshes category data so the
+// list reflects any changes made elsewhere.
+function openCategoryManager() {
+  var panel = document.getElementById('catMgrPanel');
+  var backdrop = document.getElementById('catMgrBackdrop');
+  if (!panel || !backdrop) return;
+  loadCategories();
+  panel.classList.add('show');
+  backdrop.classList.add('show');
+}
+
+function closeCategoryManager() {
+  var panel = document.getElementById('catMgrPanel');
+  var backdrop = document.getElementById('catMgrBackdrop');
+  if (panel) panel.classList.remove('show');
+  if (backdrop) backdrop.classList.remove('show');
+}
+
+// Duplicate an existing product into a new draft (opens the editor
+// pre-filled, clearing the key so the admin picks a new slug).
+function duplicateProduct(id) {
+  var p = (_allProtocols || []).find(function(x) { return x.id === id; });
+  if (!p) return;
+  _editingProtocolId = null;
+  document.getElementById('protoEditorTitle').textContent = 'Duplicate Product';
+  document.getElementById('protoFieldKey').value = '';
+  document.getElementById('protoFieldKey').disabled = false;
+  document.getElementById('protoFieldName').value = (p.name || '') + ' (copy)';
+  document.getElementById('protoFieldCategory').value = p.category || '';
+  document.getElementById('protoFieldCycle').value = p.cycle || '';
+  document.getElementById('protoFieldCompounds').value = Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
+  document.getElementById('protoFieldNote').value = p.note || '';
+  document.getElementById('protoEditorPanel').classList.add('show');
+  document.getElementById('protoEditorBackdrop').classList.add('show');
 }
 
 function addCategory() {
@@ -1445,6 +1610,47 @@ function addCategory() {
     input.value = '';
     loadCategories();
   }).catch(function() { showToast('Add failed.', 'error'); });
+}
+
+// Phase 3 starter: Clinician Capacity read-only table. Shows each
+// clinician with their current open-review load. Editable controls
+// (max concurrent, working hours, vacation) land once we add the
+// clinician_settings table.
+function renderClinicianCapacity() {
+  var tbody = document.getElementById('clinicianCapBody');
+  if (!tbody) return;
+  var q = ((document.getElementById('clinicianCapSearch') || {}).value || '').toLowerCase();
+  var clinicians = (allUsers || []).filter(function(u) { return u.role === 'clinician'; });
+  var byCId = {};
+  (allConsultations || []).forEach(function(c) {
+    if (c.review_status === 'pending_review' && c.assigned_clinician_id) {
+      byCId[c.assigned_clinician_id] = (byCId[c.assigned_clinician_id] || 0) + 1;
+    }
+  });
+  var rows = clinicians.filter(function(c) {
+    if (!q) return true;
+    var n = (c.display_name || '').toLowerCase();
+    var e = (c.email || '').toLowerCase();
+    return n.indexOf(q) !== -1 || e.indexOf(q) !== -1;
+  });
+  var cnt = document.getElementById('clinicianCapCount');
+  if (cnt) cnt.textContent = rows.length + ' clinicians';
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">No clinicians match.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(c) {
+    var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
+    var load = byCId[c.user_id] || 0;
+    var loadCls = load === 0 ? 'active' : load < 10 ? 'paused' : 'cancelled';
+    return '<tr>' +
+      '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + '</td>' +
+      '<td>' + load + '</td>' +
+      '<td style="color:var(--text4);">Not set</td>' +
+      '<td style="color:var(--text4);">Not set</td>' +
+      '<td><span class="status-pill ' + loadCls + '">' + (load === 0 ? 'Available' : load < 10 ? 'Normal' : 'At capacity') + '</span></td>' +
+      '</tr>';
+  }).join('');
 }
 
 function toggleArchiveCategory(id) {

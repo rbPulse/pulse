@@ -272,6 +272,20 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   margin-bottom:14px;
 }
+.proto-pills-add-btn{
+  margin-left:auto;
+  font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;
+  padding:7px 14px;border-radius:999px;
+  background:transparent;
+  border:1px dashed rgba(58,122,92,0.5);
+  color:var(--green,#3a7a5c);
+  cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+  white-space:nowrap;
+}
+.proto-pills-add-btn:hover{background:rgba(58,122,92,0.08);border-color:rgba(58,122,92,0.7);}
+.proto-pills-add-btn:disabled{opacity:0.5;cursor:default;border-style:solid;}
 .proto-carousel-pill{
   font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
   letter-spacing:0.08em;text-transform:uppercase;
@@ -358,6 +372,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   border-color:rgba(255,255,255,0.55) !important;
   color:#fff !important;
   animation:none;
+}
+/* Refill button sits on the dark hero card — outlined pill that
+   reads as secondary to the solid "Log today's dose" button. */
+.proto-slide-refill-btn{
+  background:transparent !important;
+  border:1px solid rgba(255,255,255,0.3) !important;
+  color:rgba(255,255,255,0.75) !important;
+}
+.proto-slide-refill-btn:hover{
+  background:rgba(255,255,255,0.08) !important;
+  border-color:rgba(255,255,255,0.5) !important;
+  color:#fff !important;
+}
+.proto-slide-refill-btn:disabled{
+  opacity:0.55 !important;cursor:default !important;
+  background:transparent !important;
 }
 
 .compounds-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;}
@@ -13889,6 +13919,10 @@ function _buildExtraProtoSlide(rx, idx) {
   var todayStr = localDateStr(new Date());
   var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
   var logBtnHtml = '<button type="button" class="proto-slide-log-btn" '+(todayLogged ? 'disabled' : '')+' onclick="_logDoseForRx(\''+escapeAttr(rx.id)+'\', this)">'+_protoLogBtnInnerHtml(todayLogged)+'</button>';
+  // Refill button for this slide — mirrors slide 0
+  var _slideDosesRemaining = _computeDosesRemainingForRx(rx);
+  var _slideRefillPending = window._refillPendingRxIds && window._refillPendingRxIds[rx.id];
+  var refillBtnHtml = '<button type="button" class="proto-slide-log-btn proto-slide-refill-btn" data-rx-id="'+escapeAttr(rx.id)+'"' + (_slideRefillPending ? ' disabled' : '') + ' onclick="_requestRefill(\''+escapeAttr(rx.id)+'\',\''+escapeAttr(rx.protocol_key || 'Protocol')+'\','+_slideDosesRemaining+')"><span>' + (_slideRefillPending ? 'Refill Requested' : 'Request Refill') + '</span></button>';
 
   return ''+
     '<div class="proto-slide" data-slide-idx="'+idx+'" data-rx-id="'+escapeAttr(rx.id)+'">'+
@@ -13899,7 +13933,10 @@ function _buildExtraProtoSlide(rx, idx) {
             '<span class="proto-prescribed">'+escapeHtml(prescribedLine || '—')+'</span>'+
           '</div>'+
         '</div>'+
-        logBtnHtml+
+        '<div class="proto-header-btns" style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">'+
+          logBtnHtml +
+          refillBtnHtml +
+        '</div>'+
       '</div>'+
       '<div class="p-card">'+
         '<div class="compounds-label">Prescription</div>'+
@@ -14059,21 +14096,56 @@ function _attachSlideOneLogButton(primaryRxId) {
   logBtn.className = 'proto-slide-log-btn';
   logBtn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
   _setProtoLogBtnState(logBtn, todayLogged);
-  // Request button — matches the log button dimensions with dashed
-  // border + pulse animation (same treatment as the Overview add tile).
-  var reqBtn = document.createElement('button');
-  reqBtn.type = 'button';
-  reqBtn.className = 'proto-slide-log-btn proto-slide-add-btn';
-  reqBtn.id = 'protoRequestBtn';
-  reqBtn.setAttribute('onclick', '_openProtocolRequestModal()');
-  reqBtn.innerHTML = '<span>+ Add New</span>';
+  // Refill button — replaces the old "+ Add New" slot. Opens the refill
+  // request modal for this Rx.
+  var refillBtn = _buildSlideRefillBtn(primaryRxId);
   // Button wrapper — stacked vertically on the right
   var btnWrap = document.createElement('div');
   btnWrap.className = 'proto-header-btns';
   btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;';
   btnWrap.appendChild(logBtn);
-  btnWrap.appendChild(reqBtn);
+  if (refillBtn) btnWrap.appendChild(refillBtn);
   headerCard.appendChild(btnWrap);
+}
+
+// Build a "Request Refill" button DOM node for a given Rx. Reused on
+// slide 0 (dynamic attach) and slide builder for extra slides (HTML).
+function _buildSlideRefillBtn(rxId) {
+  if (!rxId) return null;
+  var rxList = window._activeRxsForCarousel || [];
+  var rx = null;
+  for (var i = 0; i < rxList.length; i++) { if (rxList[i].id === rxId) { rx = rxList[i]; break; } }
+  var protoName = (rx && rx.protocol_key) || 'Protocol';
+  var dosesRemaining = _computeDosesRemainingForRx(rx);
+  var isPending = window._refillPendingRxIds && window._refillPendingRxIds[rxId];
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'proto-slide-log-btn proto-slide-refill-btn';
+  btn.setAttribute('data-rx-id', rxId);
+  btn.disabled = !!isPending;
+  btn.innerHTML = '<span>' + (isPending ? 'Refill Requested' : 'Request Refill') + '</span>';
+  btn.setAttribute('onclick', '_requestRefill(\''+escapeAttr(rxId)+'\',\''+escapeAttr(protoName)+'\','+dosesRemaining+')');
+  return btn;
+}
+
+// Compute doses remaining for a given Rx using the same logic as the
+// Overview supply rows. Returns 0 if the Rx is missing frequency/duration.
+function _computeDosesRemainingForRx(rx) {
+  if (!rx) return 0;
+  var freqPerDay = (typeof _parseFreqPerDay === 'function') ? _parseFreqPerDay(rx.frequency) : 1;
+  var durWeeks = null;
+  if (rx.duration_value != null && rx.duration_unit) {
+    var u = (rx.duration_unit || '').toLowerCase();
+    if (u === 'weeks') durWeeks = rx.duration_value;
+    else if (u === 'days') durWeeks = rx.duration_value / 7;
+    else if (u === 'months') durWeeks = rx.duration_value * 4;
+  }
+  if (!durWeeks && typeof _durationToWeeks === 'function') durWeeks = _durationToWeeks(rx.duration);
+  var totalDays = (durWeeks || 12) * 7;
+  var totalDoses = Math.max(1, Math.round(totalDays * freqPerDay));
+  var loggedArr = _rxLoggedDates[rx.id] || [];
+  var logged = (typeof _computeAdherenceForRx === 'function') ? (_computeAdherenceForRx(rx, loggedArr).logged) : loggedArr.length;
+  return Math.max(0, totalDoses - logged);
 }
 
 // Render (or re-render) the carousel shell for a given list of active Rxs.
@@ -14103,11 +14175,20 @@ function _renderProtoCarousel(activeRxs) {
   // Protocol tab instead of having to navigate to Tracker.
   if (primaryRx && primaryRx.id) _attachSlideOneLogButton(primaryRx.id);
 
-  // Single-protocol (or no prescriptions) — hide every multi-protocol
-  // affordance and bail. Single-protocol members see the plain card.
+  // Build the "+ Add New" button — always shown in the pill row,
+  // regardless of how many protocols the member has active.
+  var _addNewDisabled = !!window._protocolRequestPending;
+  var _addNewLabel = _addNewDisabled ? 'Request Pending' : '+ Add New';
+  var _addNewBtnHtml = '<button type="button" class="proto-pills-add-btn" id="protoRequestBtn" onclick="_openProtocolRequestModal()"' + (_addNewDisabled ? ' disabled' : '') + '>' + _addNewLabel + '</button>';
+
+  // Single-protocol (or no prescriptions) — hide multi-protocol affordances
+  // but still show the pill row with the "+ Add New" button on the right.
   if (n <= 1) {
     if (summary) summary.style.display = 'none';
-    if (pillsWrap) { pillsWrap.style.display = 'none'; pillsWrap.innerHTML = ''; }
+    if (pillsWrap) {
+      pillsWrap.innerHTML = _addNewBtnHtml;
+      pillsWrap.style.display = (n === 0) ? 'none' : 'flex';
+    }
     if (prevBtn) prevBtn.style.display = 'none';
     if (nextBtn) nextBtn.style.display = 'none';
     _protoCarouselIdx = 0;
@@ -14119,12 +14200,13 @@ function _renderProtoCarousel(activeRxs) {
     track.insertAdjacentHTML('beforeend', _buildExtraProtoSlide(activeRxs[i], i));
   }
 
-  // Pill row
+  // Pill row — pills on the left, "+ Add New" on the right
   if (pillsWrap) {
-    pillsWrap.innerHTML = activeRxs.map(function(rx, idx) {
+    var _pillsHtml = activeRxs.map(function(rx, idx) {
       return '<button type="button" class="proto-carousel-pill'+(idx === 0 ? ' active' : '')+'" onclick="_protoCarouselGoTo('+idx+')">'+escapeHtml(rx.protocol_key || ('Protocol ' + (idx + 1)))+'</button>';
     }).join('');
-    pillsWrap.style.display = '';
+    pillsWrap.innerHTML = _pillsHtml + _addNewBtnHtml;
+    pillsWrap.style.display = 'flex';
   }
   // Summary strip — combined adherence gets filled in by
   // _refreshProtoCarouselProgress once dose_logs have loaded.

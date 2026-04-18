@@ -1063,11 +1063,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Category manager modal (opened from the Manage Categories button) -->
+        <!-- Category manager modal -->
         <div class="detail-panel-backdrop" id="catMgrBackdrop" onclick="closeCategoryManager()"></div>
-        <div class="detail-panel" id="catMgrPanel" style="max-width:520px;">
+        <div class="detail-panel" id="catMgrPanel" style="max-width:560px;">
           <div class="detail-panel-header">
-            <div class="detail-panel-title">Manage Categories</div>
+            <div class="detail-panel-title">Manage Catalog Settings</div>
             <button class="detail-close" onclick="closeCategoryManager()">Close</button>
           </div>
           <div id="catMgrNotReady" style="display:none;margin-bottom:12px;">
@@ -1075,11 +1075,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <strong>Migration required.</strong> Run <code>005_protocol_templates.sql</code> to enable.
             </div>
           </div>
+
+          <!-- Product Types section -->
+          <div class="detail-section-title">Product Types</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">These populate the "Type" filter and the type dropdown in the product editor (e.g. Pod, Stack).</div>
+          <div class="cat-mgr-add">
+            <input type="text" class="search-input" id="newTypeInput" placeholder="New type name..." style="flex:1;"/>
+            <button class="form-btn primary" onclick="addProductType()">Add</button>
+          </div>
+          <div class="cat-mgr-list" id="typeMgrList"></div>
+
+          <div class="detail-divider"></div>
+
+          <!-- Categories section -->
+          <div class="detail-section-title">Categories</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Functional groupings shown in the category filter (e.g. Performance, Longevity, Recovery).</div>
           <div class="cat-mgr-add">
             <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;"/>
             <button class="form-btn primary" onclick="addCategory()">Add</button>
           </div>
           <div class="cat-mgr-list" id="catMgrList"></div>
+          <button type="button" class="cfg-cat-manage-btn" id="catMgrArchiveToggle" onclick="toggleCatMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
         </div>
 
         <!-- Clinician capacity sub-section -->
@@ -1464,6 +1480,19 @@ function _cfgTypeSelect(val, label) {
   _pdSelect('cfgTypeDD', val, label, function() { filterProtocols(); });
 }
 
+function _renderTypeDropdown() {
+  _loadProductTypes();
+  var dd = document.getElementById('cfgTypeDD');
+  if (!dd) return;
+  var menu = dd.querySelector('.pd-dropdown-menu');
+  if (!menu) return;
+  var html = '<button type="button" class="pd-dropdown-option' + (_activeTypeFilter === 'all' ? ' active' : '') + '" data-value="all" onclick="_cfgTypeSelect(\'all\',\'All types\')">All types</button>';
+  html += _allProductTypes.map(function(t) {
+    return '<button type="button" class="pd-dropdown-option' + (_activeTypeFilter === t ? ' active' : '') + '" data-value="' + escHtml(t) + '" onclick="_cfgTypeSelect(\'' + escHtml(t) + '\',\'' + escHtml(t) + 's\')">' + escHtml(t) + 's</button>';
+  }).join('');
+  menu.innerHTML = html;
+}
+
 // Populates the Category <select> in the product editor from _allCategories.
 function _populateEditorCategorySelect() {
   var sel = document.getElementById('protoFieldCategory');
@@ -1535,9 +1564,15 @@ function openProtocolEditor(id) {
   document.getElementById('protoFieldCompounds').value = p && Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
   document.getElementById('protoFieldNote').value = p ? (p.note || '') : '';
   document.getElementById('protoFieldPrice').value = (p && p.price != null) ? p.price : '';
-  // Type dropdown
+  // Type dropdown — populate from discovered product types
+  _loadProductTypes();
   var typeSel = document.getElementById('protoFieldType');
-  if (typeSel) typeSel.value = (p && p.product_type) || '';
+  if (typeSel) {
+    var typeOpts = '<option value="">Select type...</option>' +
+      _allProductTypes.map(function(t) { return '<option value="' + escHtml(t) + '">' + escHtml(t) + '</option>'; }).join('');
+    typeSel.innerHTML = typeOpts;
+    typeSel.value = (p && p.product_type) || '';
+  }
   // Category dropdown — populate from _allCategories
   _populateEditorCategorySelect();
   var catSel = document.getElementById('protoFieldCategory');
@@ -1624,17 +1659,29 @@ function loadCategories() {
   });
 }
 
+var _showArchivedCats = false;
+
 function renderCategories() {
-  // Categories now live inside the "Manage Categories" modal list.
-  // Also refresh the dropdown filter bar above the product grid.
   _renderCategoryDropdown();
+  _renderTypeDropdown();
+  _renderCatMgrList();
+  _renderTypeMgrList();
+}
+
+function _renderCatMgrList() {
   var list = document.getElementById('catMgrList');
   if (!list) return;
-  if (!_allCategories.length) {
-    list.innerHTML = '<div class="cfg-placeholder" style="padding:20px;"><strong>No categories yet.</strong>Add one above to organize your products.</div>';
+  var active = _allCategories.filter(function(c) { return !c.is_archived; });
+  var archived = _allCategories.filter(function(c) { return c.is_archived; });
+  var toggle = document.getElementById('catMgrArchiveToggle');
+  if (toggle) toggle.style.display = archived.length ? '' : 'none';
+  if (toggle) toggle.textContent = _showArchivedCats ? 'Hide archived (' + archived.length + ')' : 'Show archived (' + archived.length + ')';
+  var rows = _showArchivedCats ? _allCategories : active;
+  if (!rows.length) {
+    list.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text3);font-size:12px;">No categories yet. Add one above.</div>';
     return;
   }
-  list.innerHTML = _allCategories.map(function(c) {
+  list.innerHTML = rows.map(function(c) {
     var cls = c.is_archived ? 'archived' : '';
     return '<div class="cat-mgr-row">' +
       '<div class="cat-mgr-order">#' + (c.display_order != null ? c.display_order : '-') + '</div>' +
@@ -1644,13 +1691,68 @@ function renderCategories() {
   }).join('');
 }
 
-// Opens the category manager modal. Also refreshes category data so the
-// list reflects any changes made elsewhere.
+function toggleCatMgrArchived() {
+  _showArchivedCats = !_showArchivedCats;
+  _renderCatMgrList();
+}
+
+// Product types — derived from distinct values on protocol_templates.
+// Admin can add new ones; they persist as values on products.
+var _allProductTypes = [];
+
+function _loadProductTypes() {
+  _allProductTypes = [];
+  var seen = {};
+  (_allProtocols || []).forEach(function(p) {
+    if (p.product_type && !seen[p.product_type]) {
+      seen[p.product_type] = true;
+      _allProductTypes.push(p.product_type);
+    }
+  });
+  _allProductTypes.sort();
+}
+
+function _renderTypeMgrList() {
+  _loadProductTypes();
+  var list = document.getElementById('typeMgrList');
+  if (!list) return;
+  if (!_allProductTypes.length) {
+    list.innerHTML = '<div style="padding:16px 0;text-align:center;color:var(--text3);font-size:12px;">No types yet. Add one above (e.g. Pod, Stack).</div>';
+    return;
+  }
+  var usedCounts = {};
+  (_allProtocols || []).forEach(function(p) {
+    if (p.product_type) usedCounts[p.product_type] = (usedCounts[p.product_type] || 0) + 1;
+  });
+  list.innerHTML = _allProductTypes.map(function(t) {
+    var cnt = usedCounts[t] || 0;
+    return '<div class="cat-mgr-row">' +
+      '<div class="cat-mgr-name">' + escHtml(t) + '</div>' +
+      '<div class="cat-mgr-order">' + cnt + ' product' + (cnt !== 1 ? 's' : '') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function addProductType() {
+  var input = document.getElementById('newTypeInput');
+  var name = (input.value || '').trim();
+  if (!name) { showToast('Enter a type name.', 'error'); return; }
+  if (_allProductTypes.indexOf(name) !== -1) { showToast('Type already exists.', 'error'); return; }
+  _allProductTypes.push(name);
+  _allProductTypes.sort();
+  input.value = '';
+  _renderTypeMgrList();
+  _renderTypeDropdown();
+  showToast('Type added. Assign it to products in the editor.', 'success');
+}
+
 function openCategoryManager() {
   var panel = document.getElementById('catMgrPanel');
   var backdrop = document.getElementById('catMgrBackdrop');
   if (!panel || !backdrop) return;
+  _showArchivedCats = false;
   loadCategories();
+  _renderTypeMgrList();
   panel.classList.add('show');
   backdrop.classList.add('show');
 }
@@ -1673,8 +1775,12 @@ function duplicateProduct(id) {
   document.getElementById('protoFieldKey').disabled = false;
   document.getElementById('protoFieldName').value = (p.name || '') + ' (copy)';
   _populateEditorCategorySelect();
+  _loadProductTypes();
   var typeSel = document.getElementById('protoFieldType');
-  if (typeSel) typeSel.value = p.product_type || '';
+  if (typeSel) {
+    typeSel.innerHTML = '<option value="">Select type...</option>' + _allProductTypes.map(function(t) { return '<option value="' + escHtml(t) + '">' + escHtml(t) + '</option>'; }).join('');
+    typeSel.value = p.product_type || '';
+  }
   var catSel = document.getElementById('protoFieldCategory');
   if (catSel) catSel.value = p.category || '';
   document.getElementById('protoFieldPrice').value = (p.price != null) ? p.price : '';

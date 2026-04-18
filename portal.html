@@ -13921,10 +13921,6 @@ function _buildExtraProtoSlide(rx, idx) {
   var todayStr = localDateStr(new Date());
   var todayLogged = (_rxLoggedDates[rx.id] || []).indexOf(todayStr) !== -1;
   var logBtnHtml = '<button type="button" class="proto-slide-log-btn" '+(todayLogged ? 'disabled' : '')+' onclick="_logDoseForRx(\''+escapeAttr(rx.id)+'\', this)">'+_protoLogBtnInnerHtml(todayLogged)+'</button>';
-  // Refill button for this slide — mirrors slide 0
-  var _slideDosesRemaining = _computeDosesRemainingForRx(rx);
-  var _slideRefillPending = window._refillPendingRxIds && window._refillPendingRxIds[rx.id];
-  var refillBtnHtml = '<button type="button" class="proto-slide-log-btn proto-slide-refill-btn" data-rx-id="'+escapeAttr(rx.id)+'"' + (_slideRefillPending ? ' disabled' : '') + ' onclick="_requestRefill(\''+escapeAttr(rx.id)+'\',\''+escapeAttr(rx.protocol_key || 'Protocol')+'\','+_slideDosesRemaining+')"><span>' + (_slideRefillPending ? 'Refill Requested' : 'Request Refill') + '</span></button>';
 
   return ''+
     '<div class="proto-slide" data-slide-idx="'+idx+'" data-rx-id="'+escapeAttr(rx.id)+'">'+
@@ -13935,10 +13931,7 @@ function _buildExtraProtoSlide(rx, idx) {
             '<span class="proto-prescribed">'+escapeHtml(prescribedLine || '—')+'</span>'+
           '</div>'+
         '</div>'+
-        '<div class="proto-header-btns" style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">'+
-          logBtnHtml +
-          refillBtnHtml +
-        '</div>'+
+        logBtnHtml +
       '</div>'+
       '<div class="p-card">'+
         '<div class="compounds-label">Prescription</div>'+
@@ -14092,21 +14085,17 @@ function _attachSlideOneLogButton(primaryRxId) {
     while (headerCard.firstChild) innerWrap.appendChild(headerCard.firstChild);
     headerCard.appendChild(innerWrap);
   }
-  // Log button
+  // Log button — single button on the right, vertically centered
+  // against the title + prescribed-by line.
   var logBtn = document.createElement('button');
   logBtn.type = 'button';
   logBtn.className = 'proto-slide-log-btn';
   logBtn.setAttribute('onclick', '_logDoseForRx(\''+escapeAttr(primaryRxId)+'\', this)');
   _setProtoLogBtnState(logBtn, todayLogged);
-  // Refill button — replaces the old "+ Add New" slot. Opens the refill
-  // request modal for this Rx.
-  var refillBtn = _buildSlideRefillBtn(primaryRxId);
-  // Button wrapper — stacked vertically on the right
   var btnWrap = document.createElement('div');
   btnWrap.className = 'proto-header-btns';
-  btnWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;';
+  btnWrap.style.cssText = 'display:flex;align-items:center;flex-shrink:0;';
   btnWrap.appendChild(logBtn);
-  if (refillBtn) btnWrap.appendChild(refillBtn);
   headerCard.appendChild(btnWrap);
 }
 

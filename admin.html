@@ -457,10 +457,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span class="sidebar-item-label">Audit Log</span>
         </div>
-        <div class="sidebar-item" id="nav-roles" onclick="switchTab('roles')">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span class="sidebar-item-label">Roles</span>
-        </div>
       </div>
     </aside>
 
@@ -499,23 +495,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Intake funnel -->
-        <div class="cc-section">
-          <div class="cc-section-hdr">
-            <div class="cc-section-title">Intake Funnel</div>
-            <div class="cc-section-sub" id="funnelSub">All-time</div>
-          </div>
-          <div class="cc-funnel" id="intakeFunnel">
-            <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="under_review"><div class="cc-funnel-step-label">Under Review</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="prescribed"><div class="cc-funnel-step-label">Prescribed</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="purchased"><div class="cc-funnel-step-label">Purchased</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="declined"><div class="cc-funnel-step-label">Declined</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-          </div>
-        </div>
-
-        <!-- Two-column: clinician queues + flagged items -->
+        <!-- Needs Attention (actionable): flagged + overdue surface first -->
         <div class="cc-two-col">
+          <div class="cc-section">
+            <div class="cc-section-hdr">
+              <div class="cc-section-title">Flagged Items</div>
+              <div class="cc-section-sub">High-risk &amp; stuck</div>
+            </div>
+            <div id="flaggedItems">
+              <div class="cc-empty">Loading...</div>
+            </div>
+          </div>
           <div class="cc-section">
             <div class="cc-section-hdr">
               <div class="cc-section-title">Clinician Queues</div>
@@ -525,14 +515,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <div class="cc-empty">Loading...</div>
             </div>
           </div>
-          <div class="cc-section">
-            <div class="cc-section-hdr">
-              <div class="cc-section-title">Flagged Items</div>
-              <div class="cc-section-sub">High-risk &amp; stuck</div>
-            </div>
-            <div id="flaggedItems">
-              <div class="cc-empty">Loading...</div>
-            </div>
+        </div>
+
+        <!-- Overdue Reviews — shown only when there are any -->
+        <div id="overdueSection" style="display:none;margin-bottom:16px;">
+          <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">&#9888; Overdue Reviews</div>
+          <div class="admin-table-wrap" style="border-color:var(--red-border);">
+            <table class="admin-table">
+              <thead><tr><th>Patient</th><th>Assigned Clinician</th><th>Submitted</th><th>Hours Overdue</th></tr></thead>
+              <tbody id="overdueBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Intake funnel (informational — moved below actionable content) -->
+        <div class="cc-section">
+          <div class="cc-section-hdr">
+            <div class="cc-section-title">Intake Funnel</div>
+            <div class="cc-section-sub" id="funnelSub">All-time</div>
+          </div>
+          <div class="cc-funnel" id="intakeFunnel">
+            <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="under_review"><div class="cc-funnel-step-label">Under Review</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="prescribed"><div class="cc-funnel-step-label">Approved</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="purchased"><div class="cc-funnel-step-label">Purchased</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="declined"><div class="cc-funnel-step-label">Declined</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
           </div>
         </div>
 
@@ -544,17 +551,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <div id="activityStream">
             <div class="cc-empty">Loading...</div>
-          </div>
-        </div>
-
-        <!-- Overdue Reviews section (existing — kept below) -->
-        <div id="overdueSection" style="display:none;margin-top:8px;">
-          <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">&#9888; Overdue Reviews</div>
-          <div class="admin-table-wrap" style="border-color:var(--red-border);">
-            <table class="admin-table">
-              <thead><tr><th>Patient</th><th>Assigned Clinician</th><th>Submitted</th><th>Hours Overdue</th></tr></thead>
-              <tbody id="overdueBody"></tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -620,9 +616,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Seen</th><th>Joined</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Change Role</th><th>Last Seen</th><th>Joined</th></tr></thead>
             <tbody id="usersBody">
-              <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -673,11 +669,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="stat-card-value" id="statAwaiting">--</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Prescribed</div>
+            <div class="stat-card-label">Approved</div>
             <div class="stat-card-value" id="statPrescribed">--</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Not Prescribed</div>
+            <div class="stat-card-label">Declined</div>
             <div class="stat-card-value" id="statNotPrescribed">--</div>
           </div>
           <div class="stat-card">
@@ -690,8 +686,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <select class="filter-select" id="consultStatusFilter" onchange="filterConsultations()">
             <option value="">All Status</option>
             <option value="awaiting">Awaiting Review</option>
-            <option value="prescribed">Prescribed</option>
-            <option value="not_prescribed">Not Prescribed</option>
+            <option value="prescribed">Approved</option>
+            <option value="not_prescribed">Declined</option>
           </select>
           <button class="toolbar-btn secondary" onclick="exportConsultationsCSV()">Export CSV</button>
           <span class="toolbar-count" id="consultCount"></span>
@@ -721,7 +717,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="detail-grid" id="consultEvalGrid"></div>
           <div class="detail-actions" id="consultActions">
             <select class="filter-select" id="consultProtoSelect">
-              <option value="">Assign Protocol...</option>
+              <option value="">Assign Product...</option>
               <option value="Sleep">Sleep</option>
               <option value="Repair">Repair</option>
               <option value="Growth">Growth</option>
@@ -732,7 +728,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <option value="Recovery">Recovery</option>
               <option value="Performance">Performance</option>
               <option value="Optimize">Optimize</option>
-              <option value="no prescription">No Prescription</option>
+              <option value="no prescription">Not Approved</option>
             </select>
             <button class="btn-save" id="consultSaveBtn" onclick="saveConsultation()" disabled>Save Changes</button>
           </div>
@@ -855,33 +851,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
 
-      <!-- ROLES TAB -->
-      <div class="admin-tab" id="tab-roles">
-        <div class="tab-header">
-          <div class="tab-title">Role Management</div>
-          <div class="tab-subtitle" id="rolesSubtitle">Assign and manage user roles</div>
-        </div>
-        <div class="toolbar">
-          <input type="text" class="search-input" id="roleSearch" placeholder="Search by name or email..." oninput="filterRoles()"/>
-          <select class="filter-select" id="roleFilter" onchange="filterRoles()">
-            <option value="">All Roles</option>
-            <option value="member">Member</option>
-            <option value="clinician">Clinician</option>
-            <option value="admin">Admin</option>
-            <option value="super_admin">Super Admin</option>
-          </select>
-          <span class="toolbar-count" id="roleCount"></span>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Current Role</th><th>Change Role</th></tr></thead>
-            <tbody id="rolesBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- ANALYTICS TAB -->
       <div class="admin-tab" id="tab-analytics">
         <div class="tab-header">
@@ -899,15 +868,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="stat-card">
             <div class="stat-card-label">Conversion Rate</div>
             <div class="stat-card-value" id="kpiConversion">--</div>
-            <div class="stat-card-sub">signups &rarr; consultations</div>
+            <div class="stat-card-sub">signups &rarr; intakes</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Prescription Rate</div>
+            <div class="stat-card-label">Approval Rate</div>
             <div class="stat-card-value" id="kpiPrescription">--</div>
-            <div class="stat-card-sub">consultations &rarr; prescribed</div>
+            <div class="stat-card-sub">intakes &rarr; approved</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Dose Compliance</div>
+            <div class="stat-card-label">Activity Rate</div>
             <div class="stat-card-value" id="kpiCompliance">--</div>
             <div class="stat-card-sub" id="kpiComplianceSub">logs in last 7 days</div>
           </div>
@@ -960,7 +929,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
         <div class="chart-card">
-          <div class="chart-card-title">Protocol Performance</div>
+          <div class="chart-card-title">Product Performance</div>
           <div id="protocolPerfTable">
             <div class="cc-empty">Loading...</div>
           </div>
@@ -990,11 +959,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-configure">
         <div class="tab-header">
           <div class="tab-title">Configuration</div>
-          <div class="tab-subtitle">Platform-level settings for protocols, categories, and workflows</div>
+          <div class="tab-subtitle">Platform-level settings for products, categories, and workflows</div>
         </div>
 
         <div class="cfg-subnav">
-          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Protocol Library</button>
+          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Product Library</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="categories" onclick="switchConfigSection('categories')">Categories</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Notifications</button>
@@ -1005,8 +974,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <!-- Protocols sub-section -->
         <div class="cfg-section active" id="cfg-protocols">
           <div class="toolbar">
-            <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Protocol</button>
-            <input type="text" class="search-input" id="protocolSearch" placeholder="Search protocols..." oninput="filterProtocols()"/>
+            <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Product</button>
+            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()"/>
             <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()">
               <option value="active">Active only</option>
               <option value="all">Active + archived</option>
@@ -1021,7 +990,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Name</th><th>Category</th><th>Compounds</th><th>Cycle</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Category</th><th>Description</th><th>Duration</th><th>Status</th><th></th></tr></thead>
               <tbody id="protocolsBody">
                 <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
               </tbody>
@@ -1101,38 +1070,38 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="detail-panel-backdrop" id="protoEditorBackdrop" onclick="closeProtocolEditor()"></div>
         <div class="detail-panel" id="protoEditorPanel">
           <div class="detail-panel-header">
-            <div class="detail-panel-title" id="protoEditorTitle">New Protocol</div>
+            <div class="detail-panel-title" id="protoEditorTitle">New Product</div>
             <button class="detail-close" onclick="closeProtocolEditor()">Close</button>
           </div>
           <div class="form-grid">
             <div class="form-field">
               <label>Key (slug)</label>
-              <input type="text" id="protoFieldKey" placeholder="e.g. sleep"/>
+              <input type="text" id="protoFieldKey" placeholder="e.g. focus"/>
             </div>
             <div class="form-field">
               <label>Display Name</label>
-              <input type="text" id="protoFieldName" placeholder="e.g. Sleep Protocol"/>
+              <input type="text" id="protoFieldName" placeholder="e.g. Focus Plan"/>
             </div>
             <div class="form-field">
               <label>Category</label>
-              <input type="text" id="protoFieldCategory" placeholder="e.g. Longevity"/>
+              <input type="text" id="protoFieldCategory" placeholder="e.g. Cognitive"/>
             </div>
             <div class="form-field">
-              <label>Cycle</label>
+              <label>Duration</label>
               <input type="text" id="protoFieldCycle" placeholder="e.g. 12 weeks"/>
             </div>
             <div class="form-field" style="grid-column:1 / -1;">
-              <label>Compounds (one per line)</label>
-              <textarea id="protoFieldCompounds" class="admin-msg-ta" style="min-height:90px;" placeholder="Epithalon 10mg&#10;DSIP 500mcg"></textarea>
+              <label>Description / Components (one per line)</label>
+              <textarea id="protoFieldCompounds" class="admin-msg-ta" style="min-height:90px;" placeholder="e.g. Vitamin D 5000 IU&#10;Omega-3 1000mg"></textarea>
             </div>
             <div class="form-field" style="grid-column:1 / -1;">
               <label>Clinical Note</label>
-              <textarea id="protoFieldNote" class="admin-msg-ta" placeholder="Default timing, dosing guidance, etc."></textarea>
+              <textarea id="protoFieldNote" class="admin-msg-ta" placeholder="Default timing, administration guidance, etc."></textarea>
             </div>
           </div>
           <div class="form-actions">
             <button class="form-btn secondary" onclick="closeProtocolEditor()">Cancel</button>
-            <button class="form-btn primary" id="protoSaveBtn" onclick="saveProtocol()">Save Protocol</button>
+            <button class="form-btn primary" id="protoSaveBtn" onclick="saveProtocol()">Save Product</button>
           </div>
         </div>
       </div>
@@ -1322,10 +1291,10 @@ function filterProtocols() {
     return true;
   });
   var cnt = document.getElementById('protocolCount');
-  if (cnt) cnt.textContent = rows.length + ' of ' + _allProtocols.length + ' protocols';
+  if (cnt) cnt.textContent = rows.length + ' of ' + _allProtocols.length + ' products';
   var tbody = document.getElementById('protocolsBody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No protocols match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No products match your filters.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(function(p) {
@@ -1352,7 +1321,7 @@ function filterProtocols() {
 function openProtocolEditor(id) {
   _editingProtocolId = id || null;
   var p = id ? _allProtocols.find(function(x) { return x.id === id; }) : null;
-  document.getElementById('protoEditorTitle').textContent = id ? 'Edit Protocol' : 'New Protocol';
+  document.getElementById('protoEditorTitle').textContent = id ? 'Edit Product' : 'New Product';
   document.getElementById('protoFieldKey').value = p ? (p.key || '') : '';
   document.getElementById('protoFieldName').value = p ? (p.name || '') : '';
   document.getElementById('protoFieldCategory').value = p ? (p.category || '') : '';
@@ -1401,10 +1370,10 @@ function saveProtocol() {
       closeProtocolEditor();
       loadProtocols();
     }
-    if (btn) { btn.disabled = false; btn.textContent = 'Save Protocol'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Product'; }
   }).catch(function(e) {
     showToast('Save failed.', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Save Protocol'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Product'; }
   });
 }
 
@@ -1583,6 +1552,25 @@ function writeAuditLog(action, targetId, details) {
     };
     db.from('audit_logs').insert(payload).then(function(){}).catch(function(){});
   } catch (_) {}
+}
+
+// Populates the consultation-detail protocol <select> from the
+// protocol_templates table when available. Falls back to whatever
+// static <option>s the select ships with (the hardcoded list) if
+// the table isn't initialized yet.
+function _populateProtocolSelect(selEl, currentValue) {
+  if (!selEl) return;
+  db.from('protocol_templates').select('name, is_archived').order('name', { ascending: true })
+    .then(function(r) {
+      if (r.error || !r.data || !r.data.length) { selEl.value = currentValue || ''; return; }
+      var active = r.data.filter(function(p) { return !p.is_archived; });
+      var opts = '<option value="">Assign Product...</option>' +
+        active.map(function(p) { return '<option value="' + escHtml(p.name) + '">' + escHtml(p.name) + '</option>'; }).join('') +
+        '<option value="no prescription">Not Approved</option>';
+      selEl.innerHTML = opts;
+      selEl.value = currentValue || '';
+    })
+    .catch(function() { selEl.value = currentValue || ''; });
 }
 
 // Populates a <select> with all clinicians. Used by the reassign
@@ -1904,7 +1892,7 @@ function loadActivityStream() {
                '</div>';
       }).join('');
     }).catch(function() {
-      container.innerHTML = '<div class="cc-empty">Failed to load activity.</div>';
+      container.innerHTML = '<div class="cc-empty">Activity stream unavailable. Ensure patient_events table exists.</div>';
     });
 }
 
@@ -2143,18 +2131,33 @@ function filterUsers() {
 function renderUsersTable(users) {
   var tbody = document.getElementById('usersBody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
     return;
   }
+  var isSuperAdmin = currentAdminRole === 'super_admin';
   tbody.innerHTML = users.map(function(u) {
     var role = u.role || 'member';
+    var adminType = u.admin_role || '';
     var name = u.display_name || u.email || 'Unknown';
     var date = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
     var seen = timeAgo(u.last_seen);
+    var isSelf = u.user_id === currentUserId;
+    var canChange = !isSelf && (isSuperAdmin || role === 'member' || role === 'clinician');
+    // Inline role selector (merged from the old Roles tab). Clicking it
+    // must NOT open the user detail modal, so stop propagation.
+    var selectHtml = '<select class="role-select" data-uid="' + u.user_id + '" data-current-role="' + role + '" data-current-admin="' + adminType + '" onchange="onRoleChange(this)" onclick="event.stopPropagation()"' + (!canChange ? ' disabled' : '') + '>' +
+      '<option value="member"' + (role === 'member' ? ' selected' : '') + '>Member</option>' +
+      '<option value="clinician"' + (role === 'clinician' ? ' selected' : '') + '>Clinician</option>' +
+      '<option value="admin"' + (role === 'admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Admin</option>' +
+      '</select>';
+    var roleLabel = role;
+    if (role === 'admin' && adminType) roleLabel = adminType.replace('_', ' ');
+    var note = isSelf ? '<span style="font-family:\'Inter\',sans-serif;font-size:10px;color:var(--text3);margin-left:6px;">(you)</span>' : '';
     return '<tr class="clickable" onclick="openUserDetail(\'' + escHtml(u.user_id) + '\')">' +
-      '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + '</td>' +
+      '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + note + '</td>' +
       '<td>' + escHtml(u.email || '--') + '</td>' +
-      '<td><span class="role-pill ' + role + '">' + role.replace('_', ' ') + '</span></td>' +
+      '<td><span class="role-pill ' + role + '">' + roleLabel + '</span></td>' +
+      '<td>' + selectHtml + '</td>' +
       '<td>' + seen + '</td>' +
       '<td>' + date + '</td>' +
       '</tr>';
@@ -2237,11 +2240,11 @@ function _loadUserDetailSummary(u) {
         '<div class="detail-section-title">Member Activity</div>' +
         '<div class="detail-grid">' +
           '<div class="detail-field"><div class="detail-label">Consultations</div><div class="detail-value">' + consults.length + '</div></div>' +
-          '<div class="detail-field"><div class="detail-label">Active Rx</div><div class="detail-value">' + active.length + '</div></div>' +
-          '<div class="detail-field"><div class="detail-label">Total Rx</div><div class="detail-value">' + rxs.length + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Active Plans</div><div class="detail-value">' + active.length + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Total Plans</div><div class="detail-value">' + rxs.length + '</div></div>' +
         '</div>';
       if (active.length) {
-        html += '<div class="detail-section-title" style="margin-top:8px;">Active Protocols</div>' +
+        html += '<div class="detail-section-title" style="margin-top:8px;">Active Products</div>' +
                 '<div class="detail-value" style="line-height:1.8;">' +
                   active.map(function(r) { return escHtml(r.protocol_key || 'Protocol'); }).join(' \u00B7 ') +
                 '</div>';
@@ -2261,8 +2264,8 @@ function _loadUserDetailSummary(u) {
         '<div class="detail-section-title">Clinician Workload</div>' +
         '<div class="detail-grid">' +
           '<div class="detail-field"><div class="detail-label">Open Reviews</div><div class="detail-value">' + pending + '</div></div>' +
-          '<div class="detail-field"><div class="detail-label">Prescribed</div><div class="detail-value">' + prescribed + '</div></div>' +
-          '<div class="detail-field"><div class="detail-label">Total Rx Written</div><div class="detail-value">' + totalRx + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Approved</div><div class="detail-value">' + prescribed + '</div></div>' +
+          '<div class="detail-field"><div class="detail-label">Total Approvals</div><div class="detail-value">' + totalRx + '</div></div>' +
         '</div>';
     }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load clinician activity.</div>'; });
   } else {
@@ -2275,83 +2278,15 @@ function _loadUserDetailSummary(u) {
 // ══════════════════════════════════
 // PHASE 2: ROLES TAB
 // ══════════════════════════════════
+// Legacy: the Roles tab was merged into the Users tab. allRoleUsers
+// now just mirrors allUsers so existing update code keeps working.
 var allRoleUsers = [];
 
-function loadRoles() {
-  db.from('profiles').select('user_id, email, first_name, last_name, display_name, role, admin_role')
-    .order('created_at', { ascending: false })
-    .then(function(r) {
-      allRoleUsers = r.data || [];
-      if (currentAdminRole !== 'super_admin') {
-        document.getElementById('rolesSubtitle').textContent = 'View user roles (only Super Admins can assign admin roles)';
-      }
-      filterRoles();
-    });
-}
-
-function filterRoles() {
-  var q = (document.getElementById('roleSearch').value || '').toLowerCase();
-  var roleF = document.getElementById('roleFilter').value;
-
-  var filtered = allRoleUsers.filter(function(u) {
-    var name = (u.display_name || '').toLowerCase();
-    var email = (u.email || '').toLowerCase();
-    var role = u.role || 'member';
-    if (q && name.indexOf(q) === -1 && email.indexOf(q) === -1) return false;
-    if (roleF && role !== roleF) return false;
-    return true;
-  });
-
-  document.getElementById('roleCount').textContent = filtered.length + ' of ' + allRoleUsers.length + ' users';
-  renderRolesTable(filtered);
-}
-
-function renderRolesTable(users) {
-  var tbody = document.getElementById('rolesBody');
-  if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
-    return;
-  }
-  var isSuperAdmin = currentAdminRole === 'super_admin';
-
-  tbody.innerHTML = users.map(function(u) {
-    var role = u.role || 'member';
-    var adminType = u.admin_role || '';
-    var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
-    var isSelf = u.user_id === currentUserId;
-
-    var canChange = !isSelf && (isSuperAdmin || role === 'member' || role === 'clinician');
-
-    // Role select (member/clinician/admin)
-    var selectHtml = '<select class="role-select" data-uid="' + u.user_id + '" data-current-role="' + role + '" data-current-admin="' + adminType + '" onchange="onRoleChange(this)"' + (!canChange ? ' disabled' : '') + '>' +
-      '<option value="member"' + (role === 'member' ? ' selected' : '') + '>Member</option>' +
-      '<option value="clinician"' + (role === 'clinician' ? ' selected' : '') + '>Clinician</option>' +
-      '<option value="admin"' + (role === 'admin' ? ' selected' : '') + (isSuperAdmin ? '' : ' disabled') + '>Admin</option>' +
-      '</select>';
-
-    // Admin type select (only visible when role is admin)
-    var adminSelectHtml = '';
-    if (role === 'admin' && isSuperAdmin && !isSelf) {
-      adminSelectHtml = ' <select class="role-select" data-uid="' + u.user_id + '" data-admin-type="true" onchange="onAdminTypeChange(this)" style="margin-left:6px;">' +
-        '<option value="super_admin"' + (adminType === 'super_admin' ? ' selected' : '') + '>Super Admin</option>' +
-        '</select>';
-    }
-
-    // Display role label
-    var roleLabel = role;
-    if (role === 'admin' && adminType) roleLabel = adminType.replace('_', ' ');
-
-    var note = '';
-    if (isSelf) note = '<span style="font-family:\'Inter\',sans-serif;font-size:10px;color:var(--text3);margin-left:6px;">(you)</span>';
-
-    return '<tr>' +
-      '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + note + '</td>' +
-      '<td>' + escHtml(u.email || '--') + '</td>' +
-      '<td><span class="role-pill ' + role + '">' + roleLabel + '</span></td>' +
-      '<td>' + selectHtml + adminSelectHtml + '</td>' +
-      '</tr>';
-  }).join('');
-}
+// No-op shims: the Roles tab was merged into Users. Kept so that
+// existing call sites (polling loop, onRoleChange refresh, createUser)
+// don't error. allRoleUsers is mirrored from allUsers on demand.
+function loadRoles() { allRoleUsers = allUsers || []; }
+function filterRoles() { /* no-op */ }
 
 function onRoleChange(selectEl) {
   var uid = selectEl.getAttribute('data-uid');
@@ -2360,7 +2295,7 @@ function onRoleChange(selectEl) {
 
   if (newRole === currentRole) return;
 
-  var user = allRoleUsers.find(function(u) { return u.user_id === uid; });
+  var user = (allUsers || []).find(function(u) { return u.user_id === uid; });
   var userName = user ? (user.display_name || ((user.first_name || '') + ' ' + (user.last_name || '')).trim() || user.email) : uid;
 
   var isElevating = (newRole === 'admin');
@@ -2383,15 +2318,12 @@ function onRoleChange(selectEl) {
             return;
           }
           showToast('Role updated to ' + newRole, 'success');
-          // Update local data
-          var u = allRoleUsers.find(function(x) { return x.user_id === uid; });
-          if (u) { u.role = newRole; u.admin_role = adminRoleValue; }
-          var u2 = allUsers.find(function(x) { return x.user_id === uid; });
+          // Update local data — allUsers is the single source of truth now
+          var u2 = (allUsers || []).find(function(x) { return x.user_id === uid; });
           if (u2) { u2.role = newRole; u2.admin_role = adminRoleValue; }
-          filterRoles();
           filterUsers();
-          loadRecentUsers();
           loadOverviewStats();
+          writeAuditLog('user.role_changed', uid, { new_role: newRole, new_admin_role: adminRoleValue });
         });
     }
   );
@@ -2407,9 +2339,9 @@ function onAdminTypeChange(selectEl) {
     .then(function(r) {
       if (r.error) { showToast('Failed: ' + r.error.message, 'error'); return; }
       showToast('Admin type updated', 'success');
-      var u = allRoleUsers.find(function(x) { return x.user_id === uid; });
+      var u = (allUsers || []).find(function(x) { return x.user_id === uid; });
       if (u) u.admin_role = newAdminType;
-      filterRoles();
+      filterUsers();
     });
 }
 
@@ -2426,8 +2358,8 @@ function getConsultStatus(c) {
 }
 
 function getConsultStatusLabel(status) {
-  if (status === 'prescribed') return 'Prescribed';
-  if (status === 'not_prescribed') return 'Not Prescribed';
+  if (status === 'prescribed') return 'Approved';
+  if (status === 'not_prescribed') return 'Declined';
   return 'Awaiting Review';
 }
 
@@ -2576,9 +2508,10 @@ function openConsultDetail(id) {
     return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
   }).join('');
 
-  // Set protocol select
+  // Set protocol select — populate dynamically from protocol_templates
+  // if available, falling back to the static list the modal ships with.
   var select = document.getElementById('consultProtoSelect');
-  select.value = c.protocol_assigned || '';
+  _populateProtocolSelect(select, c.protocol_assigned || '');
   document.getElementById('consultSaveBtn').disabled = true;
   select.onchange = function() {
     document.getElementById('consultSaveBtn').disabled = (select.value === (c.protocol_assigned || ''));
@@ -2813,7 +2746,7 @@ function openThread(threadId) {
   if (!thread) return;
 
   var view = document.getElementById('threadView');
-  var headerHtml = '<div class="msg-header">' + escHtml(thread.name) + ' <span style="font-weight:300;color:var(--grey2);font-size:11px;">&middot; ' + thread.messages.length + ' messages</span></div>';
+  var headerHtml = '<div class="msg-header">' + escHtml(thread.name) + ' <span style="font-weight:300;color:var(--text3);font-size:11px;">&middot; ' + thread.messages.length + ' messages</span></div>';
   var msgsHtml = '<div class="msg-list">' + thread.messages.map(function(m) {
     var cls = m.sender_role === 'clinician' ? 'clinician' : 'consumer';
     var senderName = m.sender_name || m.sender_role || 'Unknown';
@@ -2823,12 +2756,60 @@ function openThread(threadId) {
       '<div class="msg-bubble-meta">' + escHtml(senderName) + ' &middot; ' + ago + '</div>' +
       '</div>';
   }).join('') + '</div>';
+  // Phase E: inline reply compose. Sends as sender_role='admin'.
+  var composeHtml =
+    '<div style="border-top:1px solid var(--border);padding:12px 14px;display:flex;gap:8px;align-items:flex-end;">' +
+      '<textarea id="threadComposeText" placeholder="Reply as admin..." style="flex:1;min-height:40px;max-height:120px;resize:vertical;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);outline:none;"></textarea>' +
+      '<button class="form-btn primary" onclick="sendThreadReply()" style="flex-shrink:0;">Send</button>' +
+    '</div>';
 
-  view.innerHTML = headerHtml + msgsHtml;
+  view.innerHTML = headerHtml + msgsHtml + composeHtml;
 
   // Scroll to bottom
   var msgList = view.querySelector('.msg-list');
   if (msgList) msgList.scrollTop = msgList.scrollHeight;
+}
+
+// Phase E: reply to the currently-open thread as admin. Inserts a
+// message and refreshes the thread view so the new message shows.
+function sendThreadReply() {
+  if (!selectedThreadId) return;
+  var ta = document.getElementById('threadComposeText');
+  var text = ((ta || {}).value || '').trim();
+  if (!text) { showToast('Write a reply first.', 'error'); return; }
+  db.from('messages').insert({
+    thread_id: selectedThreadId,
+    sender_id: currentUserId || null,
+    sender_role: 'admin',
+    sender_name: 'Admin',
+    recipient_id: selectedThreadId,
+    body: text,
+    read: false
+  }).then(function(r) {
+    if (r.error) { showToast('Failed to send.', 'error'); return; }
+    writeAuditLog('admin.message_sent', selectedThreadId, { body_len: text.length, via: 'thread_view' });
+    if (ta) ta.value = '';
+    showToast('Reply sent.', 'success');
+    // Reload messages + reopen current thread so the new message shows
+    var tid = selectedThreadId;
+    db.from('messages').select('*').order('created_at', { ascending: true })
+      .then(function(res) {
+        var msgs = res.data || [];
+        var threadMap = {};
+        msgs.forEach(function(m) {
+          if (!threadMap[m.thread_id]) threadMap[m.thread_id] = [];
+          threadMap[m.thread_id].push(m);
+        });
+        allThreads = Object.keys(threadMap).map(function(id) {
+          var tm = threadMap[id];
+          var last = tm[tm.length - 1];
+          return { thread_id: id, messages: tm, last_message: last, unread: tm.filter(function(m) { return !m.read; }).length, name: profileName(id), last_at: last.created_at };
+        });
+        allThreads.sort(function(a, b) { return b.last_at > a.last_at ? 1 : -1; });
+        filterThreads();
+        openThread(tid);
+      });
+  }).catch(function() { showToast('Failed to send.', 'error'); });
 }
 
 // ══════════════════════════════════
@@ -3018,8 +2999,8 @@ function renderAnalytics(doseLogs) {
     { label: 'Signups', value: totalUsers, color: 'grey' },
     { label: 'Consults', value: totalConsult, color: 'blue' },
     { label: 'Awaiting', value: awaiting, color: 'amber' },
-    { label: 'Prescribed', value: prescribed, color: 'green' },
-    { label: 'Not Rx\'d', value: notPrescribed, color: 'red' }
+    { label: 'Approved', value: prescribed, color: 'green' },
+    { label: 'Declined', value: notPrescribed, color: 'red' }
   ]);
 
   // ── Role distribution ──
@@ -3113,7 +3094,7 @@ function renderClinicianPerformance() {
     return { name: name, total: s.total, prescribed: s.prescribed, declined: s.declined, pending: s.pending, rxRate: rxRate, medH: medH, medDisplay: medDisplay, medCls: medCls, sort: -s.total };
   }).sort(function(a, b) { return a.sort - b.sort; });
   el.innerHTML = '<table class="anx-perf-table">' +
-    '<thead><tr><th>Clinician</th><th>Total</th><th>Prescribed</th><th>Declined</th><th>Open</th><th>Rx Rate</th><th>Median TTR</th></tr></thead>' +
+    '<thead><tr><th>Clinician</th><th>Total</th><th>Approved</th><th>Declined</th><th>Open</th><th>Approval Rate</th><th>Median TTR</th></tr></thead>' +
     '<tbody>' + rows.map(function(r) {
       return '<tr>' +
         '<td class="anx-perf-metric">' + escHtml(r.name) + '</td>' +
@@ -3135,7 +3116,7 @@ function renderProtocolPerformance() {
   var el = document.getElementById('protocolPerfTable');
   if (!el) return;
   db.from('prescriptions').select('protocol_key, status').then(function(r) {
-    if (r.error) { el.innerHTML = '<div class="cc-empty">Failed to load protocols.</div>'; return; }
+    if (r.error) { el.innerHTML = '<div class="cc-empty">Failed to load products.</div>'; return; }
     var rows = r.data || [];
     if (!rows.length) { el.innerHTML = '<div class="cc-empty">No prescriptions yet.</div>'; return; }
     var byKey = {};
@@ -3153,7 +3134,7 @@ function renderProtocolPerformance() {
       return { key: k, active: s.active, disc: s.discontinued, total: s.total, retention: retention, retCls: retCls, sort: -s.active };
     }).sort(function(a, b) { return a.sort - b.sort; });
     el.innerHTML = '<table class="anx-perf-table">' +
-      '<thead><tr><th>Protocol</th><th>Active</th><th>Discontinued</th><th>Total Rx</th><th>Retention</th></tr></thead>' +
+      '<thead><tr><th>Product</th><th>Active</th><th>Discontinued</th><th>Total Assigned</th><th>Retention</th></tr></thead>' +
       '<tbody>' + protoList.map(function(p) {
         return '<tr>' +
           '<td class="anx-perf-metric">' + escHtml(p.key) + '</td>' +
@@ -3164,7 +3145,7 @@ function renderProtocolPerformance() {
           '</tr>';
       }).join('') +
       '</tbody></table>';
-  }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load protocols.</div>'; });
+  }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load products.</div>'; });
 }
 
 // ══ Phase 5: System health ═══════════════════════════════════════════
@@ -3196,7 +3177,7 @@ function renderSystemHealth() {
     el.innerHTML =
       card('Queue Depth', pending.length, 'pending reviews', pending.length === 0 ? 'ok' : pending.length < 10 ? '' : 'warn') +
       card('Stale > 24h', stale.length, 'overdue consultations', stale.length === 0 ? 'ok' : stale.length < 3 ? 'warn' : 'bad') +
-      card('Active Rx', activeRx, 'prescriptions', 'ok') +
+      card('Active Plans', activeRx, 'live product plans', 'ok') +
       card('Events (24h)', events24, 'platform activity', events24 > 0 ? 'ok' : '') +
       card('Messages (24h)', msgs24, 'sent across threads', msgs24 > 0 ? 'ok' : '');
   }).catch(function() {

@@ -216,7 +216,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .msg-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;word-break:break-word;}
 .msg-bubble.consumer{background:var(--card2);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
 .msg-bubble.clinician{background:var(--green-tint);color:var(--text);align-self:flex-end;border:1px solid var(--green-border);border-bottom-right-radius:4px;}
+.msg-bubble.admin{background:var(--amber-tint);color:var(--text);align-self:flex-end;border:1px solid var(--amber-border);border-bottom-right-radius:4px;}
 .msg-bubble-meta{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);margin-top:4px;}
+.msg-send-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;background:#22C55E;color:#fff;border:none;padding:10px 20px;border-radius:999px;cursor:pointer;flex-shrink:0;transition:background .2s;}
+.msg-send-btn:hover{background:#16A34A;}
 
 /* ── CLICKABLE ROW ── */
 .admin-table tr.clickable{cursor:pointer;}
@@ -1629,7 +1632,6 @@ function resolveRequest() {
         sender_id: currentUserId || null,
         sender_role: 'admin',
         sender_name: 'Admin',
-        recipient_id: c.user_id,
         body: bodyTxt,
         read: false
       }).then(function(){}).catch(function(){});
@@ -1655,7 +1657,6 @@ function adminSendMessage() {
     sender_id: currentUserId || null,
     sender_role: 'admin',
     sender_name: 'Admin',
-    recipient_id: _openUserDetailId,
     body: text,
     read: false
   }).then(function(r) {
@@ -2748,7 +2749,7 @@ function openThread(threadId) {
   var view = document.getElementById('threadView');
   var headerHtml = '<div class="msg-header">' + escHtml(thread.name) + ' <span style="font-weight:300;color:var(--text3);font-size:11px;">&middot; ' + thread.messages.length + ' messages</span></div>';
   var msgsHtml = '<div class="msg-list">' + thread.messages.map(function(m) {
-    var cls = m.sender_role === 'clinician' ? 'clinician' : 'consumer';
+    var cls = m.sender_role === 'admin' ? 'admin' : m.sender_role === 'clinician' ? 'clinician' : 'consumer';
     var senderName = m.sender_name || m.sender_role || 'Unknown';
     var ago = timeAgo(m.created_at);
     return '<div class="msg-bubble ' + cls + '">' +
@@ -2760,7 +2761,7 @@ function openThread(threadId) {
   var composeHtml =
     '<div style="border-top:1px solid var(--border);padding:12px 14px;display:flex;gap:8px;align-items:flex-end;">' +
       '<textarea id="threadComposeText" placeholder="Reply as admin..." style="flex:1;min-height:40px;max-height:120px;resize:vertical;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);outline:none;"></textarea>' +
-      '<button class="form-btn primary" onclick="sendThreadReply()" style="flex-shrink:0;">Send</button>' +
+      '<button class="msg-send-btn" onclick="sendThreadReply()" style="flex-shrink:0;">Send</button>' +
     '</div>';
 
   view.innerHTML = headerHtml + msgsHtml + composeHtml;
@@ -2782,7 +2783,6 @@ function sendThreadReply() {
     sender_id: currentUserId || null,
     sender_role: 'admin',
     sender_name: 'Admin',
-    recipient_id: selectedThreadId,
     body: text,
     read: false
   }).then(function(r) {

@@ -344,10 +344,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 /* Product card grid + category filter bar (Phase 1 unification) */
 .cfg-cat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);}
-.cfg-cat-bar-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);flex-shrink:0;margin-right:4px;}
-.cfg-cat-chip{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
-.cfg-cat-chip:hover{background:rgba(20,20,20,0.04);color:var(--text);}
-.cfg-cat-chip.active{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
 .cfg-cat-manage-btn{margin-left:auto;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 
@@ -1025,8 +1021,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </div>
           </div>
           <div class="cfg-cat-bar" id="cfgCatBar">
-            <span class="cfg-cat-bar-label">Category:</span>
-            <div id="cfgCatChips" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;"></div>
+            <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:180px;">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
+                <span class="pd-dropdown-value">All categories</span>
+                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu" id="cfgCatDDMenu"></div>
+            </div>
+            <div class="pd-dropdown" id="cfgTypeDD" data-value="all" style="min-width:140px;">
+              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgTypeDD')">
+                <span class="pd-dropdown-value">All types</span>
+                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="pd-dropdown-menu">
+                <button type="button" class="pd-dropdown-option active" data-value="all" onclick="_cfgTypeSelect('all','All types')">All types</button>
+                <button type="button" class="pd-dropdown-option" data-value="Pod" onclick="_cfgTypeSelect('Pod','Pods')">Pods</button>
+                <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
+              </div>
+            </div>
             <button class="cfg-cat-manage-btn" onclick="openCategoryManager()">Manage Categories</button>
           </div>
           <div class="cfg-product-grid" id="protocolsGrid"></div>
@@ -1171,13 +1183,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <input type="text" id="protoFieldName" placeholder="e.g. Focus Plan"/>
             </div>
             <div class="form-field">
-              <label>Category</label>
-              <input type="text" id="protoFieldCategory" placeholder="Pick or type new..." list="protoCatList"/>
-              <datalist id="protoCatList"></datalist>
+              <label>Type</label>
+              <select id="protoFieldType">
+                <option value="">Select type...</option>
+                <option value="Pod">Pod</option>
+                <option value="Stack">Stack</option>
+              </select>
             </div>
             <div class="form-field">
-              <label>Duration</label>
-              <input type="text" id="protoFieldCycle" placeholder="e.g. 12 weeks"/>
+              <label>Category</label>
+              <select id="protoFieldCategory">
+                <option value="">Select category...</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Price ($)</label>
+              <input type="number" id="protoFieldPrice" placeholder="0.00" step="0.01" min="0"/>
             </div>
             <div class="form-field" style="grid-column:1 / -1;">
               <label>Description / Components (one per line)</label>
@@ -1373,25 +1394,38 @@ function loadProtocols() {
   });
 }
 
-// Active category filter for the catalog view. 'all' = no filter.
+// Active filters for the catalog view.
 var _activeCategoryFilter = 'all';
+var _activeTypeFilter = 'all';
 
-function _renderCategoryChips() {
-  var wrap = document.getElementById('cfgCatChips');
-  if (!wrap) return;
+function _renderCategoryDropdown() {
+  var menu = document.getElementById('cfgCatDDMenu');
+  if (!menu) return;
   var cats = (_allCategories || []).filter(function(c) { return !c.is_archived; });
-  var chips = '<button type="button" class="cfg-cat-chip' + (_activeCategoryFilter === 'all' ? ' active' : '') + '" onclick="setCategoryFilter(\'all\')">All</button>';
-  chips += cats.map(function(c) {
-    var isActive = _activeCategoryFilter === c.name;
-    return '<button type="button" class="cfg-cat-chip' + (isActive ? ' active' : '') + '" onclick="setCategoryFilter(\'' + escHtml(c.name) + '\')">' + escHtml(c.name) + '</button>';
+  var html = '<button type="button" class="pd-dropdown-option' + (_activeCategoryFilter === 'all' ? ' active' : '') + '" data-value="all" onclick="_cfgCatSelect(\'all\',\'All categories\')">All categories</button>';
+  html += cats.map(function(c) {
+    return '<button type="button" class="pd-dropdown-option' + (_activeCategoryFilter === c.name ? ' active' : '') + '" data-value="' + escHtml(c.name) + '" onclick="_cfgCatSelect(\'' + escHtml(c.name) + '\',\'' + escHtml(c.name) + '\')">' + escHtml(c.name) + '</button>';
   }).join('');
-  wrap.innerHTML = chips;
+  menu.innerHTML = html;
 }
 
-function setCategoryFilter(cat) {
-  _activeCategoryFilter = cat;
-  _renderCategoryChips();
-  filterProtocols();
+function _cfgCatSelect(val, label) {
+  _activeCategoryFilter = val;
+  _pdSelect('cfgCatDD', val, label, function() { filterProtocols(); });
+}
+
+function _cfgTypeSelect(val, label) {
+  _activeTypeFilter = val;
+  _pdSelect('cfgTypeDD', val, label, function() { filterProtocols(); });
+}
+
+// Populates the Category <select> in the product editor from _allCategories.
+function _populateEditorCategorySelect() {
+  var sel = document.getElementById('protoFieldCategory');
+  if (!sel) return;
+  var cats = (_allCategories || []).filter(function(c) { return !c.is_archived; });
+  sel.innerHTML = '<option value="">Select category...</option>' +
+    cats.map(function(c) { return '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>'; }).join('');
 }
 
 function filterProtocols() {
@@ -1400,7 +1434,8 @@ function filterProtocols() {
   var rows = _allProtocols.filter(function(p) {
     if (arch === 'active' && p.is_archived) return false;
     if (arch === 'archived' && !p.is_archived) return false;
-    if (_activeCategoryFilter && _activeCategoryFilter !== 'all' && (p.category || '') !== _activeCategoryFilter) return false;
+    if (_activeCategoryFilter !== 'all' && (p.category || '') !== _activeCategoryFilter) return false;
+    if (_activeTypeFilter !== 'all' && (p.product_type || '') !== _activeTypeFilter) return false;
     if (q && (p.name || '').toLowerCase().indexOf(q) === -1 && (p.key || '').toLowerCase().indexOf(q) === -1) return false;
     return true;
   });
@@ -1421,16 +1456,17 @@ function filterProtocols() {
       ? compounds.slice(0, 4).map(function(c) { return '<span class="cfg-product-card-desc-item">' + escHtml(c) + '</span>'; }).join('') +
         (compounds.length > 4 ? '<span class="cfg-product-card-desc-item" style="background:transparent;border-color:var(--border);color:var(--text3);">+' + (compounds.length - 4) + ' more</span>' : '')
       : '<span style="color:var(--text4);font-size:11px;">No description yet.</span>';
-    var catPill = p.category
-      ? '<span class="cfg-product-card-cat">' + escHtml(p.category) + '</span>'
+    var typeBadge = p.product_type
+      ? '<span class="cfg-product-card-cat">' + escHtml(p.product_type) + '</span>'
       : '';
+    var priceStr = (p.price != null) ? '$' + Number(p.price).toFixed(2) : '';
     return '<div class="cfg-product-card' + (p.is_archived ? ' archived' : '') + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
       '<div class="cfg-product-card-top">' +
         '<div style="min-width:0;flex:1;">' +
           '<div class="cfg-product-card-name">' + escHtml(p.name || '') + '</div>' +
-          '<div class="cfg-product-card-meta">' + escHtml(p.key || '') + (p.cycle ? ' \u00B7 ' + escHtml(p.cycle) : '') + '</div>' +
+          '<div class="cfg-product-card-meta">' + escHtml(p.category || '') + (priceStr ? ' \u00B7 ' + priceStr : '') + '</div>' +
         '</div>' +
-        catPill +
+        typeBadge +
       '</div>' +
       '<div class="cfg-product-card-desc">' + descHtml + '</div>' +
       '<div class="cfg-product-card-foot">' +
@@ -1451,17 +1487,16 @@ function openProtocolEditor(id) {
   document.getElementById('protoEditorTitle').textContent = id ? 'Edit Product' : 'New Product';
   document.getElementById('protoFieldKey').value = p ? (p.key || '') : '';
   document.getElementById('protoFieldName').value = p ? (p.name || '') : '';
-  document.getElementById('protoFieldCategory').value = p ? (p.category || '') : '';
-  document.getElementById('protoFieldCycle').value = p ? (p.cycle || '') : '';
   document.getElementById('protoFieldCompounds').value = p && Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
   document.getElementById('protoFieldNote').value = p ? (p.note || '') : '';
-  // Populate the category datalist from _allCategories so the admin can
-  // pick an existing category or type a new one.
-  var dl = document.getElementById('protoCatList');
-  if (dl) {
-    dl.innerHTML = (_allCategories || []).filter(function(c) { return !c.is_archived; })
-      .map(function(c) { return '<option value="' + escHtml(c.name) + '">'; }).join('');
-  }
+  document.getElementById('protoFieldPrice').value = (p && p.price != null) ? p.price : '';
+  // Type dropdown
+  var typeSel = document.getElementById('protoFieldType');
+  if (typeSel) typeSel.value = (p && p.product_type) || '';
+  // Category dropdown — populate from _allCategories
+  _populateEditorCategorySelect();
+  var catSel = document.getElementById('protoFieldCategory');
+  if (catSel) catSel.value = (p && p.category) || '';
   // Editing: key field is immutable to avoid breaking existing references
   document.getElementById('protoFieldKey').disabled = !!id;
   document.getElementById('protoEditorPanel').classList.add('show');
@@ -1477,14 +1512,16 @@ function closeProtocolEditor() {
 function saveProtocol() {
   var key = (document.getElementById('protoFieldKey').value || '').trim().toLowerCase();
   var name = (document.getElementById('protoFieldName').value || '').trim();
+  var productType = (document.getElementById('protoFieldType').value || '').trim();
   var category = (document.getElementById('protoFieldCategory').value || '').trim();
-  var cycle = (document.getElementById('protoFieldCycle').value || '').trim();
+  var priceVal = (document.getElementById('protoFieldPrice').value || '').trim();
   var compoundsText = (document.getElementById('protoFieldCompounds').value || '').trim();
   var note = (document.getElementById('protoFieldNote').value || '').trim();
   if (!key || !name) { showToast('Key and name are required.', 'error'); return; }
   var compounds = compoundsText ? compoundsText.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
   var payload = {
-    key: key, name: name, category: category || null, cycle: cycle || null,
+    key: key, name: name, product_type: productType || null, category: category || null,
+    price: priceVal ? parseFloat(priceVal) : null,
     compounds: compounds, note: note || null, updated_at: new Date().toISOString()
   };
   var btn = document.getElementById('protoSaveBtn');
@@ -1544,8 +1581,8 @@ function loadCategories() {
 
 function renderCategories() {
   // Categories now live inside the "Manage Categories" modal list.
-  // Also refresh the chip filter bar above the product grid.
-  _renderCategoryChips();
+  // Also refresh the dropdown filter bar above the product grid.
+  _renderCategoryDropdown();
   var list = document.getElementById('catMgrList');
   if (!list) return;
   if (!_allCategories.length) {
@@ -1590,8 +1627,12 @@ function duplicateProduct(id) {
   document.getElementById('protoFieldKey').value = '';
   document.getElementById('protoFieldKey').disabled = false;
   document.getElementById('protoFieldName').value = (p.name || '') + ' (copy)';
-  document.getElementById('protoFieldCategory').value = p.category || '';
-  document.getElementById('protoFieldCycle').value = p.cycle || '';
+  _populateEditorCategorySelect();
+  var typeSel = document.getElementById('protoFieldType');
+  if (typeSel) typeSel.value = p.product_type || '';
+  var catSel = document.getElementById('protoFieldCategory');
+  if (catSel) catSel.value = p.category || '';
+  document.getElementById('protoFieldPrice').value = (p.price != null) ? p.price : '';
   document.getElementById('protoFieldCompounds').value = Array.isArray(p.compounds) ? p.compounds.join('\n') : '';
   document.getElementById('protoFieldNote').value = p.note || '';
   document.getElementById('protoEditorPanel').classList.add('show');

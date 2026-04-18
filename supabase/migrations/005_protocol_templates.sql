@@ -29,17 +29,22 @@
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS protocol_templates (
   id             uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-  key            text         NOT NULL UNIQUE,       -- e.g. "sleep"
-  name           text         NOT NULL,              -- e.g. "Sleep Protocol"
-  category       text,                               -- e.g. "Longevity"
-  compounds      jsonb        DEFAULT '[]',          -- array of strings
-  note           text,                               -- clinical note / default timing
-  cycle          text,                               -- e.g. "12 weeks"
+  key            text         NOT NULL UNIQUE,       -- slug: "sleep", "repair"
+  name           text         NOT NULL,              -- display name: "Sleep", "Repair"
+  product_type   text,                               -- "Pod" or "Stack"
+  category       text,                               -- grouping: "Performance", "Longevity", etc.
+  compounds      jsonb        DEFAULT '[]',          -- array of component strings
+  price          numeric(10,2),                      -- product price in USD
+  note           text,                               -- clinical note / admin notes
   is_archived    boolean      NOT NULL DEFAULT false,
   created_by     uuid,
   created_at     timestamptz  NOT NULL DEFAULT now(),
   updated_at     timestamptz  NOT NULL DEFAULT now()
 );
+
+-- If running against an existing table that doesn't have new columns yet
+ALTER TABLE protocol_templates ADD COLUMN IF NOT EXISTS product_type text;
+ALTER TABLE protocol_templates ADD COLUMN IF NOT EXISTS price numeric(10,2);
 
 CREATE INDEX IF NOT EXISTS protocol_templates_active
   ON protocol_templates (key)
@@ -93,33 +98,27 @@ CREATE POLICY "admin write protocol categories"
 -- admin portal isn't empty on first load. Only seeds if the table is
 -- empty (safe to re-run).
 -- ─────────────────────────────────────────────────────────────────────────
-INSERT INTO protocol_templates (key, name, category, compounds, note, cycle)
+INSERT INTO protocol_templates (key, name, product_type, category, compounds, price, note)
 SELECT * FROM (VALUES
-  ('sleep',      'Sleep Protocol',      'Longevity',   '["Epithalon 10mg","DSIP 500mcg"]'::jsonb,                             'Take 30 min before bed.', '12 weeks'),
-  ('repair',     'Repair Protocol',     'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            'Rotate injection sites.', '8 weeks'),
-  ('growth',     'Growth Protocol',     'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg"]'::jsonb,                         'Fasted, before bed.',     '12 weeks'),
-  ('endurance',  'Endurance Protocol',  'Performance', '["AOD-9604 300mcg","TB-500 2.5mg"]'::jsonb,                           'Pre-workout.',            '12 weeks'),
-  ('shred',      'Shred Protocol',      'Body Comp',   '["AOD-9604 300mcg","Semaglutide 0.5mg"]'::jsonb,                      'Morning dose.',           '12 weeks'),
-  ('vitality',   'Vitality Protocol',   'Longevity',   '["Epithalon 10mg","Thymosin Alpha-1 1.5mg"]'::jsonb,                  '10-day on cycles.',       '60 days'),
-  ('longevity',  'Longevity Protocol',  'Longevity',   '["Epithalon 10mg","Thymosin Alpha-1 1.5mg","Selank 300mcg"]'::jsonb,  'Cycled dosing.',          '60 days'),
-  ('recovery',   'Recovery Stack',      'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            'Combined repair stack.',  '8 weeks'),
-  ('performance','Performance Stack',   'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","AOD-9604 300mcg"]'::jsonb,       'Fasted.',                 '12 weeks'),
-  ('optimize',   'Optimize Stack',      'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","Epithalon 10mg"]'::jsonb,        'Growth + longevity.',     '12 weeks')
-) AS v(key, name, category, compounds, note, cycle)
+  ('sleep',      'Sleep',      'Pod',   'Longevity',   '["Epithalon 10mg","DSIP 500mcg"]'::jsonb,                             100.00, 'Take 30 min before bed.'),
+  ('repair',     'Repair',     'Pod',   'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            100.00, 'Rotate injection sites.'),
+  ('growth',     'Growth',     'Pod',   'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg"]'::jsonb,                         100.00, 'Fasted, before bed.'),
+  ('endurance',  'Endurance',  'Pod',   'Performance', '["AOD-9604 300mcg","TB-500 2.5mg"]'::jsonb,                           100.00, 'Pre-workout.'),
+  ('shred',      'Shred',      'Pod',   'Body Comp',   '["AOD-9604 300mcg","Semaglutide 0.5mg"]'::jsonb,                      100.00, 'Morning dose.'),
+  ('vitality',   'Vitality',   'Pod',   'Longevity',   '["Epithalon 10mg","Thymosin Alpha-1 1.5mg"]'::jsonb,                  100.00, '10-day on cycles.'),
+  ('longevity',  'Longevity',  'Pod',   'Longevity',   '["Epithalon 10mg","Thymosin Alpha-1 1.5mg","Selank 300mcg"]'::jsonb,  100.00, 'Cycled dosing.'),
+  ('recovery',   'Recovery',   'Stack', 'Recovery',    '["BPC-157 250mcg","TB-500 2.5mg"]'::jsonb,                            100.00, 'Combined repair stack.'),
+  ('performance','Performance','Stack', 'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","AOD-9604 300mcg"]'::jsonb,       100.00, 'Fasted.'),
+  ('optimize',   'Optimize',   'Stack', 'Performance', '["CJC-1295 2mg","Ipamorelin 300mcg","Epithalon 10mg"]'::jsonb,        100.00, 'Growth + longevity.')
+) AS v(key, name, product_type, category, compounds, price, note)
 WHERE NOT EXISTS (SELECT 1 FROM protocol_templates);
 
 INSERT INTO protocol_categories (name, display_order)
 SELECT * FROM (VALUES
-  ('Sleep',        1),
-  ('Repair',       2),
-  ('Growth',       3),
-  ('Endurance',    4),
-  ('Shred',        5),
-  ('Vitality',     6),
-  ('Longevity',    7),
-  ('Recovery',     8),
-  ('Performance',  9),
-  ('Optimize',    10)
+  ('Performance',  1),
+  ('Longevity',    2),
+  ('Recovery',     3),
+  ('Body Comp',    4)
 ) AS v(name, display_order)
 WHERE NOT EXISTS (SELECT 1 FROM protocol_categories);
 

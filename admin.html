@@ -305,6 +305,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cc-activity-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
 .cc-empty{padding:20px 0;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:12px;}
 
+/* Admin actions zone (Phase 3) — visually distinct section inside
+   detail modals for admin-only intervention controls. */
+.admin-actions-zone{margin-top:22px;padding:18px;border-radius:var(--radius);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.admin-actions-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--amber);margin-bottom:12px;}
+.admin-actions-grid{display:flex;flex-direction:column;gap:12px;}
+.admin-action-row{display:flex;flex-direction:column;gap:6px;}
+.admin-action-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--text2);}
+.admin-action-ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.admin-action-ctrls .filter-select,.admin-action-ctrls .search-input{flex:1;min-width:180px;}
+.admin-msg-ta{width:100%;min-height:72px;resize:vertical;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;line-height:1.5;}
+.admin-msg-ta:focus{border-color:var(--green);}
+.admin-msg-ta::placeholder{color:var(--text4);}
+
 /* ── MOBILE ── */
 @media(max-width:900px){
   nav{padding:0 16px;height:52px;}
@@ -575,6 +588,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="detail-grid" id="userDetailGrid"></div>
           <div class="detail-divider"></div>
           <div id="userDetailSummary"></div>
+
+          <!-- Phase 3: Admin intervention panel -->
+          <div class="admin-actions-zone" id="userAdminActions" style="display:none;">
+            <div class="admin-actions-title">Admin Actions</div>
+            <div class="admin-actions-grid">
+              <div class="admin-action-row" id="userSendMsgRow">
+                <div class="admin-action-label">Send Message to User</div>
+                <textarea id="userSendMsgText" class="admin-msg-ta" placeholder="Write a message that will appear in this user's thread..."></textarea>
+                <div class="admin-action-ctrls" style="justify-content:flex-end;">
+                  <button class="form-btn primary" onclick="adminSendMessage()">Send Message</button>
+                </div>
+              </div>
+              <div class="admin-action-row" id="userReassignRow" style="display:none;">
+                <div class="admin-action-label">Reassign All Open Reviews</div>
+                <div class="admin-action-ctrls">
+                  <select class="filter-select" id="userBulkReassignSel"><option value="">Select new clinician...</option></select>
+                  <button class="form-btn primary" onclick="bulkReassignClinicianQueue()">Reassign All</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -644,12 +678,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <option value="Endurance">Endurance</option>
               <option value="Shred">Shred</option>
               <option value="Vitality">Vitality</option>
-              <option value="Recovery Stack">Recovery Stack</option>
-              <option value="Performance Stack">Performance Stack</option>
-              <option value="Optimize Stack">Optimize Stack</option>
+              <option value="Longevity">Longevity</option>
+              <option value="Recovery">Recovery</option>
+              <option value="Performance">Performance</option>
+              <option value="Optimize">Optimize</option>
               <option value="no prescription">No Prescription</option>
             </select>
             <button class="btn-save" id="consultSaveBtn" onclick="saveConsultation()" disabled>Save Changes</button>
+          </div>
+
+          <!-- Phase 3: Admin intervention panel -->
+          <div class="admin-actions-zone" id="consultAdminActions" style="display:none;">
+            <div class="admin-actions-title">Admin Actions</div>
+            <div class="admin-actions-grid">
+              <div class="admin-action-row">
+                <div class="admin-action-label">Reassign Clinician</div>
+                <div class="admin-action-ctrls">
+                  <select class="filter-select" id="reassignClinicianSel"><option value="">Select clinician...</option></select>
+                  <button class="form-btn primary" onclick="reassignConsultation()">Reassign</button>
+                </div>
+              </div>
+              <div class="admin-action-row" id="resolveRequestRow" style="display:none;">
+                <div class="admin-action-label">Resolve This Request</div>
+                <div class="admin-action-ctrls">
+                  <input type="text" id="resolveRequestReason" placeholder="Reason (optional)" style="flex:1;" class="search-input"/>
+                  <button class="form-btn secondary" onclick="resolveRequest()">Close Request</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -969,6 +1025,142 @@ function loadOverviewStats() {
 // sections (funnel / queues / flagged / activity). Keep the function so
 // existing call sites in createUser + role-change don't break.
 function loadRecentUsers() { /* no-op */ }
+
+// ══ Phase 3: Admin action helpers ═════════════════════════════════════
+
+// Writes an entry to audit_logs. Fire-and-forget — if the table doesn't
+// exist or fails, the action still succeeds. Every admin intervention
+// calls this so there's a trail in the Audit tab.
+function writeAuditLog(action, targetId, details) {
+  try {
+    var payload = {
+      action: action,
+      actor_id: currentUserId || null,
+      actor_email: currentUserEmail || null,
+      target_id: targetId || null,
+      details: details ? (typeof details === 'string' ? details : JSON.stringify(details)) : null,
+      created_at: new Date().toISOString()
+    };
+    db.from('audit_logs').insert(payload).then(function(){}).catch(function(){});
+  } catch (_) {}
+}
+
+// Populates a <select> with all clinicians. Used by the reassign
+// dropdowns in consult and user detail modals.
+function _fillClinicianSelect(selEl, excludeId) {
+  if (!selEl) return Promise.resolve();
+  return db.from('profiles').select('user_id, display_name, first_name, last_name, email').eq('role', 'clinician').then(function(r) {
+    var opts = '<option value="">Select clinician...</option>';
+    (r.data || []).forEach(function(c) {
+      if (excludeId && c.user_id === excludeId) return;
+      var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
+      opts += '<option value="' + escHtml(c.user_id) + '">' + escHtml(name) + '</option>';
+    });
+    selEl.innerHTML = opts;
+  });
+}
+
+// Admin action: reassign the currently-open consultation to a different
+// clinician. Updates assigned_clinician_id, notifies the new clinician,
+// writes an audit log entry.
+function reassignConsultation() {
+  if (!selectedConsultId) return;
+  var sel = document.getElementById('reassignClinicianSel');
+  var newClinicianId = sel ? sel.value : '';
+  if (!newClinicianId) { showToast('Select a clinician first.', 'error'); return; }
+  db.from('consultations').update({ assigned_clinician_id: newClinicianId }).eq('id', selectedConsultId).then(function(r) {
+    if (r.error) { showToast('Reassign failed.', 'error'); return; }
+    // Notify the new clinician
+    db.from('notifications').insert({
+      user_id: newClinicianId,
+      type: 'consultation_reassigned',
+      body: 'A consultation was reassigned to you by admin.',
+      read: false
+    }).then(function(){}).catch(function(){});
+    writeAuditLog('consultation.reassigned', selectedConsultId, { new_clinician_id: newClinicianId });
+    showToast('Consultation reassigned.', 'success');
+    closeConsultDetail();
+    loadConsultations();
+    loadClinicianQueues();
+  }).catch(function() { showToast('Reassign failed.', 'error'); });
+}
+
+// Admin action: close a stuck protocol/refill request by setting
+// review_status to 'withdrawn'. Sends a message to the member and
+// writes an audit entry.
+function resolveRequest() {
+  if (!selectedConsultId) return;
+  var reason = (document.getElementById('resolveRequestReason') || {}).value || '';
+  db.from('consultations').update({ review_status: 'withdrawn' }).eq('id', selectedConsultId).then(function(r) {
+    if (r.error) { showToast('Failed to resolve.', 'error'); return; }
+    var c = (allConsultations || []).find(function(x) { return x.id === selectedConsultId; });
+    if (c && c.user_id) {
+      var bodyTxt = 'Your request has been closed by admin.' + (reason ? ' Reason: ' + reason : '');
+      db.from('messages').insert({
+        thread_id: c.user_id,
+        sender_id: currentUserId || null,
+        sender_role: 'admin',
+        sender_name: 'Admin',
+        recipient_id: c.user_id,
+        body: bodyTxt,
+        read: false
+      }).then(function(){}).catch(function(){});
+    }
+    writeAuditLog('request.withdrawn', selectedConsultId, { reason: reason });
+    showToast('Request closed.', 'success');
+    closeConsultDetail();
+    loadConsultations();
+    loadFlaggedItems();
+    loadActivityStream();
+  }).catch(function() { showToast('Failed to resolve.', 'error'); });
+}
+
+// Admin action: send a message into a user's thread. Visible to the
+// user as a message from Admin. Writes an audit entry.
+function adminSendMessage() {
+  var ta = document.getElementById('userSendMsgText');
+  var text = ((ta || {}).value || '').trim();
+  if (!text) { showToast('Write a message first.', 'error'); return; }
+  if (!_openUserDetailId) return;
+  db.from('messages').insert({
+    thread_id: _openUserDetailId,
+    sender_id: currentUserId || null,
+    sender_role: 'admin',
+    sender_name: 'Admin',
+    recipient_id: _openUserDetailId,
+    body: text,
+    read: false
+  }).then(function(r) {
+    if (r.error) { showToast('Failed to send.', 'error'); return; }
+    writeAuditLog('admin.message_sent', _openUserDetailId, { body_len: text.length });
+    if (ta) ta.value = '';
+    showToast('Message sent.', 'success');
+  }).catch(function() { showToast('Failed to send.', 'error'); });
+}
+
+// Admin action: reassign every open review currently assigned to this
+// clinician to another clinician (useful when a clinician is out).
+function bulkReassignClinicianQueue() {
+  if (!_openUserDetailId) return;
+  var sel = document.getElementById('userBulkReassignSel');
+  var newId = sel ? sel.value : '';
+  if (!newId) { showToast('Select a clinician first.', 'error'); return; }
+  if (newId === _openUserDetailId) { showToast('Cannot reassign to self.', 'error'); return; }
+  db.from('consultations').update({ assigned_clinician_id: newId })
+    .eq('assigned_clinician_id', _openUserDetailId)
+    .eq('review_status', 'pending_review')
+    .then(function(r) {
+      if (r.error) { showToast('Reassign failed.', 'error'); return; }
+      writeAuditLog('clinician.bulk_reassigned', _openUserDetailId, { new_clinician_id: newId });
+      showToast('Open reviews reassigned.', 'success');
+      closeUserDetail();
+      loadClinicianQueues();
+    }).catch(function() { showToast('Reassign failed.', 'error'); });
+}
+
+// Tracks which user the detail modal is currently open for, used by
+// admin actions inside that modal.
+var _openUserDetailId = null;
 
 // ══ Phase 2: Command Center sections ══════════════════════════════════
 
@@ -1432,6 +1624,7 @@ function renderUsersTable(users) {
 function openUserDetail(userId) {
   var u = (allUsers || []).find(function(x) { return x.user_id === userId; });
   if (!u) return;
+  _openUserDetailId = userId;
   var role = u.role || 'member';
   var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
   var joined = u.created_at ? new Date(u.created_at).toLocaleDateString() : '--';
@@ -1454,6 +1647,26 @@ function openUserDetail(userId) {
   summaryEl.innerHTML = '<div class="cc-empty">Loading activity\u2026</div>';
   _loadUserDetailSummary(u);
 
+  // Admin actions zone — show "Send Message" for members/clinicians,
+  // show "Bulk Reassign" only when the user is a clinician.
+  var zone = document.getElementById('userAdminActions');
+  var sendMsgRow = document.getElementById('userSendMsgRow');
+  var reassignRow = document.getElementById('userReassignRow');
+  if (zone) {
+    if (role === 'admin' || role === 'super_admin') {
+      zone.style.display = 'none';
+    } else {
+      zone.style.display = '';
+      if (sendMsgRow) sendMsgRow.style.display = '';
+      if (reassignRow) reassignRow.style.display = (role === 'clinician' ? '' : 'none');
+      var ta = document.getElementById('userSendMsgText');
+      if (ta) ta.value = '';
+      if (role === 'clinician') {
+        _fillClinicianSelect(document.getElementById('userBulkReassignSel'), u.user_id);
+      }
+    }
+  }
+
   document.getElementById('userDetailPanel').classList.add('show');
   document.getElementById('userDetailBackdrop').classList.add('show');
 }
@@ -1461,6 +1674,7 @@ function openUserDetail(userId) {
 function closeUserDetail() {
   document.getElementById('userDetailPanel').classList.remove('show');
   document.getElementById('userDetailBackdrop').classList.remove('show');
+  _openUserDetailId = null;
 }
 
 // Pulls role-specific context into the user detail modal:
@@ -1827,6 +2041,20 @@ function openConsultDetail(id) {
   select.onchange = function() {
     document.getElementById('consultSaveBtn').disabled = (select.value === (c.protocol_assigned || ''));
   };
+
+  // Admin actions zone — populate clinician dropdown, show "Resolve
+  // Request" only for protocol/refill requests.
+  var adminZone = document.getElementById('consultAdminActions');
+  if (adminZone) {
+    adminZone.style.display = '';
+    _fillClinicianSelect(document.getElementById('reassignClinicianSel'), c.assigned_clinician_id);
+    var isRequest = c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request' ||
+                    (d.request_category) || (d.refill_protocol);
+    var resolveRow = document.getElementById('resolveRequestRow');
+    if (resolveRow) resolveRow.style.display = isRequest ? '' : 'none';
+    var reasonEl = document.getElementById('resolveRequestReason');
+    if (reasonEl) reasonEl.value = '';
+  }
 
   // Scroll to panel
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

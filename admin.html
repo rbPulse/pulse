@@ -337,6 +337,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cfg-migration-note strong{color:var(--amber);font-weight:700;}
 .cfg-migration-note code{font-family:'Menlo','Monaco',monospace;font-size:11px;background:rgba(20,20,20,0.05);padding:1px 6px;border-radius:4px;color:var(--text);}
 
+/* ── ANALYTICS (Phase 5) additions ── */
+.anx-section-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.anx-perf-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;}
+.anx-perf-table th{font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);}
+.anx-perf-table td{font-size:12px;padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+.anx-perf-table tr:last-child td{border-bottom:none;}
+.anx-perf-metric{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);}
+.anx-perf-metric.good{color:var(--green);}
+.anx-perf-metric.warn{color:var(--amber);}
+.anx-perf-metric.bad{color:var(--red);}
+.anx-health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.anx-health-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;}
+.anx-health-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.anx-health-value{font-family:'Inter',sans-serif;font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.01em;line-height:1;}
+.anx-health-card.ok .anx-health-value{color:var(--green);}
+.anx-health-card.warn .anx-health-value{color:var(--amber);}
+.anx-health-card.bad .anx-health-value{color:var(--red);}
+.anx-health-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:4px;}
+.anx-range-bar{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
+.anx-range-bar label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
+.anx-range-bar select{min-width:160px;}
+
 /* ── MOBILE ── */
 @media(max-width:900px){
   nav{padding:0 16px;height:52px;}
@@ -912,6 +934,40 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="chart-card">
             <div class="chart-card-title">Dose Logging (Last 4 Weeks)</div>
             <div id="chartDoseLogs"></div>
+          </div>
+        </div>
+
+        <!-- Clinical Operations (Phase 5) -->
+        <div class="anx-section-label">Clinical Operations</div>
+        <div class="chart-card">
+          <div class="chart-card-title">Clinician Performance</div>
+          <div id="clinicianPerfTable">
+            <div class="cc-empty">Loading...</div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Protocol Performance</div>
+          <div id="protocolPerfTable">
+            <div class="cc-empty">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Platform Health (Phase 5) -->
+        <div class="anx-section-label">Platform Health</div>
+        <div class="chart-card">
+          <div class="chart-card-title">System Status</div>
+          <div class="anx-health-grid" id="systemHealthGrid">
+            <div class="cc-empty" style="grid-column:1 / -1;">Loading...</div>
+          </div>
+        </div>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <div class="chart-card-title">Member Retention</div>
+            <div id="retentionChart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-title">Event Volume (Last 30 Days)</div>
+            <div id="eventVolumeChart"></div>
           </div>
         </div>
       </div>
@@ -2861,6 +2917,216 @@ function renderAnalytics(doseLogs) {
     doseWeeks.push({ label: dlabel, value: dCount });
   }
   renderBarChart('chartDoseLogs', doseWeeks, 'green');
+
+  // Phase 5: Clinical operations + platform health
+  renderClinicianPerformance();
+  renderProtocolPerformance();
+  renderSystemHealth();
+  renderMemberRetention();
+  renderEventVolume();
+}
+
+// ══ Phase 5: Clinician performance ════════════════════════════════════
+// For each clinician: total consults assigned, prescribed count,
+// declined count, median hours from submission to decision.
+function renderClinicianPerformance() {
+  var el = document.getElementById('clinicianPerfTable');
+  if (!el) return;
+  var clinicians = (allUsers || []).filter(function(u) { return u.role === 'clinician'; });
+  if (!clinicians.length) {
+    el.innerHTML = '<div class="cc-empty">No clinicians yet.</div>';
+    return;
+  }
+  var byCId = {};
+  (allConsultations || []).forEach(function(c) {
+    var cid = c.assigned_clinician_id;
+    if (!cid) return;
+    if (!byCId[cid]) byCId[cid] = { total: 0, prescribed: 0, declined: 0, pending: 0, hours: [] };
+    byCId[cid].total++;
+    var st = c.review_status;
+    if (st === 'prescribed') byCId[cid].prescribed++;
+    else if (st === 'not_prescribed' || st === 'discontinued') byCId[cid].declined++;
+    else if (st === 'pending_review') byCId[cid].pending++;
+    // Time-to-decision: created_at → evaluation_date on data
+    var d = c.data || {};
+    if ((st === 'prescribed' || st === 'not_prescribed') && c.created_at && d.evaluation_date) {
+      var h = (new Date(d.evaluation_date).getTime() - new Date(c.created_at).getTime()) / 3600000;
+      if (h > 0 && h < 24 * 60) byCId[cid].hours.push(h);
+    }
+  });
+  var rows = clinicians.map(function(c) {
+    var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
+    var s = byCId[c.user_id] || { total: 0, prescribed: 0, declined: 0, pending: 0, hours: [] };
+    var rxRate = s.total > 0 ? Math.round((s.prescribed / s.total) * 100) : 0;
+    var medH = 0;
+    if (s.hours.length) {
+      var sorted = s.hours.slice().sort(function(a, b) { return a - b; });
+      medH = Math.round(sorted[Math.floor(sorted.length / 2)] * 10) / 10;
+    }
+    var medCls = medH === 0 ? '' : medH < 24 ? 'good' : medH < 72 ? 'warn' : 'bad';
+    var medDisplay = s.hours.length ? (medH < 1 ? '<1h' : medH < 24 ? Math.round(medH) + 'h' : Math.round(medH / 24 * 10) / 10 + 'd') : '—';
+    return { name: name, total: s.total, prescribed: s.prescribed, declined: s.declined, pending: s.pending, rxRate: rxRate, medH: medH, medDisplay: medDisplay, medCls: medCls, sort: -s.total };
+  }).sort(function(a, b) { return a.sort - b.sort; });
+  el.innerHTML = '<table class="anx-perf-table">' +
+    '<thead><tr><th>Clinician</th><th>Total</th><th>Prescribed</th><th>Declined</th><th>Open</th><th>Rx Rate</th><th>Median TTR</th></tr></thead>' +
+    '<tbody>' + rows.map(function(r) {
+      return '<tr>' +
+        '<td class="anx-perf-metric">' + escHtml(r.name) + '</td>' +
+        '<td>' + r.total + '</td>' +
+        '<td>' + r.prescribed + '</td>' +
+        '<td>' + r.declined + '</td>' +
+        '<td>' + r.pending + '</td>' +
+        '<td class="anx-perf-metric ' + (r.rxRate >= 60 ? 'good' : r.rxRate >= 30 ? 'warn' : '') + '">' + r.rxRate + '%</td>' +
+        '<td class="anx-perf-metric ' + r.medCls + '">' + r.medDisplay + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
+}
+
+// ══ Phase 5: Protocol performance ═════════════════════════════════════
+// For each protocol: active count, total discontinued, active-per-total
+// ratio (crude adherence/retention signal).
+function renderProtocolPerformance() {
+  var el = document.getElementById('protocolPerfTable');
+  if (!el) return;
+  db.from('prescriptions').select('protocol_key, status').then(function(r) {
+    if (r.error) { el.innerHTML = '<div class="cc-empty">Failed to load protocols.</div>'; return; }
+    var rows = r.data || [];
+    if (!rows.length) { el.innerHTML = '<div class="cc-empty">No prescriptions yet.</div>'; return; }
+    var byKey = {};
+    rows.forEach(function(rx) {
+      var k = rx.protocol_key || 'Unknown';
+      if (!byKey[k]) byKey[k] = { active: 0, discontinued: 0, total: 0 };
+      byKey[k].total++;
+      if (rx.status === 'active') byKey[k].active++;
+      else if (rx.status === 'discontinued') byKey[k].discontinued++;
+    });
+    var protoList = Object.keys(byKey).map(function(k) {
+      var s = byKey[k];
+      var retention = s.total > 0 ? Math.round((s.active / s.total) * 100) : 0;
+      var retCls = retention >= 70 ? 'good' : retention >= 40 ? 'warn' : 'bad';
+      return { key: k, active: s.active, disc: s.discontinued, total: s.total, retention: retention, retCls: retCls, sort: -s.active };
+    }).sort(function(a, b) { return a.sort - b.sort; });
+    el.innerHTML = '<table class="anx-perf-table">' +
+      '<thead><tr><th>Protocol</th><th>Active</th><th>Discontinued</th><th>Total Rx</th><th>Retention</th></tr></thead>' +
+      '<tbody>' + protoList.map(function(p) {
+        return '<tr>' +
+          '<td class="anx-perf-metric">' + escHtml(p.key) + '</td>' +
+          '<td>' + p.active + '</td>' +
+          '<td>' + p.disc + '</td>' +
+          '<td>' + p.total + '</td>' +
+          '<td class="anx-perf-metric ' + p.retCls + '">' + p.retention + '%</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table>';
+  }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load protocols.</div>'; });
+}
+
+// ══ Phase 5: System health ═══════════════════════════════════════════
+// Lightweight health readout. Pulls a few counts in parallel and labels
+// each with a severity class (ok / warn / bad) based on thresholds.
+function renderSystemHealth() {
+  var el = document.getElementById('systemHealthGrid');
+  if (!el) return;
+  var pending = (allConsultations || []).filter(function(c) { return c.review_status === 'pending_review'; });
+  var stale = pending.filter(function(c) {
+    return c.created_at && (Date.now() - new Date(c.created_at).getTime()) > 24 * 3600 * 1000;
+  });
+  var last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  Promise.all([
+    db.from('patient_events').select('id', { count: 'exact', head: true }).gte('created_at', last24h).catch(function() { return { count: 0 }; }),
+    db.from('messages').select('id', { count: 'exact', head: true }).gte('created_at', last24h).catch(function() { return { count: 0 }; }),
+    db.from('prescriptions').select('id', { count: 'exact', head: true }).eq('status', 'active').catch(function() { return { count: 0 }; })
+  ]).then(function(results) {
+    var events24 = results[0].count || 0;
+    var msgs24 = results[1].count || 0;
+    var activeRx = results[2].count || 0;
+    function card(label, value, sub, severity) {
+      return '<div class="anx-health-card ' + severity + '">' +
+        '<div class="anx-health-label">' + label + '</div>' +
+        '<div class="anx-health-value">' + value + '</div>' +
+        '<div class="anx-health-sub">' + sub + '</div>' +
+        '</div>';
+    }
+    el.innerHTML =
+      card('Queue Depth', pending.length, 'pending reviews', pending.length === 0 ? 'ok' : pending.length < 10 ? '' : 'warn') +
+      card('Stale > 24h', stale.length, 'overdue consultations', stale.length === 0 ? 'ok' : stale.length < 3 ? 'warn' : 'bad') +
+      card('Active Rx', activeRx, 'prescriptions', 'ok') +
+      card('Events (24h)', events24, 'platform activity', events24 > 0 ? 'ok' : '') +
+      card('Messages (24h)', msgs24, 'sent across threads', msgs24 > 0 ? 'ok' : '');
+  }).catch(function() {
+    el.innerHTML = '<div class="cc-empty" style="grid-column:1 / -1;">Failed to load system health.</div>';
+  });
+}
+
+// ══ Phase 5: Member retention ═════════════════════════════════════════
+// For each cohort (members prescribed N weeks ago), % still active now.
+// Crude but directionally useful.
+function renderMemberRetention() {
+  var el = document.getElementById('retentionChart');
+  if (!el) return;
+  db.from('prescriptions').select('user_id, started_at, status').then(function(r) {
+    if (r.error || !r.data) { el.innerHTML = '<div class="cc-empty">No retention data.</div>'; return; }
+    var now = Date.now();
+    // Group first prescription by week-age bucket
+    var firstRxByUser = {};
+    r.data.forEach(function(rx) {
+      if (!rx.started_at || !rx.user_id) return;
+      var ts = new Date(rx.started_at).getTime();
+      if (!firstRxByUser[rx.user_id] || ts < firstRxByUser[rx.user_id].ts) {
+        firstRxByUser[rx.user_id] = { ts: ts, anyActive: false };
+      }
+    });
+    r.data.forEach(function(rx) {
+      if (firstRxByUser[rx.user_id] && rx.status === 'active') firstRxByUser[rx.user_id].anyActive = true;
+    });
+    var buckets = [
+      { label: '0-4 wk',  minDays: 0,  maxDays: 28,  total: 0, retained: 0 },
+      { label: '4-8 wk',  minDays: 28, maxDays: 56,  total: 0, retained: 0 },
+      { label: '8-12 wk', minDays: 56, maxDays: 84,  total: 0, retained: 0 },
+      { label: '12+ wk',  minDays: 84, maxDays: 9999, total: 0, retained: 0 }
+    ];
+    Object.keys(firstRxByUser).forEach(function(uid) {
+      var f = firstRxByUser[uid];
+      var ageDays = (now - f.ts) / 86400000;
+      buckets.forEach(function(b) {
+        if (ageDays >= b.minDays && ageDays < b.maxDays) {
+          b.total++;
+          if (f.anyActive) b.retained++;
+        }
+      });
+    });
+    var chartData = buckets.map(function(b) {
+      var pct = b.total > 0 ? Math.round((b.retained / b.total) * 100) : 0;
+      return { label: b.label, value: pct, color: pct >= 70 ? 'green' : pct >= 40 ? 'amber' : 'red' };
+    });
+    renderBarChart('retentionChart', chartData, 'green');
+  }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load retention.</div>'; });
+}
+
+// ══ Phase 5: Event volume (last 30 days) ═════════════════════════════
+// Activity pulse by week. Helps spot usage dips.
+function renderEventVolume() {
+  var el = document.getElementById('eventVolumeChart');
+  if (!el) return;
+  var since = new Date(Date.now() - 30 * 86400000).toISOString();
+  db.from('patient_events').select('created_at').gte('created_at', since).then(function(r) {
+    if (r.error) { el.innerHTML = '<div class="cc-empty">No event data.</div>'; return; }
+    var rows = r.data || [];
+    var now = Date.now();
+    var weeks = [];
+    for (var w = 3; w >= 0; w--) {
+      var wStart = now - (w + 1) * 7 * 86400000;
+      var wEnd = now - w * 7 * 86400000;
+      var cnt = rows.filter(function(ev) {
+        var ts = new Date(ev.created_at).getTime();
+        return ts >= wStart && ts < wEnd;
+      }).length;
+      var d = new Date(wStart);
+      weeks.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: cnt });
+    }
+    renderBarChart('eventVolumeChart', weeks, 'blue');
+  }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load event volume.</div>'; });
 }
 
 async function loadOverdueReviews() {

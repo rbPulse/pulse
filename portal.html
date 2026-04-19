@@ -8437,7 +8437,8 @@ async function _loadClOverviewStats() {
       .not('review_status', 'in', '("prescribed","not_prescribed","withdrawn")');
     document.getElementById('clStatPending').textContent = openReviews.count || 0;
 
-    // Past due: open reviews older than 24 hours
+    // Past due: open reviews older than 24 hours (gated by overdue_flag automation)
+    if (!_isAutoEnabled('overdue_flag')) { var pastDueEl = document.getElementById('clStatPastDue'); if (pastDueEl) pastDueEl.style.display = 'none'; } else {
     var twentyFourHoursAgo = new Date(Date.now() - 86400000).toISOString();
     var pastDue = await db.from('consultations')
       .select('id', { count: 'exact', head: true })
@@ -8454,6 +8455,7 @@ async function _loadClOverviewStats() {
         pastDueEl.style.display = 'none';
       }
     }
+    } // end overdue_flag gate
 
     // Unread messages — count threads where latest message is from consumer (needs response)
     _loadMyPatients(function(patientIds) {
@@ -8881,8 +8883,9 @@ async function loadAttentionCards() {
         return aT - bT;
       }
       // submission_earliest (default): overdue first, then oldest
-      var aOverdue = (now - aT) >= 86400000;
-      var bOverdue = (now - bT) >= 86400000;
+      var _oeEnabled = _isAutoEnabled('overdue_flag');
+      var aOverdue = _oeEnabled && (now - aT) >= 86400000;
+      var bOverdue = _oeEnabled && (now - bT) >= 86400000;
       if (aOverdue && !bOverdue) return -1;
       if (!aOverdue && bOverdue) return 1;
       return aT - bT;
@@ -10409,6 +10412,7 @@ function _closeRxHistoryModal() {
 }
 
 function _evaluateRiskFallback(d) {
+  if (!_isAutoEnabled('risk_evaluation')) return { status: 'low_risk', reasons: [] };
   var reasons = [];
   var score = 0;
   var mh = d.medical_history || d.med_history || [];
@@ -10550,7 +10554,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
 
     // Overdue
     var st = d.submitted_at?new Date(d.submitted_at).getTime():(consultCreatedAt?new Date(consultCreatedAt).getTime():0);
-    var isOverdue = st&&(Date.now()-st>86400000);
+    var isOverdue = _isAutoEnabled('overdue_flag') && st&&(Date.now()-st>86400000);
     var diffH = st?Math.floor((Date.now()-st)/3600000):0;
     var subRel;
     if (diffH < 1) { var diffMin = st ? Math.floor((Date.now()-st)/60000) : 0; subRel = diffMin < 1 ? '< 1m' : diffMin + 'm'; }
@@ -13087,6 +13091,7 @@ function _renderConsumerApptList(appts) {
 // Creates monthly check-in appointments for the protocol duration.
 // Idempotent: checks for existing monthly_checkin appointments before creating.
 async function _ensureMonthlyCheckins(consumerId, clinicianId, startDate, durationWeeks) {
+  if (!_isAutoEnabled('auto_schedule_checkins')) return;
   try {
     // Check if monthly check-ins already exist for this member
     var existing = await db.from('appointments')
@@ -13190,6 +13195,7 @@ async function _ensureProtocolStartStamped(consumerId) {
 }
 
 async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
+  if (!_isAutoEnabled('welcome_message')) return;
   try {
     // Idempotency: skip if already sent
     var profRes = await db.from('profiles')
@@ -13419,7 +13425,34 @@ async function _checkAppointmentReminder(userId, clinicianId) {
 
 // Reads automation config from platform_automations. Caches in memory
 // for the session. Returns { _enabled: bool, ...config } or null.
+// Global automation config cache. Loaded once on portal init so every
+// downstream check is synchronous via _isAutoEnabled(key). The async
+// _getAutomationConfig(key) is still available for detailed config reads.
 var _automationConfigCache = {};
+
+// Preloads ALL automation rows in one query. Called early in portal init
+// so the sync _isAutoEnabled check works everywhere after.
+async function _loadAllAutomationConfig() {
+  try {
+    var res = await db.from('platform_automations').select('key, enabled, config');
+    if (res.error) throw res.error;
+    (res.data || []).forEach(function(r) {
+      var cfg = (typeof r.config === 'string') ? JSON.parse(r.config || '{}') : (r.config || {});
+      cfg._enabled = !!r.enabled;
+      _automationConfigCache[r.key] = cfg;
+    });
+  } catch (_) {
+    // Table doesn't exist — all automations default to enabled
+  }
+}
+
+// Synchronous check: is this automation enabled? Defaults to true
+// if the key isn't in the cache (table missing or key not seeded).
+function _isAutoEnabled(key) {
+  var c = _automationConfigCache[key];
+  return c ? !!c._enabled : true;
+}
+
 async function _getAutomationConfig(key) {
   if (_automationConfigCache[key] !== undefined) return _automationConfigCache[key];
   try {
@@ -14600,6 +14633,7 @@ function _dismissMemberWelcome() {
 var PROTOCOL_CATEGORIES = ['Sleep','Repair','Growth','Endurance','Shred','Vitality','Recovery','Performance','Longevity','Optimize'];
 
 async function _openProtocolRequestModal() {
+  if (!_isAutoEnabled('protocol_request_routing')) { showToast('Product requests are currently disabled.'); return; }
   // Don't open if there's already a pending request.
   var btn = document.getElementById('protoRequestBtn');
   if (btn && btn.disabled) return;
@@ -14802,6 +14836,7 @@ var _refillCtx = null;
 
 async function _requestRefill(rxId, protocolName, dosesRemaining) {
   if (!rxId || !currentUserId || PREVIEW_MODE) return;
+  if (!_isAutoEnabled('refill_request_routing')) { showToast('Refill requests are currently disabled.'); return; }
   if (window._refillPendingRxIds[rxId]) return;
 
   var old = document.getElementById('rfRequestOverlay');
@@ -15202,6 +15237,11 @@ function _getWeeklyPrompt() {
 function renderWellnessCheckIn() {
   var mCard = document.getElementById('mCardCheckIn');
   var moCard = document.getElementById('moCardCheckIn');
+  if (!_isAutoEnabled('wellness_prompts')) {
+    if (mCard) mCard.style.display = 'none';
+    if (moCard) moCard.style.display = 'none';
+    return;
+  }
   if (_hasRespondedThisWeek()) {
     if (mCard) mCard.style.display = 'none';
     if (moCard) moCard.style.display = 'none';
@@ -15264,8 +15304,8 @@ async function _submitCheckIn(prefix) {
       });
     }
 
-    // 2. Send as a message in the clinician thread
-    if (!PREVIEW_MODE && currentUserId) {
+    // 2. Send as a message in the clinician thread (if routing enabled)
+    if (!PREVIEW_MODE && currentUserId && _isAutoEnabled('checkin_routing')) {
       var clinicianId = (window._assignedClinicianId) || null;
       // Resolve clinician ID if not stashed
       if (!clinicianId) {
@@ -15488,7 +15528,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
     var pct = totalDoses > 0 ? Math.max(0, Math.min(100, Math.round((remaining / totalDoses) * 100))) : 0;
     // Low-supply = fewer than 14 days of dose supply at current cadence.
     var daysLeft = (freqPerDay > 0) ? (remaining / freqPerDay) : remaining;
-    var isLow = daysLeft < 14;
+    var isLow = _isAutoEnabled('low_supply_alert') && daysLeft < 14;
     // Next refill = rx.started_at + totalDays (the protocol's end date).
     var refillDateStr = '—';
     if (rx.started_at) {
@@ -15649,6 +15689,13 @@ async function _ovToggleHeroTile(rxId) {
 }
 
 function populatePortal(user, consultation, greeting) {
+  // Load automation config once (fire-and-forget; sync _isAutoEnabled
+  // will use cached values for the rest of this session).
+  if (!window._autoConfigLoaded) {
+    window._autoConfigLoaded = true;
+    _loadAllAutomationConfig();
+  }
+
   var firstName = '';
   var proto = null;
   var hasPendingReview = false;
@@ -16732,7 +16779,7 @@ function renderPatientList(filter) {
     // the behavior of the Open Reviews table on the overview. The
     // underlying status key stays 'pending' so the filter pill still
     // matches them.
-    var isOverdue = key === 'pending' && subMs && (Date.now() - subMs > 86400000);
+    var isOverdue = _isAutoEnabled('overdue_flag') && key === 'pending' && subMs && (Date.now() - subMs > 86400000);
     var _isProtoReq = p._consultation && p._consultation.consultation_type === 'protocol_request';
     var displayLabel = _isProtoReq ? 'New Protocol Request' : (isOverdue ? 'Overdue' : meta.label);
     var displayCls   = _isProtoReq ? 'cl-ft-status-active' : (isOverdue ? 'cl-ft-status-notrx' : meta.cls);
@@ -21110,7 +21157,7 @@ async function _loadEvalPatientHeader(el, consultId, userId, profile) {
     if (diffH < 1) subRel = '< 1h';
     else if (diffH < 24) subRel = diffH + 'h';
     else { var days = Math.floor(diffH/24); var remH = diffH % 24; subRel = days + 'd' + (remH > 0 ? ' ' + remH + 'h' : ''); }
-    var isOverdue = st && (Date.now() - st > 86400000);
+    var isOverdue = _isAutoEnabled('overdue_flag') && st && (Date.now() - st > 86400000);
     // Risk
     var rs = c.risk_status || '';
     var riskHtml = '';

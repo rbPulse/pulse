@@ -386,6 +386,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cat-mgr-add{display:flex;gap:8px;margin-top:4px;}
 .cat-mgr-add input{flex:1;}
 
+.bulk-preview-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:14px;}
+.bulk-preview-table th{text-align:left;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card2);}
+.bulk-preview-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+.bulk-preview-table tr:last-child td{border-bottom:none;}
+.bulk-preview-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:var(--radius-pill);}
+.bulk-preview-badge.new{background:var(--green-tint);color:var(--green);border:1px solid var(--green-border);}
+.bulk-preview-badge.update{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
+.bulk-preview-badge.error{background:var(--red-tint);color:var(--red);border:1px solid var(--red-border);}
+.bulk-preview-summary{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);}
+.bulk-preview-summary strong{color:var(--text);}
+
 /* ── ANALYTICS (Phase 5) additions ── */
 .anx-section-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .anx-perf-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;}
@@ -1028,6 +1039,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <option value="all">Active + archived</option>
               <option value="archived">Archived only</option>
             </select>
+            <button class="toolbar-btn secondary" onclick="openBulkImport()">Bulk Import</button>
+            <button class="toolbar-btn secondary" onclick="exportProductsCSV()">Export CSV</button>
             <span class="toolbar-count" id="protocolCount"></span>
           </div>
           <div id="protocolsNotReady" style="display:none;">
@@ -1244,6 +1257,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="form-actions">
             <button class="form-btn secondary" onclick="closeProtocolEditor()">Cancel</button>
             <button class="form-btn primary" id="protoSaveBtn" onclick="saveProtocol()">Save Product</button>
+          </div>
+        </div>
+
+        <!-- Bulk import modal -->
+        <div class="detail-panel-backdrop" id="bulkImportBackdrop" onclick="closeBulkImport()"></div>
+        <div class="detail-panel" id="bulkImportPanel" style="max-width:720px;">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title">Bulk Import Products</div>
+            <button class="detail-close" onclick="closeBulkImport()">Close</button>
+          </div>
+          <div style="font-family:'Inter',sans-serif;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px;">
+            Upload a CSV to add new products or update existing ones in one shot. Rows are matched by <code style="background:rgba(20,20,20,0.05);padding:1px 6px;border-radius:4px;font-size:11px;">key</code>: matching keys update; new keys insert. The easiest path is to click <strong>Export CSV</strong> first, edit the file in your spreadsheet, then re-upload it here.
+          </div>
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;">
+            <strong style="color:var(--text);display:block;margin-bottom:4px;">Expected columns:</strong>
+            <code style="font-size:11px;color:var(--text3);">key, name, product_type, category, description, price, note</code>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <input type="file" id="bulkImportFile" accept=".csv,text/csv" onchange="_handleBulkImportFile()" style="flex:1;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);"/>
+            <button class="toolbar-btn secondary" onclick="_downloadImportTemplate()">Template</button>
+          </div>
+          <div id="bulkImportPreview"></div>
+          <div class="form-actions" id="bulkImportActions" style="display:none;">
+            <button class="form-btn secondary" onclick="closeBulkImport()">Cancel</button>
+            <button class="form-btn primary" id="bulkImportConfirmBtn" onclick="confirmBulkImport()">Apply Changes</button>
           </div>
         </div>
       </div>
@@ -1826,6 +1864,208 @@ function closeCategoryManager() {
 
 // Duplicate an existing product into a new draft (opens the editor
 // pre-filled, clearing the key so the admin picks a new slug).
+// ══ Bulk Import / Export for the product catalog ══════════════════════
+// Admins can export the full catalog as CSV, edit in a spreadsheet,
+// and re-upload to apply bulk changes. Rows match on `key` (slug) —
+// matching rows update, new keys insert. Deletion isn't supported via
+// import (too destructive) — use the Archive button per product.
+
+var _bulkImportRows = null; // parsed rows pending confirmation
+
+function exportProductsCSV() {
+  var rows = (_allProtocols || []).slice();
+  if (!rows.length) { showToast('Nothing to export.', 'error'); return; }
+  exportToCSV('pulse-products-' + new Date().toISOString().slice(0, 10) + '.csv', rows, [
+    { label: 'key',          value: 'key' },
+    { label: 'name',         value: 'name' },
+    { label: 'product_type', value: 'product_type' },
+    { label: 'category',     value: 'category' },
+    { label: 'description',  value: function(r) { return Array.isArray(r.compounds) ? r.compounds.join(', ') : ''; } },
+    { label: 'price',        value: function(r) { return r.price != null ? r.price : ''; } },
+    { label: 'note',         value: 'note' }
+  ]);
+}
+
+function _downloadImportTemplate() {
+  var template = [
+    { key: 'example-product', name: 'Example Product', product_type: 'Pod', category: 'Performance', compounds: ['Ingredient A', 'Ingredient B'], price: 99.00, note: 'Optional clinician note.' }
+  ];
+  exportToCSV('pulse-product-import-template.csv', template, [
+    { label: 'key',          value: 'key' },
+    { label: 'name',         value: 'name' },
+    { label: 'product_type', value: 'product_type' },
+    { label: 'category',     value: 'category' },
+    { label: 'description',  value: function(r) { return r.compounds.join(', '); } },
+    { label: 'price',        value: 'price' },
+    { label: 'note',         value: 'note' }
+  ]);
+}
+
+function openBulkImport() {
+  _bulkImportRows = null;
+  var file = document.getElementById('bulkImportFile');
+  if (file) file.value = '';
+  document.getElementById('bulkImportPreview').innerHTML = '';
+  document.getElementById('bulkImportActions').style.display = 'none';
+  document.getElementById('bulkImportPanel').classList.add('show');
+  document.getElementById('bulkImportBackdrop').classList.add('show');
+}
+
+function closeBulkImport() {
+  document.getElementById('bulkImportPanel').classList.remove('show');
+  document.getElementById('bulkImportBackdrop').classList.remove('show');
+  _bulkImportRows = null;
+}
+
+// Minimal CSV parser — handles quoted fields with commas, escaped quotes
+// (""), and CRLF line endings. Sufficient for spreadsheet exports.
+function _parseCSV(text) {
+  var rows = [], field = '', row = [], inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { field += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        if (row.length > 1 || row[0] !== '') rows.push(row);
+        row = [];
+      } else { field += c; }
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function _handleBulkImportFile() {
+  var file = document.getElementById('bulkImportFile').files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var text = String(e.target.result || '').replace(/^\uFEFF/, '');
+      var rows = _parseCSV(text);
+      if (!rows.length) { _renderBulkImportError('File is empty.'); return; }
+      var header = rows[0].map(function(h) { return (h || '').trim().toLowerCase(); });
+      var required = ['key', 'name'];
+      var missing = required.filter(function(col) { return header.indexOf(col) === -1; });
+      if (missing.length) { _renderBulkImportError('Missing required columns: ' + missing.join(', ')); return; }
+      var parsed = [];
+      for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        if (!row.length || (row.length === 1 && !row[0])) continue;
+        var obj = {};
+        header.forEach(function(col, idx) { obj[col] = (row[idx] || '').trim(); });
+        parsed.push(obj);
+      }
+      _renderBulkImportPreview(parsed);
+    } catch (err) {
+      _renderBulkImportError('Could not parse CSV: ' + (err.message || err));
+    }
+  };
+  reader.readAsText(file);
+}
+
+function _renderBulkImportError(msg) {
+  _bulkImportRows = null;
+  document.getElementById('bulkImportPreview').innerHTML =
+    '<div class="cfg-migration-note" style="margin:0;"><strong>Error.</strong> ' + escHtml(msg) + '</div>';
+  document.getElementById('bulkImportActions').style.display = 'none';
+}
+
+function _renderBulkImportPreview(rows) {
+  var existingKeys = {};
+  (_allProtocols || []).forEach(function(p) { if (p.key) existingKeys[p.key] = true; });
+  var insertCount = 0, updateCount = 0, errorCount = 0;
+  var prepared = rows.map(function(r) {
+    var status = 'new', errorMsg = null;
+    if (!r.key) { status = 'error'; errorMsg = 'Missing key'; }
+    else if (!r.name) { status = 'error'; errorMsg = 'Missing name'; }
+    else if (existingKeys[r.key]) { status = 'update'; }
+    if (status === 'new') insertCount++;
+    else if (status === 'update') updateCount++;
+    else errorCount++;
+    return { row: r, status: status, errorMsg: errorMsg };
+  });
+  _bulkImportRows = prepared;
+  var summary = '<div class="bulk-preview-summary">' +
+    '<strong>' + prepared.length + '</strong> row' + (prepared.length !== 1 ? 's' : '') + ' parsed \u00B7 ' +
+    '<strong style="color:var(--green);">' + insertCount + '</strong> new \u00B7 ' +
+    '<strong style="color:var(--amber);">' + updateCount + '</strong> update' + (updateCount !== 1 ? 's' : '') +
+    (errorCount > 0 ? ' \u00B7 <strong style="color:var(--red);">' + errorCount + '</strong> error' + (errorCount !== 1 ? 's' : '') : '') +
+    '</div>';
+  var body = prepared.map(function(p) {
+    var r = p.row;
+    var badge = '<span class="bulk-preview-badge ' + p.status + '">' + (p.status === 'new' ? 'New' : p.status === 'update' ? 'Update' : 'Error') + '</span>';
+    return '<tr>' +
+      '<td>' + badge + (p.errorMsg ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">' + escHtml(p.errorMsg) + '</div>' : '') + '</td>' +
+      '<td>' + escHtml(r.key || '') + '</td>' +
+      '<td>' + escHtml(r.name || '') + '</td>' +
+      '<td>' + escHtml(r.product_type || '') + '</td>' +
+      '<td>' + escHtml(r.category || '') + '</td>' +
+      '<td>' + escHtml(r.price || '') + '</td>' +
+      '</tr>';
+  }).join('');
+  var table = '<div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">' +
+    '<table class="bulk-preview-table">' +
+      '<thead><tr><th>Status</th><th>Key</th><th>Name</th><th>Type</th><th>Category</th><th>Price</th></tr></thead>' +
+      '<tbody>' + body + '</tbody>' +
+    '</table>' +
+  '</div>';
+  document.getElementById('bulkImportPreview').innerHTML = summary + table;
+  var actions = document.getElementById('bulkImportActions');
+  actions.style.display = '';
+  var btn = document.getElementById('bulkImportConfirmBtn');
+  var applyCount = insertCount + updateCount;
+  btn.disabled = applyCount === 0;
+  btn.textContent = applyCount === 0 ? 'Nothing to Apply' : 'Apply ' + applyCount + ' Change' + (applyCount !== 1 ? 's' : '');
+}
+
+function confirmBulkImport() {
+  if (!_bulkImportRows || !_bulkImportRows.length) return;
+  var valid = _bulkImportRows.filter(function(p) { return p.status !== 'error'; });
+  if (!valid.length) { showToast('No valid rows to apply.', 'error'); return; }
+  var btn = document.getElementById('bulkImportConfirmBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Applying\u2026'; }
+  var payloads = valid.map(function(p) {
+    var r = p.row;
+    var description = (r.description || '').trim();
+    var compounds = description ? description.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    var priceVal = r.price ? parseFloat(r.price) : null;
+    return {
+      key: r.key,
+      name: r.name,
+      product_type: r.product_type || null,
+      category: r.category || null,
+      compounds: compounds,
+      price: (priceVal != null && !isNaN(priceVal)) ? priceVal : null,
+      note: r.note || null,
+      updated_at: new Date().toISOString()
+    };
+  });
+  db.from('protocol_templates').upsert(payloads, { onConflict: 'key' })
+    .then(function(r) {
+      if (r.error) {
+        showToast('Import failed: ' + r.error.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Apply Changes'; }
+        return;
+      }
+      writeAuditLog('product.bulk_imported', null, { row_count: payloads.length });
+      showToast('Imported ' + payloads.length + ' product' + (payloads.length !== 1 ? 's' : '') + '.', 'success');
+      closeBulkImport();
+      loadProtocols();
+    })
+    .catch(function(e) {
+      showToast('Import failed.', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Apply Changes'; }
+    });
+}
+
 function duplicateProduct(id) {
   var p = (_allProtocols || []).find(function(x) { return x.id === id; });
   if (!p) return;

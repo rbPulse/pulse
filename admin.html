@@ -258,7 +258,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 /* ── COMMAND CENTER SECTIONS (Phase 2) ── */
 .cc-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px;box-shadow:var(--shadow);}
+.cc-section.cc-section-flush{padding:0;overflow:hidden;}
+.cc-section.cc-section-flush > .cc-section-hdr{padding:20px 24px 14px;margin-bottom:0;}
+.cc-section.cc-section-flush .admin-table th{background:transparent;border-top:1px solid var(--border);}
 .cc-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cc-sev-pill{display:inline-block;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:var(--radius-pill);border:1px solid transparent;white-space:nowrap;}
+.cc-sev-pill.high{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
+.cc-sev-pill.mod{background:var(--amber-tint);border-color:var(--amber-border);color:var(--amber);}
+.cc-count-pill{display:inline-block;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:3px 12px;border-radius:var(--radius-pill);border:1px solid var(--border-strong);color:var(--text);background:transparent;min-width:32px;text-align:center;}
+.cc-count-pill.overdue{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
 .cc-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);}
 .cc-section-sub{font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:var(--text4);}
 .cc-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
@@ -624,23 +632,29 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <!-- Phase B: Needs Attention — only shows when items exist -->
         <div id="needsAttentionSection" style="display:none;">
-          <div class="cc-section" style="border-color:var(--red-border);">
+          <div class="cc-section cc-section-flush" style="border-color:var(--red-border);">
             <div class="cc-section-hdr">
               <div class="cc-section-title" style="color:var(--red);">Needs Attention</div>
               <div class="cc-section-sub" id="attentionCount"></div>
             </div>
-            <div id="needsAttentionList"></div>
+            <table class="admin-table">
+              <thead><tr><th>Patient</th><th>Issue</th><th>Severity</th><th style="text-align:right;">Age</th></tr></thead>
+              <tbody id="needsAttentionList"></tbody>
+            </table>
           </div>
         </div>
 
         <!-- Phase C: Clinician Workload — full-width -->
-        <div class="cc-section">
+        <div class="cc-section cc-section-flush">
           <div class="cc-section-hdr">
             <div class="cc-section-title">Clinician Workload</div>
           </div>
-          <div id="clinicianQueues">
-            <div class="cc-empty">Loading...</div>
-          </div>
+          <table class="admin-table">
+            <thead><tr><th>Clinician</th><th>Oldest Pending</th><th style="text-align:right;">Open Reviews</th></tr></thead>
+            <tbody id="clinicianQueues">
+              <tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Phase D: Pipeline with time range toggle -->
@@ -1461,11 +1475,11 @@ function loadNeedsAttention() {
         var ageH = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 3600000);
         var isRequest = c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request' || d.request_category || d.refill_protocol;
         if (ageH >= 24) {
-          items.push({ sev: 0, title: (isRequest ? 'Request' : 'Intake') + ' overdue \u00B7 ' + (ageH < 48 ? ageH + 'h' : Math.floor(ageH/24) + 'd'), user: c.user_id, cls: 'high' });
+          items.push({ sev: 0, issue: (isRequest ? 'Request' : 'Intake') + ' overdue', ageH: ageH, user: c.user_id, cls: 'high', label: 'Overdue' });
         } else if (c.risk_status === 'high_risk') {
-          items.push({ sev: 1, title: 'High-risk intake', user: c.user_id, cls: 'high' });
+          items.push({ sev: 1, issue: 'High-risk intake', ageH: ageH, user: c.user_id, cls: 'high', label: 'High' });
         } else if (c.risk_status === 'moderate_risk' && ageH >= 12) {
-          items.push({ sev: 2, title: 'Moderate-risk \u00B7 ' + ageH + 'h pending', user: c.user_id, cls: 'mod' });
+          items.push({ sev: 2, issue: 'Moderate-risk intake', ageH: ageH, user: c.user_id, cls: 'mod', label: 'Moderate' });
         }
       });
       items.sort(function(a, b) { return a.sev - b.sev; });
@@ -1474,13 +1488,13 @@ function loadNeedsAttention() {
       document.getElementById('attentionCount').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
       list.innerHTML = items.slice(0, 8).map(function(it) {
         var name = profileName(it.user) || 'Patient';
-        return '<div class="cc-flag-row">' +
-          '<div class="cc-flag-icon ' + it.cls + '">!</div>' +
-          '<div class="cc-flag-info">' +
-            '<div class="cc-flag-title">' + escHtml(it.title) + '</div>' +
-            '<div class="cc-flag-meta">' + escHtml(name) + '</div>' +
-          '</div>' +
-        '</div>';
+        var ageStr = it.ageH < 1 ? '<1h' : it.ageH < 24 ? it.ageH + 'h' : Math.floor(it.ageH/24) + 'd';
+        return '<tr>' +
+          '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
+          '<td>' + escHtml(it.issue) + '</td>' +
+          '<td><span class="cc-sev-pill ' + it.cls + '">' + escHtml(it.label) + '</span></td>' +
+          '<td style="text-align:right;color:var(--text3);">' + ageStr + '</td>' +
+        '</tr>';
       }).join('');
     }).catch(function() { section.style.display = 'none'; });
 }
@@ -3132,6 +3146,9 @@ function loadIntakeFunnel() {
 function loadClinicianQueues() {
   var container = document.getElementById('clinicianQueues');
   if (!container) return;
+  var emptyRow = function(msg) {
+    return '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px;">' + escHtml(msg) + '</td></tr>';
+  };
   Promise.all([
     db.from('profiles').select('user_id, display_name, first_name, last_name, email').eq('role', 'clinician'),
     db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review')
@@ -3139,7 +3156,7 @@ function loadClinicianQueues() {
     var clinicians = (results[0].data || []);
     var pending = (results[1].data || []);
     if (!clinicians.length) {
-      container.innerHTML = '<div class="cc-empty">No clinicians yet.</div>';
+      container.innerHTML = emptyRow('No clinicians yet.');
       return;
     }
     var byClinId = {};
@@ -3157,25 +3174,21 @@ function loadClinicianQueues() {
       var bucket = byClinId[c.user_id] || { count: 0, oldest: null };
       var ageH = bucket.oldest ? Math.floor((Date.now() - bucket.oldest) / 3600000) : 0;
       var overdue = ageH >= 24;
-      var meta = bucket.count === 0 ? 'All caught up' : ('Oldest: ' + (ageH < 1 ? '<1h' : ageH < 24 ? ageH + 'h' : Math.floor(ageH/24) + 'd') + ' ago');
-      var initial = name.charAt(0).toUpperCase();
+      var meta = bucket.count === 0 ? 'All caught up' : ((ageH < 1 ? '<1h' : ageH < 24 ? ageH + 'h' : Math.floor(ageH/24) + 'd') + ' ago');
       return {
         html:
-          '<div class="cc-clinician-row">' +
-            '<div class="cc-clinician-avatar">' + escHtml(initial) + '</div>' +
-            '<div class="cc-clinician-info">' +
-              '<div class="cc-clinician-name">' + escHtml(name) + '</div>' +
-              '<div class="cc-clinician-meta">' + escHtml(meta) + '</div>' +
-            '</div>' +
-            '<div class="cc-clinician-count' + (overdue ? ' overdue' : '') + '">' + bucket.count + '</div>' +
-          '</div>',
+          '<tr>' +
+            '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
+            '<td style="color:var(--text3);">' + escHtml(meta) + '</td>' +
+            '<td style="text-align:right;"><span class="cc-count-pill' + (overdue ? ' overdue' : '') + '">' + bucket.count + '</span></td>' +
+          '</tr>',
         sortKey: -bucket.count
       };
     });
     rows.sort(function(a, b) { return a.sortKey - b.sortKey; });
-    container.innerHTML = rows.map(function(r) { return r.html; }).join('') || '<div class="cc-empty">No clinicians yet.</div>';
+    container.innerHTML = rows.map(function(r) { return r.html; }).join('') || emptyRow('No clinicians yet.');
   }).catch(function() {
-    container.innerHTML = '<div class="cc-empty">Failed to load clinician queues.</div>';
+    container.innerHTML = emptyRow('Failed to load clinician queues.');
   });
 }
 

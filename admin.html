@@ -358,8 +358,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pd-dropdown-option:hover{background:rgba(20,20,20,0.04);}
 .pd-dropdown-option.active{background:var(--green-tint);color:var(--green);font-weight:600;}
 
-.cfg-cat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);}
-.cfg-cat-manage-btn{margin-left:auto;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
+/* Product catalog action row — primary CTA left, utility actions right */
+.cfg-actions-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.cfg-actions-right{display:flex;align-items:center;gap:2px;}
+.cfg-util-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.02em;padding:8px 14px;border-radius:var(--radius-pill);background:transparent;border:none;color:var(--text3);cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;}
+.cfg-util-btn:hover{background:rgba(20,20,20,0.05);color:var(--text);}
+
+/* Product catalog filter row — search + filters + count, subtle styling */
+.cfg-filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.cfg-filter-row .toolbar-count{margin-left:auto;}
+
+.cfg-cat-manage-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 
 .cfg-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
@@ -1031,25 +1040,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <!-- Product Catalog (unified products + categories) -->
         <div class="cfg-section active" id="cfg-protocols">
-          <div class="toolbar">
+          <!-- Primary action row: Add on the left, utilities on the right -->
+          <div class="cfg-actions-row">
             <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Product</button>
-            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()"/>
-            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()">
-              <option value="active">Active only</option>
-              <option value="all">Active + archived</option>
-              <option value="archived">Archived only</option>
-            </select>
-            <button class="toolbar-btn secondary" onclick="openBulkImport()">Bulk Import</button>
-            <button class="toolbar-btn secondary" onclick="exportProductsCSV()">Export CSV</button>
-            <span class="toolbar-count" id="protocolCount"></span>
-          </div>
-          <div id="protocolsNotReady" style="display:none;">
-            <div class="cfg-migration-note">
-              <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
+            <div class="cfg-actions-right">
+              <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
+              <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
+              <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
             </div>
           </div>
-          <div class="cfg-cat-bar" id="cfgCatBar">
-            <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:180px;">
+          <!-- Filter row: search + all filters + count -->
+          <div class="cfg-filter-row">
+            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="flex:1;max-width:320px;"/>
+            <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:160px;">
               <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
                 <span class="pd-dropdown-value">All categories</span>
                 <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1067,7 +1070,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
               </div>
             </div>
-            <button class="cfg-cat-manage-btn" onclick="openCategoryManager()">Manage Categories</button>
+            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:140px;">
+              <option value="active">Active</option>
+              <option value="all">All</option>
+              <option value="archived">Archived</option>
+            </select>
+            <span class="toolbar-count" id="protocolCount"></span>
+          </div>
+          <div id="protocolsNotReady" style="display:none;">
+            <div class="cfg-migration-note">
+              <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
+            </div>
           </div>
           <div class="cfg-product-grid" id="protocolsGrid"></div>
           <div id="protocolsEmpty" class="cfg-placeholder" style="display:none;">

@@ -383,6 +383,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cfg-tbl-hdr-dot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;margin-left:4px;}
 .cfg-tbl-hdr-menu{position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:200px;padding:4px;z-index:50;text-align:left;}
 .cfg-tbl-th[data-align="right"] .cfg-tbl-hdr-menu{left:auto;right:0;}
+.cfg-tbl-th[data-align="center"] .cfg-tbl-hdr-menu{left:50%;transform:translateX(-50%);}
 .cfg-tbl-hdr-menu-section{padding:4px 0;}
 .cfg-tbl-hdr-menu-section + .cfg-tbl-hdr-menu-section{border-top:1px solid var(--border);}
 .cfg-tbl-hdr-menu-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text4);padding:6px 10px 4px;}
@@ -1569,12 +1570,12 @@ var _protoColFilters = { category: null, product_type: null, is_archived: 'activ
 var _openColFilterCol = null; // which column's filter popup is open
 
 var _protoTableCols = [
-  { key: 'name',         label: 'Name',        sortable: true,  align: 'left'  },
-  { key: 'description',  label: 'Description', sortable: false, align: 'left'  },
-  { key: 'category',     label: 'Category',    sortable: true,  align: 'left',  filter: 'category'    },
-  { key: 'product_type', label: 'Subcategory', sortable: true,  align: 'left',  filter: 'product_type'},
-  { key: 'price',        label: 'Price',       sortable: true,  align: 'right' },
-  { key: 'is_archived',  label: 'Status',      sortable: true,  align: 'left',  filter: 'is_archived' }
+  { key: 'name',         label: 'Name',        sortable: true,  align: 'left'   },
+  { key: 'description',  label: 'Description', sortable: false, align: 'left'   },
+  { key: 'category',     label: 'Category',    sortable: true,  align: 'center', filter: 'category'    },
+  { key: 'product_type', label: 'Subcategory', sortable: true,  align: 'center', filter: 'product_type'},
+  { key: 'price',        label: 'Price',       sortable: true,  align: 'center' },
+  { key: 'is_archived',  label: 'Status',      sortable: true,  align: 'center', filter: 'is_archived' }
 ];
 
 // Tracks which column header menu is currently open (null = none).
@@ -1586,21 +1587,21 @@ function _renderProtoThead() {
   var ths = _protoTableCols.map(function(col) {
     var sortActive = _protoSortCol === col.key;
     var filterActive = col.filter && _colFilterIsActive(col.filter);
-    var hasIndicator = sortActive || filterActive;
     var sortArrow = sortActive ? (_protoSortDir === 'asc' ? '\u25B2' : '\u25BC') : '';
-    var dot = hasIndicator ? '<span class="cfg-tbl-hdr-dot"></span>' : '';
-    var style = col.align === 'right' ? ' style="text-align:right;"' : '';
-    var dataAlign = col.align === 'right' ? ' data-align="right"' : '';
+    var style = col.align === 'right' ? ' style="text-align:right;"' : (col.align === 'center' ? ' style="text-align:center;"' : '');
+    var dataAlign = col.align === 'right' ? ' data-align="right"' : (col.align === 'center' ? ' data-align="center"' : '');
     var isOpen = _openHdrMenuCol === col.key;
     var thClasses = 'cfg-tbl-th' + (isOpen ? ' open' : '');
     var interactive = col.sortable || col.filter;
-    var label = escHtml(col.label);
+    // Active filter turns the label text green; active sort adds a green arrow.
+    var labelStyle = filterActive ? ' style="color:var(--green);"' : '';
+    var label = '<span' + labelStyle + '>' + escHtml(col.label) + '</span>';
     var sortSuffix = sortActive ? ' <span style="color:var(--green);font-weight:600;">' + sortArrow + '</span>' : '';
     var chev = interactive ? '<span class="cfg-tbl-hdr-chev">\u25BE</span>' : '';
     var btnAttrs = interactive
       ? ' onclick="event.stopPropagation();_toggleHdrMenu(\'' + col.key + '\')"'
       : ' disabled';
-    var btn = '<button type="button" class="cfg-tbl-hdr-btn"' + btnAttrs + '>' + label + sortSuffix + dot + chev + '</button>';
+    var btn = '<button type="button" class="cfg-tbl-hdr-btn"' + btnAttrs + '>' + label + sortSuffix + chev + '</button>';
     var menu = isOpen ? _buildHdrMenu(col) : '';
     return '<th' + style + dataAlign + ' class="' + thClasses + '">' + btn + menu + '</th>';
   }).join('');
@@ -1742,10 +1743,10 @@ function filterProtocols() {
     return '<tr class="' + rowCls + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
       '<td><div style="font-weight:600;color:var(--text);">' + escHtml(p.name || '') + '</div></td>' +
       '<td style="max-width:320px;">' + descCell + '</td>' +
-      '<td>' + catCell + '</td>' +
-      '<td>' + typeCell + '</td>' +
-      '<td style="text-align:right;font-variant-numeric:tabular-nums;">' + priceCell + '</td>' +
-      '<td>' + statusCell + '</td>' +
+      '<td style="text-align:center;">' + catCell + '</td>' +
+      '<td style="text-align:center;">' + typeCell + '</td>' +
+      '<td style="text-align:center;font-variant-numeric:tabular-nums;">' + priceCell + '</td>' +
+      '<td style="text-align:center;">' + statusCell + '</td>' +
       '<td style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">' +
         '<button class="cfg-icon-btn" onclick="duplicateProduct(\'' + escHtml(p.id) + '\')">Duplicate</button>' +
         '<button class="cfg-icon-btn" style="margin-left:4px;" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +

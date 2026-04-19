@@ -1140,14 +1140,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Clinician</th><th>Open Reviews</th><th>Max Concurrent</th><th>Working Hours</th><th>Status</th></tr></thead>
+              <thead><tr><th>Clinician</th><th style="text-align:center;">Open Reviews</th><th style="text-align:center;">Max Concurrent</th><th>Working Hours</th><th style="text-align:center;">Status</th><th></th></tr></thead>
               <tbody id="clinicianCapBody">
-                <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
+                <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
-          <div class="cfg-placeholder" style="margin-top:14px;">
-            <strong>Coming soon:</strong> Editable max-concurrent patient cap, per-day working hours, and vacation windows. Needs a <code>clinician_settings</code> table. For now, this view surfaces the current real workload so you can manually rebalance via the Users tab.
+          <!-- Clinician edit modal -->
+          <div class="detail-panel-backdrop" id="clinCapBackdrop" onclick="closeClinicianCapEditor()"></div>
+          <div class="detail-panel" id="clinCapPanel" style="max-width:480px;">
+            <div class="detail-panel-header">
+              <div class="detail-panel-title" id="clinCapTitle">Clinician Settings</div>
+              <button class="detail-close" onclick="closeClinicianCapEditor()">Close</button>
+            </div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Max Concurrent Patients</label>
+                <input type="number" id="clinCapMaxField" placeholder="No limit" min="0" step="1"/>
+              </div>
+              <div class="form-field">
+                <label>Working Hours</label>
+                <input type="text" id="clinCapHoursField" placeholder="e.g. Mon-Fri 9am-5pm EST"/>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="form-btn secondary" onclick="closeClinicianCapEditor()">Cancel</button>
+              <button class="form-btn primary" id="clinCapSaveBtn" onclick="saveClinicianCapacity()">Save</button>
+            </div>
           </div>
         </div>
 
@@ -2292,41 +2311,115 @@ function addCategory() {
 // clinician with their current open-review load. Editable controls
 // (max concurrent, working hours, vacation) land once we add the
 // clinician_settings table.
+var _clinCapData = []; // cached clinician profiles with capacity columns
+var _editingClinicianId = null;
+
 function renderClinicianCapacity() {
   var tbody = document.getElementById('clinicianCapBody');
   if (!tbody) return;
   var q = ((document.getElementById('clinicianCapSearch') || {}).value || '').toLowerCase();
-  var clinicians = (allUsers || []).filter(function(u) { return u.role === 'clinician'; });
+  // Fetch fresh clinician data including capacity columns
+  db.from('profiles').select('user_id, display_name, first_name, last_name, email, max_concurrent_patients, working_hours')
+    .eq('role', 'clinician').order('display_name', { ascending: true })
+    .then(function(r) {
+      _clinCapData = (r.data || []);
+      _renderClinicianCapTable(q);
+    })
+    .catch(function() {
+      // Columns may not exist yet — fall back to allUsers
+      _clinCapData = (allUsers || []).filter(function(u) { return u.role === 'clinician'; });
+      _renderClinicianCapTable(q);
+    });
+}
+
+function _renderClinicianCapTable(q) {
+  var tbody = document.getElementById('clinicianCapBody');
+  if (!tbody) return;
   var byCId = {};
   (allConsultations || []).forEach(function(c) {
     if (c.review_status === 'pending_review' && c.assigned_clinician_id) {
       byCId[c.assigned_clinician_id] = (byCId[c.assigned_clinician_id] || 0) + 1;
     }
   });
-  var rows = clinicians.filter(function(c) {
+  var rows = _clinCapData.filter(function(c) {
     if (!q) return true;
-    var n = (c.display_name || '').toLowerCase();
-    var e = (c.email || '').toLowerCase();
-    return n.indexOf(q) !== -1 || e.indexOf(q) !== -1;
+    var n = ((c.display_name || '') + ' ' + (c.first_name || '') + ' ' + (c.last_name || '') + ' ' + (c.email || '')).toLowerCase();
+    return n.indexOf(q) !== -1;
   });
   var cnt = document.getElementById('clinicianCapCount');
-  if (cnt) cnt.textContent = rows.length + ' clinicians';
+  if (cnt) cnt.textContent = rows.length + ' clinician' + (rows.length !== 1 ? 's' : '');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">No clinicians match.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No clinicians match.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(function(c) {
     var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
     var load = byCId[c.user_id] || 0;
-    var loadCls = load === 0 ? 'active' : load < 10 ? 'paused' : 'cancelled';
-    return '<tr>' +
+    var maxCap = c.max_concurrent_patients;
+    var hours = c.working_hours || '';
+    var maxDisplay = (maxCap != null) ? maxCap : '<span style="color:var(--text4);">No limit</span>';
+    var hoursDisplay = hours || '<span style="color:var(--text4);">Not set</span>';
+    var status, statusColor;
+    if (maxCap != null && maxCap > 0 && load >= maxCap) {
+      status = 'At capacity'; statusColor = 'var(--red)';
+    } else if (load === 0) {
+      status = 'Available'; statusColor = 'var(--green)';
+    } else {
+      status = 'Active'; statusColor = 'var(--amber)';
+    }
+    return '<tr class="clickable" onclick="openClinicianCapEditor(\'' + escHtml(c.user_id) + '\')">' +
       '<td style="color:var(--text);font-weight:500;">' + escHtml(name) + '</td>' +
-      '<td>' + load + '</td>' +
-      '<td style="color:var(--text4);">Not set</td>' +
-      '<td style="color:var(--text4);">Not set</td>' +
-      '<td><span class="status-pill ' + loadCls + '">' + (load === 0 ? 'Available' : load < 10 ? 'Normal' : 'At capacity') + '</span></td>' +
-      '</tr>';
+      '<td style="text-align:center;">' + load + '</td>' +
+      '<td style="text-align:center;">' + maxDisplay + '</td>' +
+      '<td>' + hoursDisplay + '</td>' +
+      '<td style="text-align:center;color:' + statusColor + ';font-weight:500;">' + status + '</td>' +
+      '<td style="text-align:right;" onclick="event.stopPropagation()"><button class="cfg-icon-btn" onclick="openClinicianCapEditor(\'' + escHtml(c.user_id) + '\')">Edit</button></td>' +
+    '</tr>';
   }).join('');
+}
+
+function openClinicianCapEditor(userId) {
+  var c = (_clinCapData || []).find(function(x) { return x.user_id === userId; });
+  if (!c) return;
+  _editingClinicianId = userId;
+  var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
+  document.getElementById('clinCapTitle').textContent = name;
+  document.getElementById('clinCapMaxField').value = (c.max_concurrent_patients != null) ? c.max_concurrent_patients : '';
+  document.getElementById('clinCapHoursField').value = c.working_hours || '';
+  document.getElementById('clinCapPanel').classList.add('show');
+  document.getElementById('clinCapBackdrop').classList.add('show');
+}
+
+function closeClinicianCapEditor() {
+  document.getElementById('clinCapPanel').classList.remove('show');
+  document.getElementById('clinCapBackdrop').classList.remove('show');
+  _editingClinicianId = null;
+}
+
+function saveClinicianCapacity() {
+  if (!_editingClinicianId) return;
+  var maxVal = document.getElementById('clinCapMaxField').value;
+  var hours = (document.getElementById('clinCapHoursField').value || '').trim();
+  var maxInt = maxVal !== '' ? parseInt(maxVal, 10) : null;
+  var btn = document.getElementById('clinCapSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  db.from('profiles').update({
+    max_concurrent_patients: maxInt,
+    working_hours: hours || null,
+    updated_at: new Date().toISOString()
+  }).eq('user_id', _editingClinicianId).then(function(r) {
+    if (r.error) { showToast('Save failed: ' + r.error.message, 'error'); }
+    else {
+      writeAuditLog('clinician.capacity_updated', _editingClinicianId, { max: maxInt, hours: hours });
+      showToast('Clinician capacity saved.', 'success');
+      closeClinicianCapEditor();
+      renderClinicianCapacity();
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }).catch(function() {
+    showToast('Save failed. Run migration 007.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  });
 }
 
 function toggleArchiveCategory(id) {

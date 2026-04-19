@@ -840,12 +840,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="detail-section-title">Patient Info</div>
           <div class="detail-grid" id="consultPatientGrid"></div>
           <div class="detail-divider"></div>
-          <div class="detail-section-title">Intake Responses</div>
+          <div class="detail-section-title">Status &amp; Assignment</div>
           <div class="detail-grid" id="consultIntakeGrid"></div>
           <div class="detail-divider"></div>
-          <div class="detail-section-title">Evaluation</div>
-          <div class="detail-grid" id="consultEvalGrid"></div>
-          <div class="detail-actions" id="consultActions">
+          <div class="detail-section-title">Prescriptions</div>
+          <div id="consultEvalGrid"></div>
+          <div class="detail-actions" id="consultActions" style="display:none;">
             <select class="filter-select" id="consultProtoSelect">
               <option value="">Assign Product...</option>
               <option value="Sleep">Sleep</option>
@@ -3696,8 +3696,9 @@ var allConsultations = [];
 var selectedConsultId = null;
 
 function getConsultStatus(c) {
-  if (c.prescription_given === false || c.protocol_assigned === 'no prescription') return 'not_prescribed';
-  if (c.protocol_assigned && c.protocol_assigned !== 'no prescription') return 'prescribed';
+  var rs = c.review_status || '';
+  if (rs === 'prescribed' || rs === 'discontinued') return 'prescribed';
+  if (rs === 'not_prescribed' || rs === 'withdrawn') return 'not_prescribed';
   return 'awaiting';
 }
 
@@ -3714,32 +3715,29 @@ function getConsultStatusClass(status) {
 }
 
 function loadConsultations() {
-  db.from('consultations').select('*, profiles!consultations_user_id_fkey(display_name, email)')
+  // Filter out protocol_request and refill_request — those aren't patient
+  // intakes and show up as "Unknown" because they have no intake data.
+  function _processConsultRows(rows) {
+    allConsultations = (rows || []).filter(function(c) {
+      // Skip protocol/refill requests — they're not patient intakes
+      if (c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request') return false;
+      if (c.data && c.data.request_category && !c.data.first_name) return false;
+      if (c.data && c.data.refill_protocol && !c.data.first_name) return false;
+      return true;
+    });
+    updateConsultStats();
+    filterConsultations();
+  }
+  db.from('consultations').select('*')
     .order('created_at', { ascending: false })
     .then(function(r) {
-      if (r.error) {
-        // Fallback: load without join if FK doesn't exist
-        db.from('consultations').select('*')
-          .order('created_at', { ascending: false })
-          .then(function(r2) {
-            allConsultations = (r2.data || []).map(function(c) {
-              c._name = (c.data && c.data.first_name ? c.data.first_name + ' ' + (c.data.last_name || '') : 'Unknown').trim();
-              c._email = (c.data && c.data.email) || '--';
-              return c;
-            });
-            updateConsultStats();
-            filterConsultations();
-          });
-        return;
-      }
-      allConsultations = (r.data || []).map(function(c) {
-        var p = c.profiles;
-        c._name = p ? (p.display_name || p.email || 'Unknown') : (c.data && c.data.first_name ? c.data.first_name + ' ' + (c.data.last_name || '') : 'Unknown').trim();
-        c._email = p ? (p.email || '--') : ((c.data && c.data.email) || '--');
+      var rows = (r.data || []).map(function(c) {
+        var d = c.data || {};
+        c._name = (d.first_name ? (d.first_name + ' ' + (d.last_name || '')).trim() : profileName(c.user_id)) || 'Unknown';
+        c._email = d.email || profileName(c.user_id) || '--';
         return c;
       });
-      updateConsultStats();
-      filterConsultations();
+      _processConsultRows(rows);
     });
 }
 
@@ -3806,7 +3804,7 @@ function openConsultDetail(id) {
   var backdrop = document.getElementById('consultDetailBackdrop');
   panel.classList.add('show');
   if (backdrop) backdrop.classList.add('show');
-  document.getElementById('consultDetailTitle').textContent = c._name + ' — Consultation';
+  document.getElementById('consultDetailTitle').textContent = c._name;
 
   // Patient info
   var d = c.data || {};
@@ -3822,35 +3820,47 @@ function openConsultDetail(id) {
     return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
   }).join('');
 
-  // Intake
-  var intakeFields = [
-    { label: 'Height', value: d.height || '--' },
-    { label: 'Target Weight', value: d.target_weight || '--' },
-    { label: 'Goals', value: (d.goals && d.goals.length) ? d.goals.join(', ') : '--' },
-    { label: 'Address', value: [d.street_address, d.apt_unit, d.city, d.state, d.zip_code].filter(Boolean).join(', ') || '--' },
-    { label: 'Booking Date', value: d.booking_date || '--' },
-    { label: 'Submitted', value: d.submitted_at ? new Date(d.submitted_at).toLocaleString() : (c.created_at ? new Date(c.created_at).toLocaleString() : '--') }
+  // Status & assignment — what the admin actually cares about
+  var status = getConsultStatus(c);
+  var clinicianName = c.assigned_clinician_id ? profileName(c.assigned_clinician_id) : 'Unassigned';
+  var submittedDate = d.submitted_at ? new Date(d.submitted_at).toLocaleString() : (c.created_at ? new Date(c.created_at).toLocaleString() : '--');
+  var riskLabel = c.risk_status ? (c.risk_status === 'high_risk' ? 'High' : c.risk_status === 'moderate_risk' ? 'Moderate' : 'Low') : '--';
+  var goals = (d.goals && d.goals.length) ? d.goals.join(', ') : '--';
+  var statusFields = [
+    { label: 'Status', value: getConsultStatusLabel(status) },
+    { label: 'Assigned Clinician', value: clinicianName },
+    { label: 'Risk', value: riskLabel },
+    { label: 'Submitted', value: submittedDate },
+    { label: 'Goals', value: goals },
+    { label: 'Address', value: [d.street_address, d.city, d.state, d.zip_code].filter(Boolean).join(', ') || '--' }
   ];
-  document.getElementById('consultIntakeGrid').innerHTML = intakeFields.map(function(f) {
+  document.getElementById('consultIntakeGrid').innerHTML = statusFields.map(function(f) {
     return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
   }).join('');
 
-  // Evaluation
-  var status = getConsultStatus(c);
-  var evalFields = [
-    { label: 'Status', value: getConsultStatusLabel(status) },
-    { label: 'Protocol Assigned', value: c.protocol_assigned || 'None' },
-    { label: 'Prescription Given', value: c.prescription_given === true ? 'Yes' : c.prescription_given === false ? 'No' : 'Pending' },
-    { label: 'Dose', value: c.dose_amount ? c.dose_amount + ' ' + (c.dose_unit || '') : '--' },
-    { label: 'Frequency', value: c.frequency || '--' },
-    { label: 'Duration', value: c.duration || '--' },
-    { label: 'Session Notes', value: c.session_notes || '--' },
-    { label: 'Evaluation Date', value: c.evaluation_date ? new Date(c.evaluation_date).toLocaleString() : '--' },
-    { label: 'No Rx Reason', value: c.no_prescription_reason || '--' }
-  ];
-  document.getElementById('consultEvalGrid').innerHTML = evalFields.map(function(f) {
-    return '<div class="detail-field"><div class="detail-label">' + f.label + '</div><div class="detail-value">' + escHtml(f.value) + '</div></div>';
-  }).join('');
+  // Active prescriptions — show what the clinician has prescribed
+  document.getElementById('consultEvalGrid').innerHTML = '<div style="color:var(--text3);font-size:12px;">Loading prescriptions...</div>';
+  db.from('prescriptions').select('protocol_key, status, dose_amount, dose_unit, frequency, timing, duration')
+    .eq('user_id', c.user_id).order('started_at', { ascending: false }).limit(10)
+    .then(function(rxRes) {
+      var rxs = (rxRes.data || []);
+      if (!rxs.length) {
+        document.getElementById('consultEvalGrid').innerHTML = '<div style="color:var(--text3);font-size:12px;">No prescriptions yet.</div>';
+        return;
+      }
+      document.getElementById('consultEvalGrid').innerHTML = rxs.map(function(rx) {
+        var details = [rx.dose_amount && rx.dose_unit ? rx.dose_amount + ' ' + rx.dose_unit : null, rx.frequency, rx.timing, rx.duration].filter(Boolean).join(' \u00B7 ');
+        var statusColor = rx.status === 'active' ? 'var(--green)' : 'var(--text3)';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">' +
+          '<div><div style="font-weight:600;color:var(--text);">' + escHtml(rx.protocol_key || 'Product') + '</div>' +
+          (details ? '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + escHtml(details) + '</div>' : '') +
+          '</div>' +
+          '<span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:' + statusColor + ';">' + escHtml(rx.status || '--') + '</span>' +
+        '</div>';
+      }).join('');
+    }).catch(function() {
+      document.getElementById('consultEvalGrid').innerHTML = '<div style="color:var(--text3);font-size:12px;">Could not load prescriptions.</div>';
+    });
 
   // Set protocol select — populate dynamically from protocol_templates
   // if available, falling back to the static list the modal ships with.

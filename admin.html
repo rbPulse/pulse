@@ -939,6 +939,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="toolbar">
           <input type="text" class="search-input" id="msgSearch" placeholder="Search threads..." oninput="filterThreads()"/>
+          <select class="filter-select" id="msgRoleFilter" onchange="filterThreads()">
+            <option value="">All Threads</option>
+            <option value="has_clinician">Has Clinician Messages</option>
+            <option value="has_admin">Has Admin Messages</option>
+            <option value="patient_only">Patient Only</option>
+            <option value="unread">Unread</option>
+          </select>
+          <select class="filter-select" id="msgClinicianFilter" onchange="filterThreads()">
+            <option value="">All Clinicians</option>
+          </select>
           <span class="toolbar-count" id="msgCount"></span>
         </div>
         <div style="display:flex;gap:16px;min-height:400px;">
@@ -4028,26 +4038,55 @@ function loadMessages() {
         var threadMsgs = threadMap[tid];
         var last = threadMsgs[threadMsgs.length - 1];
         var unread = threadMsgs.filter(function(m) { return !m.read; }).length;
+        var hasClinician = threadMsgs.some(function(m) { return m.sender_role === 'clinician'; });
+        var hasAdmin = threadMsgs.some(function(m) { return m.sender_role === 'admin'; });
+        // Extract clinician names from messages in this thread
+        var clinicianNames = [];
+        threadMsgs.forEach(function(m) {
+          if (m.sender_role === 'clinician' && m.sender_name && clinicianNames.indexOf(m.sender_name) === -1) {
+            clinicianNames.push(m.sender_name);
+          }
+        });
         return {
           thread_id: tid,
           messages: threadMsgs,
           last_message: last,
           unread: unread,
           name: profileName(tid),
-          last_at: last.created_at
+          last_at: last.created_at,
+          hasClinician: hasClinician,
+          hasAdmin: hasAdmin,
+          clinicianNames: clinicianNames
         };
       });
       // Sort by most recent
       allThreads.sort(function(a, b) { return b.last_at > a.last_at ? 1 : -1; });
+      // Populate clinician filter dropdown
+      var clinSet = {};
+      allThreads.forEach(function(t) { t.clinicianNames.forEach(function(n) { clinSet[n] = true; }); });
+      var clinSelect = document.getElementById('msgClinicianFilter');
+      if (clinSelect) {
+        var prev = clinSelect.value;
+        clinSelect.innerHTML = '<option value="">All Clinicians</option>' +
+          Object.keys(clinSet).sort().map(function(n) { return '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; }).join('');
+        if (prev && clinSet[prev]) clinSelect.value = prev;
+      }
       filterThreads();
     });
 }
 
 function filterThreads() {
   var q = (document.getElementById('msgSearch').value || '').toLowerCase();
+  var roleF = (document.getElementById('msgRoleFilter') || {}).value || '';
+  var clinF = (document.getElementById('msgClinicianFilter') || {}).value || '';
   var filtered = allThreads.filter(function(t) {
-    if (!q) return true;
-    return t.name.toLowerCase().indexOf(q) !== -1;
+    if (q && t.name.toLowerCase().indexOf(q) === -1) return false;
+    if (roleF === 'has_clinician' && !t.hasClinician) return false;
+    if (roleF === 'has_admin' && !t.hasAdmin) return false;
+    if (roleF === 'patient_only' && (t.hasClinician || t.hasAdmin)) return false;
+    if (roleF === 'unread' && !t.unread) return false;
+    if (clinF && t.clinicianNames.indexOf(clinF) === -1) return false;
+    return true;
   });
   document.getElementById('msgCount').textContent = filtered.length + ' threads';
   renderThreadList(filtered);

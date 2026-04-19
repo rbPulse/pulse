@@ -370,8 +370,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cfg-product-card-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.01em;line-height:1.3;}
 .cfg-product-card-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;}
 .cfg-product-card-cat{display:inline-block;font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:3px 9px;border-radius:var(--radius-pill);background:var(--amber-tint);border:1px solid var(--amber-border);color:var(--amber);flex-shrink:0;}
-.cfg-product-card-desc{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;}
-.cfg-product-card-desc-item{display:inline-block;background:var(--green-tint);border:1px solid var(--green-border);color:var(--green);font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--radius-pill);margin:0 4px 4px 0;}
+.cfg-product-card-desc{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;}
 .cfg-product-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--border);}
 .cfg-product-card-status{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
 .cfg-product-card-status.active{color:var(--green);}
@@ -1234,8 +1233,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <input type="number" id="protoFieldPrice" placeholder="0.00" step="0.01" min="0"/>
             </div>
             <div class="form-field" style="grid-column:1 / -1;">
-              <label>Description / Components (one per line)</label>
-              <textarea id="protoFieldCompounds" class="admin-msg-ta" style="min-height:90px;" placeholder="e.g. Vitamin D 5000 IU&#10;Omega-3 1000mg"></textarea>
+              <label>Description</label>
+              <textarea id="protoFieldCompounds" class="admin-msg-ta" style="min-height:90px;" placeholder="Product description, ingredients, or key details..."></textarea>
             </div>
             <div class="form-field" style="grid-column:1 / -1;">
               <label>Clinical Note</label>
@@ -1529,9 +1528,8 @@ function filterProtocols() {
   grid.innerHTML = rows.map(function(p) {
     var compounds = Array.isArray(p.compounds) ? p.compounds : [];
     var descHtml = compounds.length
-      ? compounds.slice(0, 4).map(function(c) { return '<span class="cfg-product-card-desc-item">' + escHtml(c) + '</span>'; }).join('') +
-        (compounds.length > 4 ? '<span class="cfg-product-card-desc-item" style="background:transparent;border-color:var(--border);color:var(--text3);">+' + (compounds.length - 4) + ' more</span>' : '')
-      : '<span style="color:var(--text4);font-size:11px;">No description yet.</span>';
+      ? escHtml(compounds.join(', '))
+      : '<span style="color:var(--text4);">No description yet.</span>';
     var typeBadge = p.product_type
       ? '<span class="cfg-product-card-cat">' + escHtml(p.product_type) + '</span>'
       : '';

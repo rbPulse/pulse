@@ -632,6 +632,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="form-field">
               <label>Role</label>
               <select id="newUserRole" onchange="toggleAdminType()">
+                <option value="" disabled selected>Select role...</option>
                 <option value="member">Member</option>
                 <option value="clinician">Clinician</option>
                 <option value="admin">Admin</option>
@@ -639,7 +640,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </div>
             <div class="form-field" id="adminTypeField" style="display:none;">
               <label>Admin Type</label>
-              <select id="newUserAdminType">
+              <select id="newUserAdminType" style="width:100%;box-sizing:border-box;">
                 <option value="super_admin">Super Admin</option>
               </select>
             </div>
@@ -2434,7 +2435,7 @@ function toggleCreateUser() {
     document.getElementById('newUserPassword').value = '';
     document.getElementById('newUserFirstName').value = '';
     document.getElementById('newUserLastName').value = '';
-    document.getElementById('newUserRole').value = 'member';
+    document.getElementById('newUserRole').value = '';
     document.getElementById('adminTypeField').style.display = 'none';
     document.getElementById('newUserAdminType').value = 'super_admin';
   }
@@ -2461,6 +2462,10 @@ function createUser() {
 
   if (!email || !password) {
     showToast('Email and password are required', 'error');
+    return;
+  }
+  if (!baseRole) {
+    showToast('Select a role', 'error');
     return;
   }
   if (password.length < 6) {

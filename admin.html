@@ -1570,17 +1570,17 @@ var _defaultAutomations = [
   { key:'auto_schedule_checkins', label:'Auto-Schedule Check-ins',   portal:'member', category:'Onboarding', description:'Creates recurring check-in appointments based on protocol duration', enabled:true, config:{duration_minutes:20,frequency:'monthly'} },
   { key:'purchase_confirmation',  label:'Purchase Confirmation',     portal:'member', category:'Onboarding', description:'Sends a confirmation message to the member after completing checkout', enabled:true, config:{template:'Your order is confirmed. Your clinician will follow up shortly.'} },
   // Member Portal > Engagement
-  { key:'wellness_prompts',       label:'Wellness Check-in Prompts', portal:'member', category:'Engagement', description:'Shows a rotating prompt on the Overview tab to gather member wellness data', enabled:true, config:{cadence:'weekly',prompt_count:10} },
+  { key:'wellness_prompts',       label:'Member Check-in Prompts',   portal:'member', category:'Engagement', description:'Shows a rotating prompt on the member Overview to gather feedback and wellness data', enabled:true, config:{cadence:'weekly',prompts:['How are you feeling this week?','Noticed any changes since starting your program?','How would you rate your energy level lately?','How are you sleeping?','Anything your care team should know about?','Any concerns or side effects to report?','What\u2019s been going well with your routine?','How would you describe your progress so far?','Any questions for your clinician?','Anything we could do better for you?']} },
   { key:'checkin_routing',        label:'Check-in \u2192 Clinician', portal:'member', category:'Engagement', description:'Routes member check-in responses to the assigned clinician as a message', enabled:true, config:{} },
   { key:'low_supply_alert',       label:'Low Supply Alert',          portal:'member', category:'Engagement', description:'Shows a refill prompt when product supply drops below threshold', enabled:true, config:{threshold_days:14} },
-  { key:'inactivity_nudge',       label:'Inactivity Nudge',          portal:'member', category:'Engagement', description:'Sends a message if a member hasn\'t logged activity in a set number of days', enabled:true, config:{days_inactive:7} },
-  { key:'protocol_completion',    label:'Protocol Completion',       portal:'member', category:'Engagement', description:'Prompts member for next steps when their protocol duration ends', enabled:true, config:{} },
+  { key:'inactivity_nudge',       label:'Inactivity Nudge',          portal:'member', category:'Engagement', description:'Sends a message if a member hasn\'t logged activity in a set number of days', enabled:true, config:{days_inactive:7,template:'We noticed you haven\u2019t logged any activity recently. Your care team is here to help \u2014 feel free to reach out or log your latest dose.'} },
+  { key:'protocol_completion',    label:'Plan Completion',           portal:'member', category:'Engagement', description:'Prompts member for next steps when their treatment plan duration ends', enabled:true, config:{template:'Your {protocolName} plan has reached its scheduled duration. Request a refill or reach out to your clinician to discuss next steps.'} },
   // Member Portal > Requests
-  { key:'protocol_request_routing',label:'Protocol Requests',        portal:'member', category:'Requests', description:'Routes new protocol requests to the clinician with a message and notification', enabled:true, config:{auto_notify:true,auto_message:true} },
+  { key:'protocol_request_routing',label:'Product Requests',         portal:'member', category:'Requests', description:'Routes new product requests to the clinician with a message and notification', enabled:true, config:{auto_notify:true,auto_message:true} },
   { key:'refill_request_routing', label:'Refill Requests',           portal:'member', category:'Requests', description:'Routes refill requests to the clinician with supply details and any medical updates', enabled:true, config:{auto_notify:true,auto_message:true} },
   // Clinician Portal > Intake Pipeline
   { key:'auto_assign_clinician',  label:'Auto-Assign Clinician',     portal:'clinician', category:'Intake Pipeline', description:'Assigns new intakes to the clinician with the lowest open review count', enabled:true, config:{mode:'lowest_load',state_filter:true} },
-  { key:'risk_evaluation',        label:'Risk Scoring',              portal:'clinician', category:'Intake Pipeline', description:'Evaluates medical history and assigns a risk tier (low, moderate, high)', enabled:true, config:{high_threshold:4,moderate_threshold:2} },
+  { key:'risk_evaluation',        label:'Risk Scoring',              portal:'clinician', category:'Intake Pipeline', description:'Evaluates intake responses and assigns a risk tier based on configurable factors and weights', enabled:true, config:{high_threshold:4,moderate_threshold:2,factors:[{key:'cancer',label:'Cancer history',weight:2,enabled:true},{key:'cardiovascular',label:'Cardiovascular disease',weight:2,enabled:true},{key:'diabetes',label:'Diabetes',weight:1,enabled:true},{key:'autoimmune',label:'Autoimmune condition',weight:1,enabled:true},{key:'hormone_sensitive',label:'Hormone-sensitive condition',weight:1,enabled:true},{key:'multi_conditions',label:'3+ combined conditions',weight:2,enabled:true},{key:'current_use',label:'Currently using similar products',weight:1,enabled:true},{key:'age_65',label:'Age 65+',weight:1,enabled:true},{key:'high_bp',label:'Blood pressure \u2265 160/100',weight:1,enabled:true},{key:'high_bmi',label:'BMI \u2265 35',weight:1,enabled:true}]} },
   { key:'overdue_flag',           label:'Overdue Review Flag',       portal:'clinician', category:'Intake Pipeline', description:'Flags pending intakes as overdue after a set time with no clinician action', enabled:true, config:{threshold_hours:24} },
   { key:'high_risk_admin_alert',  label:'High-Risk \u2192 Admin Alert', portal:'clinician', category:'Intake Pipeline', description:'Escalates high-risk intakes to the admin team in addition to the assigned clinician', enabled:true, config:{} },
   // Clinician Portal > Notifications
@@ -1676,7 +1676,9 @@ function _buildConfigPills(key, cfg) {
   if (cfg.duration_minutes) pills.push('Duration: ' + cfg.duration_minutes + ' min');
   if (cfg.frequency) pills.push('Frequency: ' + cfg.frequency);
   if (cfg.cadence) pills.push('Cadence: ' + cfg.cadence);
-  if (cfg.prompt_count) pills.push(cfg.prompt_count + ' prompts');
+  if (cfg.prompts && Array.isArray(cfg.prompts)) pills.push(cfg.prompts.length + ' prompts');
+  else if (cfg.prompt_count) pills.push(cfg.prompt_count + ' prompts');
+  if (cfg.factors && Array.isArray(cfg.factors)) { var enabled = cfg.factors.filter(function(f){return f.enabled;}).length; pills.push(enabled + ' of ' + cfg.factors.length + ' factors active'); }
   if (cfg.threshold_days) pills.push('Threshold: ' + cfg.threshold_days + ' days');
   if (cfg.threshold_hours) pills.push('Threshold: ' + cfg.threshold_hours + 'h');
   if (cfg.mode) pills.push('Mode: ' + cfg.mode.replace(/_/g, ' '));
@@ -1715,19 +1717,21 @@ var _autoConfigSchema = {
                             { key:'frequency',         label:'Frequency',            type:'select',   options:['weekly','biweekly','monthly'] }],
   purchase_confirmation:   [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {protocolName}' }],
   wellness_prompts:        [{ key:'cadence',           label:'Cadence',              type:'select',   options:['daily','weekly','biweekly','monthly'] },
-                            { key:'prompt_count',      label:'Number of Prompts',    type:'number' }],
+                            { key:'prompts',           label:'Prompts',              type:'prompt_list' }],
   checkin_routing:         [],
   low_supply_alert:        [{ key:'threshold_days',    label:'Low Supply Threshold', type:'number',   suffix:'days' }],
-  inactivity_nudge:        [{ key:'days_inactive',     label:'Days Before Nudge',    type:'number',   suffix:'days' }],
-  protocol_completion:     [],
+  inactivity_nudge:        [{ key:'days_inactive',     label:'Days Before Nudge',    type:'number',   suffix:'days' },
+                            { key:'template',          label:'Message Text',         type:'textarea', placeholder:'Message sent to the member when inactivity is detected' }],
+  protocol_completion:     [{ key:'template',          label:'Message Text',         type:'textarea', placeholder:'Use {protocolName}. Sent when a plan reaches its scheduled end.' }],
   protocol_request_routing:[{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
                             { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
   refill_request_routing:  [{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
                             { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
   auto_assign_clinician:   [{ key:'mode',              label:'Assignment Mode',      type:'select',   options:['lowest_load','round_robin'] },
                             { key:'state_filter',      label:'Filter by State',      type:'toggle' }],
-  risk_evaluation:         [{ key:'high_threshold',    label:'High Risk Threshold',  type:'number',   suffix:'score \u2265' },
-                            { key:'moderate_threshold',label:'Moderate Threshold',   type:'number',   suffix:'score \u2265' }],
+  risk_evaluation:         [{ key:'factors',            label:'Risk Factors',         type:'risk_factors' },
+                            { key:'high_threshold',    label:'High Risk Threshold',  type:'number',   suffix:'total score \u2265' },
+                            { key:'moderate_threshold',label:'Moderate Threshold',   type:'number',   suffix:'total score \u2265' }],
   overdue_flag:            [{ key:'threshold_hours',   label:'Overdue After',        type:'number',   suffix:'hours' }],
   high_risk_admin_alert:   [],
   rx_approved_notify:      [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}' }],
@@ -1774,8 +1778,39 @@ function openAutoEditor(key) {
           '<div class="auto-toggle-track"></div>' +
           '<div class="auto-toggle-thumb"></div>' +
           '</label>';
+      } else if (f.type === 'prompt_list') {
+        var prompts = Array.isArray(val) ? val : [];
+        input = '<div id="autoField_prompts_list" style="display:flex;flex-direction:column;gap:6px;">' +
+          prompts.map(function(p, idx) {
+            return '<div style="display:flex;gap:6px;align-items:center;">' +
+              '<span style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);min-width:20px;">' + (idx + 1) + '.</span>' +
+              '<input type="text" class="search-input autoPromptInput" value="' + escHtml(p) + '" style="flex:1;"/>' +
+              '<button type="button" class="cfg-icon-btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px;font-size:11px;">\u2715</button>' +
+              '</div>';
+          }).join('') +
+          '</div>' +
+          '<button type="button" class="cfg-icon-btn" onclick="_addPromptRow()" style="margin-top:6px;">+ Add Prompt</button>';
+      } else if (f.type === 'risk_factors') {
+        var factors = Array.isArray(val) ? val : [];
+        input = '<div id="autoField_risk_factors" style="display:flex;flex-direction:column;gap:4px;">' +
+          factors.map(function(fac, idx) {
+            var facChecked = fac.enabled ? ' checked' : '';
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);">' +
+              '<label class="auto-toggle" style="margin:0;" onclick="event.stopPropagation()">' +
+                '<input type="checkbox" class="riskFactorToggle" data-idx="' + idx + '"' + facChecked + '/>' +
+                '<div class="auto-toggle-track"></div>' +
+                '<div class="auto-toggle-thumb"></div>' +
+              '</label>' +
+              '<input type="text" class="search-input riskFactorLabel" data-idx="' + idx + '" value="' + escHtml(fac.label || '') + '" style="flex:1;"/>' +
+              '<span style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);white-space:nowrap;">Weight:</span>' +
+              '<input type="number" class="search-input riskFactorWeight" data-idx="' + idx + '" value="' + (fac.weight != null ? fac.weight : 1) + '" min="1" max="10" style="width:60px;text-align:center;"/>' +
+              '<button type="button" class="cfg-icon-btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px;font-size:11px;">\u2715</button>' +
+              '</div>';
+          }).join('') +
+          '</div>' +
+          '<button type="button" class="cfg-icon-btn" onclick="_addRiskFactorRow()" style="margin-top:6px;">+ Add Factor</button>';
       }
-      var spanStyle = f.type === 'textarea' ? 'grid-column:1 / -1;' : '';
+      var spanStyle = (f.type === 'textarea' || f.type === 'prompt_list' || f.type === 'risk_factors') ? 'grid-column:1 / -1;' : '';
       return '<div class="form-field" style="' + spanStyle + '">' +
         '<label>' + escHtml(f.label) + '</label>' +
         input +
@@ -1792,6 +1827,34 @@ function closeAutoEditor() {
   _editingAutoKey = null;
 }
 
+function _addPromptRow() {
+  var list = document.getElementById('autoField_prompts_list');
+  if (!list) return;
+  var idx = list.children.length + 1;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  row.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);min-width:20px;">' + idx + '.</span>' +
+    '<input type="text" class="search-input autoPromptInput" value="" placeholder="Enter prompt text..." style="flex:1;"/>' +
+    '<button type="button" class="cfg-icon-btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px;font-size:11px;">\u2715</button>';
+  list.appendChild(row);
+}
+
+function _addRiskFactorRow() {
+  var list = document.getElementById('autoField_risk_factors');
+  if (!list) return;
+  var idx = list.children.length;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);';
+  row.innerHTML = '<label class="auto-toggle" style="margin:0;" onclick="event.stopPropagation()">' +
+    '<input type="checkbox" class="riskFactorToggle" data-idx="' + idx + '" checked/>' +
+    '<div class="auto-toggle-track"></div><div class="auto-toggle-thumb"></div></label>' +
+    '<input type="text" class="search-input riskFactorLabel" data-idx="' + idx + '" placeholder="New condition..." style="flex:1;"/>' +
+    '<span style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);white-space:nowrap;">Weight:</span>' +
+    '<input type="number" class="search-input riskFactorWeight" data-idx="' + idx + '" value="1" min="1" max="10" style="width:60px;text-align:center;"/>' +
+    '<button type="button" class="cfg-icon-btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px;font-size:11px;">\u2715</button>';
+  list.appendChild(row);
+}
+
 function saveAutoConfig() {
   if (!_editingAutoKey || !_autoTableReady) return;
   var a = _allAutomations.find(function(x) { return x.key === _editingAutoKey; });
@@ -1801,6 +1864,32 @@ function saveAutoConfig() {
   schema.forEach(function(f) {
     var el = document.getElementById('autoField_' + f.key);
     if (!el) return;
+    if (f.type === 'prompt_list') {
+      var inputs = document.querySelectorAll('#autoField_prompts_list .autoPromptInput');
+      var list = [];
+      inputs.forEach(function(inp) { var t = inp.value.trim(); if (t) list.push(t); });
+      cfg.prompts = list;
+      return;
+    }
+    if (f.type === 'risk_factors') {
+      var rows = document.querySelectorAll('#autoField_risk_factors > div');
+      var factors = [];
+      rows.forEach(function(row) {
+        var toggle = row.querySelector('.riskFactorToggle');
+        var label = row.querySelector('.riskFactorLabel');
+        var weight = row.querySelector('.riskFactorWeight');
+        if (label && label.value.trim()) {
+          factors.push({
+            key: label.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+            label: label.value.trim(),
+            weight: weight ? parseInt(weight.value, 10) || 1 : 1,
+            enabled: toggle ? toggle.checked : true
+          });
+        }
+      });
+      cfg.factors = factors;
+      return;
+    }
     if (f.type === 'toggle') {
       cfg[f.key] = el.checked;
     } else if (f.type === 'number') {

@@ -4295,17 +4295,20 @@ function renderLegendChart(containerId, data) {
 }
 
 function loadAnalytics() {
-  // Fetch prescriptions and patient_events for analytics — these are
-  // the tables we need beyond allConsultations/allUsers which are
-  // already loaded by initAdmin.
-  Promise.all([
-    db.from('prescriptions').select('user_id, protocol_key, status, started_at').catch(function() { return { data: [] }; }),
-    db.from('patient_events').select('user_id, event_type, created_at').order('created_at', { ascending: false }).limit(2000).catch(function() { return { data: [] }; })
-  ]).then(function(results) {
-    var allRxs = results[0].data || [];
-    var allEvents = results[1].data || [];
-    renderAnalytics(allRxs, allEvents);
-  });
+  var allRxs = [];
+  var allEvents = [];
+  var loaded = 0;
+  function _checkDone() {
+    loaded++;
+    if (loaded >= 2) renderAnalytics(allRxs, allEvents);
+  }
+  db.from('prescriptions').select('user_id, protocol_key, status, started_at')
+    .then(function(r) { allRxs = (r && r.data) || []; _checkDone(); })
+    .catch(function() { _checkDone(); });
+  db.from('patient_events').select('user_id, event_type, created_at')
+    .order('created_at', { ascending: false }).limit(2000)
+    .then(function(r) { allEvents = (r && r.data) || []; _checkDone(); })
+    .catch(function() { _checkDone(); });
 }
 
 function renderAnalytics(allRxs, allEvents) {

@@ -94,6 +94,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .admin-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
 .admin-table{width:100%;border-collapse:collapse;}
 .admin-table th{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);text-align:left;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--card2);}
+.admin-sort-th{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;user-select:none;transition:color .15s;white-space:nowrap;}
+.admin-sort-th:hover{color:var(--text);}
+.admin-sort-th.active{color:var(--text);}
+.admin-sort-ind{display:inline-block;width:8px;font-size:9px;line-height:1;opacity:0.5;}
+.admin-sort-th:hover .admin-sort-ind,.admin-sort-th.active .admin-sort-ind{opacity:1;}
 .admin-table td{font-family:'Inter',sans-serif;font-size:13px;padding:14px 20px;border-bottom:1px solid var(--border);color:var(--text);}
 .admin-table tr:last-child td{border-bottom:none;}
 .admin-table tr:hover td{background:rgba(20,20,20,0.02);}
@@ -259,8 +264,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* ── COMMAND CENTER SECTIONS (Phase 2) ── */
 .cc-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px;box-shadow:var(--shadow);}
 .cc-section.cc-section-flush{padding:0;overflow:hidden;}
-.cc-section.cc-section-flush > .cc-section-hdr{padding:20px 24px 14px;margin-bottom:0;}
-.cc-section.cc-section-flush .admin-table th{background:transparent;border-top:1px solid var(--border);}
+.cc-section.cc-section-flush > .cc-section-hdr{padding:18px 20px 14px;margin-bottom:0;border-bottom:1px solid var(--border);}
 .cc-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .cc-sev-pill{display:inline-block;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:var(--radius-pill);border:1px solid transparent;white-space:nowrap;}
 .cc-sev-pill.high{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
@@ -638,7 +642,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <div class="cc-section-sub" id="attentionCount"></div>
             </div>
             <table class="admin-table">
-              <thead><tr><th>Patient</th><th>Issue</th><th>Severity</th><th style="text-align:right;">Age</th></tr></thead>
+              <thead><tr id="needsAttentionHead"></tr></thead>
               <tbody id="needsAttentionList"></tbody>
             </table>
           </div>
@@ -650,7 +654,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="cc-section-title">Clinician Workload</div>
           </div>
           <table class="admin-table">
-            <thead><tr><th>Clinician</th><th>Oldest Pending</th><th style="text-align:right;">Open Reviews</th></tr></thead>
+            <thead><tr id="clinicianQueuesHead"></tr></thead>
             <tbody id="clinicianQueues">
               <tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -757,7 +761,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Change Role</th><th>Last Seen</th><th>Joined</th></tr></thead>
+            <thead><tr id="usersHead"></tr></thead>
             <tbody id="usersBody">
               <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -835,7 +839,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Patient</th><th>Email</th><th>Status</th><th>Protocol</th><th>Submitted</th></tr></thead>
+            <thead><tr id="consultHead"></tr></thead>
             <tbody id="consultBody">
               <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -934,7 +938,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Patient</th><th>Clinician</th><th>Date / Time</th><th>Duration</th><th>Status</th><th>Room</th></tr></thead>
+            <thead><tr id="apptHead"></tr></thead>
             <tbody id="apptBody">
               <tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -996,7 +1000,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Type</th><th>Action</th><th>Actor</th><th>Patient</th><th>Details</th><th>Timestamp</th></tr></thead>
+            <thead><tr id="auditHead"></tr></thead>
             <tbody id="auditBody">
               <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -1161,7 +1165,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Clinician</th><th style="text-align:center;">Open Reviews</th><th style="text-align:center;">Max Concurrent</th><th>Working Hours</th><th style="text-align:center;">Status</th><th></th></tr></thead>
+              <thead><tr id="clinicianCapHead"></tr></thead>
               <tbody id="clinicianCapBody">
                 <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">Loading...</td></tr>
               </tbody>
@@ -1322,6 +1326,69 @@ var currentUserId = null;
 var currentUserEmail = null;
 var currentAdminRole = null;
 
+// ── Shared sortable-table machinery ──
+// Each admin table registers a sort state + rerender fn under a table id.
+// Column headers render via _adminSortThead; rows pass through _adminSortRows.
+// Clicking a header cycles asc \u2192 desc \u2192 unsorted. Defined up here so
+// render fns that register defaults at module-load don't race the helpers.
+var _adminTableSort = {};
+var _adminTableRerender = {};
+function _adminSetDefaultSort(tableId, key, dir) {
+  if (!_adminTableSort[tableId]) _adminTableSort[tableId] = { key: key, dir: dir || 'asc' };
+}
+function _adminSortToggle(tableId, key) {
+  var state = _adminTableSort[tableId] || { key: null, dir: null };
+  if (state.key === key) {
+    state.dir = state.dir === 'asc' ? 'desc' : null;
+    if (!state.dir) state.key = null;
+  } else {
+    state.key = key;
+    state.dir = 'asc';
+  }
+  _adminTableSort[tableId] = state;
+  var fn = _adminTableRerender[tableId];
+  if (typeof fn === 'function') fn();
+}
+function _adminSortRows(tableId, rows, getters) {
+  var state = _adminTableSort[tableId];
+  if (!state || !state.key || !state.dir) return rows;
+  var getter = getters[state.key];
+  if (typeof getter !== 'function') return rows;
+  var dir = state.dir === 'asc' ? 1 : -1;
+  var sorted = rows.slice();
+  sorted.sort(function(a, b) {
+    var av = getter(a), bv = getter(b);
+    var aEmpty = av == null || av === '';
+    var bEmpty = bv == null || bv === '';
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+    var as = String(av).toLowerCase(), bs = String(bv).toLowerCase();
+    if (as < bs) return -1 * dir;
+    if (as > bs) return 1 * dir;
+    return 0;
+  });
+  return sorted;
+}
+function _adminSortEsc(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function _adminSortThead(tableId, cols) {
+  var state = _adminTableSort[tableId] || {};
+  return cols.map(function(c) {
+    var style = c.align === 'right' ? ' style="text-align:right;"' : (c.align === 'center' ? ' style="text-align:center;"' : '');
+    if (c.sortable === false) return '<th' + style + '>' + _adminSortEsc(c.label) + '</th>';
+    var active = state.key === c.key;
+    var arrow = active ? (state.dir === 'asc' ? '\u25B4' : '\u25BE') : '';
+    return '<th' + style + '><button type="button" class="admin-sort-th' + (active ? ' active' : '') +
+      '" onclick="_adminSortToggle(\'' + tableId + '\',\'' + c.key + '\')">' +
+      _adminSortEsc(c.label) + '<span class="admin-sort-ind">' + arrow + '</span></button></th>';
+  }).join('');
+}
+
 // ── Auth gate ──
 db.auth.getSession().then(function(r) {
   if (!r.data || !r.data.session) {
@@ -1460,6 +1527,7 @@ function loadOverviewStats() {
 }
 
 // Phase B: Needs Attention — merges flagged + overdue into one section
+var _attentionItems = [];
 function loadNeedsAttention() {
   var section = document.getElementById('needsAttentionSection');
   var list = document.getElementById('needsAttentionList');
@@ -1482,21 +1550,42 @@ function loadNeedsAttention() {
           items.push({ sev: 2, issue: 'Moderate-risk intake', ageH: ageH, user: c.user_id, cls: 'mod', label: 'Moderate' });
         }
       });
-      items.sort(function(a, b) { return a.sev - b.sev; });
-      if (!items.length) { section.style.display = 'none'; return; }
-      section.style.display = '';
-      document.getElementById('attentionCount').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
-      list.innerHTML = items.slice(0, 8).map(function(it) {
-        var name = profileName(it.user) || 'Patient';
-        var ageStr = it.ageH < 1 ? '<1h' : it.ageH < 24 ? it.ageH + 'h' : Math.floor(it.ageH/24) + 'd';
-        return '<tr>' +
-          '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
-          '<td>' + escHtml(it.issue) + '</td>' +
-          '<td><span class="cc-sev-pill ' + it.cls + '">' + escHtml(it.label) + '</span></td>' +
-          '<td style="text-align:right;color:var(--text3);">' + ageStr + '</td>' +
-        '</tr>';
-      }).join('');
+      _attentionItems = items;
+      renderNeedsAttention();
     }).catch(function() { section.style.display = 'none'; });
+}
+_adminSetDefaultSort('attention', 'severity', 'asc');
+_adminTableRerender['attention'] = function() { renderNeedsAttention(); };
+function renderNeedsAttention() {
+  var section = document.getElementById('needsAttentionSection');
+  var list = document.getElementById('needsAttentionList');
+  var head = document.getElementById('needsAttentionHead');
+  if (!section || !list || !head) return;
+  if (!_attentionItems.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  document.getElementById('attentionCount').textContent = _attentionItems.length + ' item' + (_attentionItems.length !== 1 ? 's' : '');
+  head.innerHTML = _adminSortThead('attention', [
+    { key: 'patient', label: 'Patient' },
+    { key: 'issue', label: 'Issue' },
+    { key: 'severity', label: 'Severity' },
+    { key: 'age', label: 'Age', align: 'right' }
+  ]);
+  var sorted = _adminSortRows('attention', _attentionItems, {
+    patient: function(it) { return profileName(it.user) || ''; },
+    issue: function(it) { return it.issue; },
+    severity: function(it) { return it.sev; },
+    age: function(it) { return it.ageH; }
+  });
+  list.innerHTML = sorted.slice(0, 8).map(function(it) {
+    var name = profileName(it.user) || 'Patient';
+    var ageStr = it.ageH < 1 ? '<1h' : it.ageH < 24 ? it.ageH + 'h' : Math.floor(it.ageH/24) + 'd';
+    return '<tr>' +
+      '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
+      '<td>' + escHtml(it.issue) + '</td>' +
+      '<td><span class="cc-sev-pill ' + it.cls + '">' + escHtml(it.label) + '</span></td>' +
+      '<td style="text-align:right;color:var(--text3);">' + ageStr + '</td>' +
+    '</tr>';
+  }).join('');
 }
 
 // Phase D: Pipeline time range
@@ -2760,9 +2849,23 @@ function renderClinicianCapacity() {
     });
 }
 
+_adminSetDefaultSort('clincap', 'name', 'asc');
+_adminTableRerender['clincap'] = function() {
+  var el = document.getElementById('clinicianCapSearch');
+  _renderClinicianCapTable(((el && el.value) || '').toLowerCase());
+};
 function _renderClinicianCapTable(q) {
   var tbody = document.getElementById('clinicianCapBody');
+  var head = document.getElementById('clinicianCapHead');
   if (!tbody) return;
+  if (head) head.innerHTML = _adminSortThead('clincap', [
+    { key: 'name', label: 'Clinician' },
+    { key: 'load', label: 'Open Reviews', align: 'center' },
+    { key: 'max', label: 'Max Concurrent', align: 'center' },
+    { key: 'hours', label: 'Working Hours' },
+    { key: 'status', label: 'Status', align: 'center' },
+    { key: 'edit', label: '', align: 'right', sortable: false }
+  ]);
   var byCId = {};
   (allConsultations || []).forEach(function(c) {
     if (c.review_status === 'pending_review' && c.assigned_clinician_id) {
@@ -2780,6 +2883,20 @@ function _renderClinicianCapTable(q) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No clinicians match.</td></tr>';
     return;
   }
+  var _statusRank = function(c) {
+    var maxCap = c.max_concurrent_patients;
+    var load = byCId[c.user_id] || 0;
+    if (maxCap != null && maxCap > 0 && load >= maxCap) return 0;  // at capacity
+    if (load === 0) return 2;  // available
+    return 1;  // active
+  };
+  rows = _adminSortRows('clincap', rows, {
+    name: function(c) { return c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || ''; },
+    load: function(c) { return byCId[c.user_id] || 0; },
+    max: function(c) { return c.max_concurrent_patients != null ? c.max_concurrent_patients : null; },
+    hours: function(c) { return c.working_hours || ''; },
+    status: function(c) { return _statusRank(c); }
+  });
   tbody.innerHTML = rows.map(function(c) {
     var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
     var load = byCId[c.user_id] || 0;
@@ -3143,22 +3260,16 @@ function loadIntakeFunnel() {
 // ── Clinician queues ──
 // For each clinician, counts open reviews (pending_review consultations
 // assigned to them) and the oldest submission date to flag overdue.
+var _clinicianQueueRows = [];
 function loadClinicianQueues() {
   var container = document.getElementById('clinicianQueues');
   if (!container) return;
-  var emptyRow = function(msg) {
-    return '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px;">' + escHtml(msg) + '</td></tr>';
-  };
   Promise.all([
     db.from('profiles').select('user_id, display_name, first_name, last_name, email').eq('role', 'clinician'),
     db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review')
   ]).then(function(results) {
     var clinicians = (results[0].data || []);
     var pending = (results[1].data || []);
-    if (!clinicians.length) {
-      container.innerHTML = emptyRow('No clinicians yet.');
-      return;
-    }
     var byClinId = {};
     pending.forEach(function(c) {
       if (!c.assigned_clinician_id) return;
@@ -3169,27 +3280,48 @@ function loadClinicianQueues() {
         byClinId[c.assigned_clinician_id].oldest = ts;
       }
     });
-    var rows = clinicians.map(function(c) {
+    _clinicianQueueRows = clinicians.map(function(c) {
       var name = c.display_name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim() || c.email || 'Clinician';
       var bucket = byClinId[c.user_id] || { count: 0, oldest: null };
       var ageH = bucket.oldest ? Math.floor((Date.now() - bucket.oldest) / 3600000) : 0;
-      var overdue = ageH >= 24;
-      var meta = bucket.count === 0 ? 'All caught up' : ((ageH < 1 ? '<1h' : ageH < 24 ? ageH + 'h' : Math.floor(ageH/24) + 'd') + ' ago');
-      return {
-        html:
-          '<tr>' +
-            '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
-            '<td style="color:var(--text3);">' + escHtml(meta) + '</td>' +
-            '<td style="text-align:right;"><span class="cc-count-pill' + (overdue ? ' overdue' : '') + '">' + bucket.count + '</span></td>' +
-          '</tr>',
-        sortKey: -bucket.count
-      };
+      return { name: name, ageH: ageH, count: bucket.count, hasPending: bucket.count > 0 };
     });
-    rows.sort(function(a, b) { return a.sortKey - b.sortKey; });
-    container.innerHTML = rows.map(function(r) { return r.html; }).join('') || emptyRow('No clinicians yet.');
+    renderClinicianQueues();
   }).catch(function() {
-    container.innerHTML = emptyRow('Failed to load clinician queues.');
+    _clinicianQueueRows = [];
+    renderClinicianQueues('Failed to load clinician queues.');
   });
+}
+_adminSetDefaultSort('queues', 'open', 'desc');
+_adminTableRerender['queues'] = function() { renderClinicianQueues(); };
+function renderClinicianQueues(errorMsg) {
+  var container = document.getElementById('clinicianQueues');
+  var head = document.getElementById('clinicianQueuesHead');
+  if (!container || !head) return;
+  head.innerHTML = _adminSortThead('queues', [
+    { key: 'clinician', label: 'Clinician' },
+    { key: 'oldest', label: 'Oldest Pending' },
+    { key: 'open', label: 'Open Reviews', align: 'right' }
+  ]);
+  var emptyRow = function(msg) {
+    return '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px;">' + escHtml(msg) + '</td></tr>';
+  };
+  if (errorMsg) { container.innerHTML = emptyRow(errorMsg); return; }
+  if (!_clinicianQueueRows.length) { container.innerHTML = emptyRow('No clinicians yet.'); return; }
+  var sorted = _adminSortRows('queues', _clinicianQueueRows, {
+    clinician: function(r) { return r.name; },
+    oldest: function(r) { return r.hasPending ? r.ageH : -1; },
+    open: function(r) { return r.count; }
+  });
+  container.innerHTML = sorted.map(function(r) {
+    var overdue = r.ageH >= 24 && r.hasPending;
+    var meta = !r.hasPending ? 'All caught up' : ((r.ageH < 1 ? '<1h' : r.ageH < 24 ? r.ageH + 'h' : Math.floor(r.ageH/24) + 'd') + ' ago');
+    return '<tr>' +
+      '<td style="font-weight:600;">' + escHtml(r.name) + '</td>' +
+      '<td style="color:var(--text3);">' + escHtml(meta) + '</td>' +
+      '<td style="text-align:right;"><span class="cc-count-pill' + (overdue ? ' overdue' : '') + '">' + r.count + '</span></td>' +
+    '</tr>';
+  }).join('');
 }
 
 // ── Flagged items ──
@@ -3540,12 +3672,30 @@ function filterUsers() {
   window._filteredUserRows = filtered;
 }
 
+_adminSetDefaultSort('users', 'joined', 'desc');
+_adminTableRerender['users'] = function() { filterUsers(); };
 function renderUsersTable(users) {
   var tbody = document.getElementById('usersBody');
+  var head = document.getElementById('usersHead');
+  if (head) head.innerHTML = _adminSortThead('users', [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'role', label: 'Role' },
+    { key: 'change_role', label: 'Change Role', sortable: false },
+    { key: 'last_seen', label: 'Last Seen' },
+    { key: 'joined', label: 'Joined' }
+  ]);
   if (!users.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No users match your filters.</td></tr>';
     return;
   }
+  users = _adminSortRows('users', users, {
+    name: function(u) { return u.display_name || u.email || ''; },
+    email: function(u) { return u.email || ''; },
+    role: function(u) { return u.role || 'member'; },
+    last_seen: function(u) { return u.last_seen ? new Date(u.last_seen).getTime() : 0; },
+    joined: function(u) { return u.created_at ? new Date(u.created_at).getTime() : 0; }
+  });
   var isSuperAdmin = currentAdminRole === 'super_admin';
   tbody.innerHTML = users.map(function(u) {
     var role = u.role || 'member';
@@ -3842,12 +3992,29 @@ function filterConsultations() {
   window._filteredConsultRows = filtered;
 }
 
+_adminSetDefaultSort('consults', 'submitted', 'desc');
+_adminTableRerender['consults'] = function() { filterConsultations(); };
 function renderConsultTable(consultations) {
   var tbody = document.getElementById('consultBody');
+  var head = document.getElementById('consultHead');
+  if (head) head.innerHTML = _adminSortThead('consults', [
+    { key: 'patient', label: 'Patient' },
+    { key: 'email', label: 'Email' },
+    { key: 'status', label: 'Status' },
+    { key: 'protocol', label: 'Protocol' },
+    { key: 'submitted', label: 'Submitted' }
+  ]);
   if (!consultations.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No patients match your filters.</td></tr>';
     return;
   }
+  consultations = _adminSortRows('consults', consultations, {
+    patient: function(c) { return c._name || ''; },
+    email: function(c) { return c._email || ''; },
+    status: function(c) { return getConsultStatus(c) || ''; },
+    protocol: function(c) { return c.protocol_assigned || ''; },
+    submitted: function(c) { return c.created_at ? new Date(c.created_at).getTime() : 0; }
+  });
   tbody.innerHTML = consultations.map(function(c) {
     var status = getConsultStatus(c);
     var proto = c.protocol_assigned || '--';
@@ -4076,12 +4243,30 @@ function apptStatusLabel(s) {
   return (s || 'unknown').charAt(0).toUpperCase() + (s || 'unknown').slice(1);
 }
 
+_adminSetDefaultSort('appts', 'date', 'desc');
+_adminTableRerender['appts'] = function() { filterAppointments(); };
 function renderApptTable(appts) {
   var tbody = document.getElementById('apptBody');
+  var head = document.getElementById('apptHead');
+  if (head) head.innerHTML = _adminSortThead('appts', [
+    { key: 'patient', label: 'Patient' },
+    { key: 'clinician', label: 'Clinician' },
+    { key: 'date', label: 'Date / Time' },
+    { key: 'duration', label: 'Duration' },
+    { key: 'status', label: 'Status' },
+    { key: 'room', label: 'Room', sortable: false }
+  ]);
   if (!appts.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--grey2);padding:24px;">No live consults match your filters.</td></tr>';
     return;
   }
+  appts = _adminSortRows('appts', appts, {
+    patient: function(a) { return profileName(a.consumer_id) || ''; },
+    clinician: function(a) { return profileName(a.clinician_id) || ''; },
+    date: function(a) { return a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0; },
+    duration: function(a) { return a.duration_minutes || 30; },
+    status: function(a) { return a.status || ''; }
+  });
   tbody.innerHTML = appts.map(function(a) {
     var dt = a.scheduled_at ? new Date(a.scheduled_at) : null;
     var dateStr = dt ? dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '--';
@@ -4336,12 +4521,30 @@ function _auditParseContext(details) {
   } catch (_) { return String(details).slice(0, 60); }
 }
 
+_adminSetDefaultSort('audit', 'timestamp', 'desc');
+_adminTableRerender['audit'] = function() { filterAudit(); };
 function renderAuditTable(logs) {
   var tbody = document.getElementById('auditBody');
+  var head = document.getElementById('auditHead');
+  if (head) head.innerHTML = _adminSortThead('audit', [
+    { key: 'type', label: 'Type' },
+    { key: 'action', label: 'Action' },
+    { key: 'actor', label: 'Actor' },
+    { key: 'patient', label: 'Patient' },
+    { key: 'details', label: 'Details', sortable: false },
+    { key: 'timestamp', label: 'Timestamp' }
+  ]);
   if (!logs.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No audit logs found.</td></tr>';
     return;
   }
+  logs = _adminSortRows('audit', logs, {
+    type: function(a) { return (a.action || '').split('.')[0] || ''; },
+    action: function(a) { return a.action || ''; },
+    actor: function(a) { return a.actor_email || (a.actor_id ? profileName(a.actor_id) : ''); },
+    patient: function(a) { return a.target_id ? profileName(a.target_id) : ''; },
+    timestamp: function(a) { return a.created_at ? new Date(a.created_at).getTime() : 0; }
+  });
   tbody.innerHTML = logs.map(function(a) {
     var contextStr = _auditParseContext(a.details);
     var date = a.created_at ? new Date(a.created_at).toLocaleString() : '--';
@@ -4627,6 +4830,10 @@ function _legacyRenderAnalytics_removed() {
 // ══ Phase 5: Clinician performance ════════════════════════════════════
 // For each clinician: total consults assigned, prescribed count,
 // declined count, median hours from submission to decision.
+_adminSetDefaultSort('clinPerf', 'total', 'desc');
+_adminTableRerender['clinPerf'] = function() { renderClinicianPerformance(); };
+_adminSetDefaultSort('protoPerf', 'active', 'desc');
+_adminTableRerender['protoPerf'] = function() { renderProtocolPerformance(); };
 function renderClinicianPerformance() {
   var el = document.getElementById('clinicianPerfTable');
   if (!el) return;
@@ -4662,11 +4869,28 @@ function renderClinicianPerformance() {
       medH = Math.round(sorted[Math.floor(sorted.length / 2)] * 10) / 10;
     }
     var medCls = medH === 0 ? '' : medH < 24 ? 'good' : medH < 72 ? 'warn' : 'bad';
-    var medDisplay = s.hours.length ? (medH < 1 ? '<1h' : medH < 24 ? Math.round(medH) + 'h' : Math.round(medH / 24 * 10) / 10 + 'd') : '—';
-    return { name: name, total: s.total, prescribed: s.prescribed, declined: s.declined, pending: s.pending, rxRate: rxRate, medH: medH, medDisplay: medDisplay, medCls: medCls, sort: -s.total };
-  }).sort(function(a, b) { return a.sort - b.sort; });
+    var medDisplay = s.hours.length ? (medH < 1 ? '<1h' : medH < 24 ? Math.round(medH) + 'h' : Math.round(medH / 24 * 10) / 10 + 'd') : '\u2014';
+    return { name: name, total: s.total, prescribed: s.prescribed, declined: s.declined, pending: s.pending, rxRate: rxRate, medH: medH, medDisplay: medDisplay, medCls: medCls };
+  });
+  rows = _adminSortRows('clinPerf', rows, {
+    name: function(r) { return r.name; },
+    total: function(r) { return r.total; },
+    prescribed: function(r) { return r.prescribed; },
+    declined: function(r) { return r.declined; },
+    pending: function(r) { return r.pending; },
+    rxRate: function(r) { return r.rxRate; },
+    ttr: function(r) { return r.medH || 0; }
+  });
   el.innerHTML = '<table class="anx-perf-table">' +
-    '<thead><tr><th>Clinician</th><th>Total</th><th>Approved</th><th>Declined</th><th>Open</th><th>Approval Rate</th><th>Median TTR</th></tr></thead>' +
+    '<thead><tr>' + _adminSortThead('clinPerf', [
+      { key: 'name', label: 'Clinician' },
+      { key: 'total', label: 'Total' },
+      { key: 'prescribed', label: 'Approved' },
+      { key: 'declined', label: 'Declined' },
+      { key: 'pending', label: 'Open' },
+      { key: 'rxRate', label: 'Approval Rate' },
+      { key: 'ttr', label: 'Median TTR' }
+    ]) + '</tr></thead>' +
     '<tbody>' + rows.map(function(r) {
       return '<tr>' +
         '<td class="anx-perf-metric">' + escHtml(r.name) + '</td>' +
@@ -4703,10 +4927,23 @@ function renderProtocolPerformance() {
       var s = byKey[k];
       var retention = s.total > 0 ? Math.round((s.active / s.total) * 100) : 0;
       var retCls = retention >= 70 ? 'good' : retention >= 40 ? 'warn' : 'bad';
-      return { key: k, active: s.active, disc: s.discontinued, total: s.total, retention: retention, retCls: retCls, sort: -s.active };
-    }).sort(function(a, b) { return a.sort - b.sort; });
+      return { key: k, active: s.active, disc: s.discontinued, total: s.total, retention: retention, retCls: retCls };
+    });
+    protoList = _adminSortRows('protoPerf', protoList, {
+      key: function(p) { return p.key; },
+      active: function(p) { return p.active; },
+      disc: function(p) { return p.disc; },
+      total: function(p) { return p.total; },
+      retention: function(p) { return p.retention; }
+    });
     el.innerHTML = '<table class="anx-perf-table">' +
-      '<thead><tr><th>Product</th><th>Active</th><th>Discontinued</th><th>Total Assigned</th><th>Retention</th></tr></thead>' +
+      '<thead><tr>' + _adminSortThead('protoPerf', [
+        { key: 'key', label: 'Product' },
+        { key: 'active', label: 'Active' },
+        { key: 'disc', label: 'Discontinued' },
+        { key: 'total', label: 'Total Assigned' },
+        { key: 'retention', label: 'Retention' }
+      ]) + '</tr></thead>' +
       '<tbody>' + protoList.map(function(p) {
         return '<tr>' +
           '<td class="anx-perf-metric">' + escHtml(p.key) + '</td>' +

@@ -358,15 +358,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pd-dropdown-option:hover{background:rgba(20,20,20,0.04);}
 .pd-dropdown-option.active{background:var(--green-tint);color:var(--green);font-weight:600;}
 
-/* Product catalog action row — primary CTA left, utility actions right */
-.cfg-actions-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
-.cfg-actions-right{display:flex;align-items:center;gap:2px;}
-.cfg-util-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.02em;padding:8px 14px;border-radius:var(--radius-pill);background:transparent;border:none;color:var(--text3);cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;}
+/* Unified product catalog toolbar: filters left, actions right */
+.cfg-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.cfg-util-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.02em;padding:8px 12px;border-radius:var(--radius-pill);background:transparent;border:none;color:var(--text3);cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;}
 .cfg-util-btn:hover{background:rgba(20,20,20,0.05);color:var(--text);}
-
-/* Product catalog filter row — search + filters + count, subtle styling */
-.cfg-filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
-.cfg-filter-row .toolbar-count{margin-left:auto;}
 
 .cfg-cat-manage-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
@@ -1040,18 +1035,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <!-- Product Catalog (unified products + categories) -->
         <div class="cfg-section active" id="cfg-protocols">
-          <!-- Primary action row: Add on the left, utilities on the right -->
-          <div class="cfg-actions-row">
-            <button class="toolbar-btn" onclick="openProtocolEditor()">+ New Product</button>
-            <div class="cfg-actions-right">
-              <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
-              <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
-              <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
-            </div>
-          </div>
-          <!-- Filter row: search + all filters + count -->
-          <div class="cfg-filter-row">
-            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="flex:1;max-width:320px;"/>
+          <!-- Single unified toolbar: filters left, actions right -->
+          <div class="cfg-toolbar">
+            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="min-width:220px;flex:0 1 280px;"/>
             <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:160px;">
               <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
                 <span class="pd-dropdown-value">All categories</span>
@@ -1070,12 +1056,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
               </div>
             </div>
-            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:140px;">
+            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:130px;">
               <option value="active">Active</option>
               <option value="all">All</option>
               <option value="archived">Archived</option>
             </select>
-            <span class="toolbar-count" id="protocolCount"></span>
+            <span class="toolbar-count" id="protocolCount" style="margin-right:auto;"></span>
+            <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
+            <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
+            <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
+            <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:4px;">+ New Product</button>
           </div>
           <div id="protocolsNotReady" style="display:none;">
             <div class="cfg-migration-note">

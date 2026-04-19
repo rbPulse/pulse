@@ -362,15 +362,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
    Two inner groups stay bonded to their side when wrapping. */
 .cfg-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
 .cfg-toolbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.cfg-toolbar-right{display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
+.cfg-toolbar-right{display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;}
 .cfg-util-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.02em;padding:8px 12px;border-radius:var(--radius-pill);background:transparent;border:none;color:var(--text3);cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;}
 .cfg-util-btn:hover{background:rgba(20,20,20,0.05);color:var(--text);}
 
 /* Product catalog table cells — compact, scannable, hover-highlighted rows */
 .cfg-product-table td{vertical-align:middle;}
 .cfg-product-table tr.cfg-tbl-archived td{opacity:0.55;}
-.cfg-tbl-type{display:inline-block;font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:3px 9px;border-radius:var(--radius-pill);background:var(--amber-tint);border:1px solid var(--amber-border);color:var(--amber);}
 .cfg-tbl-desc{font-size:12px;color:var(--text2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cfg-tbl-hdr{display:flex;align-items:center;gap:2px;}
+.cfg-tbl-sort{cursor:pointer;user-select:none;transition:color .15s;white-space:nowrap;background:none;border:none;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;}
+.cfg-tbl-sort:hover{color:var(--text);}
+.cfg-tbl-sort-arrow{display:inline-block;margin-left:4px;font-size:9px;opacity:0.35;transition:opacity .15s,color .15s;}
+.cfg-tbl-sort.active .cfg-tbl-sort-arrow{opacity:1;color:var(--green);}
+.cfg-tbl-filter-btn{background:none;border:none;padding:2px 4px;margin-left:2px;cursor:pointer;color:var(--text4);font-size:10px;border-radius:4px;transition:color .15s,background .15s;}
+.cfg-tbl-filter-btn:hover{color:var(--text);background:rgba(20,20,20,0.05);}
+.cfg-tbl-filter-btn.active{color:var(--green);}
+.cfg-tbl-colfilter{position:absolute;top:calc(100% + 4px);left:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:160px;padding:6px;z-index:50;}
+.cfg-tbl-colfilter-opt{display:block;width:100%;text-align:left;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:8px 12px;border-radius:var(--radius-sm);background:none;border:none;color:var(--text);cursor:pointer;text-transform:none;letter-spacing:0;}
+.cfg-tbl-colfilter-opt:hover{background:rgba(20,20,20,0.04);}
+.cfg-tbl-colfilter-opt.active{background:var(--green-tint);color:var(--green);font-weight:600;}
+.admin-table th.cfg-tbl-th-has-filter{position:relative;}
 
 .cfg-cat-manage-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
@@ -1044,34 +1056,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <!-- Product Catalog (unified products + categories) -->
         <div class="cfg-section active" id="cfg-protocols">
-          <!-- Toolbar: filters left, actions right. Wraps cleanly because
-               each side is its own flex group with justify-content split. -->
+          <!-- Toolbar: search + count left; utility actions + primary CTA right.
+               Category/Type/Status filters live inline in the table header. -->
           <div class="cfg-toolbar">
             <div class="cfg-toolbar-left">
-              <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="min-width:200px;flex:0 1 260px;"/>
-              <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:150px;">
-                <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
-                  <span class="pd-dropdown-value">All categories</span>
-                  <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="pd-dropdown-menu" id="cfgCatDDMenu"></div>
-              </div>
-              <div class="pd-dropdown" id="cfgTypeDD" data-value="all" style="min-width:130px;">
-                <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgTypeDD')">
-                  <span class="pd-dropdown-value">All types</span>
-                  <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="pd-dropdown-menu">
-                  <button type="button" class="pd-dropdown-option active" data-value="all" onclick="_cfgTypeSelect('all','All types')">All types</button>
-                  <button type="button" class="pd-dropdown-option" data-value="Pod" onclick="_cfgTypeSelect('Pod','Pods')">Pods</button>
-                  <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
-                </div>
-              </div>
-              <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:120px;">
-                <option value="active">Active</option>
-                <option value="all">All</option>
-                <option value="archived">Archived</option>
-              </select>
+              <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="min-width:200px;flex:0 1 320px;"/>
               <span class="toolbar-count" id="protocolCount"></span>
             </div>
             <div class="cfg-toolbar-right">
@@ -1081,6 +1070,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:6px;">+ New Product</button>
             </div>
           </div>
+          <!-- Hidden fallback — kept so existing JS references still work but
+               the UI controls are now inline in the table header below. -->
+          <select id="protocolArchiveFilter" style="display:none;"><option value="active" selected>Active</option></select>
           <div id="protocolsNotReady" style="display:none;">
             <div class="cfg-migration-note">
               <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
@@ -1088,17 +1080,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
           <div class="admin-table-wrap" id="protocolsTableWrap">
             <table class="admin-table cfg-product-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th style="text-align:right;">Price</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
+              <thead id="protocolsThead"></thead>
               <tbody id="protocolsGrid"></tbody>
             </table>
           </div>
@@ -1573,16 +1555,134 @@ function _populateEditorCategorySelect() {
     cats.map(function(c) { return '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>'; }).join('');
 }
 
+// Column sort + per-column filter state for the product catalog table.
+var _protoSortCol = 'name';
+var _protoSortDir = 'asc';
+// Column filters: null = no filter. Category/type filters hold the
+// active value; status filter is 'active' / 'archived' / 'all'.
+var _protoColFilters = { category: null, product_type: null, is_archived: 'active' };
+var _openColFilterCol = null; // which column's filter popup is open
+
+var _protoTableCols = [
+  { key: 'name',         label: 'Name',        sortable: true,  align: 'left'  },
+  { key: 'description',  label: 'Description', sortable: false, align: 'left'  },
+  { key: 'category',     label: 'Category',    sortable: true,  align: 'left',  filter: 'category'    },
+  { key: 'product_type', label: 'Type',        sortable: true,  align: 'left',  filter: 'product_type'},
+  { key: 'price',        label: 'Price',       sortable: true,  align: 'right' },
+  { key: 'is_archived',  label: 'Status',      sortable: true,  align: 'left',  filter: 'is_archived' }
+];
+
+function _renderProtoThead() {
+  var thead = document.getElementById('protocolsThead');
+  if (!thead) return;
+  var ths = _protoTableCols.map(function(col) {
+    var sortActive = _protoSortCol === col.key;
+    var sortArrow = '';
+    if (col.sortable) {
+      sortArrow = '<span class="cfg-tbl-sort-arrow">' + (sortActive ? (_protoSortDir === 'asc' ? '\u25B2' : '\u25BC') : '\u25B2') + '</span>';
+    }
+    var style = col.align === 'right' ? ' style="text-align:right;"' : '';
+    var sortBtn = col.sortable
+      ? '<button type="button" class="cfg-tbl-sort' + (sortActive ? ' active' : '') + '" onclick="_sortProtoTable(\'' + col.key + '\')">' + col.label + sortArrow + '</button>'
+      : '<span>' + col.label + '</span>';
+    var filterBtn = '';
+    var filterPopup = '';
+    var thCls = '';
+    if (col.filter) {
+      thCls = 'cfg-tbl-th-has-filter';
+      var filterActive = _protoColFilters[col.filter] && _protoColFilters[col.filter] !== 'all' && _protoColFilters[col.filter] !== (col.filter === 'is_archived' ? null : null);
+      // for is_archived, treat anything other than 'active' as "filtered" indicator? We'll treat 'all' as "no filter indicator"
+      var showIndicator = false;
+      if (col.filter === 'is_archived') {
+        showIndicator = _protoColFilters.is_archived && _protoColFilters.is_archived !== 'active';
+      } else {
+        showIndicator = !!_protoColFilters[col.filter];
+      }
+      filterBtn = '<button type="button" class="cfg-tbl-filter-btn' + (showIndicator ? ' active' : '') + '" onclick="event.stopPropagation();_toggleColFilter(\'' + col.filter + '\')" title="Filter">\u25BC</button>';
+      if (_openColFilterCol === col.filter) {
+        filterPopup = _buildColFilterPopup(col.filter);
+      }
+    }
+    var innerStyle = col.align === 'right' ? 'justify-content:flex-end;' : '';
+    return '<th' + style + ' class="' + thCls + '"><div class="cfg-tbl-hdr" style="' + innerStyle + '">' + sortBtn + filterBtn + '</div>' + filterPopup + '</th>';
+  }).join('');
+  thead.innerHTML = '<tr>' + ths + '<th></th></tr>';
+}
+
+function _buildColFilterPopup(filterKey) {
+  var opts = [];
+  if (filterKey === 'category') {
+    opts.push({ v: null, l: 'All categories' });
+    (_allCategories || []).filter(function(c) { return !c.is_archived; }).forEach(function(c) { opts.push({ v: c.name, l: c.name }); });
+  } else if (filterKey === 'product_type') {
+    opts.push({ v: null, l: 'All types' });
+    (_allProductTypes || []).filter(function(t) { return !t.is_archived; }).forEach(function(t) { opts.push({ v: t.name, l: t.name }); });
+  } else if (filterKey === 'is_archived') {
+    opts.push({ v: 'active', l: 'Active only' });
+    opts.push({ v: 'archived', l: 'Archived only' });
+    opts.push({ v: 'all', l: 'All' });
+  }
+  var current = _protoColFilters[filterKey];
+  var currentVal = filterKey === 'is_archived' ? (current || 'active') : current;
+  var html = opts.map(function(o) {
+    var isActive = (o.v == null && currentVal == null) || o.v === currentVal;
+    return '<button type="button" class="cfg-tbl-colfilter-opt' + (isActive ? ' active' : '') + '" onclick="event.stopPropagation();_setColFilter(\'' + filterKey + '\',' + (o.v == null ? 'null' : '\'' + escHtml(o.v) + '\'') + ')">' + escHtml(o.l) + '</button>';
+  }).join('');
+  return '<div class="cfg-tbl-colfilter" onclick="event.stopPropagation()">' + html + '</div>';
+}
+
+function _toggleColFilter(filterKey) {
+  _openColFilterCol = _openColFilterCol === filterKey ? null : filterKey;
+  _renderProtoThead();
+}
+function _setColFilter(filterKey, value) {
+  _protoColFilters[filterKey] = value;
+  _openColFilterCol = null;
+  filterProtocols();
+}
+// Close any open column filter on outside click
+document.addEventListener('click', function(e) {
+  if (_openColFilterCol && !e.target.closest('.cfg-tbl-th-has-filter')) {
+    _openColFilterCol = null;
+    _renderProtoThead();
+  }
+});
+
+function _sortProtoTable(col) {
+  if (_protoSortCol === col) {
+    _protoSortDir = _protoSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _protoSortCol = col;
+    _protoSortDir = 'asc';
+  }
+  filterProtocols();
+}
+
 function filterProtocols() {
+  _renderProtoThead();
   var q = ((document.getElementById('protocolSearch') || {}).value || '').toLowerCase();
-  var arch = (document.getElementById('protocolArchiveFilter') || {}).value || 'active';
+  var archFilter = _protoColFilters.is_archived || 'active';
+  var catFilter = _protoColFilters.category;
+  var typeFilter = _protoColFilters.product_type;
   var rows = _allProtocols.filter(function(p) {
-    if (arch === 'active' && p.is_archived) return false;
-    if (arch === 'archived' && !p.is_archived) return false;
-    if (_activeCategoryFilter !== 'all' && (p.category || '') !== _activeCategoryFilter) return false;
-    if (_activeTypeFilter !== 'all' && (p.product_type || '') !== _activeTypeFilter) return false;
+    if (archFilter === 'active' && p.is_archived) return false;
+    if (archFilter === 'archived' && !p.is_archived) return false;
+    if (catFilter && (p.category || '') !== catFilter) return false;
+    if (typeFilter && (p.product_type || '') !== typeFilter) return false;
     if (q && (p.name || '').toLowerCase().indexOf(q) === -1 && (p.key || '').toLowerCase().indexOf(q) === -1) return false;
     return true;
+  });
+  // Sort
+  var col = _protoSortCol, dir = _protoSortDir === 'asc' ? 1 : -1;
+  rows.sort(function(a, b) {
+    var av, bv;
+    if (col === 'price') { av = a.price == null ? -Infinity : Number(a.price); bv = b.price == null ? -Infinity : Number(b.price); return (av - bv) * dir; }
+    if (col === 'is_archived') { return ((a.is_archived ? 1 : 0) - (b.is_archived ? 1 : 0)) * dir; }
+    av = (a[col] || '').toString().toLowerCase();
+    bv = (b[col] || '').toString().toLowerCase();
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
   });
   var cnt = document.getElementById('protocolCount');
   if (cnt) cnt.textContent = rows.length + ' of ' + _allProtocols.length + ' products';
@@ -1601,26 +1701,23 @@ function filterProtocols() {
     var descCell = descStr
       ? '<div class="cfg-tbl-desc" title="' + escHtml(descStr) + '">' + escHtml(descStr) + '</div>'
       : '<span style="color:var(--text4);">\u2014</span>';
-    var typeBadge = p.product_type
-      ? '<span class="cfg-tbl-type">' + escHtml(p.product_type) + '</span>'
-      : '<span style="color:var(--text4);">\u2014</span>';
+    var typeCell = p.product_type ? escHtml(p.product_type) : '<span style="color:var(--text4);">\u2014</span>';
     var catCell = p.category ? escHtml(p.category) : '<span style="color:var(--text4);">\u2014</span>';
     var priceCell = (p.price != null) ? '$' + Number(p.price).toFixed(2) : '<span style="color:var(--text4);">\u2014</span>';
-    var statusPill = p.is_archived
-      ? '<span class="status-pill cancelled">Archived</span>'
-      : '<span class="status-pill active">Active</span>';
+    var statusCell = p.is_archived
+      ? '<span style="color:var(--text3);">Archived</span>'
+      : '<span style="color:var(--green);font-weight:500;">Active</span>';
     var rowCls = 'clickable' + (p.is_archived ? ' cfg-tbl-archived' : '');
     return '<tr class="' + rowCls + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
-      '<td><div style="font-weight:600;color:var(--text);">' + escHtml(p.name || '') + '</div>' +
-        (p.key ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">' + escHtml(p.key) + '</div>' : '') +
-      '</td>' +
-      '<td>' + typeBadge + '</td>' +
+      '<td><div style="font-weight:600;color:var(--text);">' + escHtml(p.name || '') + '</div></td>' +
+      '<td style="max-width:320px;">' + descCell + '</td>' +
       '<td>' + catCell + '</td>' +
-      '<td style="max-width:280px;">' + descCell + '</td>' +
+      '<td>' + typeCell + '</td>' +
       '<td style="text-align:right;font-variant-numeric:tabular-nums;">' + priceCell + '</td>' +
-      '<td>' + statusPill + '</td>' +
+      '<td>' + statusCell + '</td>' +
       '<td style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">' +
         '<button class="cfg-icon-btn" onclick="duplicateProduct(\'' + escHtml(p.id) + '\')">Duplicate</button>' +
+        '<button class="cfg-icon-btn" style="margin-left:4px;" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +
         '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" style="margin-left:4px;" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
       '</td>' +
     '</tr>';

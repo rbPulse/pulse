@@ -1747,8 +1747,11 @@ async function submitQuiz() {
     }
     var assignedClinicianId = assignedClinician ? assignedClinician.id : null;
 
-    // Risk evaluation
-    var riskResult = (typeof evaluateIntakeRisk === 'function') ? evaluateIntakeRisk(fullData) : { status: 'low_risk', reasons: [] };
+    // Risk evaluation (check if automation is enabled)
+    var riskResult = { status: 'low_risk', reasons: [] };
+    var _reEnabled = true;
+    try { var _reRes = await client.from('platform_automations').select('enabled').eq('key', 'risk_evaluation').limit(1); if (_reRes.data && _reRes.data.length && !_reRes.data[0].enabled) _reEnabled = false; } catch (_) {}
+    if (_reEnabled && typeof evaluateIntakeRisk === 'function') riskResult = evaluateIntakeRisk(fullData);
 
     // Insert consultation
     var cInsert = await client.from('consultations').insert({
@@ -2373,6 +2376,11 @@ function _setReviewClinician(displayName, photoUrl) {
 async function _autoAssignClinicianAsync(client, memberState) {
   try {
     if (!client) return null;
+    // Check if auto-assign is enabled in platform_automations
+    try {
+      var _aaRes = await client.from('platform_automations').select('enabled').eq('key', 'auto_assign_clinician').limit(1);
+      if (_aaRes.data && _aaRes.data.length && !_aaRes.data[0].enabled) return null;
+    } catch (_) {} // table missing = enabled by default
     var ms = (memberState || '').toUpperCase().trim();
 
     // Get all clinician profiles
@@ -3799,8 +3807,11 @@ async function saveFullIntake() {
   var assignedClinicianId = assignedClinician ? assignedClinician.id : null;
   _assignedClinicianId = assignedClinicianId;
 
-  // Evaluate intake risk
-  var riskResult = evaluateIntakeRisk(fullData);
+  // Evaluate intake risk (check if automation is enabled)
+  var riskResult = { status: 'low_risk', reasons: [] };
+  var _reEnabled2 = true;
+  try { var _reRes2 = await client.from('platform_automations').select('enabled').eq('key', 'risk_evaluation').limit(1); if (_reRes2.data && _reRes2.data.length && !_reRes2.data[0].enabled) _reEnabled2 = false; } catch (_) {}
+  if (_reEnabled2) riskResult = evaluateIntakeRisk(fullData);
 
   // Insert consultation record
   var cInsert = await client.from('consultations').insert({

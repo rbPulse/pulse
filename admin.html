@@ -938,17 +938,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle">View all message threads</div>
         </div>
         <div class="toolbar">
-          <input type="text" class="search-input" id="msgSearch" placeholder="Search threads..." oninput="filterThreads()"/>
-          <select class="filter-select" id="msgRoleFilter" onchange="filterThreads()">
-            <option value="">All Threads</option>
-            <option value="has_clinician">Has Clinician Messages</option>
-            <option value="has_admin">Has Admin Messages</option>
-            <option value="patient_only">Patient Only</option>
-            <option value="unread">Unread</option>
-          </select>
+          <input type="text" class="search-input" id="msgSearch" placeholder="Search by patient name..." oninput="filterThreads()"/>
           <select class="filter-select" id="msgClinicianFilter" onchange="filterThreads()">
             <option value="">All Clinicians</option>
           </select>
+          <label style="display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" id="msgUnreadOnly" onchange="filterThreads()" style="accent-color:var(--green);"/> Unread only
+          </label>
           <span class="toolbar-count" id="msgCount"></span>
         </div>
         <div style="display:flex;gap:16px;min-height:400px;">
@@ -4087,15 +4083,12 @@ function loadMessages() {
 
 function filterThreads() {
   var q = (document.getElementById('msgSearch').value || '').toLowerCase();
-  var roleF = (document.getElementById('msgRoleFilter') || {}).value || '';
   var clinF = (document.getElementById('msgClinicianFilter') || {}).value || '';
+  var unreadOnly = document.getElementById('msgUnreadOnly') && document.getElementById('msgUnreadOnly').checked;
   var filtered = allThreads.filter(function(t) {
     if (q && t.name.toLowerCase().indexOf(q) === -1) return false;
-    if (roleF === 'has_clinician' && !t.hasClinician) return false;
-    if (roleF === 'has_admin' && !t.hasAdmin) return false;
-    if (roleF === 'patient_only' && (t.hasClinician || t.hasAdmin)) return false;
-    if (roleF === 'unread' && !t.unread) return false;
     if (clinF && t.clinicianNames.indexOf(clinF) === -1) return false;
+    if (unreadOnly && !t.unread) return false;
     return true;
   });
   document.getElementById('msgCount').textContent = filtered.length + ' threads';

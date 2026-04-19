@@ -961,25 +961,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-audit">
         <div class="tab-header">
           <div class="tab-title">Audit Log</div>
-          <div class="tab-subtitle">Track admin actions and system events</div>
+          <div class="tab-subtitle">HIPAA-ready access and modification trail</div>
         </div>
         <div class="toolbar">
-          <input type="text" class="search-input" id="auditSearch" placeholder="Search by action or actor..." oninput="filterAudit()"/>
+          <input type="text" class="search-input" id="auditSearch" placeholder="Search by action, actor, or patient..." oninput="filterAudit()"/>
+          <select class="filter-select" id="auditCategoryFilter" onchange="filterAudit()">
+            <option value="">All Types</option>
+            <option value="phi.viewed">PHI Viewed</option>
+            <option value="phi.modified">PHI Modified</option>
+            <option value="phi.exported">PHI Exported</option>
+            <option value="admin">Admin Actions</option>
+            <option value="automation">Automation Changes</option>
+          </select>
           <select class="filter-select" id="auditRangeFilter" onchange="filterAudit()">
             <option value="7">Last 7 days</option>
             <option value="30" selected>Last 30 days</option>
             <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
             <option value="all">All time</option>
           </select>
-          <select class="filter-select" id="auditActionFilter" onchange="filterAudit()">
-            <option value="">All actions</option>
-          </select>
-          <button class="toolbar-btn secondary" onclick="exportAuditCSV()">Export CSV</button>
+          <button class="toolbar-btn secondary" onclick="exportAuditCSV()">Export for Compliance</button>
           <span class="toolbar-count" id="auditCount"></span>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
-            <thead><tr><th>Action</th><th>Actor</th><th>Target</th><th>Details</th><th>Timestamp</th></tr></thead>
+            <thead><tr><th>Type</th><th>Action</th><th>Actor</th><th>Patient</th><th>Details</th><th>Timestamp</th></tr></thead>
             <tbody id="auditBody">
               <tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">Loading...</td></tr>
             </tbody>
@@ -4192,59 +4198,70 @@ function loadAuditLogs() {
 // Populates the action-type dropdown from the distinct action values
 // in the current audit log set. Preserves the current selection if
 // still valid after reload.
-function _refreshAuditActionFilter() {
-  var sel = document.getElementById('auditActionFilter');
-  if (!sel) return;
-  var prev = sel.value;
-  var actions = {};
-  allAuditLogs.forEach(function(a) { if (a.action) actions[a.action] = true; });
-  var keys = Object.keys(actions).sort();
-  sel.innerHTML = '<option value="">All actions</option>' +
-    keys.map(function(k) { return '<option value="' + escHtml(k) + '">' + escHtml(k) + '</option>'; }).join('');
-  if (prev && actions[prev]) sel.value = prev;
-}
+function _refreshAuditActionFilter() { /* replaced by category filter */ }
 
 function filterAudit() {
   var q = ((document.getElementById('auditSearch') || {}).value || '').toLowerCase();
   var range = (document.getElementById('auditRangeFilter') || {}).value || '30';
-  var actionF = (document.getElementById('auditActionFilter') || {}).value || '';
+  var catF = (document.getElementById('auditCategoryFilter') || {}).value || '';
   var cutoffMs = null;
   if (range !== 'all') cutoffMs = Date.now() - parseInt(range, 10) * 86400000;
   var filtered = allAuditLogs.filter(function(a) {
     if (cutoffMs !== null && a.created_at && new Date(a.created_at).getTime() < cutoffMs) return false;
-    if (actionF && a.action !== actionF) return false;
+    if (catF) {
+      if (catF === 'admin' && !(a.action || '').match(/^(user\.|consultation\.|clinician\.|request\.|admin\.)/)) return false;
+      if (catF === 'automation' && !(a.action || '').match(/^automation\./)) return false;
+      if (catF.indexOf('phi.') === 0 && a.action !== catF) return false;
+    }
     if (q) {
       var action = (a.action || '').toLowerCase();
       var actor = (a.actor_email || '').toLowerCase();
-      if (action.indexOf(q) === -1 && actor.indexOf(q) === -1) return false;
+      var target = a.target_id ? profileName(a.target_id).toLowerCase() : '';
+      if (action.indexOf(q) === -1 && actor.indexOf(q) === -1 && target.indexOf(q) === -1) return false;
     }
     return true;
   });
   document.getElementById('auditCount').textContent = filtered.length + ' of ' + allAuditLogs.length + ' entries';
   renderAuditTable(filtered);
-  // Stash filtered rows for CSV export to match what's currently visible
   window._filteredAuditRows = filtered;
+}
+
+function _auditTypeBadge(action) {
+  if (!action) return '<span style="color:var(--text3);">--</span>';
+  if (action.indexOf('phi.viewed') === 0) return '<span style="color:var(--blue);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;">Viewed</span>';
+  if (action.indexOf('phi.modified') === 0) return '<span style="color:var(--amber);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;">Modified</span>';
+  if (action.indexOf('phi.exported') === 0) return '<span style="color:var(--red);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;">Exported</span>';
+  if (action.indexOf('automation.') === 0) return '<span style="color:var(--green);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;">Config</span>';
+  return '<span style="color:var(--text3);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;">Admin</span>';
+}
+
+function _auditParseContext(details) {
+  if (!details) return '';
+  try {
+    var d = typeof details === 'string' ? JSON.parse(details) : details;
+    return d.context || d.filename || '';
+  } catch (_) { return String(details).slice(0, 60); }
 }
 
 function renderAuditTable(logs) {
   var tbody = document.getElementById('auditBody');
   if (!logs.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey2);padding:24px;">No audit logs found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">No audit logs found.</td></tr>';
     return;
   }
   tbody.innerHTML = logs.map(function(a) {
-    var details = '';
-    if (a.details) {
-      try { details = typeof a.details === 'string' ? a.details : JSON.stringify(a.details).slice(0, 80); } catch(e) { details = '--'; }
-    }
+    var contextStr = _auditParseContext(a.details);
     var date = a.created_at ? new Date(a.created_at).toLocaleString() : '--';
+    var actorName = a.actor_email || (a.actor_id ? profileName(a.actor_id) : '--');
     var targetName = a.target_id ? profileName(a.target_id) : '--';
+    var actionLabel = (a.action || '').replace(/^phi\./, '').replace(/^automation\./, '').replace(/_/g, ' ');
     return '<tr>' +
-      '<td style="color:var(--text);font-weight:500;">' + escHtml(a.action || '--') + '</td>' +
-      '<td>' + escHtml(a.actor_email || (a.actor_id ? profileName(a.actor_id) : '--')) + '</td>' +
+      '<td>' + _auditTypeBadge(a.action) + '</td>' +
+      '<td style="color:var(--text);font-weight:500;">' + escHtml(actionLabel) + '</td>' +
+      '<td>' + escHtml(actorName) + '</td>' +
       '<td>' + escHtml(targetName) + '</td>' +
-      '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(details) + '</td>' +
-      '<td>' + date + '</td>' +
+      '<td style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escHtml(contextStr) + '">' + escHtml(contextStr) + '</td>' +
+      '<td style="font-size:11px;color:var(--text3);white-space:nowrap;">' + date + '</td>' +
       '</tr>';
   }).join('');
 }

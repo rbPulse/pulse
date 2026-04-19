@@ -594,73 +594,65 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- OVERVIEW TAB -->
       <div class="admin-tab active" id="tab-overview">
         <div class="tab-header">
-          <div class="tab-title">Command Center</div>
+          <div class="tab-title">Dashboard</div>
           <div class="tab-subtitle" id="welcomeMsg">Welcome back.</div>
         </div>
 
-        <!-- Top stat strip -->
+        <!-- Phase A: Stat strip — the numbers that matter right now -->
         <div class="stat-grid" id="overviewStats">
           <div class="stat-card">
-            <div class="stat-card-label">Total Users</div>
-            <div class="stat-card-value" id="statUsers">--</div>
+            <div class="stat-card-label">Active Patients</div>
+            <div class="stat-card-value" id="statActivePatients">--</div>
+            <div class="stat-card-sub">on a plan</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Patients</div>
-            <div class="stat-card-value" id="statConsultations">--</div>
+            <div class="stat-card-label">New This Month</div>
+            <div class="stat-card-value" id="statNewMonth">--</div>
+            <div class="stat-card-sub">intakes submitted</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Live Consults</div>
-            <div class="stat-card-value" id="statAppointments">--</div>
+            <div class="stat-card-label">Open Reviews</div>
+            <div class="stat-card-value" id="statOpenReviews">--</div>
+            <div class="stat-card-sub">awaiting decision</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Messages</div>
-            <div class="stat-card-value" id="statMessages">--</div>
-          </div>
-          <div class="stat-card" style="border-color:var(--red-border);background:var(--red-tint);">
-            <div class="stat-card-label" style="color:var(--red);">Overdue Reviews</div>
-            <div class="stat-card-value" id="statOverdue" style="color:var(--red);">--</div>
-            <div class="stat-card-sub" style="color:var(--red);opacity:0.8;">No clinician response in 24h+</div>
+            <div class="stat-card-label">Appointments Today</div>
+            <div class="stat-card-value" id="statApptToday">--</div>
+            <div class="stat-card-sub">scheduled</div>
           </div>
         </div>
 
-        <!-- Needs Attention (actionable): flagged + overdue surface first -->
-        <div class="cc-two-col">
-          <div class="cc-section">
+        <!-- Phase B: Needs Attention — only shows when items exist -->
+        <div id="needsAttentionSection" style="display:none;">
+          <div class="cc-section" style="border-color:var(--red-border);">
             <div class="cc-section-hdr">
-              <div class="cc-section-title">Flagged Items</div>
-              <div class="cc-section-sub">High-risk &amp; stuck</div>
+              <div class="cc-section-title" style="color:var(--red);">Needs Attention</div>
+              <div class="cc-section-sub" id="attentionCount"></div>
             </div>
-            <div id="flaggedItems">
-              <div class="cc-empty">Loading...</div>
-            </div>
-          </div>
-          <div class="cc-section">
-            <div class="cc-section-hdr">
-              <div class="cc-section-title">Clinician Queues</div>
-              <div class="cc-section-sub">Open reviews per clinician</div>
-            </div>
-            <div id="clinicianQueues">
-              <div class="cc-empty">Loading...</div>
-            </div>
+            <div id="needsAttentionList"></div>
           </div>
         </div>
 
-        <!-- Overdue Reviews — shown only when there are any -->
-        <div id="overdueSection" style="display:none;margin-bottom:16px;">
-          <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">&#9888; Overdue Reviews</div>
-          <div class="admin-table-wrap" style="border-color:var(--red-border);">
-            <table class="admin-table">
-              <thead><tr><th>Patient</th><th>Assigned Clinician</th><th>Submitted</th><th>Hours Overdue</th></tr></thead>
-              <tbody id="overdueBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Intake funnel (informational — moved below actionable content) -->
+        <!-- Phase C: Clinician Workload — full-width -->
         <div class="cc-section">
           <div class="cc-section-hdr">
-            <div class="cc-section-title">Intake Funnel</div>
-            <div class="cc-section-sub" id="funnelSub">All-time</div>
+            <div class="cc-section-title">Clinician Workload</div>
+          </div>
+          <div id="clinicianQueues">
+            <div class="cc-empty">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Phase D: Pipeline with time range toggle -->
+        <div class="cc-section">
+          <div class="cc-section-hdr">
+            <div class="cc-section-title">Pipeline</div>
+            <div style="display:flex;gap:4px;">
+              <button class="cfg-util-btn" data-range="7" onclick="_setFunnelRange(7)">This Week</button>
+              <button class="cfg-util-btn" data-range="30" onclick="_setFunnelRange(30)" style="font-weight:600;color:var(--text);">This Month</button>
+              <button class="cfg-util-btn" data-range="90" onclick="_setFunnelRange(90)">Quarter</button>
+              <button class="cfg-util-btn" data-range="all" onclick="_setFunnelRange('all')">All Time</button>
+            </div>
           </div>
           <div class="cc-funnel" id="intakeFunnel">
             <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
@@ -671,15 +663,20 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Recent activity stream -->
+        <!-- Phase E: Recent Activity — capped at 10, scrollable -->
         <div class="cc-section">
           <div class="cc-section-hdr">
             <div class="cc-section-title">Recent Activity</div>
-            <div class="cc-section-sub">Last 20 events across the platform</div>
+            <button class="cfg-util-btn" onclick="switchTab('audit')" style="font-weight:500;">View all \u203A</button>
           </div>
-          <div id="activityStream">
+          <div id="activityStream" style="max-height:440px;overflow-y:auto;">
             <div class="cc-empty">Loading...</div>
           </div>
+        </div>
+
+        <!-- Hidden: Overdue section kept for loadOverdueReviews compatibility -->
+        <div id="overdueSection" style="display:none;">
+          <tbody id="overdueBody"></tbody>
         </div>
       </div>
 
@@ -1379,10 +1376,8 @@ function initAdmin(user, profile) {
   loadOverviewStats();
   loadIntakeFunnel();
   loadClinicianQueues();
-  // Flagged items and activity stream rely on profileCache for friendly
-  // patient names — prefetch it, then render.
   cacheProfiles().then(function() {
-    loadFlaggedItems();
+    loadNeedsAttention();
     loadActivityStream();
   });
 }
@@ -1401,14 +1396,105 @@ function switchTab(tabId) {
 
 // ── Load overview stats ──
 function loadOverviewStats() {
-  db.from('profiles').select('user_id', { count: 'exact', head: true })
-    .then(function(r) { document.getElementById('statUsers').textContent = r.count || 0; });
+  // Active Patients: users with at least 1 active prescription
+  db.from('prescriptions').select('user_id').eq('status', 'active')
+    .then(function(r) {
+      var uids = {};
+      (r.data || []).forEach(function(rx) { uids[rx.user_id] = true; });
+      var el = document.getElementById('statActivePatients');
+      if (el) el.textContent = Object.keys(uids).length;
+    }).catch(function() {
+      var el = document.getElementById('statActivePatients');
+      if (el) el.textContent = '0';
+    });
+  // New This Month: intakes submitted this calendar month
+  var monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
   db.from('consultations').select('id', { count: 'exact', head: true })
-    .then(function(r) { document.getElementById('statConsultations').textContent = r.count || 0; });
+    .gte('created_at', monthStart.toISOString())
+    .not('consultation_type', 'in', '("protocol_request","refill_request")')
+    .then(function(r) {
+      var el = document.getElementById('statNewMonth');
+      if (el) el.textContent = r.count || 0;
+    }).catch(function() {
+      var el = document.getElementById('statNewMonth');
+      if (el) el.textContent = '0';
+    });
+  // Open Reviews: pending_review consultations
+  db.from('consultations').select('id', { count: 'exact', head: true })
+    .eq('review_status', 'pending_review')
+    .then(function(r) {
+      var el = document.getElementById('statOpenReviews');
+      if (el) el.textContent = r.count || 0;
+    }).catch(function() {
+      var el = document.getElementById('statOpenReviews');
+      if (el) el.textContent = '0';
+    });
+  // Appointments Today
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
   db.from('appointments').select('id', { count: 'exact', head: true })
-    .then(function(r) { document.getElementById('statAppointments').textContent = r.count || 0; });
-  db.from('messages').select('id', { count: 'exact', head: true })
-    .then(function(r) { document.getElementById('statMessages').textContent = r.count || 0; });
+    .gte('scheduled_at', todayStart.toISOString())
+    .lte('scheduled_at', todayEnd.toISOString())
+    .in('status', ['confirmed', 'pending'])
+    .then(function(r) {
+      var el = document.getElementById('statApptToday');
+      if (el) el.textContent = r.count || 0;
+    }).catch(function() {
+      var el = document.getElementById('statApptToday');
+      if (el) el.textContent = '0';
+    });
+}
+
+// Phase B: Needs Attention — merges flagged + overdue into one section
+function loadNeedsAttention() {
+  var section = document.getElementById('needsAttentionSection');
+  var list = document.getElementById('needsAttentionList');
+  if (!section || !list) return;
+  db.from('consultations').select('id, user_id, review_status, risk_status, consultation_type, data, created_at')
+    .eq('review_status', 'pending_review')
+    .order('created_at', { ascending: true }).limit(50)
+    .then(function(r) {
+      var rows = r.data || [];
+      var items = [];
+      rows.forEach(function(c) {
+        var d = c.data || {};
+        var ageH = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 3600000);
+        var isRequest = c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request' || d.request_category || d.refill_protocol;
+        if (ageH >= 24) {
+          items.push({ sev: 0, title: (isRequest ? 'Request' : 'Intake') + ' overdue \u00B7 ' + (ageH < 48 ? ageH + 'h' : Math.floor(ageH/24) + 'd'), user: c.user_id, cls: 'high' });
+        } else if (c.risk_status === 'high_risk') {
+          items.push({ sev: 1, title: 'High-risk intake', user: c.user_id, cls: 'high' });
+        } else if (c.risk_status === 'moderate_risk' && ageH >= 12) {
+          items.push({ sev: 2, title: 'Moderate-risk \u00B7 ' + ageH + 'h pending', user: c.user_id, cls: 'mod' });
+        }
+      });
+      items.sort(function(a, b) { return a.sev - b.sev; });
+      if (!items.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      document.getElementById('attentionCount').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+      list.innerHTML = items.slice(0, 8).map(function(it) {
+        var name = profileName(it.user) || 'Patient';
+        return '<div class="cc-flag-row">' +
+          '<div class="cc-flag-icon ' + it.cls + '">!</div>' +
+          '<div class="cc-flag-info">' +
+            '<div class="cc-flag-title">' + escHtml(it.title) + '</div>' +
+            '<div class="cc-flag-meta">' + escHtml(name) + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }).catch(function() { section.style.display = 'none'; });
+}
+
+// Phase D: Pipeline time range
+var _funnelRange = 30;
+function _setFunnelRange(range) {
+  _funnelRange = range;
+  document.querySelectorAll('[data-range]').forEach(function(btn) {
+    var isActive = String(btn.dataset.range) === String(range);
+    btn.style.fontWeight = isActive ? '600' : '';
+    btn.style.color = isActive ? 'var(--text)' : '';
+  });
+  loadIntakeFunnel();
 }
 
 // Legacy no-op: Recent Users table was replaced by the command center
@@ -3002,8 +3088,12 @@ var _openUserDetailId = null;
 // Prescribed / Declined = terminal states; Purchased = prescribed with
 // purchase_status completed.
 function loadIntakeFunnel() {
-  db.from('consultations').select('review_status, purchase_status, consultation_type, data')
-    .then(function(r) {
+  var query = db.from('consultations').select('review_status, purchase_status, consultation_type, data, created_at');
+  if (_funnelRange !== 'all') {
+    var cutoff = new Date(Date.now() - _funnelRange * 86400000).toISOString();
+    query = query.gte('created_at', cutoff);
+  }
+  query.then(function(r) {
       var rows = (r.data || []).filter(function(c) {
         // Intakes only — protocol/refill requests are separate pipelines
         if (c.consultation_type === 'protocol_request') return false;
@@ -3142,7 +3232,7 @@ function loadActivityStream() {
   var container = document.getElementById('activityStream');
   if (!container) return;
   db.from('patient_events').select('user_id, event_type, event_data, created_by_name, created_at')
-    .order('created_at', { ascending: false }).limit(20)
+    .order('created_at', { ascending: false }).limit(10)
     .then(function(r) {
       var rows = r.data || [];
       if (!rows.length) {
@@ -4815,7 +4905,7 @@ function _startAdminPoll() {
     loadOverviewStats();
     loadIntakeFunnel();
     loadClinicianQueues();
-    loadFlaggedItems();
+    loadNeedsAttention();
     loadActivityStream();
     loadUsers();
     loadRoles();

@@ -9967,6 +9967,7 @@ function _closeAdjustRxModal() {
 async function _saveAdjustRx() {
   if (!_rxAdjustCtx) return;
   var ctx = _rxAdjustCtx;
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.modified', ctx.userId, { context: 'prescription_change', prescription_id: ctx.prescriptionId });
   var reasonEl = document.getElementById('rxAdjReason');
   var errEl = document.getElementById('rxAdjErr');
   var btn = document.getElementById('rxAdjSaveBtn');
@@ -16883,6 +16884,10 @@ var _pdModalEscHandler = null;
 
 function _openPatientDetailModal(patient, rowEl) {
   if (!patient) return;
+  // HIPAA: log PHI access when clinician opens a patient record
+  if (patient.id && typeof writeAuditLog === 'function') {
+    writeAuditLog('phi.viewed', patient.id, { context: 'patient_detail_modal', patient_name: patient.name || '' });
+  }
   // Close any existing modal first so we don't stack overlays.
   if (document.getElementById('pdModalOverlay')) {
     _closePatientDetailModal();
@@ -17633,6 +17638,7 @@ function _fmtPatientNoteDate(iso) {
 // patient-detail panel open path and re-used after each save.
 async function _loadPatientNotes(userId) {
   if (!userId) return;
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.viewed', userId, { context: 'patient_notes' });
   var viewBody = document.getElementById('pn-latest-body-' + userId);
   var attrEl   = document.getElementById('pn-attribution-' + userId);
   var histLink = document.getElementById('pn-history-link-' + userId);
@@ -17712,6 +17718,7 @@ function _cancelNewNote(userId) {
 // and flips back to view mode showing the new latest entry.
 async function _savePatientNote(userId) {
   if (!userId) return;
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.modified', userId, { context: 'patient_note_saved' });
   var ta   = document.getElementById('pn-textarea-' + userId);
   var save = document.getElementById('pn-save-btn-' + userId);
   if (!ta) return;
@@ -17823,6 +17830,7 @@ function _renderPatientNotesFromCache(userId) {
 // (pre-migration notes).
 async function _openPatientHistoryModal(userId) {
   if (!userId) return;
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.viewed', userId, { context: 'patient_history' });
 
   // Remove any existing modal first.
   var old = document.getElementById('pn-history-overlay');
@@ -18505,6 +18513,7 @@ function _populateThreadMeta(threadId) {
 }
 
 function openClThread(threadId) {
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.viewed', threadId, { context: 'clinician_message_thread' });
   if (!currentUserId && PREVIEW_MODE) {
     _openClThreadMock(threadId);
     return;
@@ -18684,6 +18693,7 @@ function closeClThread() {
 function sendClMessage() {
   var input = document.getElementById('clMsgInput');
   if (!input || !input.value.trim() || !_activeClThreadId) return;
+  if (typeof writeAuditLog === 'function') writeAuditLog('phi.modified', _activeClThreadId, { context: 'clinician_message_sent' });
   var text = input.value.trim();
   _resetMsgInput('clMsgInput');
 
@@ -20088,6 +20098,21 @@ function _buildMedHistoryDisplay(arr) {
     var isRisk = MED_HISTORY_HIGH_RISK.indexOf(h) !== -1;
     return isRisk ? '<span class="crw-clin-flag">' + escapeHtml(label) + '</span>' : escapeHtml(label);
   }).join(', ');
+}
+
+// HIPAA audit trail: writes to audit_logs table. Fire-and-forget so
+// PHI access logging never blocks the user-facing flow.
+function writeAuditLog(action, targetId, details) {
+  try {
+    db.from('audit_logs').insert({
+      action: action,
+      actor_id: currentUserId || null,
+      actor_email: null,
+      target_id: targetId || null,
+      details: details ? JSON.stringify(details) : null,
+      created_at: new Date().toISOString()
+    }).then(function(){}).catch(function(){});
+  } catch (_) {}
 }
 
 function escapeHtml(str) {

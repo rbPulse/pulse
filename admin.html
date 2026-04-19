@@ -2797,7 +2797,7 @@ function exportToCSV(filename, rows, columns) {
   document.body.appendChild(a);
   a.click();
   setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-  writeAuditLog('admin.export_csv', null, { filename: filename, row_count: rows.length });
+  writeAuditLog('phi.exported', null, { filename: filename, row_count: rows.length });
 }
 
 // Per-tab export entry points. Each exports whatever is currently
@@ -3481,6 +3481,7 @@ function renderUsersTable(users) {
 function openUserDetail(userId) {
   var u = (allUsers || []).find(function(x) { return x.user_id === userId; });
   if (!u) return;
+  if ((u.role || 'member') === 'member') writeAuditLog('phi.viewed', userId, { context: 'user_detail' });
   _openUserDetailId = userId;
   var role = u.role || 'member';
   var name = u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email || 'Unknown';
@@ -3766,6 +3767,7 @@ function renderConsultTable(consultations) {
 function openConsultDetail(id) {
   var c = allConsultations.find(function(x) { return x.id === id; });
   if (!c) return;
+  writeAuditLog('phi.viewed', c.user_id, { context: 'patient_detail', consultation_id: id });
   selectedConsultId = id;
   filterConsultations(); // Re-render to highlight selected row
 
@@ -4095,6 +4097,7 @@ function renderThreadList(threads) {
 }
 
 function openThread(threadId) {
+  writeAuditLog('phi.viewed', threadId, { context: 'message_thread' });
   selectedThreadId = threadId;
   filterThreads(); // Re-render to highlight
 

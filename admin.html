@@ -1206,6 +1206,20 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div id="automationsContainer">
             <div style="text-align:center;color:var(--text3);padding:40px 0;font-family:'Inter',sans-serif;font-size:13px;">Loading automations...</div>
           </div>
+          <!-- Automation config editor modal -->
+          <div class="detail-panel-backdrop" id="autoEditBackdrop" onclick="closeAutoEditor()"></div>
+          <div class="detail-panel" id="autoEditPanel" style="max-width:520px;">
+            <div class="detail-panel-header">
+              <div class="detail-panel-title" id="autoEditTitle">Edit Automation</div>
+              <button class="detail-close" onclick="closeAutoEditor()">Close</button>
+            </div>
+            <div id="autoEditDesc" style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6;"></div>
+            <div class="form-grid" id="autoEditFields"></div>
+            <div class="form-actions" style="margin-top:16px;">
+              <button class="form-btn secondary" onclick="closeAutoEditor()">Cancel</button>
+              <button class="form-btn primary" id="autoEditSaveBtn" onclick="saveAutoConfig()">Save</button>
+            </div>
+          </div>
         </div>
 
         <!-- Business settings sub-section -->
@@ -1600,8 +1614,12 @@ function _renderAutomations() {
         var disabledCls = a.enabled ? '' : ' disabled';
         var checkedAttr = a.enabled ? ' checked' : '';
         var toggleDisabled = _autoTableReady ? '' : ' disabled';
-        html += '<div class="auto-card' + disabledCls + '" data-auto-key="' + escHtml(a.key) + '">' +
-          '<label class="auto-toggle">' +
+        var hasConfig = (_autoConfigSchema[a.key] || []).length > 0;
+        var editBtn = hasConfig
+          ? '<button class="auto-expand-btn" onclick="event.stopPropagation();openAutoEditor(\'' + escHtml(a.key) + '\')">Edit \u203A</button>'
+          : '';
+        html += '<div class="auto-card' + disabledCls + '" data-auto-key="' + escHtml(a.key) + '"' + (hasConfig ? ' onclick="openAutoEditor(\'' + escHtml(a.key) + '\')" style="cursor:pointer;"' : '') + '>' +
+          '<label class="auto-toggle" onclick="event.stopPropagation()">' +
             '<input type="checkbox"' + checkedAttr + toggleDisabled + ' onchange="_toggleAutomation(\'' + escHtml(a.key) + '\',this.checked)"/>' +
             '<div class="auto-toggle-track"></div>' +
             '<div class="auto-toggle-thumb"></div>' +
@@ -1611,6 +1629,7 @@ function _renderAutomations() {
             '<div class="auto-desc">' + escHtml(a.description || '') + '</div>' +
             (configPills ? '<div class="auto-config">' + configPills + '</div>' : '') +
           '</div>' +
+          editBtn +
         '</div>';
       });
     });
@@ -1653,6 +1672,129 @@ function _toggleAutomation(key, enabled) {
       _renderAutomations();
     })
     .catch(function() { showToast('Toggle failed.', 'error'); });
+}
+
+// Config field definitions per automation key. Each field specifies
+// a label, input type, and options (for selects). Only config keys
+// listed here get rendered in the editor — unlisted keys are preserved
+// but hidden.
+var _autoConfigSchema = {
+  welcome_message:        [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}, {checkInDates}' }],
+  auto_schedule_checkins: [{ key:'duration_minutes',  label:'Appointment Duration', type:'number',   suffix:'minutes' },
+                           { key:'frequency',         label:'Frequency',            type:'select',   options:['weekly','biweekly','monthly'] }],
+  wellness_prompts:       [{ key:'cadence',           label:'Cadence',              type:'select',   options:['daily','weekly','biweekly','monthly'] },
+                           { key:'prompt_count',      label:'Number of Prompts',    type:'number' }],
+  checkin_routing:        [],
+  low_supply_alert:       [{ key:'threshold_days',    label:'Low Supply Threshold', type:'number',   suffix:'days' }],
+  protocol_request_routing:[{ key:'auto_notify',      label:'Auto-Notify Clinician',type:'toggle' },
+                            { key:'auto_message',     label:'Auto-Message Thread',  type:'toggle' }],
+  refill_request_routing: [{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
+                           { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
+  auto_assign_clinician:  [{ key:'mode',              label:'Assignment Mode',      type:'select',   options:['lowest_load','round_robin'] },
+                           { key:'state_filter',      label:'Filter by State',      type:'toggle' }],
+  risk_evaluation:        [{ key:'high_threshold',    label:'High Risk Threshold',  type:'number',   suffix:'score \u2265' },
+                           { key:'moderate_threshold',label:'Moderate Threshold',   type:'number',   suffix:'score \u2265' }],
+  overdue_flag:           [{ key:'threshold_hours',   label:'Overdue After',        type:'number',   suffix:'hours' }],
+  new_message_notify:     [],
+  rx_change_notify:       [],
+  appointment_alerts:     [],
+  session_auto_close:     []
+};
+
+var _editingAutoKey = null;
+
+function openAutoEditor(key) {
+  var a = _allAutomations.find(function(x) { return x.key === key; });
+  if (!a) return;
+  _editingAutoKey = key;
+  var cfg = (typeof a.config === 'string') ? JSON.parse(a.config || '{}') : (a.config || {});
+  var schema = _autoConfigSchema[key] || [];
+  document.getElementById('autoEditTitle').textContent = a.label || key;
+  document.getElementById('autoEditDesc').textContent = a.description || '';
+  var fieldsEl = document.getElementById('autoEditFields');
+  if (!schema.length) {
+    fieldsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0;">This automation has no configurable settings. Use the toggle to enable or disable it.</div>';
+    document.getElementById('autoEditSaveBtn').style.display = 'none';
+  } else {
+    document.getElementById('autoEditSaveBtn').style.display = '';
+    fieldsEl.innerHTML = schema.map(function(f) {
+      var val = cfg[f.key];
+      var input = '';
+      if (f.type === 'textarea') {
+        input = '<textarea class="admin-msg-ta" id="autoField_' + f.key + '" placeholder="' + escHtml(f.placeholder || '') + '">' + escHtml(val != null ? String(val) : '') + '</textarea>';
+      } else if (f.type === 'number') {
+        input = '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<input type="number" class="search-input" id="autoField_' + f.key + '" value="' + (val != null ? val : '') + '" style="max-width:120px;"/>' +
+          (f.suffix ? '<span style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">' + escHtml(f.suffix) + '</span>' : '') +
+          '</div>';
+      } else if (f.type === 'select') {
+        var opts = (f.options || []).map(function(o) {
+          return '<option value="' + escHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + escHtml(o.charAt(0).toUpperCase() + o.slice(1).replace(/_/g, ' ')) + '</option>';
+        }).join('');
+        input = '<select class="filter-select" id="autoField_' + f.key + '" style="min-width:160px;">' + opts + '</select>';
+      } else if (f.type === 'toggle') {
+        var checked = (val === true || val === 'true') ? ' checked' : '';
+        input = '<label class="auto-toggle" style="margin-top:0;">' +
+          '<input type="checkbox" id="autoField_' + f.key + '"' + checked + '/>' +
+          '<div class="auto-toggle-track"></div>' +
+          '<div class="auto-toggle-thumb"></div>' +
+          '</label>';
+      }
+      var spanStyle = f.type === 'textarea' ? 'grid-column:1 / -1;' : '';
+      return '<div class="form-field" style="' + spanStyle + '">' +
+        '<label>' + escHtml(f.label) + '</label>' +
+        input +
+        '</div>';
+    }).join('');
+  }
+  document.getElementById('autoEditPanel').classList.add('show');
+  document.getElementById('autoEditBackdrop').classList.add('show');
+}
+
+function closeAutoEditor() {
+  document.getElementById('autoEditPanel').classList.remove('show');
+  document.getElementById('autoEditBackdrop').classList.remove('show');
+  _editingAutoKey = null;
+}
+
+function saveAutoConfig() {
+  if (!_editingAutoKey || !_autoTableReady) return;
+  var a = _allAutomations.find(function(x) { return x.key === _editingAutoKey; });
+  if (!a) return;
+  var schema = _autoConfigSchema[_editingAutoKey] || [];
+  var cfg = (typeof a.config === 'string') ? JSON.parse(a.config || '{}') : Object.assign({}, a.config || {});
+  schema.forEach(function(f) {
+    var el = document.getElementById('autoField_' + f.key);
+    if (!el) return;
+    if (f.type === 'toggle') {
+      cfg[f.key] = el.checked;
+    } else if (f.type === 'number') {
+      var v = el.value.trim();
+      cfg[f.key] = v !== '' ? Number(v) : null;
+    } else if (f.type === 'textarea') {
+      cfg[f.key] = el.value.trim() || null;
+    } else {
+      cfg[f.key] = el.value || null;
+    }
+  });
+  var btn = document.getElementById('autoEditSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  db.from('platform_automations').update({ config: cfg, updated_at: new Date().toISOString() }).eq('key', _editingAutoKey)
+    .then(function(r) {
+      if (r.error) { showToast('Save failed.', 'error'); }
+      else {
+        a.config = cfg;
+        writeAuditLog('automation.config_updated', null, { key: _editingAutoKey, config: cfg });
+        showToast('Configuration saved.', 'success');
+        closeAutoEditor();
+        _renderAutomations();
+      }
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    })
+    .catch(function() {
+      showToast('Save failed.', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    });
 }
 
 function loadProtocols() {

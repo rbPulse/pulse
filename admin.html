@@ -4046,11 +4046,18 @@ function loadMessages() {
         var unread = threadMsgs.filter(function(m) { return !m.read; }).length;
         var hasClinician = threadMsgs.some(function(m) { return m.sender_role === 'clinician'; });
         var hasAdmin = threadMsgs.some(function(m) { return m.sender_role === 'admin'; });
-        // Extract clinician names from messages in this thread
+        // Extract clinician names — use profileCache for full names,
+        // fall back to sender_name from the message itself.
         var clinicianNames = [];
+        var _seenClIds = {};
         threadMsgs.forEach(function(m) {
-          if (m.sender_role === 'clinician' && m.sender_name && clinicianNames.indexOf(m.sender_name) === -1) {
-            clinicianNames.push(m.sender_name);
+          if (m.sender_role === 'clinician' && m.sender_id && !_seenClIds[m.sender_id]) {
+            _seenClIds[m.sender_id] = true;
+            var p = profileCache[m.sender_id];
+            var fullName = p
+              ? (p.display_name || ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || p.email)
+              : (m.sender_name || 'Clinician');
+            clinicianNames.push(fullName);
           }
         });
         return {

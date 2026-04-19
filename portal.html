@@ -10028,15 +10028,17 @@ async function _saveAdjustRx() {
       // flips them back to 'prescribed'.
       await db.from('consultations').update({ review_status: 'prescribed' }).eq('id', ctx.consultId);
 
-      try {
-        await db.from('notifications').insert({
-          user_id: ctx.userId,
-          type:    'protocol_updated',
-          body:    'Your clinician prescribed a new protocol: ' + addValues.protocolKey + '. Reason: ' + reason,
-          read:    false,
-          link:    'protocol'
-        });
-      } catch (_) { /* non-blocking */ }
+      if (_isAutoEnabled('rx_approved_notify')) {
+        try {
+          var _rxNotifCfg = _automationConfigCache['rx_approved_notify'] || {};
+          var _rxNotifBody = (_rxNotifCfg.template || '{clinicianName} has approved your {protocolName} plan.')
+            .replace(/\{protocolName\}/g, addValues.protocolKey || 'protocol')
+            .replace(/\{clinicianName\}/g, 'Your clinician');
+          await db.from('notifications').insert({
+            user_id: ctx.userId, type: 'protocol_updated', body: _rxNotifBody, read: false, link: 'protocol'
+          });
+        } catch (_) {}
+      }
 
       _closeAdjustRxModal();
 
@@ -10180,17 +10182,21 @@ async function _saveAdjustRx() {
     // → 300mg") so members with multiple protocols can tell which Rx
     // was touched without opening the portal.
     var protoLabelForNotif = ctx.current.protocol_assigned || (newValues && newValues.protocol_key) || '';
-    var notifBody;
-    if (isDiscontinue) {
-      notifBody = 'Your clinician has discontinued' + (protoLabelForNotif ? ' ' + protoLabelForNotif : ' your protocol') + '. Reason: ' + reason;
-    } else if (ctx.isReprescribe) {
-      notifBody = 'Your clinician has re-prescribed' + (protoLabelForNotif ? ' ' + protoLabelForNotif : ' your protocol') + '. ' + reason;
-    } else {
-      var diffTxt = _diffRxValues(ctx.current, newValues);
-      notifBody = 'Your clinician updated ' + (protoLabelForNotif || 'your protocol') +
-        (diffTxt ? ' — ' + diffTxt : '') +
-        '. Reason: ' + reason;
-    }
+    var _notifKey = isDiscontinue ? 'rx_discontinued_notify' : (ctx.isReprescribe ? 'rx_approved_notify' : 'rx_adjusted_notify');
+    if (_isAutoEnabled(_notifKey)) {
+      var _nCfg = _automationConfigCache[_notifKey] || {};
+      var _pName = protoLabelForNotif || 'your plan';
+      var notifBody;
+      if (_nCfg.template) {
+        notifBody = _nCfg.template.replace(/\{protocolName\}/g, _pName).replace(/\{clinicianName\}/g, 'Your clinician');
+      } else if (isDiscontinue) {
+        notifBody = 'Your ' + _pName + ' plan has been discontinued. Reach out with questions.';
+      } else if (ctx.isReprescribe) {
+        notifBody = 'Your ' + _pName + ' plan has been re-prescribed.';
+      } else {
+        var diffTxt = _diffRxValues(ctx.current, newValues);
+        notifBody = 'Your ' + _pName + ' plan has been updated' + (diffTxt ? ' \u2014 ' + diffTxt : '') + '.';
+      }
     try {
       await db.from('notifications').insert({
         user_id: ctx.userId,
@@ -10199,7 +10205,8 @@ async function _saveAdjustRx() {
         read: false,
         link: 'protocol'
       });
-    } catch (_) { /* non-blocking */ }
+    } catch (_) {}
+    } // end _isAutoEnabled gate
 
     _closeAdjustRxModal();
 
@@ -10449,7 +10456,28 @@ function _evaluateRiskFallback(d) {
   var status = 'low_risk';
   if (score >= 4) status = 'high_risk';
   else if (score >= 2) status = 'moderate_risk';
+  // High-Risk → Admin Alert: if the intake scores high-risk and the
+  // automation is enabled, fire a notification to all admin users.
+  if (status === 'high_risk' && _isAutoEnabled('high_risk_admin_alert')) {
+    _fireHighRiskAdminAlert(reasons);
+  }
   return { status: status, reasons: reasons };
+}
+
+function _fireHighRiskAdminAlert(reasons) {
+  try {
+    db.from('profiles').select('user_id').eq('role', 'admin').then(function(r) {
+      if (!r.data) return;
+      r.data.forEach(function(admin) {
+        db.from('notifications').insert({
+          user_id: admin.user_id,
+          type: 'high_risk_alert',
+          body: 'High-risk intake flagged: ' + (reasons.length ? reasons.join(', ') : 'elevated risk score'),
+          read: false
+        }).then(function(){}).catch(function(){});
+      });
+    });
+  } catch (_) {}
 }
 
 async function _loadAttentionCardBody(bodyEl, consultId, userId) {
@@ -13244,13 +13272,16 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
       }
     } catch (_) { /* non-blocking */ }
 
-    var greeting = firstName
-      ? ('Welcome to Pulse, ' + firstName + '. ')
-      : 'Welcome to Pulse. ';
-    var body = greeting +
-      'I\u2019m glad to have you on board.' + protoFragment +
-      ' Please reach out anytime if you have questions about your protocol or need anything at all. I\u2019ve also gone ahead and scheduled a few monthly check-ins for us' + dateFragment +
-      ' so I can track how you\u2019re progressing. Feel free to reschedule any of them from the Appts tab if the timing doesn\u2019t work.';
+    // Build message from admin-configurable template or fall back to default
+    var cfg = _automationConfigCache['welcome_message'] || {};
+    var tmpl = cfg.template || 'Welcome to Pulse, {firstName}. I\'m glad to have you on board.';
+    var body = tmpl
+      .replace(/\{firstName\}/g, firstName || 'there')
+      .replace(/\{clinicianName\}/g, clName || 'your clinician')
+      .replace(/\{protocolName\}/g, protoFragment ? 'your protocols' : 'your plan')
+      .replace(/\{checkInDates\}/g, dateFragment || '');
+    if (protoFragment && tmpl.indexOf('{protocolName}') === -1) body += protoFragment;
+    if (dateFragment && tmpl.indexOf('{checkInDates}') === -1) body += ' I\'ve scheduled check-ins' + dateFragment + ' so I can track your progress.';
 
     var insertRes = await db.from('messages').insert({
       thread_id: consumerId,
@@ -13279,6 +13310,30 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
 //   3. Appointment reminder — if an appointment is within X hours
 // Each checks a gate (patient_events) to avoid duplicates and reads
 // config from platform_automations when the table is available.
+
+// Purchase confirmation — sends a one-time confirmation message after
+// the member's first portal load as a prescribed patient. Gated by
+// a patient_event so it only fires once.
+async function _ensurePurchaseConfirmation(userId, clinicianId) {
+  if (!_isAutoEnabled('purchase_confirmation') || !userId || PREVIEW_MODE) return;
+  try {
+    var gate = await db.from('patient_events').select('id')
+      .eq('user_id', userId).eq('event_type', 'purchase_confirmation').limit(1);
+    if (gate.data && gate.data.length) return;
+    var cfg = _automationConfigCache['purchase_confirmation'] || {};
+    var tmpl = cfg.template || 'Your order is confirmed. Your clinician will follow up shortly.';
+    var body = tmpl.replace(/\{firstName\}/g, window._memberFirstName || '').replace(/\{protocolName\}/g, window._protoKey || 'your plan');
+    db.from('messages').insert({
+      thread_id: userId, sender_id: clinicianId || null,
+      sender_role: 'clinician', sender_name: 'Your Care Team',
+      body: body, read: false
+    }).then(function(){}).catch(function(){});
+    db.from('patient_events').insert({
+      user_id: userId, event_type: 'purchase_confirmation',
+      event_data: {}, created_by_name: 'System'
+    }).then(function(){}).catch(function(){});
+  } catch (_) {}
+}
 
 async function _runEngagementAutomations(userId, clinicianId) {
   if (PREVIEW_MODE || !userId) return;
@@ -13310,7 +13365,7 @@ async function _checkInactivityNudge(userId, clinicianId) {
       .gte('created_at', new Date(Date.now() - daysThreshold * 86400000).toISOString()).limit(1);
     if (gateRes.data && gateRes.data.length) return; // already nudged
     // Send the nudge
-    var msg = 'We noticed you haven\u2019t logged any activity recently. Your care team is here to help \u2014 feel free to reach out or log your latest dose.';
+    var msg = (cfg.template || 'We noticed you haven\u2019t logged any activity recently. Your care team is here to help \u2014 feel free to reach out or log your latest dose.');
     db.from('messages').insert({
       thread_id: userId,
       sender_id: clinicianId || null,
@@ -13372,7 +13427,7 @@ async function _checkProtocolCompletion(userId, clinicianId) {
       sender_id: clinicianId || null,
       sender_role: 'clinician',
       sender_name: 'Your Care Team',
-      body: 'Your ' + protoName + ' plan has reached its scheduled duration. If you\u2019d like to continue or adjust, request a refill or reach out to your clinician.',
+      body: (cfg.template || 'Your {protocolName} plan has reached its scheduled duration. Request a refill or reach out to your clinician to discuss next steps.').replace(/\{protocolName\}/g, protoName),
       read: false
     }).then(function(){}).catch(function(){});
     break; // one completion per load
@@ -15217,6 +15272,13 @@ function _markCheckInDone() {
 }
 
 function _getWeeklyPrompt() {
+  // Use admin-configured prompts from platform_automations if available,
+  // fall back to hardcoded WELLNESS_PROMPTS array.
+  var cfg = _automationConfigCache['wellness_prompts'] || {};
+  var promptList = WELLNESS_PROMPTS;
+  if (cfg.prompts && Array.isArray(cfg.prompts) && cfg.prompts.length) {
+    promptList = cfg.prompts.map(function(t, i) { return { id: i + 1, text: t, category: 'custom' }; });
+  }
   var uid = currentUserId || 'anon';
   var hash = 0;
   for (var i = 0; i < uid.length; i++) {
@@ -15226,8 +15288,8 @@ function _getWeeklyPrompt() {
   var now = new Date();
   var start = new Date(now.getFullYear(), 0, 1);
   var weekNum = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  var idx = Math.abs(hash + weekNum) % WELLNESS_PROMPTS.length;
-  return WELLNESS_PROMPTS[idx];
+  var idx = Math.abs(hash + weekNum) % promptList.length;
+  return promptList[idx];
 }
 
 // Render the check-in card on both desktop (#mCardCheckIn) and mobile
@@ -15955,7 +16017,9 @@ function populatePortal(user, consultation, greeting) {
         try {
           await _ensureClinicianWelcomeMessage(currentUserId, consultation.assigned_clinician_id);
         } catch (_) {}
-        // Phase: engagement automations (inactivity nudge, protocol completion, appointment reminder)
+        // Purchase confirmation message
+        try { _ensurePurchaseConfirmation(currentUserId, consultation.assigned_clinician_id); } catch (_) {}
+        // Engagement automations (inactivity nudge, protocol completion, appointment reminder)
         try { _runEngagementAutomations(currentUserId, consultation.assigned_clinician_id); } catch (_) {}
       })();
     }

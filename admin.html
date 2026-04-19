@@ -1239,12 +1239,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <button class="detail-close" onclick="closeProtocolEditor()">Close</button>
           </div>
           <div class="form-grid">
-            <div class="form-field">
-              <label>Key (slug)</label>
-              <input type="text" id="protoFieldKey" placeholder="e.g. focus"/>
-            </div>
-            <div class="form-field">
-              <label>Display Name</label>
+            <!-- Hidden key field: auto-generated from the display name on
+                 create; immutable on edit. Kept as a hidden input so the
+                 existing save logic still references it. -->
+            <input type="hidden" id="protoFieldKey"/>
+            <div class="form-field" style="grid-column:1 / -1;">
+              <label>Product Name</label>
               <input type="text" id="protoFieldName" placeholder="e.g. Focus Plan"/>
             </div>
             <div class="form-field">
@@ -1793,15 +1793,38 @@ function closeProtocolEditor() {
   _editingProtocolId = null;
 }
 
+// Slugify a product name into a safe lowercase key. If the generated
+// slug collides with an existing product, appends -2, -3, etc.
+function _slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50) || 'product';
+}
+function _generateUniqueKey(name) {
+  var base = _slugify(name);
+  var existing = {};
+  (_allProtocols || []).forEach(function(p) { if (p.key) existing[p.key] = true; });
+  if (!existing[base]) return base;
+  for (var i = 2; i < 999; i++) {
+    var candidate = base + '-' + i;
+    if (!existing[candidate]) return candidate;
+  }
+  return base + '-' + Date.now();
+}
+
 function saveProtocol() {
-  var key = (document.getElementById('protoFieldKey').value || '').trim().toLowerCase();
+  var existingKey = (document.getElementById('protoFieldKey').value || '').trim().toLowerCase();
   var name = (document.getElementById('protoFieldName').value || '').trim();
   var productType = (document.getElementById('protoFieldType').value || '').trim();
   var category = (document.getElementById('protoFieldCategory').value || '').trim();
   var priceVal = (document.getElementById('protoFieldPrice').value || '').trim();
   var compoundsText = (document.getElementById('protoFieldCompounds').value || '').trim();
   var note = (document.getElementById('protoFieldNote').value || '').trim();
-  if (!key || !name) { showToast('Key and name are required.', 'error'); return; }
+  if (!name) { showToast('Product name is required.', 'error'); return; }
+  // Editing preserves the original key; creating auto-generates from the
+  // display name (lowercase, alphanumerics + dashes, collision-safe).
+  var key = _editingProtocolId ? existingKey : _generateUniqueKey(name);
   var compounds = compoundsText ? compoundsText.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean) : [];
   var payload = {
     key: key, name: name, product_type: productType || null, category: category || null,

@@ -420,6 +420,32 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cat-mgr-add{display:flex;gap:8px;margin-top:4px;}
 .cat-mgr-add input{flex:1;}
 
+/* Automations tab — toggle cards with config */
+.auto-portal-group{margin-bottom:28px;}
+.auto-portal-label{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-0.01em;padding:10px 0 6px;border-bottom:2px solid var(--green);margin-bottom:16px;display:inline-block;}
+.auto-cat-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);margin:18px 0 10px;padding:0 2px;}
+.auto-cat-label:first-child{margin-top:0;}
+.auto-card{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;transition:border-color .15s,box-shadow .15s;}
+.auto-card:hover{border-color:var(--border-strong);box-shadow:var(--shadow);}
+.auto-card.disabled{opacity:0.55;}
+.auto-toggle{position:relative;width:40px;height:22px;flex-shrink:0;margin-top:2px;}
+.auto-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.auto-toggle-track{position:absolute;inset:0;background:rgba(20,20,20,0.12);border-radius:11px;cursor:pointer;transition:background .2s;}
+.auto-toggle input:checked + .auto-toggle-track{background:var(--green);}
+.auto-toggle-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.15);}
+.auto-toggle input:checked ~ .auto-toggle-thumb{transform:translateX(18px);}
+.auto-info{flex:1;min-width:0;}
+.auto-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);line-height:1.3;}
+.auto-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5;}
+.auto-config{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.auto-config-pill{display:inline-flex;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;padding:3px 10px;border-radius:var(--radius-pill);background:rgba(20,20,20,0.04);border:1px solid var(--border);color:var(--text2);white-space:nowrap;}
+.auto-config-pill.editable{cursor:pointer;transition:border-color .15s,color .15s;}
+.auto-config-pill.editable:hover{border-color:var(--green-border);color:var(--green);}
+.auto-expand-btn{flex-shrink:0;align-self:center;background:none;border:none;padding:4px 8px;cursor:pointer;color:var(--text3);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;border-radius:var(--radius-pill);transition:color .15s,background .15s;}
+.auto-expand-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.auto-migration-note{padding:14px 18px;background:var(--amber-tint);border:1px solid var(--amber-border);border-radius:var(--radius-sm);margin-bottom:16px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;}
+.auto-migration-note strong{color:var(--amber);}
+
 .bulk-preview-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:14px;}
 .bulk-preview-table th{text-align:left;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card2);}
 .bulk-preview-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);}
@@ -1058,7 +1084,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="cfg-subnav">
           <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Product Catalog</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
-          <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Notifications</button>
+          <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Automations</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="business" onclick="switchConfigSection('business')">Business</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="scale" onclick="switchConfigSection('scale')">Scale</button>
         </div>
@@ -1170,25 +1196,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Notification templates sub-section -->
+        <!-- Automations sub-section (replaces old Notifications placeholder) -->
         <div class="cfg-section" id="cfg-notifications">
-          <div class="cfg-placeholder">
-            <strong>Notification template editor</strong>
-            These are the prompts and messages the platform sends to members. Editing them here will let you customize copy per vertical.
+          <div id="autoMigrationNote" style="display:none;">
+            <div class="auto-migration-note">
+              <strong>Migration required.</strong> Run <code>supabase/migrations/008_platform_automations.sql</code> in your Supabase SQL editor to enable toggling. Automations are shown below as read-only until the table is initialized.
+            </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
-            <div class="chart-card">
-              <div class="chart-card-title">Weekly Check-in Prompts</div>
-              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
-                Rotating weekly questions shown to members on their Overview. Currently <strong>10 prompts</strong> defined in portal code. Will move to a <code>notification_templates</code> table so admins can add or edit them inline.
-              </div>
-            </div>
-            <div class="chart-card">
-              <div class="chart-card-title">System Messages</div>
-              <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.7;">
-                Templated text for refill requests, protocol approvals, and welcome messages. Each will become an editable row with merge fields (member name, product, etc.).
-              </div>
-            </div>
+          <div id="automationsContainer">
+            <div style="text-align:center;color:var(--text3);padding:40px 0;font-family:'Inter',sans-serif;font-size:13px;">Loading automations...</div>
           </div>
         </div>
 
@@ -1503,12 +1519,140 @@ function switchConfigSection(section) {
   if (pill) pill.classList.add('active');
   // Refresh live-data sub-sections when opened
   if (section === 'clinicians') renderClinicianCapacity();
+  if (section === 'notifications') loadAutomations();
 }
 
 function loadConfigure() {
   loadProtocols();
   loadCategories();
   renderClinicianCapacity();
+  loadAutomations();
+}
+
+// ══ Automations tab ══════════════════════════════════════════════════
+// Reads from platform_automations table. Falls back to a hardcoded
+// default set if the table hasn't been created yet (migration 008).
+var _allAutomations = [];
+var _autoTableReady = false;
+
+var _defaultAutomations = [
+  { key:'welcome_message',        label:'Welcome Message',         portal:'member',    category:'Onboarding',      description:'Auto-sends personalized clinician message on first portal load after prescription', enabled:true, config:{template:'Welcome to Pulse, {firstName}.'} },
+  { key:'auto_schedule_checkins', label:'Auto-Schedule Check-ins',  portal:'member',    category:'Onboarding',      description:'Creates monthly check-in appointments based on protocol duration',                  enabled:true, config:{duration_minutes:20,frequency:'monthly'} },
+  { key:'wellness_prompts',       label:'Wellness Check-in Prompts',portal:'member',    category:'Engagement',      description:'Weekly rotating prompt on Overview tab, one per week per member',                   enabled:true, config:{cadence:'weekly',prompt_count:10} },
+  { key:'checkin_routing',        label:'Check-in Response Routing',portal:'member',    category:'Engagement',      description:'Auto-sends member check-in responses to clinician as a message',                    enabled:true, config:{} },
+  { key:'low_supply_alert',       label:'Low Supply Alert',         portal:'member',    category:'Engagement',      description:'Flags protocol as low-supply and shows refill button',                              enabled:true, config:{threshold_days:14} },
+  { key:'protocol_request_routing',label:'Protocol Request Routing',portal:'member',    category:'Requests',        description:'Member request creates consultation + message + notification to clinician',         enabled:true, config:{auto_notify:true,auto_message:true} },
+  { key:'refill_request_routing', label:'Refill Request Routing',   portal:'member',    category:'Requests',        description:'Member refill request creates consultation + message + notification to clinician',  enabled:true, config:{auto_notify:true,auto_message:true} },
+  { key:'auto_assign_clinician',  label:'Auto-Assign Clinician',    portal:'clinician', category:'Intake Pipeline',  description:'Assigns new intakes to clinician with lowest pending review count',                 enabled:true, config:{mode:'lowest_load',state_filter:true} },
+  { key:'risk_evaluation',        label:'Risk Scoring',             portal:'clinician', category:'Intake Pipeline',  description:'Scores medical history into low/moderate/high risk tiers',                           enabled:true, config:{high_threshold:4,moderate_threshold:2} },
+  { key:'overdue_flag',           label:'Overdue Review Flag',      portal:'clinician', category:'Intake Pipeline',  description:'Flags consultations as overdue and pins to top of attention queue',                 enabled:true, config:{threshold_hours:24} },
+  { key:'new_message_notify',     label:'New Message → Member',     portal:'clinician', category:'Communication',    description:'Notifies member when clinician sends a message',                                    enabled:true, config:{} },
+  { key:'rx_change_notify',       label:'Rx Change → Member',       portal:'clinician', category:'Communication',    description:'Notifies member when clinician prescribes, adjusts, or discontinues',               enabled:true, config:{} },
+  { key:'appointment_alerts',     label:'Appointment Alerts',       portal:'clinician', category:'Scheduling',       description:'Notifies both parties on appointment confirmation or cancellation',                 enabled:true, config:{} },
+  { key:'session_auto_close',     label:'Session Auto-Close',       portal:'clinician', category:'Scheduling',       description:'Updates review status automatically when live consult session ends',                 enabled:true, config:{} }
+];
+
+function loadAutomations() {
+  db.from('platform_automations').select('*').order('portal', { ascending: true })
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _allAutomations = r.data || [];
+      _autoTableReady = true;
+      document.getElementById('autoMigrationNote').style.display = 'none';
+      _renderAutomations();
+    })
+    .catch(function() {
+      _allAutomations = _defaultAutomations;
+      _autoTableReady = false;
+      document.getElementById('autoMigrationNote').style.display = '';
+      _renderAutomations();
+    });
+}
+
+function _renderAutomations() {
+  var container = document.getElementById('automationsContainer');
+  if (!container) return;
+
+  // Group by portal, then by category
+  var portals = {};
+  var portalOrder = ['member', 'clinician'];
+  var portalLabels = { member: 'Member Portal', clinician: 'Clinician Portal' };
+  _allAutomations.forEach(function(a) {
+    var p = a.portal || 'other';
+    if (!portals[p]) portals[p] = {};
+    var c = a.category || 'General';
+    if (!portals[p][c]) portals[p][c] = [];
+    portals[p][c].push(a);
+  });
+
+  var html = '';
+  portalOrder.forEach(function(portal) {
+    var cats = portals[portal];
+    if (!cats) return;
+    html += '<div class="auto-portal-group">';
+    html += '<div class="auto-portal-label">' + escHtml(portalLabels[portal] || portal) + '</div>';
+    var catKeys = Object.keys(cats);
+    catKeys.forEach(function(catName) {
+      html += '<div class="auto-cat-label">' + escHtml(catName) + '</div>';
+      cats[catName].forEach(function(a) {
+        var cfg = (typeof a.config === 'string') ? JSON.parse(a.config || '{}') : (a.config || {});
+        var configPills = _buildConfigPills(a.key, cfg);
+        var disabledCls = a.enabled ? '' : ' disabled';
+        var checkedAttr = a.enabled ? ' checked' : '';
+        var toggleDisabled = _autoTableReady ? '' : ' disabled';
+        html += '<div class="auto-card' + disabledCls + '" data-auto-key="' + escHtml(a.key) + '">' +
+          '<label class="auto-toggle">' +
+            '<input type="checkbox"' + checkedAttr + toggleDisabled + ' onchange="_toggleAutomation(\'' + escHtml(a.key) + '\',this.checked)"/>' +
+            '<div class="auto-toggle-track"></div>' +
+            '<div class="auto-toggle-thumb"></div>' +
+          '</label>' +
+          '<div class="auto-info">' +
+            '<div class="auto-name">' + escHtml(a.label || a.key) + '</div>' +
+            '<div class="auto-desc">' + escHtml(a.description || '') + '</div>' +
+            (configPills ? '<div class="auto-config">' + configPills + '</div>' : '') +
+          '</div>' +
+        '</div>';
+      });
+    });
+    html += '</div>';
+  });
+
+  container.innerHTML = html || '<div style="text-align:center;color:var(--text3);padding:40px 0;">No automations configured.</div>';
+}
+
+function _buildConfigPills(key, cfg) {
+  var pills = [];
+  if (cfg.template) pills.push('Template: custom');
+  if (cfg.duration_minutes) pills.push('Duration: ' + cfg.duration_minutes + ' min');
+  if (cfg.frequency) pills.push('Frequency: ' + cfg.frequency);
+  if (cfg.cadence) pills.push('Cadence: ' + cfg.cadence);
+  if (cfg.prompt_count) pills.push(cfg.prompt_count + ' prompts');
+  if (cfg.threshold_days) pills.push('Threshold: ' + cfg.threshold_days + ' days');
+  if (cfg.threshold_hours) pills.push('Threshold: ' + cfg.threshold_hours + 'h');
+  if (cfg.mode) pills.push('Mode: ' + cfg.mode.replace(/_/g, ' '));
+  if (cfg.state_filter === true) pills.push('State filter: on');
+  if (cfg.state_filter === false) pills.push('State filter: off');
+  if (cfg.high_threshold) pills.push('High \u2265 ' + cfg.high_threshold);
+  if (cfg.moderate_threshold) pills.push('Moderate \u2265 ' + cfg.moderate_threshold);
+  if (cfg.auto_notify === true) pills.push('Auto-notify: on');
+  if (cfg.auto_notify === false) pills.push('Auto-notify: off');
+  if (cfg.auto_message === true) pills.push('Auto-message: on');
+  if (cfg.auto_message === false) pills.push('Auto-message: off');
+  return pills.map(function(p) { return '<span class="auto-config-pill">' + escHtml(p) + '</span>'; }).join('');
+}
+
+function _toggleAutomation(key, enabled) {
+  if (!_autoTableReady) return;
+  db.from('platform_automations').update({ enabled: enabled, updated_at: new Date().toISOString() }).eq('key', key)
+    .then(function(r) {
+      if (r.error) { showToast('Toggle failed.', 'error'); return; }
+      var a = _allAutomations.find(function(x) { return x.key === key; });
+      if (a) a.enabled = enabled;
+      writeAuditLog('automation.' + (enabled ? 'enabled' : 'disabled'), null, { key: key });
+      showToast((enabled ? 'Enabled' : 'Disabled') + ': ' + (a ? a.label : key), 'success');
+      _renderAutomations();
+    })
+    .catch(function() { showToast('Toggle failed.', 'error'); });
 }
 
 function loadProtocols() {

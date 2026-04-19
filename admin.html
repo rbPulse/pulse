@@ -358,10 +358,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pd-dropdown-option:hover{background:rgba(20,20,20,0.04);}
 .pd-dropdown-option.active{background:var(--green-tint);color:var(--green);font-weight:600;}
 
-/* Unified product catalog toolbar: filters left, actions right */
-.cfg-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+/* Unified product catalog toolbar: filters left, actions right.
+   Two inner groups stay bonded to their side when wrapping. */
+.cfg-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.cfg-toolbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cfg-toolbar-right{display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
 .cfg-util-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.02em;padding:8px 12px;border-radius:var(--radius-pill);background:transparent;border:none;color:var(--text3);cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;}
 .cfg-util-btn:hover{background:rgba(20,20,20,0.05);color:var(--text);}
+
+/* Product catalog table cells — compact, scannable, hover-highlighted rows */
+.cfg-product-table td{vertical-align:middle;}
+.cfg-product-table tr.cfg-tbl-archived td{opacity:0.55;}
+.cfg-tbl-type{display:inline-block;font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:3px 9px;border-radius:var(--radius-pill);background:var(--amber-tint);border:1px solid var(--amber-border);color:var(--amber);}
+.cfg-tbl-desc{font-size:12px;color:var(--text2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 
 .cfg-cat-manage-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;padding:6px 14px;border-radius:var(--radius-pill);background:transparent;border:1px solid var(--border-strong);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .cfg-cat-manage-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
@@ -1035,44 +1044,64 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
         <!-- Product Catalog (unified products + categories) -->
         <div class="cfg-section active" id="cfg-protocols">
-          <!-- Single unified toolbar: filters left, actions right -->
+          <!-- Toolbar: filters left, actions right. Wraps cleanly because
+               each side is its own flex group with justify-content split. -->
           <div class="cfg-toolbar">
-            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="min-width:220px;flex:0 1 280px;"/>
-            <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:160px;">
-              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
-                <span class="pd-dropdown-value">All categories</span>
-                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="pd-dropdown-menu" id="cfgCatDDMenu"></div>
-            </div>
-            <div class="pd-dropdown" id="cfgTypeDD" data-value="all" style="min-width:140px;">
-              <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgTypeDD')">
-                <span class="pd-dropdown-value">All types</span>
-                <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="pd-dropdown-menu">
-                <button type="button" class="pd-dropdown-option active" data-value="all" onclick="_cfgTypeSelect('all','All types')">All types</button>
-                <button type="button" class="pd-dropdown-option" data-value="Pod" onclick="_cfgTypeSelect('Pod','Pods')">Pods</button>
-                <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
+            <div class="cfg-toolbar-left">
+              <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="min-width:200px;flex:0 1 260px;"/>
+              <div class="pd-dropdown" id="cfgCatDD" data-value="all" style="min-width:150px;">
+                <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgCatDD')">
+                  <span class="pd-dropdown-value">All categories</span>
+                  <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="pd-dropdown-menu" id="cfgCatDDMenu"></div>
               </div>
+              <div class="pd-dropdown" id="cfgTypeDD" data-value="all" style="min-width:130px;">
+                <button type="button" class="pd-dropdown-toggle" onclick="_pdToggle('cfgTypeDD')">
+                  <span class="pd-dropdown-value">All types</span>
+                  <svg class="pd-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="pd-dropdown-menu">
+                  <button type="button" class="pd-dropdown-option active" data-value="all" onclick="_cfgTypeSelect('all','All types')">All types</button>
+                  <button type="button" class="pd-dropdown-option" data-value="Pod" onclick="_cfgTypeSelect('Pod','Pods')">Pods</button>
+                  <button type="button" class="pd-dropdown-option" data-value="Stack" onclick="_cfgTypeSelect('Stack','Stacks')">Stacks</button>
+                </div>
+              </div>
+              <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:120px;">
+                <option value="active">Active</option>
+                <option value="all">All</option>
+                <option value="archived">Archived</option>
+              </select>
+              <span class="toolbar-count" id="protocolCount"></span>
             </div>
-            <select class="filter-select" id="protocolArchiveFilter" onchange="filterProtocols()" style="min-width:130px;">
-              <option value="active">Active</option>
-              <option value="all">All</option>
-              <option value="archived">Archived</option>
-            </select>
-            <span class="toolbar-count" id="protocolCount" style="margin-right:auto;"></span>
-            <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
-            <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
-            <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
-            <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:4px;">+ New Product</button>
+            <div class="cfg-toolbar-right">
+              <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
+              <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
+              <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
+              <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:6px;">+ New Product</button>
+            </div>
           </div>
           <div id="protocolsNotReady" style="display:none;">
             <div class="cfg-migration-note">
               <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
             </div>
           </div>
-          <div class="cfg-product-grid" id="protocolsGrid"></div>
+          <div class="admin-table-wrap" id="protocolsTableWrap">
+            <table class="admin-table cfg-product-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th style="text-align:right;">Price</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="protocolsGrid"></tbody>
+            </table>
+          </div>
           <div id="protocolsEmpty" class="cfg-placeholder" style="display:none;">
             <strong>No products match your filters.</strong>
             Try clearing the search or category filter, or add a new product above.
@@ -1568,31 +1597,33 @@ function filterProtocols() {
   if (empty) empty.style.display = 'none';
   grid.innerHTML = rows.map(function(p) {
     var compounds = Array.isArray(p.compounds) ? p.compounds : [];
-    var descHtml = compounds.length
-      ? escHtml(compounds.join(', '))
-      : '<span style="color:var(--text4);">No description yet.</span>';
+    var descStr = compounds.length ? compounds.join(', ') : '';
+    var descCell = descStr
+      ? '<div class="cfg-tbl-desc" title="' + escHtml(descStr) + '">' + escHtml(descStr) + '</div>'
+      : '<span style="color:var(--text4);">\u2014</span>';
     var typeBadge = p.product_type
-      ? '<span class="cfg-product-card-cat">' + escHtml(p.product_type) + '</span>'
-      : '';
-    var priceStr = (p.price != null) ? '$' + Number(p.price).toFixed(2) : '';
-    return '<div class="cfg-product-card' + (p.is_archived ? ' archived' : '') + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
-      '<div class="cfg-product-card-top">' +
-        '<div style="min-width:0;flex:1;">' +
-          '<div class="cfg-product-card-name">' + escHtml(p.name || '') + '</div>' +
-          '<div class="cfg-product-card-meta">' + escHtml(p.category || '') + (priceStr ? ' \u00B7 ' + priceStr : '') + '</div>' +
-        '</div>' +
-        typeBadge +
-      '</div>' +
-      '<div class="cfg-product-card-desc">' + descHtml + '</div>' +
-      '<div class="cfg-product-card-foot">' +
-        '<div class="cfg-product-card-status ' + (p.is_archived ? 'archived' : 'active') + '">' + (p.is_archived ? 'Archived' : 'Active') + '</div>' +
-        '<div class="cfg-product-card-actions" onclick="event.stopPropagation()">' +
-          '<button class="cfg-icon-btn" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">Edit</button>' +
-          '<button class="cfg-icon-btn" onclick="duplicateProduct(\'' + escHtml(p.id) + '\')">Duplicate</button>' +
-          '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+      ? '<span class="cfg-tbl-type">' + escHtml(p.product_type) + '</span>'
+      : '<span style="color:var(--text4);">\u2014</span>';
+    var catCell = p.category ? escHtml(p.category) : '<span style="color:var(--text4);">\u2014</span>';
+    var priceCell = (p.price != null) ? '$' + Number(p.price).toFixed(2) : '<span style="color:var(--text4);">\u2014</span>';
+    var statusPill = p.is_archived
+      ? '<span class="status-pill cancelled">Archived</span>'
+      : '<span class="status-pill active">Active</span>';
+    var rowCls = 'clickable' + (p.is_archived ? ' cfg-tbl-archived' : '');
+    return '<tr class="' + rowCls + '" onclick="openProtocolEditor(\'' + escHtml(p.id) + '\')">' +
+      '<td><div style="font-weight:600;color:var(--text);">' + escHtml(p.name || '') + '</div>' +
+        (p.key ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">' + escHtml(p.key) + '</div>' : '') +
+      '</td>' +
+      '<td>' + typeBadge + '</td>' +
+      '<td>' + catCell + '</td>' +
+      '<td style="max-width:280px;">' + descCell + '</td>' +
+      '<td style="text-align:right;font-variant-numeric:tabular-nums;">' + priceCell + '</td>' +
+      '<td>' + statusPill + '</td>' +
+      '<td style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">' +
+        '<button class="cfg-icon-btn" onclick="duplicateProduct(\'' + escHtml(p.id) + '\')">Duplicate</button>' +
+        '<button class="cfg-icon-btn ' + (p.is_archived ? '' : 'danger') + '" style="margin-left:4px;" onclick="toggleArchiveProtocol(\'' + escHtml(p.id) + '\')">' + (p.is_archived ? 'Restore' : 'Archive') + '</button>' +
+      '</td>' +
+    '</tr>';
   }).join('');
 }
 

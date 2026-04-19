@@ -4375,19 +4375,17 @@ function renderAnalytics(allRxs, allEvents) {
   ]);
 
   // ── Check-in Response Rate ──
-  var checkinPrompts = allEvents.filter(function(e) { return e.event_type === 'checkin'; });
-  var uniqueCheckinUsers = {};
-  checkinPrompts.forEach(function(e) { uniqueCheckinUsers[e.user_id] = true; });
-  var totalMembers = (allUsers || []).filter(function(u) { return u.role === 'member'; }).length;
-  var checkinRate = totalMembers > 0 ? Math.round((Object.keys(uniqueCheckinUsers).length / totalMembers) * 100) : 0;
+  var last30dMs = now - 30 * 86400000;
+  var recentCheckins = allEvents.filter(function(e) { return e.event_type === 'checkin' && new Date(e.created_at).getTime() >= last30dMs; });
   var checkinEl = document.getElementById('chartCheckinRate');
   if (checkinEl) {
+    var totalCheckins = allEvents.filter(function(e) { return e.event_type === 'checkin'; }).length;
     checkinEl.innerHTML =
-      '<div style="display:flex;align-items:center;gap:20px;padding:8px 0;">' +
-        '<div class="chart-big-num" style="font-size:36px;">' + checkinRate + '%</div>' +
+      '<div style="display:flex;align-items:baseline;gap:16px;padding:8px 0;">' +
+        '<div class="chart-big-num" style="font-size:36px;">' + recentCheckins.length + '</div>' +
         '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;">' +
-          Object.keys(uniqueCheckinUsers).length + ' of ' + totalMembers + ' members have completed a check-in<br>' +
-          checkinPrompts.length + ' total check-in responses' +
+          'responses this month<br>' +
+          totalCheckins + ' all-time' +
         '</div>' +
       '</div>';
   }
@@ -4628,31 +4626,34 @@ function renderSystemHealth() {
   var stale = pending.filter(function(c) {
     return c.created_at && (Date.now() - new Date(c.created_at).getTime()) > 24 * 3600 * 1000;
   });
+  function card(label, value, sub, severity) {
+    return '<div class="anx-health-card ' + severity + '">' +
+      '<div class="anx-health-label">' + label + '</div>' +
+      '<div class="anx-health-value">' + value + '</div>' +
+      '<div class="anx-health-sub">' + sub + '</div>' +
+      '</div>';
+  }
   var last24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  Promise.all([
-    db.from('patient_events').select('id', { count: 'exact', head: true }).gte('created_at', last24h).catch(function() { return { count: 0 }; }),
-    db.from('messages').select('id', { count: 'exact', head: true }).gte('created_at', last24h).catch(function() { return { count: 0 }; }),
-    db.from('prescriptions').select('id', { count: 'exact', head: true }).eq('status', 'active').catch(function() { return { count: 0 }; })
-  ]).then(function(results) {
-    var events24 = results[0].count || 0;
-    var msgs24 = results[1].count || 0;
-    var activeRx = results[2].count || 0;
-    function card(label, value, sub, severity) {
-      return '<div class="anx-health-card ' + severity + '">' +
-        '<div class="anx-health-label">' + label + '</div>' +
-        '<div class="anx-health-value">' + value + '</div>' +
-        '<div class="anx-health-sub">' + sub + '</div>' +
-        '</div>';
-    }
+  var _hlLoaded = 0, _hlEvents = 0, _hlMsgs = 0, _hlRx = 0;
+  function _hlRender() {
+    _hlLoaded++;
+    if (_hlLoaded < 3) return;
     el.innerHTML =
       card('Queue Depth', pending.length, 'pending reviews', pending.length === 0 ? 'ok' : pending.length < 10 ? '' : 'warn') +
-      card('Stale > 24h', stale.length, 'overdue consultations', stale.length === 0 ? 'ok' : stale.length < 3 ? 'warn' : 'bad') +
-      card('Active Plans', activeRx, 'live product plans', 'ok') +
-      card('Events (24h)', events24, 'platform activity', events24 > 0 ? 'ok' : '') +
-      card('Messages (24h)', msgs24, 'sent across threads', msgs24 > 0 ? 'ok' : '');
-  }).catch(function() {
-    el.innerHTML = '<div class="cc-empty" style="grid-column:1 / -1;">Failed to load system health.</div>';
-  });
+      card('Stale > 24h', stale.length, 'overdue', stale.length === 0 ? 'ok' : stale.length < 3 ? 'warn' : 'bad') +
+      card('Active Plans', _hlRx, 'live product plans', 'ok') +
+      card('Events (24h)', _hlEvents, 'platform activity', _hlEvents > 0 ? 'ok' : '') +
+      card('Messages (24h)', _hlMsgs, 'sent across threads', _hlMsgs > 0 ? 'ok' : '');
+  }
+  db.from('patient_events').select('id', { count: 'exact', head: true }).gte('created_at', last24h)
+    .then(function(r) { _hlEvents = (r && r.count) || 0; _hlRender(); })
+    .catch(function() { _hlRender(); });
+  db.from('messages').select('id', { count: 'exact', head: true }).gte('created_at', last24h)
+    .then(function(r) { _hlMsgs = (r && r.count) || 0; _hlRender(); })
+    .catch(function() { _hlRender(); });
+  db.from('prescriptions').select('id', { count: 'exact', head: true }).eq('status', 'active')
+    .then(function(r) { _hlRx = (r && r.count) || 0; _hlRender(); })
+    .catch(function() { _hlRender(); });
 }
 
 // ══ Phase 5: Member retention ═════════════════════════════════════════

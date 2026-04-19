@@ -2318,16 +2318,17 @@ function renderClinicianCapacity() {
   var tbody = document.getElementById('clinicianCapBody');
   if (!tbody) return;
   var q = ((document.getElementById('clinicianCapSearch') || {}).value || '').toLowerCase();
-  // Fetch fresh clinician data including capacity columns
-  db.from('profiles').select('user_id, display_name, first_name, last_name, email, max_concurrent_patients, working_hours')
+  // Use select('*') so the query succeeds even if the capacity columns
+  // haven't been added yet (migration 007). Missing columns just return
+  // undefined which the renderer handles gracefully.
+  db.from('profiles').select('*')
     .eq('role', 'clinician').order('display_name', { ascending: true })
     .then(function(r) {
       _clinCapData = (r.data || []);
       _renderClinicianCapTable(q);
     })
     .catch(function() {
-      // Columns may not exist yet — fall back to allUsers
-      _clinCapData = (allUsers || []).filter(function(u) { return u.role === 'clinician'; });
+      _clinCapData = [];
       _renderClinicianCapTable(q);
     });
 }

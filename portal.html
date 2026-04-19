@@ -5927,7 +5927,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div id="clAttentionSection"></div>
 
         <!-- Recently Evaluated — Phase A4 -->
-        <div id="clRecentlyEvaluated"></div>
+        <div id="clRecentlyEvaluated" style="display:none;"></div>
 
         <div class="p-card" id="clWeeklyScheduleCard" style="margin-bottom:0;">
           <div class="compounds-label" style="margin-bottom:12px;">Your Schedule</div>
@@ -11197,86 +11197,8 @@ async function _sendAttnMsgFromModal() {
   }
 }
 
-async function loadRecentlyEvaluated() {
-  var container = document.getElementById('clRecentlyEvaluated');
-  if (!container || !currentUserId || PREVIEW_MODE) return;
-
-  try {
-    var res = await db.from('consultations')
-      .select('id, user_id, review_status, purchase_status, data, created_at')
-      .eq('assigned_clinician_id', currentUserId)
-      .in('review_status', ['prescribed', 'not_prescribed'])
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    var consults = res.data || [];
-    if (!consults.length) {
-      container.innerHTML = '';
-      return;
-    }
-
-    var userIds = consults.map(function(c) { return c.user_id; });
-    // Fetch profiles + active prescriptions in parallel so the recent-
-    // evaluations list can show each patient's current protocol name.
-    var [profileRes, rxRes] = await Promise.all([
-      db.from('profiles').select('user_id, display_name, first_name, last_name, email').in('user_id', userIds),
-      db.from('prescriptions').select('user_id, protocol_key, status').in('user_id', userIds).eq('status', 'active')
-    ]);
-    var profileMap = {};
-    (profileRes.data || []).forEach(function(p) { profileMap[p.user_id] = p; });
-    var protoByUser = {};
-    (rxRes.data || []).forEach(function(r) {
-      if (!protoByUser[r.user_id]) protoByUser[r.user_id] = r.protocol_key;
-    });
-
-    var titleHtml = '<div class="cl-attention-title" style="display:flex;align-items:center;">' +
-      'Recently Evaluated (' + consults.length + ')' +
-      '<button class="cl-recent-toggle" onclick="toggleRecentlyEvaluated()">Show</button>' +
-      '</div>';
-
-    var listHtml = '<div class="cl-recent-list" id="clRecentList" style="display:none;">';
-
-    consults.forEach(function(c) {
-      var profile = profileMap[c.user_id] || {};
-      var name = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || profile.display_name || profile.email || 'Unknown';
-      var initial = name.charAt(0).toUpperCase();
-      var outcomeClass = c.review_status === 'prescribed' ? 'prescribed' : 'not_prescribed';
-      var outcomeLabel = c.review_status === 'prescribed' ? 'Prescribed' : 'Not Prescribed';
-      var protocol = protoByUser[c.user_id] || '';
-      var _cData = c.data || {};
-      var evalDate = _cData.evaluation_date ? _fmtClDate(_cData.evaluation_date) : (c.created_at ? _fmtClDate(c.created_at) : '--');
-
-      var purchaseHtml = '';
-      if (c.review_status === 'prescribed') {
-        var pClass = c.purchase_status === 'completed' ? 'completed' : 'pending';
-        var pLabel = c.purchase_status === 'completed' ? 'Active' : 'Awaiting Purchase';
-        purchaseHtml = '<span class="cl-recent-purchase ' + pClass + '">' + pLabel + '</span>';
-      }
-
-      listHtml += '<div class="cl-recent-row">' +
-        '<div class="cl-recent-name">' + escapeHtml(name) + (protocol ? ' <span style="color:var(--grey2);font-size:11px;">· ' + escapeHtml(protocol) + '</span>' : '') + '</div>' +
-        '<span class="cl-recent-outcome ' + outcomeClass + '">' + outcomeLabel + '</span>' +
-        purchaseHtml +
-        '<span class="cl-recent-detail">' + evalDate + '</span>' +
-      '</div>';
-    });
-
-    listHtml += '</div>';
-    container.innerHTML = titleHtml + listHtml;
-
-  } catch(e) {
-    console.warn('[Pulse] recently evaluated failed:', e);
-  }
-}
-
-function toggleRecentlyEvaluated() {
-  var list = document.getElementById('clRecentList');
-  var btn = document.querySelector('.cl-recent-toggle');
-  if (!list) return;
-  var showing = list.style.display !== 'none';
-  list.style.display = showing ? 'none' : 'block';
-  if (btn) btn.textContent = showing ? 'Show' : 'Hide';
-}
+function loadRecentlyEvaluated() { /* removed */ }
+function toggleRecentlyEvaluated() { /* removed */ }
 
 // Load patient IDs assigned to this clinician (via appointments table AND assigned consultations)
 function _loadMyPatients(cb) {

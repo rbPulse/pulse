@@ -446,6 +446,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .auto-migration-note{padding:14px 18px;background:var(--amber-tint);border:1px solid var(--amber-border);border-radius:var(--radius-sm);margin-bottom:16px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;}
 .auto-migration-note strong{color:var(--amber);}
 
+/* Portal toggle tabs at top of automations */
+.auto-portal-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);}
+.auto-portal-tab{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text3);background:none;border:none;padding:10px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;}
+.auto-portal-tab:hover{color:var(--text);}
+.auto-portal-tab.active{color:var(--green);border-bottom-color:var(--green);}
+
+/* Coming soon badge for planned automations */
+.auto-card.coming-soon{opacity:0.6;pointer-events:none;}
+.auto-coming-badge{display:inline-block;font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:var(--radius-pill);background:rgba(20,20,20,0.06);border:1px solid var(--border);color:var(--text3);margin-left:8px;vertical-align:middle;}
+
 .bulk-preview-table{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:14px;}
 .bulk-preview-table th{text-align:left;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card2);}
 .bulk-preview-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);}
@@ -1196,12 +1206,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Automations sub-section (replaces old Notifications placeholder) -->
+        <!-- Automations sub-section -->
         <div class="cfg-section" id="cfg-notifications">
           <div id="autoMigrationNote" style="display:none;">
             <div class="auto-migration-note">
-              <strong>Migration required.</strong> Run <code>supabase/migrations/008_platform_automations.sql</code> in your Supabase SQL editor to enable toggling. Automations are shown below as read-only until the table is initialized.
+              <strong>Migration required.</strong> Run <code>supabase/migrations/008_platform_automations.sql</code> to enable toggling.
             </div>
+          </div>
+          <div class="auto-portal-tabs">
+            <button type="button" class="auto-portal-tab active" data-portal="member" onclick="_switchAutoPortal('member')">Member Portal</button>
+            <button type="button" class="auto-portal-tab" data-portal="clinician" onclick="_switchAutoPortal('clinician')">Clinician Portal</button>
           </div>
           <div id="automationsContainer">
             <div style="text-align:center;color:var(--text3);padding:40px 0;font-family:'Inter',sans-serif;font-size:13px;">Loading automations...</div>
@@ -1548,22 +1562,33 @@ function loadConfigure() {
 // default set if the table hasn't been created yet (migration 008).
 var _allAutomations = [];
 var _autoTableReady = false;
+var _activeAutoPortal = 'member';
 
 var _defaultAutomations = [
-  { key:'welcome_message',        label:'Welcome Message',         portal:'member',    category:'Onboarding',      description:'Auto-sends personalized clinician message on first portal load after prescription', enabled:true, config:{template:'Welcome to Pulse, {firstName}.'} },
-  { key:'auto_schedule_checkins', label:'Auto-Schedule Check-ins',  portal:'member',    category:'Onboarding',      description:'Creates monthly check-in appointments based on protocol duration',                  enabled:true, config:{duration_minutes:20,frequency:'monthly'} },
-  { key:'wellness_prompts',       label:'Wellness Check-in Prompts',portal:'member',    category:'Engagement',      description:'Weekly rotating prompt on Overview tab, one per week per member',                   enabled:true, config:{cadence:'weekly',prompt_count:10} },
-  { key:'checkin_routing',        label:'Check-in Response Routing',portal:'member',    category:'Engagement',      description:'Auto-sends member check-in responses to clinician as a message',                    enabled:true, config:{} },
-  { key:'low_supply_alert',       label:'Low Supply Alert',         portal:'member',    category:'Engagement',      description:'Flags protocol as low-supply and shows refill button',                              enabled:true, config:{threshold_days:14} },
-  { key:'protocol_request_routing',label:'Protocol Request Routing',portal:'member',    category:'Requests',        description:'Member request creates consultation + message + notification to clinician',         enabled:true, config:{auto_notify:true,auto_message:true} },
-  { key:'refill_request_routing', label:'Refill Request Routing',   portal:'member',    category:'Requests',        description:'Member refill request creates consultation + message + notification to clinician',  enabled:true, config:{auto_notify:true,auto_message:true} },
-  { key:'auto_assign_clinician',  label:'Auto-Assign Clinician',    portal:'clinician', category:'Intake Pipeline',  description:'Assigns new intakes to clinician with lowest pending review count',                 enabled:true, config:{mode:'lowest_load',state_filter:true} },
-  { key:'risk_evaluation',        label:'Risk Scoring',             portal:'clinician', category:'Intake Pipeline',  description:'Scores medical history into low/moderate/high risk tiers',                           enabled:true, config:{high_threshold:4,moderate_threshold:2} },
-  { key:'overdue_flag',           label:'Overdue Review Flag',      portal:'clinician', category:'Intake Pipeline',  description:'Flags consultations as overdue and pins to top of attention queue',                 enabled:true, config:{threshold_hours:24} },
-  { key:'new_message_notify',     label:'New Message → Member',     portal:'clinician', category:'Communication',    description:'Notifies member when clinician sends a message',                                    enabled:true, config:{} },
-  { key:'rx_change_notify',       label:'Rx Change → Member',       portal:'clinician', category:'Communication',    description:'Notifies member when clinician prescribes, adjusts, or discontinues',               enabled:true, config:{} },
-  { key:'appointment_alerts',     label:'Appointment Alerts',       portal:'clinician', category:'Scheduling',       description:'Notifies both parties on appointment confirmation or cancellation',                 enabled:true, config:{} },
-  { key:'session_auto_close',     label:'Session Auto-Close',       portal:'clinician', category:'Scheduling',       description:'Updates review status automatically when live consult session ends',                 enabled:true, config:{} }
+  // Member Portal > Onboarding
+  { key:'welcome_message',        label:'Welcome Message',           portal:'member', category:'Onboarding', description:'Sends a personalized message from the assigned clinician when a member first opens the portal after being prescribed', enabled:true, config:{template:'Welcome to Pulse, {firstName}. I\'m glad to have you on board.'} },
+  { key:'auto_schedule_checkins', label:'Auto-Schedule Check-ins',   portal:'member', category:'Onboarding', description:'Creates recurring check-in appointments based on protocol duration', enabled:true, config:{duration_minutes:20,frequency:'monthly'} },
+  { key:'purchase_confirmation',  label:'Purchase Confirmation',     portal:'member', category:'Onboarding', description:'Sends a confirmation message to the member after completing checkout', enabled:true, config:{template:'Your order is confirmed. Your clinician will follow up shortly.'} },
+  // Member Portal > Engagement
+  { key:'wellness_prompts',       label:'Wellness Check-in Prompts', portal:'member', category:'Engagement', description:'Shows a rotating prompt on the Overview tab to gather member wellness data', enabled:true, config:{cadence:'weekly',prompt_count:10} },
+  { key:'checkin_routing',        label:'Check-in \u2192 Clinician', portal:'member', category:'Engagement', description:'Routes member check-in responses to the assigned clinician as a message', enabled:true, config:{} },
+  { key:'low_supply_alert',       label:'Low Supply Alert',          portal:'member', category:'Engagement', description:'Shows a refill prompt when product supply drops below threshold', enabled:true, config:{threshold_days:14} },
+  { key:'inactivity_nudge',       label:'Inactivity Nudge',          portal:'member', category:'Engagement', description:'Sends a message if a member hasn\'t logged activity in a set number of days', enabled:true, config:{days_inactive:7}, _comingSoon:true },
+  { key:'protocol_completion',    label:'Protocol Completion',       portal:'member', category:'Engagement', description:'Prompts member for next steps when their protocol duration ends', enabled:true, config:{}, _comingSoon:true },
+  // Member Portal > Requests
+  { key:'protocol_request_routing',label:'Protocol Requests',        portal:'member', category:'Requests', description:'Routes new protocol requests to the clinician with a message and notification', enabled:true, config:{auto_notify:true,auto_message:true} },
+  { key:'refill_request_routing', label:'Refill Requests',           portal:'member', category:'Requests', description:'Routes refill requests to the clinician with supply details and any medical updates', enabled:true, config:{auto_notify:true,auto_message:true} },
+  // Clinician Portal > Intake Pipeline
+  { key:'auto_assign_clinician',  label:'Auto-Assign Clinician',     portal:'clinician', category:'Intake Pipeline', description:'Assigns new intakes to the clinician with the lowest open review count', enabled:true, config:{mode:'lowest_load',state_filter:true} },
+  { key:'risk_evaluation',        label:'Risk Scoring',              portal:'clinician', category:'Intake Pipeline', description:'Evaluates medical history and assigns a risk tier (low, moderate, high)', enabled:true, config:{high_threshold:4,moderate_threshold:2} },
+  { key:'overdue_flag',           label:'Overdue Review Flag',       portal:'clinician', category:'Intake Pipeline', description:'Flags pending intakes as overdue after a set time with no clinician action', enabled:true, config:{threshold_hours:24} },
+  { key:'high_risk_admin_alert',  label:'High-Risk \u2192 Admin Alert', portal:'clinician', category:'Intake Pipeline', description:'Escalates high-risk intakes to the admin team in addition to the assigned clinician', enabled:true, config:{} },
+  // Clinician Portal > Notifications
+  { key:'rx_approved_notify',     label:'Approved \u2192 Member',    portal:'clinician', category:'Notifications', description:'Notifies the member when the clinician approves and prescribes a product', enabled:true, config:{template:'{clinicianName} has approved your {protocolName} plan.'} },
+  { key:'rx_adjusted_notify',     label:'Adjusted \u2192 Member',    portal:'clinician', category:'Notifications', description:'Notifies the member when the clinician adjusts dose, frequency, or timing', enabled:true, config:{template:'Your {protocolName} plan has been updated by {clinicianName}.'} },
+  { key:'rx_discontinued_notify', label:'Discontinued \u2192 Member',portal:'clinician', category:'Notifications', description:'Notifies the member when the clinician discontinues a product', enabled:true, config:{template:'Your {protocolName} plan has been discontinued. Reach out with questions.'} },
+  // Clinician Portal > Scheduling
+  { key:'appointment_reminder',   label:'Appointment Reminder',      portal:'clinician', category:'Scheduling', description:'Sends a reminder to the member before a scheduled appointment', enabled:true, config:{hours_before:24}, _comingSoon:true }
 ];
 
 function loadAutomations() {
@@ -1583,60 +1608,66 @@ function loadAutomations() {
     });
 }
 
+function _switchAutoPortal(portal) {
+  _activeAutoPortal = portal;
+  document.querySelectorAll('.auto-portal-tab').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-portal') === portal);
+  });
+  _renderAutomations();
+}
+
 function _renderAutomations() {
   var container = document.getElementById('automationsContainer');
   if (!container) return;
 
-  // Group by portal, then by category
-  var portals = {};
-  var portalOrder = ['member', 'clinician'];
-  var portalLabels = { member: 'Member Portal', clinician: 'Clinician Portal' };
-  _allAutomations.forEach(function(a) {
-    var p = a.portal || 'other';
-    if (!portals[p]) portals[p] = {};
+  // Filter to the active portal tab
+  var items = _allAutomations.filter(function(a) { return (a.portal || 'member') === _activeAutoPortal; });
+
+  // Group by category
+  var cats = {};
+  var catOrder = [];
+  items.forEach(function(a) {
     var c = a.category || 'General';
-    if (!portals[p][c]) portals[p][c] = [];
-    portals[p][c].push(a);
+    if (!cats[c]) { cats[c] = []; catOrder.push(c); }
+    cats[c].push(a);
   });
 
   var html = '';
-  portalOrder.forEach(function(portal) {
-    var cats = portals[portal];
-    if (!cats) return;
-    html += '<div class="auto-portal-group">';
-    html += '<div class="auto-portal-label">' + escHtml(portalLabels[portal] || portal) + '</div>';
-    var catKeys = Object.keys(cats);
-    catKeys.forEach(function(catName) {
-      html += '<div class="auto-cat-label">' + escHtml(catName) + '</div>';
-      cats[catName].forEach(function(a) {
-        var cfg = (typeof a.config === 'string') ? JSON.parse(a.config || '{}') : (a.config || {});
-        var configPills = _buildConfigPills(a.key, cfg);
-        var disabledCls = a.enabled ? '' : ' disabled';
-        var checkedAttr = a.enabled ? ' checked' : '';
-        var toggleDisabled = _autoTableReady ? '' : ' disabled';
-        var hasConfig = (_autoConfigSchema[a.key] || []).length > 0;
-        var editBtn = hasConfig
-          ? '<button class="auto-expand-btn" onclick="event.stopPropagation();openAutoEditor(\'' + escHtml(a.key) + '\')">Edit \u203A</button>'
-          : '';
-        html += '<div class="auto-card' + disabledCls + '" data-auto-key="' + escHtml(a.key) + '"' + (hasConfig ? ' onclick="openAutoEditor(\'' + escHtml(a.key) + '\')" style="cursor:pointer;"' : '') + '>' +
-          '<label class="auto-toggle" onclick="event.stopPropagation()">' +
-            '<input type="checkbox"' + checkedAttr + toggleDisabled + ' onchange="_toggleAutomation(\'' + escHtml(a.key) + '\',this.checked)"/>' +
-            '<div class="auto-toggle-track"></div>' +
-            '<div class="auto-toggle-thumb"></div>' +
-          '</label>' +
-          '<div class="auto-info">' +
-            '<div class="auto-name">' + escHtml(a.label || a.key) + '</div>' +
-            '<div class="auto-desc">' + escHtml(a.description || '') + '</div>' +
-            (configPills ? '<div class="auto-config">' + configPills + '</div>' : '') +
-          '</div>' +
-          editBtn +
-        '</div>';
-      });
+  catOrder.forEach(function(catName) {
+    html += '<div class="auto-cat-label">' + escHtml(catName) + '</div>';
+    cats[catName].forEach(function(a) {
+      var cfg = (typeof a.config === 'string') ? JSON.parse(a.config || '{}') : (a.config || {});
+      var configPills = _buildConfigPills(a.key, cfg);
+      var isComingSoon = !!a._comingSoon;
+      var disabledCls = a.enabled ? '' : ' disabled';
+      if (isComingSoon) disabledCls = ' coming-soon';
+      var checkedAttr = a.enabled ? ' checked' : '';
+      var toggleDisabled = (_autoTableReady && !isComingSoon) ? '' : ' disabled';
+      var hasConfig = (_autoConfigSchema[a.key] || []).length > 0;
+      var editBtn = '';
+      if (isComingSoon) {
+        editBtn = '<span class="auto-coming-badge">Coming Soon</span>';
+      } else if (hasConfig) {
+        editBtn = '<button class="auto-expand-btn" onclick="event.stopPropagation();openAutoEditor(\'' + escHtml(a.key) + '\')">Edit \u203A</button>';
+      }
+      var clickAttr = (hasConfig && !isComingSoon) ? ' onclick="openAutoEditor(\'' + escHtml(a.key) + '\')" style="cursor:pointer;"' : '';
+      html += '<div class="auto-card' + disabledCls + '" data-auto-key="' + escHtml(a.key) + '"' + clickAttr + '>' +
+        '<label class="auto-toggle" onclick="event.stopPropagation()">' +
+          '<input type="checkbox"' + checkedAttr + toggleDisabled + ' onchange="_toggleAutomation(\'' + escHtml(a.key) + '\',this.checked)"/>' +
+          '<div class="auto-toggle-track"></div>' +
+          '<div class="auto-toggle-thumb"></div>' +
+        '</label>' +
+        '<div class="auto-info">' +
+          '<div class="auto-name">' + escHtml(a.label || a.key) + '</div>' +
+          '<div class="auto-desc">' + escHtml(a.description || '') + '</div>' +
+          (configPills && !isComingSoon ? '<div class="auto-config">' + configPills + '</div>' : '') +
+        '</div>' +
+        editBtn +
+      '</div>';
     });
-    html += '</div>';
   });
 
-  container.innerHTML = html || '<div style="text-align:center;color:var(--text3);padding:40px 0;">No automations configured.</div>';
+  container.innerHTML = html || '<div style="text-align:center;color:var(--text3);padding:40px 0;">No automations for this portal.</div>';
 }
 
 function _buildConfigPills(key, cfg) {
@@ -1679,26 +1710,30 @@ function _toggleAutomation(key, enabled) {
 // listed here get rendered in the editor — unlisted keys are preserved
 // but hidden.
 var _autoConfigSchema = {
-  welcome_message:        [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}, {checkInDates}' }],
-  auto_schedule_checkins: [{ key:'duration_minutes',  label:'Appointment Duration', type:'number',   suffix:'minutes' },
-                           { key:'frequency',         label:'Frequency',            type:'select',   options:['weekly','biweekly','monthly'] }],
-  wellness_prompts:       [{ key:'cadence',           label:'Cadence',              type:'select',   options:['daily','weekly','biweekly','monthly'] },
-                           { key:'prompt_count',      label:'Number of Prompts',    type:'number' }],
-  checkin_routing:        [],
-  low_supply_alert:       [{ key:'threshold_days',    label:'Low Supply Threshold', type:'number',   suffix:'days' }],
-  protocol_request_routing:[{ key:'auto_notify',      label:'Auto-Notify Clinician',type:'toggle' },
-                            { key:'auto_message',     label:'Auto-Message Thread',  type:'toggle' }],
-  refill_request_routing: [{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
-                           { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
-  auto_assign_clinician:  [{ key:'mode',              label:'Assignment Mode',      type:'select',   options:['lowest_load','round_robin'] },
-                           { key:'state_filter',      label:'Filter by State',      type:'toggle' }],
-  risk_evaluation:        [{ key:'high_threshold',    label:'High Risk Threshold',  type:'number',   suffix:'score \u2265' },
-                           { key:'moderate_threshold',label:'Moderate Threshold',   type:'number',   suffix:'score \u2265' }],
-  overdue_flag:           [{ key:'threshold_hours',   label:'Overdue After',        type:'number',   suffix:'hours' }],
-  new_message_notify:     [],
-  rx_change_notify:       [],
-  appointment_alerts:     [],
-  session_auto_close:     []
+  welcome_message:         [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}, {checkInDates}' }],
+  auto_schedule_checkins:  [{ key:'duration_minutes',  label:'Appointment Duration', type:'number',   suffix:'minutes' },
+                            { key:'frequency',         label:'Frequency',            type:'select',   options:['weekly','biweekly','monthly'] }],
+  purchase_confirmation:   [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {protocolName}' }],
+  wellness_prompts:        [{ key:'cadence',           label:'Cadence',              type:'select',   options:['daily','weekly','biweekly','monthly'] },
+                            { key:'prompt_count',      label:'Number of Prompts',    type:'number' }],
+  checkin_routing:         [],
+  low_supply_alert:        [{ key:'threshold_days',    label:'Low Supply Threshold', type:'number',   suffix:'days' }],
+  inactivity_nudge:        [{ key:'days_inactive',     label:'Days Before Nudge',    type:'number',   suffix:'days' }],
+  protocol_completion:     [],
+  protocol_request_routing:[{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
+                            { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
+  refill_request_routing:  [{ key:'auto_notify',       label:'Auto-Notify Clinician',type:'toggle' },
+                            { key:'auto_message',      label:'Auto-Message Thread',  type:'toggle' }],
+  auto_assign_clinician:   [{ key:'mode',              label:'Assignment Mode',      type:'select',   options:['lowest_load','round_robin'] },
+                            { key:'state_filter',      label:'Filter by State',      type:'toggle' }],
+  risk_evaluation:         [{ key:'high_threshold',    label:'High Risk Threshold',  type:'number',   suffix:'score \u2265' },
+                            { key:'moderate_threshold',label:'Moderate Threshold',   type:'number',   suffix:'score \u2265' }],
+  overdue_flag:            [{ key:'threshold_hours',   label:'Overdue After',        type:'number',   suffix:'hours' }],
+  high_risk_admin_alert:   [],
+  rx_approved_notify:      [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}' }],
+  rx_adjusted_notify:      [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}' }],
+  rx_discontinued_notify:  [{ key:'template',          label:'Message Template',     type:'textarea', placeholder:'Use {firstName}, {clinicianName}, {protocolName}' }],
+  appointment_reminder:    [{ key:'hours_before',      label:'Remind Before',        type:'number',   suffix:'hours' }]
 };
 
 var _editingAutoKey = null;

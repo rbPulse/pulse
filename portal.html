@@ -13266,6 +13266,182 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
   }
 }
 
+// ══ Engagement automations ═══════════════════════════════════════════
+// Runs three automated checks on every member portal load:
+//   1. Inactivity nudge — if member hasn't logged a dose in X days
+//   2. Protocol completion — if any Rx has passed its duration
+//   3. Appointment reminder — if an appointment is within X hours
+// Each checks a gate (patient_events) to avoid duplicates and reads
+// config from platform_automations when the table is available.
+
+async function _runEngagementAutomations(userId, clinicianId) {
+  if (PREVIEW_MODE || !userId) return;
+  try {
+    await _checkInactivityNudge(userId, clinicianId);
+    await _checkProtocolCompletion(userId, clinicianId);
+    await _checkAppointmentReminder(userId, clinicianId);
+  } catch (_) {}
+}
+
+// 1. Inactivity Nudge — sends a message if the member hasn't logged
+//    a dose in the configured number of days. Gated by a patient_event
+//    so it only fires once per inactivity window.
+async function _checkInactivityNudge(userId, clinicianId) {
+  var cfg = await _getAutomationConfig('inactivity_nudge');
+  if (!cfg || !cfg._enabled) return;
+  var daysThreshold = (cfg.days_inactive != null) ? cfg.days_inactive : 7;
+  var cutoff = new Date(Date.now() - daysThreshold * 86400000).toISOString().slice(0, 10);
+  // Check last dose log
+  try {
+    var logRes = await db.from('dose_logs').select('dose_date')
+      .eq('user_id', userId).order('dose_date', { ascending: false }).limit(1);
+    if (logRes.error) return;
+    var lastLog = (logRes.data && logRes.data[0]) ? logRes.data[0].dose_date : null;
+    if (lastLog && lastLog >= cutoff) return; // still active
+    // Check if we already sent a nudge recently
+    var gateRes = await db.from('patient_events').select('id')
+      .eq('user_id', userId).eq('event_type', 'inactivity_nudge')
+      .gte('created_at', new Date(Date.now() - daysThreshold * 86400000).toISOString()).limit(1);
+    if (gateRes.data && gateRes.data.length) return; // already nudged
+    // Send the nudge
+    var msg = 'We noticed you haven\u2019t logged any activity recently. Your care team is here to help \u2014 feel free to reach out or log your latest dose.';
+    db.from('messages').insert({
+      thread_id: userId,
+      sender_id: clinicianId || null,
+      sender_role: 'clinician',
+      sender_name: 'Your Care Team',
+      body: msg,
+      read: false
+    }).then(function(){}).catch(function(){});
+    db.from('patient_events').insert({
+      user_id: userId,
+      event_type: 'inactivity_nudge',
+      event_data: { days_inactive: daysThreshold },
+      created_by_name: 'System'
+    }).then(function(){}).catch(function(){});
+  } catch (_) {}
+}
+
+// 2. Protocol Completion — checks if any active Rx has passed its
+//    prescribed duration. If so, records a patient_event and shows
+//    a prompt on the Overview via the existing wellness-card pattern.
+async function _checkProtocolCompletion(userId, clinicianId) {
+  var cfg = await _getAutomationConfig('protocol_completion');
+  if (!cfg || !cfg._enabled) return;
+  var rxs = window._activeRxsForCarousel || [];
+  var now = Date.now();
+  for (var i = 0; i < rxs.length; i++) {
+    var rx = rxs[i];
+    if (!rx.started_at) continue;
+    var startMs = new Date(rx.started_at).getTime();
+    var durWeeks = null;
+    if (rx.duration_value != null && rx.duration_unit) {
+      var u = (rx.duration_unit || '').toLowerCase();
+      if (u === 'weeks') durWeeks = rx.duration_value;
+      else if (u === 'days') durWeeks = rx.duration_value / 7;
+      else if (u === 'months') durWeeks = rx.duration_value * 4;
+    }
+    if (!durWeeks && typeof _durationToWeeks === 'function') durWeeks = _durationToWeeks(rx.duration);
+    if (!durWeeks) continue;
+    var endMs = startMs + durWeeks * 7 * 86400000;
+    if (now < endMs) continue; // not yet complete
+    // Check gate
+    try {
+      var gateRes = await db.from('patient_events').select('id')
+        .eq('user_id', userId).eq('event_type', 'protocol_completion')
+        .filter('event_data->>prescription_id', 'eq', rx.id).limit(1);
+      if (gateRes.data && gateRes.data.length) continue; // already fired
+    } catch (_) { continue; }
+    // Fire completion event
+    db.from('patient_events').insert({
+      user_id: userId,
+      event_type: 'protocol_completion',
+      event_data: { prescription_id: rx.id, protocol_key: rx.protocol_key },
+      created_by_name: 'System'
+    }).then(function(){}).catch(function(){});
+    // Send message to member
+    var protoName = rx.protocol_key || 'your protocol';
+    db.from('messages').insert({
+      thread_id: userId,
+      sender_id: clinicianId || null,
+      sender_role: 'clinician',
+      sender_name: 'Your Care Team',
+      body: 'Your ' + protoName + ' plan has reached its scheduled duration. If you\u2019d like to continue or adjust, request a refill or reach out to your clinician.',
+      read: false
+    }).then(function(){}).catch(function(){});
+    break; // one completion per load
+  }
+}
+
+// 3. Appointment Reminder — sends a message if an appointment is
+//    within X hours and hasn't been reminded yet.
+async function _checkAppointmentReminder(userId, clinicianId) {
+  var cfg = await _getAutomationConfig('appointment_reminder');
+  if (!cfg || !cfg._enabled) return;
+  var hoursBefore = (cfg.hours_before != null) ? cfg.hours_before : 24;
+  var windowMs = hoursBefore * 3600000;
+  var now = Date.now();
+  try {
+    var apptRes = await db.from('appointments').select('id, scheduled_at, appointment_type, notes')
+      .eq('consumer_id', userId).in('status', ['confirmed', 'pending'])
+      .gte('scheduled_at', new Date(now).toISOString())
+      .lte('scheduled_at', new Date(now + windowMs).toISOString())
+      .order('scheduled_at', { ascending: true }).limit(3);
+    if (!apptRes.data || !apptRes.data.length) return;
+    for (var i = 0; i < apptRes.data.length; i++) {
+      var appt = apptRes.data[i];
+      // Check gate
+      var gateRes = await db.from('patient_events').select('id')
+        .eq('user_id', userId).eq('event_type', 'appointment_reminder')
+        .filter('event_data->>appointment_id', 'eq', appt.id).limit(1);
+      if (gateRes.data && gateRes.data.length) continue; // already reminded
+      // Send reminder
+      var schedDate = new Date(appt.scheduled_at);
+      var timeStr = schedDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      db.from('messages').insert({
+        thread_id: userId,
+        sender_id: clinicianId || null,
+        sender_role: 'clinician',
+        sender_name: 'Your Care Team',
+        body: 'Reminder: You have an appointment coming up on ' + timeStr + '. We look forward to seeing you!',
+        read: false
+      }).then(function(){}).catch(function(){});
+      db.from('patient_events').insert({
+        user_id: userId,
+        event_type: 'appointment_reminder',
+        event_data: { appointment_id: appt.id, scheduled_at: appt.scheduled_at },
+        created_by_name: 'System'
+      }).then(function(){}).catch(function(){});
+      break; // one reminder per load
+    }
+  } catch (_) {}
+}
+
+// Reads automation config from platform_automations. Caches in memory
+// for the session. Returns { _enabled: bool, ...config } or null.
+var _automationConfigCache = {};
+async function _getAutomationConfig(key) {
+  if (_automationConfigCache[key] !== undefined) return _automationConfigCache[key];
+  try {
+    var res = await db.from('platform_automations').select('enabled, config').eq('key', key).limit(1);
+    if (res.error) throw res.error;
+    if (!res.data || !res.data.length) {
+      // Table exists but key not found — use defaults
+      _automationConfigCache[key] = { _enabled: true };
+      return _automationConfigCache[key];
+    }
+    var row = res.data[0];
+    var cfg = (typeof row.config === 'string') ? JSON.parse(row.config || '{}') : (row.config || {});
+    cfg._enabled = !!row.enabled;
+    _automationConfigCache[key] = cfg;
+    return cfg;
+  } catch (_) {
+    // Table doesn't exist — fall back to enabled with default config
+    _automationConfigCache[key] = { _enabled: true };
+    return _automationConfigCache[key];
+  }
+}
+
 function _cancelConsumerAppt(apptId, btnEl) {
   if (!apptId) return;
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
@@ -14896,6 +15072,20 @@ function _renderPatientEventsTimeline(rows) {
           title = 'Refill requested: ' + (d2.protocol || '');
           detail = d2.doses_remaining != null ? d2.doses_remaining + ' doses remaining' : '';
           break;
+        case 'inactivity_nudge':
+          icon = '\u23F0'; iconCls = 'is-checkin';
+          title = 'Inactivity nudge sent';
+          detail = d2.days_inactive ? 'After ' + d2.days_inactive + ' days without activity' : '';
+          break;
+        case 'protocol_completion':
+          icon = '\u2713'; iconCls = 'is-rx';
+          title = (d2.protocol_key || 'Protocol') + ' duration completed';
+          break;
+        case 'appointment_reminder':
+          icon = '\uD83D\uDD14'; iconCls = 'is-checkin';
+          title = 'Appointment reminder sent';
+          detail = d2.scheduled_at ? 'For ' + new Date(d2.scheduled_at).toLocaleDateString() : '';
+          break;
         default:
           icon = '\u2022'; iconCls = '';
           title = ev.event_type.replace(/_/g, ' ');
@@ -15718,6 +15908,8 @@ function populatePortal(user, consultation, greeting) {
         try {
           await _ensureClinicianWelcomeMessage(currentUserId, consultation.assigned_clinician_id);
         } catch (_) {}
+        // Phase: engagement automations (inactivity nudge, protocol completion, appointment reminder)
+        try { _runEngagementAutomations(currentUserId, consultation.assigned_clinician_id); } catch (_) {}
       })();
     }
 

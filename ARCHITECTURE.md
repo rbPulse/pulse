@@ -36,8 +36,8 @@ Why not schema-per-tenant or database-per-tenant:
 ### 2. Tenant resolution: path-based
 
 URL pattern for client portals: `/t/{slug}/{portal}.html` (e.g.
-`/t/acme/admin.html`). A small bootstrap (`tenant.js`) on every
-downstream portal:
+`/t/acme/admin.html`, `/t/pulse/portal.html`). A small bootstrap
+(`tenant.js`) on every downstream portal:
 
 1. Reads the slug from `window.location.pathname`.
 2. Looks up the tenant record (id + config snapshot).
@@ -46,14 +46,20 @@ downstream portal:
 4. Calls `supabase.rpc('set_current_tenant', { p_tenant_id })` so RLS
    sees the active tenant for the session.
 
-Pulse's existing URLs (`/admin.html`, `/portal.html`) remain valid:
-when no `/t/{slug}/` prefix is present, `tenant.js` resolves to the
-Pulse tenant by default. This avoids breaking existing bookmarks and
-auth callbacks. A future cleanup can normalise Pulse to `/t/pulse/*`.
+**Pulse is not special.** It lives at `/t/pulse/*` like every other
+tenant. The existing root-path URLs (`/admin.html`, `/portal.html`,
+etc.) are preserved as HTTP redirects to `/t/pulse/*` so bookmarks
+and auth callbacks don't 404. This costs a few lines of routing
+config now in exchange for not having "Pulse is the special case
+forever" baked into the code.
 
-The platform portal itself (`platform.html`) is NOT tenant-scoped —
-it's the cross-tenant operator surface. It stays at root and requires
-a `platform_*` role on the user.
+Files that stay at root (not tenant-scoped):
+
+- `platform.html` — cross-tenant operator portal. Gated by
+  `profiles.platform_role IS NOT NULL`.
+- `pulse-client.html` — Pulse's marketing/site page. Public.
+- `index.html` — landing / login.
+- Shared assets (`tokens.css`, `tenant.js`, images).
 
 Subdomain routing (`acme.pulse.clinic`) is explicitly deferred. DNS
 and SSL overhead with no functional gain over path-based. Revisit if
@@ -108,17 +114,30 @@ auth metadata). It is NOT tenant-scoped — a single human with one
 email belongs to one `profiles` row regardless of how many tenants
 they touch.
 
-A new `tenant_memberships(user_id, tenant_id, role, capabilities)`
-table maps users to the tenants they can access, with a role per
-tenant. A user can have:
+Tenant access is split across two tables so staff authorisation stays
+clean and small, while end-user (patient) volume doesn't bloat the
+role-gating layer:
 
-- Zero memberships — not allowed into any tenant portal.
-- One membership — standard case (one clinic's admin, or a member of
-  one clinic).
-- Multiple memberships — a clinician working across two clinics, or a
-  Pulse internal ops user with memberships across many tenants.
+**`tenant_memberships(user_id, tenant_id, role, capabilities)`** —
+staff only. Clinicians, admins, nurses, billing, analysts. This is
+the high-trust, low-volume table that answers "who has PHI access
+at this tenant."
 
-**Role hierarchy (enum `tenant_role`):**
+**`patient_enrollments(user_id, tenant_id, status, enrolled_at, ...)`**
+— patients/end-users. High volume. No role field; policy is always
+"you see only your own rows." Status tracks enrolment lifecycle
+(active, inactive, discharged).
+
+A user can simultaneously have:
+
+- A `tenant_memberships` row at Tenant A (they're a clinician there)
+- A `patient_enrollments` row at Tenant B (they're a patient there)
+- A `platform_role` on their profile (they're also Pulse internal ops)
+
+Cross-cutting "all tenant users" queries use a `tenant_users` view
+that unions both tables.
+
+**Role hierarchy (enum `tenant_role`, staff only):**
 
 - `tenant_owner` — tenant-level super-admin; can manage billing and
   all other roles.
@@ -127,7 +146,9 @@ tenant. A user can have:
 - `tenant_nurse` — clinical support; limited write access.
 - `tenant_billing` — billing/finance read + invoice management.
 - `tenant_analyst` — read-only analytics access.
-- `tenant_member` — end-user (patient/client).
+
+Patients are NOT in this enum. They're identified by the presence of
+a `patient_enrollments` row.
 
 **Platform-level role (separate enum `platform_role`, on profile):**
 
@@ -136,7 +157,7 @@ tenant. A user can have:
   integrations, move lifecycle states.
 - `platform_ops` — day-to-day operator work. No billing/dangerous
   actions.
-- `platform_support` — read + impersonation (view-as only), no write.
+- `platform_support` — read + view-as only, no write.
 - `platform_billing` — billing access across tenants.
 - `platform_readonly` — executive/auditor read-only.
 
@@ -145,17 +166,27 @@ A user's platform role is stored on `profiles.platform_role` (nullable
 live on `tenant_memberships` only.
 
 Existing `profiles.role` and `profiles.admin_role` columns are
-superseded by this model. Phase 0's migration will backfill them into
-the new structure without dropping the old columns (kept for one
-release as a safety net, then removed in Phase 1 cleanup).
+superseded by this model. Phase 0's migration will backfill them:
 
-### 6. RLS policy pattern
+- `role = 'member'` users → `patient_enrollments` rows.
+- `role IN ('clinician', 'admin')` users → `tenant_memberships` rows
+  with matching `tenant_role`.
+- `admin_role = 'super_admin'` → additionally gets
+  `profiles.platform_role = 'platform_super_admin'`.
 
-The canonical policy template for a tenant-scoped table:
+The old columns are kept for one release as a safety net, then
+removed in Phase 1 cleanup.
+
+### 6. RLS policy patterns
+
+Two canonical templates depending on table type.
+
+**Staff-scoped tables** (clinical/admin data — consultations,
+prescriptions, notes, etc.) are readable by any staff member of the
+tenant and writable by staff whose role matches:
 
 ```sql
--- SELECT: any member of the tenant may read
-CREATE POLICY "tenant_read" ON {table}
+CREATE POLICY "staff_read" ON {table}
   FOR SELECT TO authenticated
   USING (
     tenant_id IN (
@@ -164,8 +195,7 @@ CREATE POLICY "tenant_read" ON {table}
     )
   );
 
--- INSERT/UPDATE/DELETE: gated by role capability
-CREATE POLICY "tenant_write" ON {table}
+CREATE POLICY "staff_write" ON {table}
   FOR ALL TO authenticated
   USING (
     tenant_id IN (
@@ -176,7 +206,28 @@ CREATE POLICY "tenant_write" ON {table}
   );
 ```
 
-Platform-level users bypass tenant-scope RLS via a companion policy:
+**Patient-scoped tables** (rows owned by a specific end-user — their
+own consultations, their own messages) additionally allow the patient
+to read their own rows:
+
+```sql
+CREATE POLICY "patient_own_read" ON {table}
+  FOR SELECT TO authenticated
+  USING (
+    user_id = auth.uid()
+    AND tenant_id IN (
+      SELECT tenant_id FROM patient_enrollments
+      WHERE user_id = auth.uid()
+    )
+  );
+```
+
+Most tables need BOTH policies — staff see all tenant rows, each
+patient sees only their own. Writes for patients are narrower (their
+own data only, and not always permitted — e.g., patients can't edit
+prescriptions).
+
+Platform-level users bypass tenant scoping via a companion policy:
 
 ```sql
 CREATE POLICY "platform_admin_read" ON {table}
@@ -200,7 +251,8 @@ Seventeen existing tables. Scoping decisions:
 | Table                    | Scope          | Notes                                          |
 |--------------------------|----------------|------------------------------------------------|
 | `tenants`                | n/a (new)      | The registry itself. One row per client.       |
-| `tenant_memberships`     | n/a (new)      | Cross-tenant by definition.                    |
+| `tenant_memberships`     | n/a (new)      | Staff-to-tenant mapping. Cross-tenant.         |
+| `patient_enrollments`    | n/a (new)      | Patient-to-tenant mapping. Cross-tenant.       |
 | `profiles`               | **global**     | User identity is cross-tenant.                 |
 | `consultations`          | tenant         | Per-tenant patient intake data.                |
 | `prescriptions`          | tenant         |                                                |
@@ -228,12 +280,17 @@ now (Pulse is still the only tenant). They move to
 
 All existing data belongs to the Pulse tenant. Phase 0 migrations:
 
-1. **010** — create `tenants` + `tenant_memberships` + enums.
-   Insert Pulse as the seed tenant with a known UUID.
+1. **010** — create `tenants`, `tenant_memberships`,
+   `patient_enrollments`, and the `tenant_role` / `platform_role`
+   enums. Insert Pulse as the seed tenant with a known UUID. No
+   changes to existing tables — zero risk.
 2. **011** — add `tenant_id` to every tenant-scoped table. Backfill
    every existing row to Pulse's UUID. Add NOT NULL constraint *after*
-   backfill. Swap RLS policies from existing (likely permissive) to
-   the tenant-scoped template.
+   backfill. Split existing `profiles.role` users into the new
+   `tenant_memberships` (staff) and `patient_enrollments` (patients)
+   tables. Swap RLS policies from existing to the tenant-scoped
+   templates. Move Pulse files to `/t/pulse/` and add root-path
+   redirects.
 
 A full database dump is taken before running 011. Rollback = restore
 the dump. This is the only phase where a full restore is the

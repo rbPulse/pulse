@@ -534,8 +534,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .comms-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .comms-group{margin-bottom:22px;}
 .comms-group-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
-.comms-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);}
-.comms-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;flex-wrap:wrap;}
+.comms-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow);overflow:hidden;}
+.comms-card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;cursor:pointer;transition:background .15s;user-select:none;}
+.comms-card-header:hover{background:rgba(20,20,20,0.02);}
+.comms-card-toggle{font-family:'Inter',sans-serif;font-size:14px;color:var(--text3);transition:transform .2s;}
+.comms-card.expanded .comms-card-toggle{transform:rotate(180deg);}
+.comms-card-body{padding:0 18px 16px;display:none;}
+.comms-card.expanded .comms-card-body{display:block;}
 .comms-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
 .comms-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
 .comms-channel-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
@@ -558,9 +563,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .comms-preview-subject{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:12px;}
 
 /* ── WORKFLOW TAB ── */
-.workflow-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
+.workflow-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
+.workflow-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;cursor:pointer;transition:background .15s;user-select:none;}
+.workflow-section-head:hover{background:rgba(20,20,20,0.02);}
+.workflow-section-toggle{font-family:'Inter',sans-serif;font-size:14px;color:var(--text3);transition:transform .2s;}
+.workflow-section.collapsed .workflow-section-toggle{transform:rotate(-90deg);}
+.workflow-section-body{padding:14px 20px 18px;border-top:1px solid var(--border);}
+.workflow-section.collapsed .workflow-section-body{display:none;}
 .workflow-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
-.workflow-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.workflow-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:0;}
 .workflow-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
 .workflow-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
 .workflow-field.full{grid-column:1 / -1;}
@@ -1082,7 +1093,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div id="newClientError" class="form-err" style="margin-bottom:14px;display:none;"></div>
           <div class="form-actions">
             <button class="form-btn secondary" onclick="toggleCreateClientForm()">Cancel</button>
-            <button class="form-btn primary" id="newClientSubmit" onclick="submitCreateClient()">Create Client</button>
+            <button class="form-btn secondary" id="newClientSubmitQuiet" onclick="submitCreateClient(true)">Create only</button>
+            <button class="form-btn primary" id="newClientSubmit" onclick="submitCreateClient(false)">Create &amp; Onboard</button>
           </div>
         </div>
 
@@ -1396,7 +1408,7 @@ function renderClientsTable() {
     // opens in full-view mode. stopPropagation prevents the row's
     // onclick from firing when the button itself is clicked.
     var onboardBtn = t.lifecycle_state === 'sandbox'
-      ? '<button class="toolbar-btn secondary" style="padding:4px 10px;font-size:10px;" onclick="event.stopPropagation(); openClientDetail(\'' + escAttr(t.id) + '\', true)">Onboard</button>'
+      ? '<button class="toolbar-btn" style="padding:5px 14px;font-size:11px;margin-left:8px;" onclick="event.stopPropagation(); openClientDetail(\'' + escAttr(t.id) + '\', true)">Onboard →</button>'
       : '';
     return '<tr onclick="openClientDetail(\'' + escAttr(t.id) + '\')">' +
       '<td>' + escHtml(t.name || '--') + '</td>' +
@@ -6435,17 +6447,26 @@ function renderCommsCard(entry) {
       '</div>'
     : '';
 
-  return '<div class="comms-card" data-key="' + escAttr(entry.key) + '" data-channel="' + escAttr(entry.channel) + '">' +
-    '<div class="comms-card-header">' +
+  // Collapsed by default so operators see the whole catalog as a list
+  // without scrolling past big textareas. Overridden cards start
+  // expanded so active customizations are visible.
+  var expanded = isOverridden ? ' expanded' : '';
+
+  return '<div class="comms-card' + expanded + '" data-key="' + escAttr(entry.key) + '" data-channel="' + escAttr(entry.channel) + '" id="commsCard-' + escAttr(inputIdBase) + '">' +
+    '<div class="comms-card-header" onclick="toggleCommsCard(\'' + escAttr(inputIdBase) + '\')">' +
       '<div class="comms-card-title">' +
         escHtml(entry.label) +
         '<span class="comms-channel-pill">' + escHtml(entry.channel) + '</span>' +
         '<span class="comms-key">' + escHtml(entry.key) + '</span>' +
       '</div>' +
-      '<span class="comms-badge' + (isOverridden ? ' overridden' : '') + '" id="' + escAttr(inputIdBase) + '-badge">' +
-        (isOverridden ? 'Overridden' : 'Using default') +
-      '</span>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span class="comms-badge' + (isOverridden ? ' overridden' : '') + '" id="' + escAttr(inputIdBase) + '-badge">' +
+          (isOverridden ? 'Overridden' : 'Using default') +
+        '</span>' +
+        '<span class="comms-card-toggle">\u25BE</span>' +
+      '</div>' +
     '</div>' +
+    '<div class="comms-card-body">' +
     '<div class="comms-card-desc">' + escHtml(entry.description || '') + '</div>' +
     (vars ? '<div class="comms-vars">' + vars + '</div>' : '') +
     subjectField +
@@ -6461,7 +6482,13 @@ function renderCommsCard(entry) {
       '<button class="form-btn primary" onclick="saveCommsTemplate(\'' + escAttr(entry.key) + '\',\'' + escAttr(entry.channel) + '\')">Save</button>' +
     '</div>' +
     '<div class="comms-preview-box" id="' + escAttr(inputIdBase) + '-preview"></div>' +
+    '</div>' + // close comms-card-body
   '</div>';
+}
+
+function toggleCommsCard(inputIdBase) {
+  var card = document.getElementById('commsCard-' + inputIdBase);
+  if (card) card.classList.toggle('expanded');
 }
 
 // Insert a variable token at the cursor position of whichever input
@@ -6625,18 +6652,29 @@ function buildWorkflowTab(t) {
 
   var out = '<div class="brand-form">';
 
-  schema.forEach(function(section) {
-    out += '<div class="workflow-section">' +
-      '<div class="workflow-section-title">' + escHtml(section.label) + '</div>' +
-      '<div class="workflow-section-sub">' + escHtml(section.description) + '</div>' +
-      '<div class="workflow-grid">' +
-        section.fields.map(function(field) {
-          var sectionCurrent = current[section.section] || {};
-          var val = Object.prototype.hasOwnProperty.call(sectionCurrent, field.key)
-            ? sectionCurrent[field.key]
-            : defaults[section.section][field.key];
-          return renderWorkflowField(section.section, field, val, defaults[section.section][field.key]);
-        }).join('') +
+  // Collapsible sections — first one (Intake) expanded by default so
+  // operators immediately see content; the rest collapsed to reduce
+  // scroll. Click the section header to toggle.
+  schema.forEach(function(section, idx) {
+    var collapsed = idx > 0 ? ' collapsed' : '';
+    out += '<div class="workflow-section' + collapsed + '" id="wfSection-' + escAttr(section.section) + '">' +
+      '<div class="workflow-section-head" onclick="toggleWorkflowSection(\'' + escAttr(section.section) + '\')">' +
+        '<div>' +
+          '<div class="workflow-section-title">' + escHtml(section.label) + '</div>' +
+          '<div class="workflow-section-sub">' + escHtml(section.description) + '</div>' +
+        '</div>' +
+        '<span class="workflow-section-toggle">\u25BE</span>' +
+      '</div>' +
+      '<div class="workflow-section-body">' +
+        '<div class="workflow-grid">' +
+          section.fields.map(function(field) {
+            var sectionCurrent = current[section.section] || {};
+            var val = Object.prototype.hasOwnProperty.call(sectionCurrent, field.key)
+              ? sectionCurrent[field.key]
+              : defaults[section.section][field.key];
+            return renderWorkflowField(section.section, field, val, defaults[section.section][field.key]);
+          }).join('') +
+        '</div>' +
       '</div>' +
     '</div>';
   });
@@ -6649,6 +6687,11 @@ function buildWorkflowTab(t) {
 
   out += '</div>';
   return out;
+}
+
+function toggleWorkflowSection(sectionKey) {
+  var el = document.getElementById('wfSection-' + sectionKey);
+  if (el) el.classList.toggle('collapsed');
 }
 
 function renderWorkflowField(sectionKey, field, val, defaultVal) {
@@ -7566,7 +7609,7 @@ function wireCreateClientAutoSlug() {
   });
 }
 
-function submitCreateClient() {
+function submitCreateClient(skipWizard) {
   var name       = document.getElementById('newClientName').value.trim();
   var slug       = document.getElementById('newClientSlug').value.trim().toLowerCase();
   var lc         = document.getElementById('newClientLifecycle').value;
@@ -7652,7 +7695,10 @@ function submitCreateClient() {
       chain.then(function() {
         return loadClients();
       }).then(function() {
-        if (newTenantId) openClientDetail(newTenantId, /* startInWizard */ true);
+        // Open the tenant UNLESS the operator chose "Create only".
+        // skipWizard=true means they want to return to the Clients
+        // list and come back to configure later.
+        if (newTenantId && !skipWizard) openClientDetail(newTenantId, /* startInWizard */ true);
       });
     })
     .catch(function(err) {

@@ -337,7 +337,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 7     | **Foundations done; delivery + Vault + webhook router = carry-over** | Migration 016 creates `tenant_integrations(tenant_id, provider, status, credentials jsonb, config jsonb, last_connected_at, last_error, last_error_at)` with platform-only RLS on the base table and a SECURITY DEFINER RPC (`tenant_integrations_for_my_tenants`) that returns a non-secret projection to tenant staff. `integrations.js` ships a catalog of 7 providers (Stripe, Daily.co, Resend, Twilio, Labcorp, Stripe Identity, Shippo) with credential + config field schemas. Operator Integrations tab renders one card per provider grouped by category; Connect/Edit/Disconnect/Test actions manage the row. Password fields always render blank on edit — leaving blank keeps the stored value. Audit log redacts credential VALUES (writes `credential_keys: [...]` instead). `admin.html` + `portal.html` load integrations.js and fire `Integrations.init()` in parallel with page boot. See carry-over for the real delivery path, Vault migration, and the webhook router. |
 | 8     | **Foundations done; data-export + alerts + read-site gating = carry-over** | Migration 017 creates four compliance tables in one migration: `tenant_locations` (addresses, hours, primary-flag with partial unique index), `tenant_regions` (operating states with allowed/blocked/unset tri-state), `tenant_consents` (versioned — editing creates a new version so prior signatures stay traceable), `clinician_state_licenses` (per-user, cross-tenant). `compliance.js` ships the US states catalog + `tenantOperatesIn` / `cliniciansLicensedIn` / `licensesExpiringWithin` / `primaryLocation` helpers. Operator Compliance tab has four sections: clickable states grid with cycle-semantics (unset → allowed → blocked → unset), locations CRUD with primary management, consent templates with versioned edit flow, read-only licenses summary with expiry stat cards (expired / ≤30d / ≤60d). `admin.html` + `portal.html` load compliance.js and fire `Compliance.init()` in parallel. See carry-over for data-export, license-expiry notifications, and the read-site gates that actually enforce state restrictions. |
 | 9     | **Foundations done; Stripe sync + feature-gate refactor = carry-over** | Migration 018 creates `plans` (seeded with Starter / Pro / Enterprise), `tenant_subscriptions` (partial unique index — one active sub per tenant; canceled rows stay as history), `module_entitlements` (sourced from plan or manually granted, with expiry for trials). `modules.js` ships a catalog of 16 modules across 5 categories (core, clinical, commercial, analytics, enterprise) and a `Modules.isEnabled(key)` feature-gate accessor. Per-client Billing tab manages subscription + per-module entitlements. Two top-level fleet tabs: **Modules** (catalog with adoption counts + plan-membership chips) and **Billing** (MRR, ARR, plan mix, churn flags). `admin.html` + `portal.html` load modules.js and fire `Modules.init()` in parallel. See carry-over for Stripe sync, Customer Portal embed, and the downstream feature-gate refactor. |
-| 10–15 | Not started   | See sections above. |
+| 10    | **Done (with carry-overs)** | Migration 019 extends `audit_logs` with `change_type` (stable classifier), `before_snapshot` (jsonb, pre-change state), `after_snapshot` (jsonb, post-change state). Append-only trigger from migration 009 preserved. Backfill classifies every existing audit action via a CASE mapping so historical rows get `change_type` populated without losing the legacy `details` string. Per-client Activity tab renders a timeline filtered by tenant with change-type filter, click-to-expand diff view (before/after side-by-side for new rows, raw `details` JSON for legacy rows). Top-level Audit tab has cross-tenant filter on top of the same renderer. Change-type colour mapping: brand/comms = slate, terminology/billing = green, workflow/compliance = amber, integration = blue, lifecycle = red. See carry-over for write-site structured snapshots + export. |
+| 11–15 | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -729,6 +730,62 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   (live_video calls per month, labs ordered, api_access requests)
   would inform pricing and module consolidation. Belongs with Phase
   14 analytics work — note the cross-dependency.
+
+### Carry-over from Phase 10
+
+- **Write-site migration to structured snapshots.** Every platform.html
+  write-site today writes its audit diff into the legacy `details`
+  text column (as `JSON.stringify({from, to})`). Migration 019 added
+  `before_snapshot` + `after_snapshot` JSONB columns; new write-sites
+  should populate those. Known write-sites to refactor:
+    - brand save → before = prev brand + legal_name; after = new
+    - terminology save → before/after tenant.terminology map
+    - workflow save → before/after workflow nested object
+    - comms template save/reset → before/after {subject, body}
+    - integration connect/disconnect → before/after config only
+      (credentials stay OUT of audit per Phase 7 posture)
+    - region toggle → before/after {state, is_allowed}
+    - location add/update/archive → before/after the full row
+    - consent version added → after only (insert of new version)
+    - subscription assign/update/cancel → before/after the sub row
+    - module entitlement toggle → before/after {enabled, source,
+      expires_at}
+    - lifecycle change → before/after {lifecycle_state}
+  Do them in one PR so the Activity tab's diff view renders uniformly
+  across all change types.
+- **Shared audit helper.** Extract a `logAudit(action, changeType,
+  targetId, before, after, details)` helper that every write-site
+  calls, instead of inlining the `db.from('audit_logs').insert({...})`
+  everywhere. Reduces the surface area for drift and standardises the
+  column set. Best to ship alongside the write-site migration above.
+- **Audit export.** Add an "Export CSV" button on the top-level Audit
+  tab that writes the current filter result to a downloadable CSV.
+  Required for tenants with compliance / SOC2 audit-trail obligations.
+  CSV columns: timestamp, tenant slug, actor email, action,
+  change_type, before JSON, after JSON.
+- **Pagination for large fleets.** Both the Activity tab and the
+  top-level Audit tab cap at 500 entries per fetch. Fine for Pulse
+  today (<50 tenants, bounded audit volume); starts to bite once a
+  tenant has > 500 config changes or the fleet has > 10 tenants with
+  chatty configs. Add cursor-based pagination using
+  `created_at DESC + id` when fleet-wide rows cross ~5000.
+- **Change-type classifier for new actions.** The backfill CASE in
+  migration 019 covers every action platform.html writes as of
+  Phase 10 landing. New actions need BOTH a case in any future backfill
+  (if historical rows exist) AND direct `change_type` on new writes.
+  Forcing the helper above to take a required `changeType` arg is the
+  cleanest way to never forget.
+- **Actor resolution.** Audit rows store `actor_id` (uuid) +
+  `actor_email` (text, often stale). On render we show the email
+  when present. Cross-tenant profile-name resolution isn't implemented
+  here — same limitation as the Compliance tab's Licenses section.
+  Resolve together with Phase 13's view-as console, which needs the
+  same profile-cache primitive.
+- **Date-range filter on the Audit toolbar.** A common regulator-
+  response query is "show me every state-restriction change for this
+  tenant in the last 90 days." That works today by scrolling, but a
+  date filter saves time. Add to the audit toolbar when the next
+  regulator request comes in; defer until there's a real use case.
 
 ### Carry-over from Phase 1
 

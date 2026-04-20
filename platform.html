@@ -827,13 +827,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-audit">
         <div class="tab-header">
           <div class="tab-title">Audit Log</div>
-          <div class="tab-subtitle">Config changes and platform-originated actions.</div>
+          <div class="tab-subtitle">Every config change across every tenant, filterable by tenant or change type. Append-only.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Change management</div>
-          <div class="placeholder-body">Every config change logged with before/after snapshot. Cross-tenant filter for "what did Pulse internal change." Per-tenant timeline lives on the tenant detail page.</div>
-          <div class="placeholder-phase">Phase 10</div>
-        </div>
+        <div id="auditTabBody"><div class="audit-loading">Loading audit entries…</div></div>
       </div>
 
       <!-- SETTINGS -->
@@ -969,6 +965,7 @@ function switchTab(tabId) {
   // doesn't re-fetch. Operators refreshing the data = reload the page.
   if (tabId === 'modules' && !_modulesTabLoaded)   loadModulesTab();
   if (tabId === 'billing' && !_billingTabLoaded)   loadBillingTab();
+  if (tabId === 'audit'   && !_auditTabLoaded)     loadAuditTab();
 }
 
 function doSignOut() {
@@ -1869,6 +1866,81 @@ function renderActivityList() {
     if (c) c.textContent = (count === total ? total + ' entries' : count + ' of ' + total);
   }, 0);
   return renderAuditList(filtered, null);
+}
+
+// ── Top-level Audit tab (fleet-wide) ──
+// Cross-tenant. Fetches recent entries across every tenant the
+// operator can read (RLS gates by is_platform_user; non-platform
+// callers see nothing here). Filters: change type, tenant. Same
+// diff-view UI as the per-client Activity tab — these share the
+// render helpers above.
+var _auditTabLoaded = false;
+var _auditTabData = {
+  entries:     [],
+  tenants:     [],
+  tenantsById: {},
+  type:        '',
+  tenantId:    ''
+};
+
+function loadAuditTab() {
+  var wrap = document.getElementById('auditTabBody');
+  if (!wrap) return;
+  _auditTabLoaded = true;
+
+  Promise.all([
+    db.from('audit_logs')
+      .select('id, action, change_type, actor_id, actor_email, target_id, tenant_id, details, before_snapshot, after_snapshot, created_at')
+      .order('created_at', { ascending: false })
+      .limit(500),
+    db.from('tenants').select('id, name, slug').order('name')
+  ]).then(function(results) {
+    if (results[0].error) {
+      var hint = migrationHint(results[0].error, '019_audit_change_management.sql');
+      wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load audit log</strong><br/>' +
+        escHtml(results[0].error.message || '') +
+        (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+      return;
+    }
+    _auditTabData.entries = results[0].data || [];
+    _auditTabData.tenants = results[1].data || [];
+    _auditTabData.tenantsById = {};
+    _auditTabData.tenants.forEach(function(t) { _auditTabData.tenantsById[t.id] = t; });
+
+    wrap.innerHTML = renderAuditTabBody();
+    document.getElementById('auditTypeFilter').addEventListener('change', function() {
+      _auditTabData.type = this.value;
+      document.getElementById('auditTabListInner').outerHTML =
+        '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
+    });
+    document.getElementById('auditTenantFilter').addEventListener('change', function() {
+      _auditTabData.tenantId = this.value;
+      document.getElementById('auditTabListInner').outerHTML =
+        '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
+    });
+  }).catch(function(err) {
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+function renderAuditTabBody() {
+  return renderAuditToolbar(true, _auditTabData.type, _auditTabData.tenantId, _auditTabData.tenants) +
+    '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
+}
+
+function renderAuditTabList() {
+  var filtered = _auditTabData.entries.filter(function(e) {
+    if (_auditTabData.type && e.change_type !== _auditTabData.type) return false;
+    if (_auditTabData.tenantId && e.tenant_id !== _auditTabData.tenantId && e.target_id !== _auditTabData.tenantId) return false;
+    return true;
+  });
+  var count = filtered.length;
+  var total = _auditTabData.entries.length;
+  setTimeout(function() {
+    var c = document.getElementById('auditCount');
+    if (c) c.textContent = (count === total ? total + ' entries' : count + ' of ' + total);
+  }, 0);
+  return renderAuditList(filtered, _auditTabData.tenantsById);
 }
 
 // ── Top-level Modules tab (fleet-wide) ──

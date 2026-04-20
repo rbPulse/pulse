@@ -147,6 +147,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── BRAND PREVIEW ── */
+.brand-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;box-shadow:var(--shadow);margin-bottom:4px;}
+.brand-preview-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:14px 20px 10px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:space-between;}
+.brand-preview-label-note{font-weight:500;letter-spacing:0.02em;text-transform:none;color:var(--text3);}
+.brand-preview-frame{padding:18px 20px 22px;display:flex;flex-direction:column;gap:14px;}
+.brand-preview-nav{display:flex;align-items:center;justify-content:space-between;background:rgba(247,245,239,0.95);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 18px;}
+.brand-preview-brand{display:flex;align-items:center;gap:10px;}
+.brand-preview-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid var(--brand-preview-accent,#3a4a5c);background:var(--card);}
+.brand-preview-icon svg{width:14px;height:14px;stroke:var(--brand-preview-accent,#3a4a5c);fill:none;stroke-width:2;}
+.brand-preview-icon img{max-width:100%;max-height:100%;object-fit:contain;}
+.brand-preview-wordmark{font-family:'Inter',sans-serif;font-size:14px;letter-spacing:0.08em;color:#111;text-transform:uppercase;font-weight:600;}
+.brand-preview-role{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--brand-preview-accent,#3a4a5c);background:var(--brand-preview-accent-tint,rgba(58,74,92,0.10));border:1px solid var(--brand-preview-accent-border,rgba(58,74,92,0.25));padding:3px 10px;border-radius:var(--radius-pill);}
+.brand-preview-cta{display:inline-block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;color:#fff;background:var(--brand-preview-accent,#3a4a5c);padding:7px 16px;border-radius:var(--radius-pill);align-self:flex-start;}
+.brand-preview-footer{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.5;padding:10px 14px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);min-height:18px;}
+.brand-preview-support{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.brand-preview-support .sup-val{color:var(--text2);font-weight:500;}
+
 /* ── BRAND TAB ── */
 .brand-form{display:flex;flex-direction:column;gap:18px;}
 .brand-form-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
@@ -904,6 +921,27 @@ function buildBrandTab(t) {
   var acc = b.accent_color || '#3a4a5c';
   return '<div class="brand-form">' +
 
+    '<div class="brand-preview" id="brandPreview">' +
+      '<div class="brand-preview-label">' +
+        '<span>Live preview</span>' +
+        '<span class="brand-preview-label-note">Updates as you type. Click Save Brand to persist.</span>' +
+      '</div>' +
+      '<div class="brand-preview-frame">' +
+        '<div class="brand-preview-nav">' +
+          '<div class="brand-preview-brand">' +
+            '<div class="brand-preview-icon" id="brandPreviewIcon">' +
+              '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
+            '</div>' +
+            '<span class="brand-preview-wordmark" id="brandPreviewWordmark">PULSE</span>' +
+          '</div>' +
+          '<span class="brand-preview-role" id="brandPreviewRole">Admin</span>' +
+        '</div>' +
+        '<span class="brand-preview-cta" id="brandPreviewCta">Primary action</span>' +
+        '<div class="brand-preview-support" id="brandPreviewSupport"><span class="sup-val">Support contacts appear here</span></div>' +
+        '<div class="brand-preview-footer" id="brandPreviewFooter">Footer copy appears here.</div>' +
+      '</div>' +
+    '</div>' +
+
     '<div class="brand-form-section">' +
       '<div class="brand-form-section-title">Identity</div>' +
       '<div class="brand-form-section-sub">How this tenant presents itself across the downstream portals. Wordmark replaces "PULSE" in the nav; legal name appears in footers and compliance surfaces.</div>' +
@@ -1149,6 +1187,80 @@ function afterRenderBrandTab(t) {
       removeEl.disabled = !v;
     });
   });
+
+  // Live preview: every form field that affects the rendered brand
+  // also pushes updates to the preview panel on input.
+  var previewFieldIds = [
+    'brandWordmark', 'brandAccentHex', 'brandAccentPicker',
+    'brandSupportEmail', 'brandSupportPhone', 'brandFooterCopy',
+    'brandLogoUrl', 'brandFaviconUrl'
+  ];
+  previewFieldIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateBrandPreview);
+  });
+  updateBrandPreview();
+}
+
+// Reads current form values and re-paints the preview panel. Called on
+// initial render and on every input event. Cheap — DOM updates only,
+// no network, no re-render of the whole form.
+function updateBrandPreview() {
+  var preview = document.getElementById('brandPreview');
+  if (!preview) return;
+
+  var wordmark = (document.getElementById('brandWordmark').value || '').trim() || 'PULSE';
+  var hex      = (document.getElementById('brandAccentHex').value || '').trim();
+  var logoUrl  = (document.getElementById('brandLogoUrl').value || '').trim();
+  var supEmail = (document.getElementById('brandSupportEmail').value || '').trim();
+  var supPhone = (document.getElementById('brandSupportPhone').value || '').trim();
+  var footer   = (document.getElementById('brandFooterCopy').value || '').trim();
+
+  document.getElementById('brandPreviewWordmark').textContent = wordmark;
+
+  // Accent applied via scoped CSS variables so the preview panel
+  // alone rebrands without bleeding into the operator portal's slate.
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    preview.style.setProperty('--brand-preview-accent',        hex);
+    preview.style.setProperty('--brand-preview-accent-tint',   hexToRgba(hex, 0.10));
+    preview.style.setProperty('--brand-preview-accent-border', hexToRgba(hex, 0.25));
+  } else {
+    preview.style.removeProperty('--brand-preview-accent');
+    preview.style.removeProperty('--brand-preview-accent-tint');
+    preview.style.removeProperty('--brand-preview-accent-border');
+  }
+
+  var iconEl = document.getElementById('brandPreviewIcon');
+  if (logoUrl) {
+    iconEl.innerHTML = '<img src="' + escAttr(logoUrl) + '" alt=""/>';
+  } else {
+    iconEl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+  }
+
+  var supParts = [];
+  if (supEmail) supParts.push('<span class="sup-val">' + escHtml(supEmail) + '</span>');
+  if (supPhone) supParts.push('<span class="sup-val">' + escHtml(supPhone) + '</span>');
+  document.getElementById('brandPreviewSupport').innerHTML =
+    supParts.length
+      ? 'Need help? ' + supParts.join(' &middot; ')
+      : '<span class="sup-val" style="color:var(--text4)">Support contacts appear here</span>';
+
+  var footerEl = document.getElementById('brandPreviewFooter');
+  if (footer) {
+    footerEl.textContent = footer;
+    footerEl.style.color = 'var(--text2)';
+  } else {
+    footerEl.textContent = 'Footer copy appears here.';
+    footerEl.style.color = 'var(--text4)';
+  }
+}
+
+function hexToRgba(hex, alpha) {
+  var h = hex.replace('#', '');
+  var r = parseInt(h.substring(0, 2), 16);
+  var g = parseInt(h.substring(2, 4), 16);
+  var b = parseInt(h.substring(4, 6), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
 
 function setBrandError(msg) {

@@ -329,21 +329,33 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 |-------|---------------|-------|
 | 0     | **Done**      | Migrations 010–012 run; `tenant.js` wired into admin + portal; seed tenant "pulse" live. |
 | 1     | **Done**      | Shell (auth gate, slate accent, 10-section sidebar), Clients directory (list + stats + filter), Create-client form (slug validation + initial admin wiring), Client detail modal (read-only + config layer status), Lifecycle state controls (role-gated + audit-logged), `tokens.css` created and wired into `platform.html`. |
-| 2     | **In progress** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav, accent → `--amber` override, favicon → `<link rel="icon">`). |
+| 2     | **Done (with carry-overs)** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. Sandboxed live preview panel updates as the operator types. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav + loading + title, accent → `--amber` override, favicon). `portal.html` reads `Tenant.brand.*` (wordmark + favicon + title; accent deferred — see below). |
 | 3–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
-- `portal.html` and `clinician.html` (when it lands) still need the
-  same `applyTenantBrand()` hook as `admin.html`. Deferred because
-  `portal.html` is 1.2MB and needs visual QA across the member-facing
-  journey that can't be verified headlessly.
-- Brand preview iframe (embed tenant's downstream portal in the
-  operator modal) — deferred until at least two portals read from
-  `Tenant.brand`, so there's meaningful output to preview.
+- `portal.html` accent color override. `portal.html` runs in two body
+  modes (member-mode, clinician-mode) with namespaced `--m-*` / `--cl-*`
+  accent tokens. Re-pointing the right variable for the right mode is
+  a larger refactor than Phase 2's slice warranted. Do it as part of
+  the next `portal.html` touch.
+- Two `portal.html` wordmark instances live inside JS template strings
+  (welcome-card brand ~line 14723, consult-reminder nav ~line 21093)
+  and still read hardcoded "PULSE" because they render after the
+  `applyTenantBrand()` hook fires. Rebuild those templates to read from
+  `window.Tenant.brand.wordmark` when the template is built.
+- `clinician.html` doesn't exist yet. Gets the same hook on creation.
+- `portal.html` and `clinician.html` still carry inline `:root` blocks
+  that duplicate `tokens.css` tokens (Phase 1 carry-over). Migrate
+  alongside the brand touch above.
 - Orphaned storage objects: replacing a logo uploads a new file with a
   timestamp suffix; the old file stays. Cleanup job belongs with the
   Phase 10 audit/retention work, not Phase 2.
+- Live preview is a sandboxed render, not a real iframe of the downstream
+  portal. That's fine for Phase 2 (covers the "iframe or sandboxed
+  render" option in the plan). Upgrade to iframe previews alongside
+  Phase 13's view-as console, where the downstream portals will learn
+  to accept an operator preview session.
 
 ### Carry-over from Phase 1
 

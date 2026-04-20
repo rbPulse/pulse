@@ -126,6 +126,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 @media(max-width:900px){ .form-grid{grid-template-columns:1fr;} }
 
+/* ── BRAND TAB ── */
+.brand-form{display:flex;flex-direction:column;gap:18px;}
+.brand-form-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
+.brand-form-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.brand-form-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.brand-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.brand-form-grid .full{grid-column:1 / -1;}
+.brand-form-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.brand-form-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.brand-form-field input[type="text"],.brand-form-field input[type="email"],.brand-form-field input[type="tel"],.brand-form-field textarea{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.brand-form-field textarea{min-height:70px;resize:vertical;font-family:'Inter',sans-serif;}
+.brand-form-field input:focus,.brand-form-field textarea:focus{border-color:var(--slate);}
+.brand-form-field .brand-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+.color-row{display:flex;align-items:center;gap:10px;}
+.color-row input[type="color"]{width:44px;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);cursor:pointer;padding:2px;}
+.color-row input[type="text"]{flex:1;font-family:'SF Mono',Menlo,Consolas,monospace;text-transform:uppercase;}
+.brand-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:6px;}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text);z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 12px 32px rgba(20,20,20,0.12);max-width:380px;}
 .toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
@@ -841,13 +859,268 @@ function buildOverviewTab(t) {
     '</div>';
 }
 
-// Phase 2 — filled in by the brand form commit that follows. Stub here
-// so DETAIL_TABS can reference it without a hoisting issue.
+// ── Brand tab ──
+// Writes to tenants.brand (JSONB) + tenants.legal_name (top-level column
+// since legal_name already exists outside the brand layer). Logo and
+// favicon uploads land in a follow-up — those need a storage bucket
+// migration first. Until then, brand.logo_url / brand.favicon_url are
+// still surfaced as editable URL fields so operators pointing at an
+// external asset aren't blocked waiting for the storage UI.
+var BRAND_FIELDS_DEFAULT = {
+  wordmark:      '',
+  accent_color:  '',
+  sender_email:  '',
+  sender_name:   '',
+  support_email: '',
+  support_phone: '',
+  footer_copy:   '',
+  logo_url:      '',
+  favicon_url:   ''
+};
+
 function buildBrandTab(t) {
-  return '<div class="detail-tab-placeholder">' +
-    '<div class="detail-tab-placeholder-title">Brand — Phase 2 (in progress)</div>' +
-    '<div class="detail-tab-placeholder-body">Logo upload, favicon, accent color, wordmark, sender identity (email + name), support email/phone, footer copy. Form lands in the next commit.</div>' +
+  var b = Object.assign({}, BRAND_FIELDS_DEFAULT, t.brand || {});
+  var acc = b.accent_color || '#3a4a5c';
+  return '<div class="brand-form">' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Identity</div>' +
+      '<div class="brand-form-section-sub">How this tenant presents itself across the downstream portals. Wordmark replaces "PULSE" in the nav; legal name appears in footers and compliance surfaces.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandWordmark">Wordmark</label>' +
+          '<input type="text" id="brandWordmark" value="' + escAttr(b.wordmark) + '" placeholder="ACME" maxlength="32"/>' +
+          '<div class="brand-help">Shown in nav headers. Keep short; it\'s set in caps and letter-spaced.</div>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandLegalName">Legal name</label>' +
+          '<input type="text" id="brandLegalName" value="' + escAttr(t.legal_name || '') + '" placeholder="Acme Health, Inc."/>' +
+          '<div class="brand-help">Full legal entity name. Used in footers, receipts, and audit records.</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Accent</div>' +
+      '<div class="brand-form-section-sub">Single accent color used for primary actions, active nav state, and role badges. Pick a hue that reads against the cream surface.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field full">' +
+          '<label for="brandAccentColor">Accent color</label>' +
+          '<div class="color-row">' +
+            '<input type="color" id="brandAccentPicker" value="' + escAttr(acc) + '"/>' +
+            '<input type="text" id="brandAccentHex" value="' + escAttr(acc) + '" placeholder="#3A4A5C" maxlength="7"/>' +
+          '</div>' +
+          '<div class="brand-help">Hex code. Picker and text field stay in sync — edit either.</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Sender identity</div>' +
+      '<div class="brand-form-section-sub">Outbound email appears to come from this address and name. Verified deliverability is a Phase 7 integrations concern — this tab just stores the intended values.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSenderEmail">Sender email</label>' +
+          '<input type="email" id="brandSenderEmail" value="' + escAttr(b.sender_email) + '" placeholder="hello@acmehealth.com"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSenderName">Sender name</label>' +
+          '<input type="text" id="brandSenderName" value="' + escAttr(b.sender_name) + '" placeholder="Acme Health"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Support</div>' +
+      '<div class="brand-form-section-sub">Contact routes patients and clinicians see. Shown in footers, help menus, and auto-generated error pages.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSupportEmail">Support email</label>' +
+          '<input type="email" id="brandSupportEmail" value="' + escAttr(b.support_email) + '" placeholder="support@acmehealth.com"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSupportPhone">Support phone</label>' +
+          '<input type="tel" id="brandSupportPhone" value="' + escAttr(b.support_phone) + '" placeholder="+1-555-0100"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Assets (URLs)</div>' +
+      '<div class="brand-form-section-sub">Point at externally-hosted images for now. Supabase Storage upload UI lands in the next commit; these URL fields stay after for teams with their own CDN.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandLogoUrl">Logo URL</label>' +
+          '<input type="text" id="brandLogoUrl" value="' + escAttr(b.logo_url) + '" placeholder="https://…/logo.png"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandFaviconUrl">Favicon URL</label>' +
+          '<input type="text" id="brandFaviconUrl" value="' + escAttr(b.favicon_url) + '" placeholder="https://…/favicon.ico"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Footer</div>' +
+      '<div class="brand-form-section-sub">Copy appended to every downstream portal footer. Keep short — legal name and year are typically enough.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field full">' +
+          '<label for="brandFooterCopy">Footer copy</label>' +
+          '<textarea id="brandFooterCopy" placeholder="© 2026 Acme Health, Inc. All rights reserved.">' + escHtml(b.footer_copy) + '</textarea>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div id="brandError" class="form-err" style="display:none;"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
+      '<button class="form-btn primary" id="brandSaveBtn" onclick="saveBrand()">Save Brand</button>' +
+    '</div>' +
   '</div>';
+}
+
+// Keep the color picker and hex field in sync. Called after the brand
+// form is rendered because the event-listener targets don't exist until
+// then (the tab re-renders on every switch).
+function afterRenderBrandTab(t) {
+  var picker = document.getElementById('brandAccentPicker');
+  var hex    = document.getElementById('brandAccentHex');
+  if (!picker || !hex) return;
+
+  picker.addEventListener('input', function() {
+    hex.value = picker.value.toUpperCase();
+  });
+  hex.addEventListener('input', function() {
+    var v = hex.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v.toLowerCase();
+  });
+}
+
+function setBrandError(msg) {
+  var el = document.getElementById('brandError');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveBrand() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  var wordmark      = document.getElementById('brandWordmark').value.trim();
+  var legalName     = document.getElementById('brandLegalName').value.trim();
+  var accentHex     = document.getElementById('brandAccentHex').value.trim();
+  var senderEmail   = document.getElementById('brandSenderEmail').value.trim();
+  var senderName    = document.getElementById('brandSenderName').value.trim();
+  var supportEmail  = document.getElementById('brandSupportEmail').value.trim();
+  var supportPhone  = document.getElementById('brandSupportPhone').value.trim();
+  var logoUrl       = document.getElementById('brandLogoUrl').value.trim();
+  var faviconUrl    = document.getElementById('brandFaviconUrl').value.trim();
+  var footerCopy    = document.getElementById('brandFooterCopy').value;
+
+  setBrandError('');
+
+  if (accentHex && !/^#[0-9a-fA-F]{6}$/.test(accentHex)) {
+    setBrandError('Accent color must be a 6-digit hex like #3A4A5C.');
+    return;
+  }
+  if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) {
+    setBrandError('Sender email looks malformed.');
+    return;
+  }
+  if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) {
+    setBrandError('Support email looks malformed.');
+    return;
+  }
+  if (logoUrl && !/^https?:\/\//i.test(logoUrl)) {
+    setBrandError('Logo URL must start with http:// or https://.');
+    return;
+  }
+  if (faviconUrl && !/^https?:\/\//i.test(faviconUrl)) {
+    setBrandError('Favicon URL must start with http:// or https://.');
+    return;
+  }
+
+  // Merge-update: preserve any keys future phases might add to brand
+  // that this UI doesn't know about (e.g. stored uploads added by a
+  // background job). Spreading t.brand first, then the form fields,
+  // keeps unknown keys intact.
+  var nextBrand = Object.assign({}, t.brand || {}, {
+    wordmark:      wordmark,
+    accent_color:  accentHex ? accentHex.toUpperCase() : '',
+    sender_email:  senderEmail,
+    sender_name:   senderName,
+    support_email: supportEmail,
+    support_phone: supportPhone,
+    logo_url:      logoUrl,
+    favicon_url:   faviconUrl,
+    footer_copy:   footerCopy
+  });
+
+  var prevBrand = t.brand || {};
+  var prevLegal = t.legal_name || '';
+
+  var btn = document.getElementById('brandSaveBtn');
+  btn.disabled = true;
+
+  db.from('tenants').update({
+    brand: nextBrand,
+    legal_name: legalName || null
+  }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+
+      // Diff-only audit payload so the log doesn't balloon when all
+      // we changed was one support phone. Empty diff → skip the log
+      // insert entirely (noop saves shouldn't clutter audit).
+      var diff = brandDiff(prevBrand, nextBrand, prevLegal, legalName);
+      if (Object.keys(diff).length === 0) return;
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.brand_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify(diff)
+      }).then(function(ar) {
+        if (ar.error) console.warn('[platform] brand audit write failed', ar.error);
+      });
+    })
+    .then(function() {
+      btn.disabled = false;
+      // Mutate the cached client in-place so the detail modal re-renders
+      // without a full refetch. loadClients() still runs so the Clients
+      // table reflects any downstream changes (e.g. legal name display).
+      t.brand      = nextBrand;
+      t.legal_name = legalName || null;
+      showToast('Brand saved.', 'success');
+      loadClients();
+      // Re-render the current tab so the saved values are re-read from
+      // the (now-updated) tenant object. Avoids stale form state if the
+      // user saves twice in a row.
+      renderDetailTabPanels();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[platform] brand save failed', err);
+      setBrandError((err && err.message) || 'Save failed.');
+    });
+}
+
+// Produce a { key: { from, to } } diff of the fields that actually
+// changed. Skips equal values so the audit entry stays small.
+function brandDiff(prevBrand, nextBrand, prevLegal, nextLegal) {
+  var diff = {};
+  Object.keys(BRAND_FIELDS_DEFAULT).forEach(function(k) {
+    var a = prevBrand[k] || '';
+    var b = nextBrand[k] || '';
+    if (a !== b) diff[k] = { from: a, to: b };
+  });
+  if ((prevLegal || '') !== (nextLegal || '')) {
+    diff.legal_name = { from: prevLegal || '', to: nextLegal || '' };
+  }
+  return diff;
 }
 
 // Lifecycle transitions are role-gated per ARCHITECTURE.md: only

@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
+<script src="messaging.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -148,6 +149,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-url-input:focus{border-color:var(--slate);}
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
+
+/* ── COMMS TAB ── */
+.comms-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.comms-group{margin-bottom:22px;}
+.comms-group-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.comms-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);}
+.comms-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:12px;flex-wrap:wrap;}
+.comms-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.comms-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
+.comms-channel-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
+.comms-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);font-weight:400;}
+.comms-badge{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text4);font-style:italic;}
+.comms-badge.overridden{color:var(--slate);font-style:normal;}
+.comms-field{margin-bottom:10px;display:flex;flex-direction:column;gap:5px;}
+.comms-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
+.comms-field input[type="text"]{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.comms-field textarea{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);outline:none;transition:border-color .15s;width:100%;min-height:96px;resize:vertical;line-height:1.5;}
+.comms-field input:focus,.comms-field textarea:focus{border-color:var(--slate);}
+.comms-vars{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.comms-var-chip{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;padding:3px 8px;border-radius:var(--radius-pill);background:var(--card2);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:background .15s;}
+.comms-var-chip:hover{background:var(--slate-tint);color:var(--slate);border-color:var(--slate-border);}
+.comms-var-chip.required::after{content:'*';color:var(--red);margin-left:2px;}
+.comms-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.comms-actions .form-btn{padding:7px 14px;font-size:11px;}
+.comms-preview-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);line-height:1.5;white-space:pre-wrap;display:none;}
+.comms-preview-box.show{display:block;}
+.comms-preview-subject{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:12px;}
 
 /* ── WORKFLOW TAB ── */
 .workflow-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
@@ -866,7 +894,7 @@ var DETAIL_TABS = [
   { key: 'terminology',  label: 'Terminology',   build: buildTerminologyTab                        },
   { key: 'catalog',      label: 'Catalog',       build: buildCatalogTab                            },
   { key: 'workflow',     label: 'Workflow',      build: buildWorkflowTab                           },
-  { key: 'comms',        label: 'Communications', phase: 'Phase 6', desc: 'Email/SMS/push templates, sender identity, reminder cadence.' },
+  { key: 'comms',        label: 'Communications', build: buildCommsTab                              },
   { key: 'integrations', label: 'Integrations',  phase: 'Phase 7', desc: 'Stripe, Daily.co, Resend, EHR, shipping, ID verification credentials and webhook routing.' },
   { key: 'compliance',   label: 'Compliance',    phase: 'Phase 8', desc: 'Operating states, consent templates, disclaimer sets, license tracking, region restrictions.' },
   { key: 'billing',      label: 'Billing',       phase: 'Phase 9', desc: 'Plan selection, module entitlement overrides, Stripe customer portal link.' },
@@ -940,6 +968,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderWorkflowTab === 'function' && _activeDetailTab === 'workflow') {
     afterRenderWorkflowTab(t);
+  }
+  if (typeof afterRenderCommsTab === 'function' && _activeDetailTab === 'comms') {
+    afterRenderCommsTab(t);
   }
 }
 
@@ -1456,6 +1487,288 @@ function saveBrand() {
       btn.disabled = false;
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
+    });
+}
+
+// ── Comms tab ──
+// Lists every message key the system knows about (from
+// Messaging.CATALOG), grouped by CATALOG's `group` field. Each card
+// shows subject + body inputs, the variables available for
+// interpolation, and three actions: Preview (render with sample
+// data), Save (upsert this template's override), Reset (delete the
+// override, falling back to the bundled default).
+//
+// Fetches existing overrides fresh from communication_templates when
+// the tab renders — _activeDetailTenant.terminology/workflow are
+// cached because they're tiny; messaging overrides could be dozens
+// of rows, so we load on-demand and don't clutter the tenant cache.
+//
+// Sample data for preview intentionally hardcoded per-tab (rather
+// than in messaging.js) because the sample values only matter for
+// the operator preview — not the actual delivery path, which Phase 7
+// owns.
+var COMMS_SAMPLE_VARS = {
+  tenant_name:        'Acme Health',
+  member_first_name:  'Alex',
+  member_last_name:   'Morgan',
+  member_email:       'alex@example.com',
+  clinician_name:     'Dr. Johnson',
+  clinician_term:     'clinician',
+  protocol_name:      'Sleep Protocol',
+  portal_url:         'https://app.acmehealth.com/portal',
+  support_email:      'support@acmehealth.com',
+  sla_hours:          '24',
+  consult_time:       'Tuesday at 2:00 PM ET',
+  join_url:           'https://app.acmehealth.com/consult/abc123',
+  when:               'tomorrow at 2 PM ET',
+  denial_reason:      'Your clinician would like to review your recent labs before approving.'
+};
+
+var _commsOverrides = {}; // "key|channel" → DB row
+
+function buildCommsTab(t) {
+  if (!window.Messaging) {
+    return '<div class="detail-tab-placeholder">' +
+      '<div class="detail-tab-placeholder-title">messaging.js not loaded</div>' +
+      '<div class="detail-tab-placeholder-body">Reload the page — the messaging helper is missing from this session.</div>' +
+    '</div>';
+  }
+  return '<div id="commsBody"><div class="comms-loading">Loading templates…</div></div>';
+}
+
+function afterRenderCommsTab(t) {
+  var wrap = document.getElementById('commsBody');
+  if (!wrap) return;
+
+  db.from('communication_templates')
+    .select('id, key, channel, subject, body, is_enabled, cadence')
+    .eq('tenant_id', t.id)
+    .then(function(r) {
+      if (_activeDetailTab !== 'comms' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+
+      _commsOverrides = {};
+      if (r.error) {
+        var msg = (r.error.message || '').toLowerCase();
+        var hint = /does not exist|relation .* does not exist/.test(msg)
+          ? 'Run migration 015_communication_templates.sql in the Supabase SQL editor to create the table.'
+          : null;
+        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load templates</strong><br/>' +
+          escHtml(r.error.message || '') +
+          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+        return;
+      }
+      (r.data || []).forEach(function(row) {
+        _commsOverrides[row.key + '|' + row.channel] = row;
+      });
+      wrap.innerHTML = renderCommsBody(t);
+    })
+    .catch(function(err) {
+      if (_activeDetailTab !== 'comms' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderCommsBody(t) {
+  var groups = window.Messaging.GROUPS;
+  var catalog = window.Messaging.CATALOG;
+
+  var out = '';
+  groups.forEach(function(g) {
+    var groupTemplates = catalog.filter(function(c) { return c.group === g.key; });
+    if (groupTemplates.length === 0) return;
+    out += '<div class="comms-group">' +
+      '<div class="comms-group-title">' + escHtml(g.label) + '</div>' +
+      groupTemplates.map(renderCommsCard).join('') +
+    '</div>';
+  });
+  if (!out) out = '<div class="catalog-empty">No message templates in the catalog.</div>';
+  return out;
+}
+
+function renderCommsCard(entry) {
+  var compositeKey = entry.key + '|' + entry.channel;
+  var over = _commsOverrides[compositeKey];
+  var subject = (over && over.subject != null) ? over.subject : (entry.subject || '');
+  var body    = (over && over.body    != null) ? over.body    : entry.body;
+  var isOverridden = !!over && (over.subject !== entry.subject || over.body !== entry.body);
+
+  var inputIdBase = 'comms-' + entry.key.replace(/\./g, '_') + '-' + entry.channel;
+
+  var vars = (entry.variables || []).map(function(v) {
+    return '<span class="comms-var-chip' + (v.required ? ' required' : '') +
+      '" onclick="insertCommsVar(\'' + escAttr(inputIdBase) + '\',\'' + escAttr(v.name) + '\')"' +
+      '>{{' + escHtml(v.name) + '}}</span>';
+  }).join('');
+
+  var subjectField = entry.channel === 'email'
+    ? '<div class="comms-field">' +
+        '<label>Subject</label>' +
+        '<input type="text" id="' + escAttr(inputIdBase) + '-subject" value="' + escAttr(subject) + '"' +
+          ' data-default-subject="' + escAttr(entry.subject || '') + '"/>' +
+      '</div>'
+    : '';
+
+  return '<div class="comms-card" data-key="' + escAttr(entry.key) + '" data-channel="' + escAttr(entry.channel) + '">' +
+    '<div class="comms-card-header">' +
+      '<div class="comms-card-title">' +
+        escHtml(entry.label) +
+        '<span class="comms-channel-pill">' + escHtml(entry.channel) + '</span>' +
+        '<span class="comms-key">' + escHtml(entry.key) + '</span>' +
+      '</div>' +
+      '<span class="comms-badge' + (isOverridden ? ' overridden' : '') + '" id="' + escAttr(inputIdBase) + '-badge">' +
+        (isOverridden ? 'Overridden' : 'Using default') +
+      '</span>' +
+    '</div>' +
+    '<div class="comms-card-desc">' + escHtml(entry.description || '') + '</div>' +
+    (vars ? '<div class="comms-vars">' + vars + '</div>' : '') +
+    subjectField +
+    '<div class="comms-field">' +
+      '<label>Body</label>' +
+      '<textarea id="' + escAttr(inputIdBase) + '-body" data-default-body="' + escAttr(entry.body) + '">' +
+        escHtml(body) +
+      '</textarea>' +
+    '</div>' +
+    '<div class="comms-actions">' +
+      '<button class="form-btn secondary" onclick="previewCommsTemplate(\'' + escAttr(inputIdBase) + '\',\'' + escAttr(entry.channel) + '\')">Preview</button>' +
+      '<button class="form-btn secondary" onclick="resetCommsTemplate(\'' + escAttr(entry.key) + '\',\'' + escAttr(entry.channel) + '\')">Reset to default</button>' +
+      '<button class="form-btn primary" onclick="saveCommsTemplate(\'' + escAttr(entry.key) + '\',\'' + escAttr(entry.channel) + '\')">Save</button>' +
+    '</div>' +
+    '<div class="comms-preview-box" id="' + escAttr(inputIdBase) + '-preview"></div>' +
+  '</div>';
+}
+
+// Insert a variable token at the cursor position of whichever input
+// (subject or body) was last focused inside this card.
+function insertCommsVar(inputIdBase, varName) {
+  var token = '{{' + varName + '}}';
+  var card = document.getElementById(inputIdBase + '-body').closest('.comms-card');
+  var active = document.activeElement;
+  var target = null;
+  if (active && card && card.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+    target = active;
+  } else {
+    // Fallback: insert at the end of the body.
+    target = document.getElementById(inputIdBase + '-body');
+  }
+  if (!target) return;
+  var start = target.selectionStart, end = target.selectionEnd;
+  if (start == null) {
+    target.value += token;
+  } else {
+    target.value = target.value.slice(0, start) + token + target.value.slice(end);
+    target.selectionStart = target.selectionEnd = start + token.length;
+  }
+  target.focus();
+}
+
+function previewCommsTemplate(inputIdBase, channel) {
+  var subjectEl = document.getElementById(inputIdBase + '-subject');
+  var bodyEl    = document.getElementById(inputIdBase + '-body');
+  var previewEl = document.getElementById(inputIdBase + '-preview');
+  if (!bodyEl || !previewEl) return;
+
+  var rendered = commsInterpolate(bodyEl.value || '', COMMS_SAMPLE_VARS);
+  var subjectRendered = subjectEl ? commsInterpolate(subjectEl.value || '', COMMS_SAMPLE_VARS) : '';
+
+  previewEl.innerHTML = (channel === 'email' && subjectRendered
+      ? '<div class="comms-preview-subject">Subject: ' + escHtml(subjectRendered) + '</div>'
+      : '') + escHtml(rendered);
+  previewEl.classList.add('show');
+}
+
+function commsInterpolate(tpl, vars) {
+  return String(tpl).replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, function(m, name) {
+    return Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : m;
+  });
+}
+
+function saveCommsTemplate(key, channel) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  var inputIdBase = 'comms-' + key.replace(/\./g, '_') + '-' + channel;
+  var subjectEl = document.getElementById(inputIdBase + '-subject');
+  var bodyEl    = document.getElementById(inputIdBase + '-body');
+  if (!bodyEl) return;
+
+  var subject = subjectEl ? subjectEl.value : null;
+  var body    = bodyEl.value || '';
+
+  // Capture before-state for audit (default if no override yet, else existing override)
+  var before = _commsOverrides[key + '|' + channel] || null;
+
+  db.from('communication_templates').upsert({
+    tenant_id: t.id,
+    key:       key,
+    channel:   channel,
+    subject:   channel === 'email' ? subject : null,
+    body:      body
+  }, { onConflict: 'tenant_id,key,channel' }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _commsOverrides[key + '|' + channel] = r.data;
+      var badge = document.getElementById(inputIdBase + '-badge');
+      if (badge) { badge.className = 'comms-badge overridden'; badge.textContent = 'Overridden'; }
+      showToast('Template saved.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.comms_template_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify({
+          key: key, channel: channel,
+          from: before ? { subject: before.subject, body: before.body } : null,
+          to:   { subject: r.data.subject, body: r.data.body }
+        })
+      }).catch(function(e){ console.warn('[platform] comms audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] comms save failed', err);
+      showToast('Save failed: ' + ((err && err.message) || 'unknown error'), 'error');
+    });
+}
+
+function resetCommsTemplate(key, channel) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  if (!window.confirm('Reset this template to the bundled default? The tenant override will be deleted.')) return;
+
+  var compositeKey = key + '|' + channel;
+  var before = _commsOverrides[compositeKey];
+
+  db.from('communication_templates')
+    .delete()
+    .eq('tenant_id', t.id)
+    .eq('key', key)
+    .eq('channel', channel)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      delete _commsOverrides[compositeKey];
+
+      // Re-render just this card by replacing it in-place. Simpler to
+      // re-render the whole body since card state is deterministic
+      // from _commsOverrides.
+      var wrap = document.getElementById('commsBody');
+      if (wrap) wrap.innerHTML = renderCommsBody(t);
+
+      showToast('Reset to default.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.comms_template_reset',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify({
+          key: key, channel: channel,
+          from: before ? { subject: before.subject, body: before.body } : null,
+          to:   null
+        })
+      }).catch(function(e){ console.warn('[platform] comms audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] comms reset failed', err);
+      showToast('Reset failed: ' + ((err && err.message) || 'unknown error'), 'error');
     });
 }
 

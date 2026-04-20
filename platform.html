@@ -140,6 +140,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
 .status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
 
+/* ── DETAIL TABS (inside detail modal) ── */
+.detail-tabs{display:flex;gap:2px;padding:0 2px 0 2px;margin-bottom:22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.detail-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.04em;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;position:relative;}
+.detail-tab-btn:hover{color:var(--text);}
+.detail-tab-btn.active{color:var(--slate);border-bottom-color:var(--slate);font-weight:600;}
+.detail-tab-btn[disabled]{color:var(--text4);cursor:not-allowed;opacity:0.7;}
+.detail-tab-btn .detail-tab-phase{display:inline-block;margin-left:6px;font-size:9px;font-weight:600;letter-spacing:0.12em;color:var(--text4);text-transform:uppercase;}
+.detail-tab-panel{display:none;}
+.detail-tab-panel.active{display:block;}
+.detail-tab-placeholder{background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius);padding:36px 30px;text-align:center;}
+.detail-tab-placeholder-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.detail-tab-placeholder-body{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:460px;margin:0 auto;}
+
 /* ── LIFECYCLE CONTROL (inside detail modal) ── */
 .lifecycle-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);}
 .lifecycle-control-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
@@ -198,6 +211,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     </div>
     <button class="detail-close" onclick="closeClientDetail()">Close</button>
   </div>
+  <div class="detail-tabs" id="clientDetailTabs"></div>
   <div id="clientDetailBody"></div>
 </div>
 
@@ -699,11 +713,9 @@ function renderClientsTable() {
 }
 
 // ── Client detail modal ──
-// Read-only summary for Phase 1. Phase 2+ tabs (brand, terminology,
-// catalog, workflow, comms, integrations, compliance, billing, audit)
-// will live inside this modal as a tabbed view. Each config layer shows
-// a configured/empty state badge so operators can see onboarding gaps
-// at a glance without opening every tab.
+// Tabbed view. Overview + Brand land in Phase 1 / 2. Every other tab is
+// a typed placeholder until its phase wires the real content, so the
+// modal is the roadmap for the per-tenant config surfaces.
 var CONFIG_LAYERS = [
   { key: 'brand',          label: 'Brand',           phase: 'Phase 2'  },
   { key: 'terminology',    label: 'Terminology',     phase: 'Phase 3'  },
@@ -715,6 +727,25 @@ var CONFIG_LAYERS = [
   { key: 'features',       label: 'Features',        phase: 'Phase 9'  }
 ];
 
+// Tab registry for the detail modal. `build` returns the inner HTML for
+// that tab's panel. Tabs without a build function render a placeholder
+// card naming the phase that wires them.
+var DETAIL_TABS = [
+  { key: 'overview',     label: 'Overview',      build: buildOverviewTab                           },
+  { key: 'brand',        label: 'Brand',         build: buildBrandTab                              },
+  { key: 'terminology',  label: 'Terminology',   phase: 'Phase 3', desc: 'Configure per-tenant copy: member vs patient, protocol vs plan, clinician vs provider, and ~30 other patient-facing keys.' },
+  { key: 'catalog',      label: 'Catalog',       phase: 'Phase 4', desc: 'Per-tenant product catalog, dosing options, pricing, subscription cadence, package bundles.' },
+  { key: 'workflow',     label: 'Workflow',      phase: 'Phase 5', desc: 'Intake rules, refill SLAs, escalation rules, consult policies, auto-assign strategy.' },
+  { key: 'comms',        label: 'Communications', phase: 'Phase 6', desc: 'Email/SMS/push templates, sender identity, reminder cadence.' },
+  { key: 'integrations', label: 'Integrations',  phase: 'Phase 7', desc: 'Stripe, Daily.co, Resend, EHR, shipping, ID verification credentials and webhook routing.' },
+  { key: 'compliance',   label: 'Compliance',    phase: 'Phase 8', desc: 'Operating states, consent templates, disclaimer sets, license tracking, region restrictions.' },
+  { key: 'billing',      label: 'Billing',       phase: 'Phase 9', desc: 'Plan selection, module entitlement overrides, Stripe customer portal link.' },
+  { key: 'audit',        label: 'Activity',      phase: 'Phase 10', desc: 'Every config change on this tenant with before/after diff.' }
+];
+
+var _activeDetailTenant = null;
+var _activeDetailTab    = 'overview';
+
 function openClientDetail(tenantId) {
   var t = null;
   for (var i = 0; i < _clients.length; i++) {
@@ -722,14 +753,66 @@ function openClientDetail(tenantId) {
   }
   if (!t) return;
 
+  _activeDetailTenant = t;
+  _activeDetailTab = 'overview';
+
   document.getElementById('clientDetailTitle').textContent = t.name || '(unnamed)';
   var pill = document.getElementById('clientDetailPill');
   pill.className = 'status-pill ' + t.lifecycle_state;
   pill.textContent = t.lifecycle_state;
 
-  var body = document.getElementById('clientDetailBody');
-  body.innerHTML =
-    '<div class="detail-grid">' +
+  renderDetailTabs();
+  renderDetailTabPanels();
+
+  document.getElementById('clientDetailBackdrop').classList.add('show');
+  document.getElementById('clientDetailPanel').classList.add('show');
+}
+
+function renderDetailTabs() {
+  var wrap = document.getElementById('clientDetailTabs');
+  wrap.innerHTML = DETAIL_TABS.map(function(tab) {
+    var isActive = tab.key === _activeDetailTab;
+    var phaseTag = tab.phase ? '<span class="detail-tab-phase">' + escHtml(tab.phase) + '</span>' : '';
+    return '<button class="detail-tab-btn' + (isActive ? ' active' : '') +
+      '" onclick="switchDetailTab(\'' + escAttr(tab.key) + '\')">' +
+      escHtml(tab.label) + phaseTag + '</button>';
+  }).join('');
+}
+
+function renderDetailTabPanels() {
+  var wrap = document.getElementById('clientDetailBody');
+  var t = _activeDetailTenant;
+  if (!t) { wrap.innerHTML = ''; return; }
+
+  wrap.innerHTML = DETAIL_TABS.map(function(tab) {
+    var isActive = tab.key === _activeDetailTab;
+    var inner = tab.build
+      ? tab.build(t)
+      : '<div class="detail-tab-placeholder">' +
+          '<div class="detail-tab-placeholder-title">' + escHtml(tab.label) + ' — ' + escHtml(tab.phase) + '</div>' +
+          '<div class="detail-tab-placeholder-body">' + escHtml(tab.desc || '') + '</div>' +
+        '</div>';
+    return '<div class="detail-tab-panel' + (isActive ? ' active' : '') +
+      '" id="detailPanel-' + escAttr(tab.key) + '">' + inner + '</div>';
+  }).join('');
+
+  // Post-render hooks for tabs that need runtime wiring (event listeners,
+  // focus, etc.). Overview + placeholders need none; Brand wires its form.
+  if (typeof afterRenderBrandTab === 'function' && _activeDetailTab === 'brand') {
+    afterRenderBrandTab(t);
+  }
+}
+
+function switchDetailTab(key) {
+  _activeDetailTab = key;
+  // Re-render both so the button highlight and panel visibility stay in
+  // sync — simpler than imperatively toggling classes on individual nodes.
+  renderDetailTabs();
+  renderDetailTabPanels();
+}
+
+function buildOverviewTab(t) {
+  return '<div class="detail-grid">' +
       '<div class="detail-field"><div class="detail-label">Slug</div><div class="detail-value mono">' + escHtml(t.slug) + '</div></div>' +
       '<div class="detail-field"><div class="detail-label">Legal name</div><div class="detail-value">' + escHtml(t.legal_name || '--') + '</div></div>' +
       '<div class="detail-field"><div class="detail-label">Tenant ID</div><div class="detail-value mono">' + escHtml(t.id) + '</div></div>' +
@@ -756,9 +839,15 @@ function openClientDetail(tenantId) {
         '</div>';
       }).join('') +
     '</div>';
+}
 
-  document.getElementById('clientDetailBackdrop').classList.add('show');
-  document.getElementById('clientDetailPanel').classList.add('show');
+// Phase 2 — filled in by the brand form commit that follows. Stub here
+// so DETAIL_TABS can reference it without a hoisting issue.
+function buildBrandTab(t) {
+  return '<div class="detail-tab-placeholder">' +
+    '<div class="detail-tab-placeholder-title">Brand — Phase 2 (in progress)</div>' +
+    '<div class="detail-tab-placeholder-body">Logo upload, favicon, accent color, wordmark, sender identity (email + name), support email/phone, footer copy. Form lands in the next commit.</div>' +
+  '</div>';
 }
 
 // Lifecycle transitions are role-gated per ARCHITECTURE.md: only

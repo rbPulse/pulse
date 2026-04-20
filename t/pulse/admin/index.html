@@ -537,6 +537,56 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   #threadList{flex:0 0 100% !important;max-height:300px !important;}
   #threadView{display:none !important;}
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   R4: BRAND SETUP — ported from CommandOS client detail modal.
+   Same styling + same live-preview pattern; rendered into the
+   Setup → Brand tab scoped to window.Tenant (i.e. this tenant).
+   ══════════════════════════════════════════════════════════════════ */
+.brand-form{display:flex;flex-direction:column;gap:18px;}
+.brand-form-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
+.brand-form-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.brand-form-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.brand-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.brand-form-grid .full{grid-column:1 / -1;}
+.brand-form-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.brand-form-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.brand-form-field input[type="text"],.brand-form-field input[type="email"],.brand-form-field input[type="tel"],.brand-form-field textarea{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.brand-form-field textarea{min-height:70px;resize:vertical;font-family:'Inter',sans-serif;}
+.brand-form-field input:focus,.brand-form-field textarea:focus{border-color:var(--amber);}
+.brand-form-field .brand-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+.color-row{display:flex;align-items:center;gap:10px;}
+.color-row input[type="color"]{width:44px;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);cursor:pointer;padding:2px;}
+.color-row input[type="text"]{flex:1;font-family:'SF Mono',Menlo,Consolas,monospace;text-transform:uppercase;}
+.brand-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:6px;}
+.brand-form-err{color:var(--red);font-size:12px;margin-top:6px;display:none;}
+.brand-form-err.show{display:block;}
+
+/* Live preview (mini-nav mock showing wordmark + accent applied) */
+.brand-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;box-shadow:var(--shadow);margin-bottom:4px;}
+.brand-preview-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:14px 20px 10px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:space-between;}
+.brand-preview-label-note{font-weight:500;letter-spacing:0.02em;text-transform:none;color:var(--text3);}
+.brand-preview-frame{padding:18px 20px 22px;display:flex;flex-direction:column;gap:14px;}
+.brand-preview-nav{display:flex;align-items:center;justify-content:space-between;background:rgba(247,245,239,0.95);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 18px;}
+.brand-preview-brand{display:flex;align-items:center;gap:10px;}
+.brand-preview-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid var(--brand-preview-accent,var(--amber));background:var(--card);}
+.brand-preview-icon svg{width:14px;height:14px;stroke:var(--brand-preview-accent,var(--amber));fill:none;stroke-width:2;}
+.brand-preview-icon img{max-width:100%;max-height:100%;object-fit:contain;}
+.brand-preview-wordmark{font-family:'Inter',sans-serif;font-size:14px;letter-spacing:0.08em;color:#111;text-transform:uppercase;font-weight:600;}
+.brand-preview-role{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--brand-preview-accent,var(--amber));background:var(--brand-preview-accent-tint,var(--amber-tint));border:1px solid var(--brand-preview-accent-border,var(--amber-border));padding:3px 10px;border-radius:var(--radius-pill);}
+.brand-preview-cta{display:inline-block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;color:#fff;background:var(--brand-preview-accent,var(--amber));padding:7px 16px;border-radius:var(--radius-pill);align-self:flex-start;}
+.brand-preview-footer{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.5;padding:10px 14px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);min-height:18px;}
+.brand-preview-support{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.brand-preview-support .sup-val{color:var(--text2);font-weight:500;}
+
+/* Shared form button (port from CommandOS; admin.html didn't have
+   this exact shape). Uses admin's amber accent rather than slate. */
+.form-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 20px;border-radius:var(--radius-pill);border:none;cursor:pointer;transition:background .15s,opacity .15s;}
+.form-btn.primary{background:var(--amber);color:#fff;}
+.form-btn.primary:hover{opacity:0.88;}
+.form-btn.primary:disabled{opacity:0.4;cursor:not-allowed;}
+.form-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
+.form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 </style>
 </head>
 <body>
@@ -669,12 +719,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-setup-brand">
         <div class="tab-header">
           <div class="tab-title">Brand</div>
-          <div class="tab-subtitle">Wordmark, logo, favicon, accent colour, sender identity, support contacts, footer copy.</div>
+          <div class="tab-subtitle">Wordmark, logo, favicon, accent colour, sender identity, support contacts, footer copy. Changes persist to this tenant&rsquo;s brand config and flow into the downstream portals.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Brand editor moves here in R4</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">Today this config is authored in CommandOS (the operator portal). R4 migrates the form to this tab so tenant admins can edit their own brand directly. `window.Tenant.brand` already resolves for this tenant; the form is the same code, different host.</div>
-        </div>
+        <div id="brand-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading brand…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-terminology">
@@ -1749,6 +1796,9 @@ function switchTab(tabId) {
   var nav = document.getElementById('nav-' + tabId);
   if (tab) tab.classList.add('active');
   if (nav) nav.classList.add('active');
+
+  // Setup-tab lazy-loaders. Each Setup pane renders on first entry.
+  if (tabId === 'setup-brand' && typeof renderBrandSetup === 'function') renderBrandSetup();
 }
 
 // ── Load overview stats ──
@@ -5405,6 +5455,330 @@ document.addEventListener('visibilitychange', function() {
     _startAdminPoll();
   }
 });
+
+// ══════════════════════════════════════════════════════════════════
+// R4: BRAND SETUP
+// Renders the Brand editor inside the Setup → Brand tab. Reads the
+// active tenant from window.Tenant (populated by tenant.js at boot).
+// Writes to tenants.brand + tenants.legal_name using the new RLS
+// policy + column-guard trigger from migration 022 — tenant admins
+// can save these columns, platform-only columns (slug / name /
+// lifecycle_state) are still blocked.
+//
+// Ported from CommandOS's client-detail Brand tab. Same shape, same
+// audit pattern. Asset upload is deferred — operators paste URLs
+// for now; Supabase Storage handoff lands when we move the asset-
+// uploader code too.
+// ══════════════════════════════════════════════════════════════════
+var BRAND_FIELDS_DEFAULT = {
+  wordmark:      '',
+  accent_color:  '',
+  sender_email:  '',
+  sender_name:   '',
+  support_email: '',
+  support_phone: '',
+  footer_copy:   '',
+  logo_url:      '',
+  favicon_url:   ''
+};
+
+function renderBrandSetup() {
+  if (!window.Tenant) {
+    var body = document.getElementById('brand-setup-body');
+    if (body) body.innerHTML = '<div style="padding:30px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:13px;">Tenant context not loaded. Reload the page.</div>';
+    return;
+  }
+  var panel = document.getElementById('brand-setup-body');
+  if (!panel) return;
+  panel.innerHTML = buildBrandSetupForm(window.Tenant);
+  wireBrandSetupForm();
+  updateBrandPreview();
+}
+
+function buildBrandSetupForm(t) {
+  var b = Object.assign({}, BRAND_FIELDS_DEFAULT, t.brand || {});
+  var acc = b.accent_color || '#92710a';
+  return '<div class="brand-form">' +
+    // Live preview at the top
+    '<div class="brand-preview" id="brandPreview">' +
+      '<div class="brand-preview-label">' +
+        '<span>Live preview</span>' +
+        '<span class="brand-preview-label-note">Updates as you type. Click Save to persist.</span>' +
+      '</div>' +
+      '<div class="brand-preview-frame">' +
+        '<div class="brand-preview-nav">' +
+          '<div class="brand-preview-brand">' +
+            '<div class="brand-preview-icon" id="brandPreviewIcon">' +
+              '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
+            '</div>' +
+            '<span class="brand-preview-wordmark" id="brandPreviewWordmark">PULSE</span>' +
+          '</div>' +
+          '<span class="brand-preview-role" id="brandPreviewRole">Admin</span>' +
+        '</div>' +
+        '<span class="brand-preview-cta" id="brandPreviewCta">Primary action</span>' +
+        '<div class="brand-preview-support" id="brandPreviewSupport"><span class="sup-val">Support contacts appear here</span></div>' +
+        '<div class="brand-preview-footer" id="brandPreviewFooter">Footer copy appears here.</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Identity
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Identity</div>' +
+      '<div class="brand-form-section-sub">Shown in nav headers and across the downstream portals. Wordmark replaces the default name; legal name appears in footers and compliance surfaces.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandWordmark">Wordmark</label>' +
+          '<input type="text" id="brandWordmark" value="' + _brandEscAttr(b.wordmark) + '" placeholder="ACME" maxlength="32"/>' +
+          '<div class="brand-help">Kept in caps and letter-spaced in the nav.</div>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandLegalName">Legal name</label>' +
+          '<input type="text" id="brandLegalName" value="' + _brandEscAttr(t.legal_name || '') + '" placeholder="Acme Health, Inc."/>' +
+          '<div class="brand-help">Full legal entity name.</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Accent
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Accent</div>' +
+      '<div class="brand-form-section-sub">Used for primary actions, active nav state, role badges. Pick a hue that reads against the cream surface.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field full">' +
+          '<label for="brandAccentHex">Accent color</label>' +
+          '<div class="color-row">' +
+            '<input type="color" id="brandAccentPicker" value="' + _brandEscAttr(acc) + '"/>' +
+            '<input type="text" id="brandAccentHex" value="' + _brandEscAttr(acc) + '" placeholder="#92710A" maxlength="7"/>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Sender identity
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Sender identity</div>' +
+      '<div class="brand-form-section-sub">Outbound email appears to come from this address + name. Verified deliverability is a separate integrations concern.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSenderEmail">Sender email</label>' +
+          '<input type="email" id="brandSenderEmail" value="' + _brandEscAttr(b.sender_email) + '" placeholder="hello@acmehealth.com"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSenderName">Sender name</label>' +
+          '<input type="text" id="brandSenderName" value="' + _brandEscAttr(b.sender_name) + '" placeholder="Acme Health"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Support
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Support</div>' +
+      '<div class="brand-form-section-sub">Contact routes patients and clinicians see. Shown in footers, help menus, auto-generated error pages.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSupportEmail">Support email</label>' +
+          '<input type="email" id="brandSupportEmail" value="' + _brandEscAttr(b.support_email) + '" placeholder="support@acmehealth.com"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandSupportPhone">Support phone</label>' +
+          '<input type="tel" id="brandSupportPhone" value="' + _brandEscAttr(b.support_phone) + '" placeholder="+1-555-0100"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Assets (URL-only for now; upload lands with Supabase Storage handoff later)
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Assets</div>' +
+      '<div class="brand-form-section-sub">Paste externally-hosted URLs. Direct upload via Supabase Storage lands in a later commit.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field">' +
+          '<label for="brandLogoUrl">Logo URL</label>' +
+          '<input type="text" id="brandLogoUrl" value="' + _brandEscAttr(b.logo_url) + '" placeholder="https://…/logo.png"/>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label for="brandFaviconUrl">Favicon URL</label>' +
+          '<input type="text" id="brandFaviconUrl" value="' + _brandEscAttr(b.favicon_url) + '" placeholder="https://…/favicon.ico"/>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Footer copy
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">Footer</div>' +
+      '<div class="brand-form-section-sub">Appended to every downstream portal footer. Keep it short.</div>' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field full">' +
+          '<label for="brandFooterCopy">Footer copy</label>' +
+          '<textarea id="brandFooterCopy" placeholder="© 2026 Acme Health, Inc. All rights reserved.">' + _brandEscHtml(b.footer_copy) + '</textarea>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div id="brandError" class="brand-form-err"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn primary" id="brandSaveBtn" onclick="saveBrandSetup()">Save Brand</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function wireBrandSetupForm() {
+  // Keep color picker + hex in sync
+  var picker = document.getElementById('brandAccentPicker');
+  var hex    = document.getElementById('brandAccentHex');
+  if (picker && hex) {
+    picker.addEventListener('input', function() { hex.value = picker.value.toUpperCase(); updateBrandPreview(); });
+    hex.addEventListener('input', function() {
+      var v = hex.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v.toLowerCase();
+      updateBrandPreview();
+    });
+  }
+  // Live preview: every displayable field repaints on input
+  ['brandWordmark','brandSupportEmail','brandSupportPhone','brandFooterCopy','brandLogoUrl','brandFaviconUrl']
+    .forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateBrandPreview);
+    });
+}
+
+function updateBrandPreview() {
+  var preview = document.getElementById('brandPreview');
+  if (!preview) return;
+
+  var wordmark = (document.getElementById('brandWordmark').value || '').trim() || 'PULSE';
+  var hex      = (document.getElementById('brandAccentHex').value || '').trim();
+  var logoUrl  = (document.getElementById('brandLogoUrl').value || '').trim();
+  var supEmail = (document.getElementById('brandSupportEmail').value || '').trim();
+  var supPhone = (document.getElementById('brandSupportPhone').value || '').trim();
+  var footer   = (document.getElementById('brandFooterCopy').value || '').trim();
+
+  document.getElementById('brandPreviewWordmark').textContent = wordmark;
+
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    preview.style.setProperty('--brand-preview-accent',        hex);
+    preview.style.setProperty('--brand-preview-accent-tint',   _brandHexToRgba(hex, 0.10));
+    preview.style.setProperty('--brand-preview-accent-border', _brandHexToRgba(hex, 0.25));
+  } else {
+    preview.style.removeProperty('--brand-preview-accent');
+    preview.style.removeProperty('--brand-preview-accent-tint');
+    preview.style.removeProperty('--brand-preview-accent-border');
+  }
+
+  var iconEl = document.getElementById('brandPreviewIcon');
+  if (logoUrl) {
+    iconEl.innerHTML = '<img src="' + _brandEscAttr(logoUrl) + '" alt=""/>';
+  } else {
+    iconEl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+  }
+
+  var supParts = [];
+  if (supEmail) supParts.push('<span class="sup-val">' + _brandEscHtml(supEmail) + '</span>');
+  if (supPhone) supParts.push('<span class="sup-val">' + _brandEscHtml(supPhone) + '</span>');
+  document.getElementById('brandPreviewSupport').innerHTML = supParts.length
+    ? 'Need help? ' + supParts.join(' &middot; ')
+    : '<span class="sup-val" style="color:var(--text4)">Support contacts appear here</span>';
+
+  var footerEl = document.getElementById('brandPreviewFooter');
+  if (footer) { footerEl.textContent = footer; footerEl.style.color = 'var(--text2)'; }
+  else        { footerEl.textContent = 'Footer copy appears here.'; footerEl.style.color = 'var(--text4)'; }
+}
+
+function saveBrandSetup() {
+  if (!window.Tenant) return;
+  var t = window.Tenant;
+
+  var wordmark      = document.getElementById('brandWordmark').value.trim();
+  var legalName     = document.getElementById('brandLegalName').value.trim();
+  var accentHex     = document.getElementById('brandAccentHex').value.trim();
+  var senderEmail   = document.getElementById('brandSenderEmail').value.trim();
+  var senderName    = document.getElementById('brandSenderName').value.trim();
+  var supportEmail  = document.getElementById('brandSupportEmail').value.trim();
+  var supportPhone  = document.getElementById('brandSupportPhone').value.trim();
+  var logoUrl       = document.getElementById('brandLogoUrl').value.trim();
+  var faviconUrl    = document.getElementById('brandFaviconUrl').value.trim();
+  var footerCopy    = document.getElementById('brandFooterCopy').value;
+
+  _brandErr('');
+  if (accentHex && !/^#[0-9a-fA-F]{6}$/.test(accentHex))                     { _brandErr('Accent color must be a 6-digit hex like #92710A.'); return; }
+  if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail))        { _brandErr('Sender email looks malformed.'); return; }
+  if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail))      { _brandErr('Support email looks malformed.'); return; }
+  if (logoUrl && !/^https?:\/\//i.test(logoUrl))                             { _brandErr('Logo URL must start with http:// or https://.'); return; }
+  if (faviconUrl && !/^https?:\/\//i.test(faviconUrl))                       { _brandErr('Favicon URL must start with http:// or https://.'); return; }
+
+  var nextBrand = Object.assign({}, t.brand || {}, {
+    wordmark: wordmark,
+    accent_color: accentHex ? accentHex.toUpperCase() : '',
+    sender_email: senderEmail,
+    sender_name:  senderName,
+    support_email: supportEmail,
+    support_phone: supportPhone,
+    logo_url:     logoUrl,
+    favicon_url:  faviconUrl,
+    footer_copy:  footerCopy
+  });
+
+  var btn = document.getElementById('brandSaveBtn');
+  btn.disabled = true;
+
+  db.from('tenants').update({
+    brand: nextBrand,
+    legal_name: legalName || null
+  }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      // Mutate the cached tenant so updateBrandPreview keeps reflecting
+      // saved state. applyTenantBrand() isn't re-fired here because it
+      // already runs at boot; refreshing the whole page picks up the
+      // new brand everywhere.
+      t.brand      = nextBrand;
+      t.legal_name = legalName || null;
+      btn.disabled = false;
+      showToast && showToast('Brand saved.', 'success');
+
+      // Audit entry. Uses the Phase 10 structured columns; the
+      // admin portal runs as a tenant user so actor_id is set.
+      return db.from('audit_logs').insert({
+        action: 'tenant.brand_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        tenant_id: t.id,
+        change_type: 'brand',
+        before_snapshot: { brand: t._brandBefore || null, legal_name: t._legalNameBefore || null },
+        after_snapshot:  { brand: nextBrand, legal_name: legalName || null },
+        details: JSON.stringify({ source: 'tenant-admin' })
+      }).catch(function(e){ console.warn('[admin] brand audit failed', e); });
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[admin] brand save failed', err);
+      _brandErr((err && err.message) || 'Save failed.');
+    });
+}
+
+function _brandErr(msg) {
+  var el = document.getElementById('brandError');
+  if (!el) return;
+  if (!msg) { el.className = 'brand-form-err'; el.textContent = ''; return; }
+  el.className = 'brand-form-err show';
+  el.textContent = msg;
+}
+
+function _brandEscHtml(s) {
+  if (s == null) return '';
+  var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+function _brandEscAttr(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function _brandHexToRgba(hex, alpha) {
+  var h = hex.replace('#','');
+  var r = parseInt(h.substring(0,2),16);
+  var g = parseInt(h.substring(2,4),16);
+  var b = parseInt(h.substring(4,6),16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
 </script>
 </body>
 </html>

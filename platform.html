@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Platform | Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  /* Cream/beige surface shared with admin. Accent is slate so operator
+     users never confuse this surface with a tenant admin surface. */
+  --bg:#F7F5EF;--bg2:#F3F0E8;--card:#FBFAF6;--card2:#F5F1E8;
+  --border:rgba(20,20,20,0.08);--border-strong:rgba(20,20,20,0.14);
+  --text:#111111;--text2:#4a4e4a;--text3:#6B6F6B;--text4:#8A8F8A;
+  --slate:#3a4a5c;--slate-tint:rgba(58,74,92,0.10);--slate-border:rgba(58,74,92,0.25);
+  --green:#2F6F55;--green-tint:rgba(47,111,85,0.10);--green-border:rgba(47,111,85,0.25);
+  --amber:#92710a;--amber-tint:rgba(234,179,8,0.10);--amber-border:rgba(234,179,8,0.30);
+  --red:#c14a4a;--red-tint:rgba(193,74,74,0.08);--red-border:rgba(193,74,74,0.25);
+  --shadow:0 2px 8px rgba(20,20,20,0.04),0 1px 2px rgba(20,20,20,0.02);
+  --radius:14px;--radius-sm:10px;--radius-pill:999px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+
+/* ── LOADING ── */
+#platform-loading{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.loading-icon{width:40px;height:40px;border:2px solid var(--slate);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(58,74,92,0.25);animation:pulse-glow 2.4s ease-in-out infinite;}
+.loading-icon svg{width:20px;height:20px;stroke:var(--slate);fill:none;stroke-width:2;}
+.loading-wordmark{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.28em;color:var(--text3);text-transform:uppercase;}
+@keyframes pulse-glow{0%,100%{opacity:0.7;}50%{opacity:1.0;}}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:58px;background:rgba(247,245,239,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.nav-brand{display:flex;align-items:center;gap:12px;text-decoration:none;}
+.nav-icon{width:32px;height:32px;border:2px solid var(--slate);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.nav-icon svg{width:16px;height:16px;stroke:var(--slate);fill:none;stroke-width:2;}
+.nav-name{font-family:'Inter',sans-serif;font-size:18px;letter-spacing:0.08em;color:var(--text);text-transform:uppercase;font-weight:600;}
+.nav-right{display:flex;align-items:center;gap:14px;}
+.nav-user-email{font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:var(--text3);}
+.nav-role-badge{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;background:var(--slate-tint);border:1px solid var(--slate-border);color:var(--slate);padding:4px 10px;border-radius:var(--radius-pill);}
+.nav-signout{background:none;border:none;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);cursor:pointer;padding:0;transition:color .15s;}
+.nav-signout:hover{color:var(--text);}
+
+/* ── LAYOUT ── */
+#platform-app{display:none;min-height:100vh;}
+.platform-layout{display:flex;padding-top:58px;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.platform-sidebar{position:fixed;top:58px;left:0;bottom:0;width:232px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;z-index:50;overflow-y:auto;}
+.sidebar-identity{padding:22px 20px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.sidebar-avatar{width:36px;height:36px;border-radius:50%;background:var(--slate-tint);border:1px solid var(--slate-border);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--slate);flex-shrink:0;text-transform:uppercase;}
+.sidebar-id-info{min-width:0;flex:1;}
+.sidebar-id-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:-0.01em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-bottom:5px;}
+.sidebar-id-role{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);border-radius:var(--radius-pill);padding:3px 9px;}
+.sidebar-nav{flex:1;padding:14px 0;}
+.sidebar-section-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:var(--text4);padding:0 20px;margin-bottom:6px;margin-top:18px;}
+.sidebar-section-label:first-child{margin-top:6px;}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:11px 20px;font-family:'Inter',sans-serif;font-size:14px;font-weight:400;color:var(--text2);cursor:pointer;border-left:3px solid transparent;transition:color .15s,background .15s,border-color .15s;user-select:none;position:relative;}
+.sidebar-item:hover{color:var(--text);background:rgba(24,32,28,0.03);}
+.sidebar-item.active{color:var(--slate);background:var(--slate-tint);border-left-color:var(--slate);font-weight:500;}
+.sidebar-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;flex-shrink:0;opacity:0.55;transition:opacity .15s;}
+.sidebar-item.active svg{opacity:0.95;}
+.sidebar-item:hover svg{opacity:0.8;}
+.sidebar-item-label{flex:1;}
+
+/* ── MAIN ── */
+.platform-main{margin-left:232px;flex:1;padding:44px 48px;max-width:1200px;}
+.platform-tab{display:none;}
+.platform-tab.active{display:block;}
+
+/* ── TAB HEADERS ── */
+.tab-header{margin-bottom:28px;}
+.tab-title{font-family:'Inter',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.02em;color:var(--text);margin-bottom:6px;}
+.tab-subtitle{font-family:'Inter',sans-serif;font-size:13px;font-weight:400;color:var(--text3);}
+
+/* ── PLACEHOLDER PANEL ── */
+.placeholder-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:48px 40px;box-shadow:var(--shadow);text-align:center;}
+.placeholder-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.placeholder-body{font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;}
+.placeholder-phase{display:inline-block;margin-top:16px;font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);padding:4px 10px;border-radius:var(--radius-pill);}
+
+/* ── DENIED ── */
+#platform-denied{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;padding:40px;}
+#platform-denied.show{display:flex;}
+.denied-card{max-width:440px;text-align:center;}
+.denied-title{font-family:'Inter',sans-serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:-0.01em;}
+.denied-body{font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:22px;}
+.denied-btn{display:inline-block;background:var(--slate);color:#fff;text-decoration:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 20px;border-radius:var(--radius-pill);transition:opacity .15s;}
+.denied-btn:hover{opacity:0.88;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="platform-loading">
+  <div class="loading-icon">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+  </div>
+  <div class="loading-wordmark">Pulse Platform</div>
+</div>
+
+<!-- ACCESS DENIED -->
+<div id="platform-denied">
+  <div class="denied-card">
+    <div class="denied-title">Platform access required</div>
+    <div class="denied-body">This surface is for Pulse internal operators. Your account doesn't have a platform role assigned. If you think this is a mistake, contact a platform admin.</div>
+    <a href="index.html" class="denied-btn">Back to sign-in</a>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="platform-nav" style="display:none;">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+    <span class="nav-name">PULSE</span>
+  </a>
+  <div class="nav-right">
+    <span class="nav-user-email" id="navEmail"></span>
+    <span class="nav-role-badge" id="navRoleBadge">Platform</span>
+    <button class="nav-signout" onclick="doSignOut()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- APP -->
+<div id="platform-app">
+  <div class="platform-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="platform-sidebar">
+      <div class="sidebar-identity">
+        <div class="sidebar-avatar" id="sidebarAvatar">P</div>
+        <div class="sidebar-id-info">
+          <div class="sidebar-id-name" id="sidebarName">Operator</div>
+          <div class="sidebar-id-role" id="sidebarRolePill">Platform</div>
+        </div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <div class="sidebar-item active" id="nav-overview" onclick="switchTab('overview')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span class="sidebar-item-label">Overview</span>
+        </div>
+        <div class="sidebar-section-label">Tenants</div>
+        <div class="sidebar-item" id="nav-tenants" onclick="switchTab('tenants')">
+          <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg>
+          <span class="sidebar-item-label">Tenants</span>
+        </div>
+        <div class="sidebar-section-label">Operations</div>
+        <div class="sidebar-item" id="nav-users" onclick="switchTab('users')">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar-item-label">Platform Users</span>
+        </div>
+        <div class="sidebar-item" id="nav-support" onclick="switchTab('support')">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="sidebar-item-label">Support</span>
+        </div>
+        <div class="sidebar-section-label">System</div>
+        <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="sidebar-item-label">Audit Log</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="platform-main">
+
+      <!-- OVERVIEW -->
+      <div class="platform-tab active" id="tab-overview">
+        <div class="tab-header">
+          <div class="tab-title">Platform Overview</div>
+          <div class="tab-subtitle" id="welcomeMsg">Welcome.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Cross-tenant dashboard coming soon</div>
+          <div class="placeholder-body">Fleet-wide stats: active tenants, total staff, active patients, revenue, support queue depth. Populated once Phase 2 wires tenant telemetry.</div>
+          <div class="placeholder-phase">Phase 2</div>
+        </div>
+      </div>
+
+      <!-- TENANTS -->
+      <div class="platform-tab" id="tab-tenants">
+        <div class="tab-header">
+          <div class="tab-title">Tenants</div>
+          <div class="tab-subtitle">Provision, configure, and manage clinic tenants.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Tenant registry</div>
+          <div class="placeholder-body">List every tenant with slug, lifecycle state, membership counts. Create new tenants, move lifecycle states, view config snapshots. Gated by platform_admin and above.</div>
+          <div class="placeholder-phase">Phase 2</div>
+        </div>
+      </div>
+
+      <!-- PLATFORM USERS -->
+      <div class="platform-tab" id="tab-users">
+        <div class="tab-header">
+          <div class="tab-title">Platform Users</div>
+          <div class="tab-subtitle">Pulse internal operators with platform_role access.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Operator directory</div>
+          <div class="placeholder-body">List and manage users whose profile carries a platform_role. Assign roles (super admin, admin, ops, support, billing, readonly). Revoke access.</div>
+          <div class="placeholder-phase">Phase 2</div>
+        </div>
+      </div>
+
+      <!-- SUPPORT -->
+      <div class="platform-tab" id="tab-support">
+        <div class="tab-header">
+          <div class="tab-title">Support</div>
+          <div class="tab-subtitle">Cross-tenant support request queue.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Support queue</div>
+          <div class="placeholder-body">Reads from support_requests across all tenants. Filter by tenant, status, priority. Assign to operators. Phase 0 migration (012) added the table; UI lands in Phase 2.</div>
+          <div class="placeholder-phase">Phase 2</div>
+        </div>
+      </div>
+
+      <!-- AUDIT -->
+      <div class="platform-tab" id="tab-audit">
+        <div class="tab-header">
+          <div class="tab-title">Audit Log</div>
+          <div class="tab-subtitle">Cross-tenant actions by platform operators.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Platform audit trail</div>
+          <div class="placeholder-body">Lifecycle transitions, role assignments, view-as sessions, impersonation events. Tenant-scoped audit logs remain with each tenant; this view unions only platform-originated actions.</div>
+          <div class="placeholder-phase">Phase 10</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+// ── Supabase init ──
+var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+var db = supabase.createClient(SB_URL, SB_KEY);
+
+var currentUserId = null;
+var currentUserEmail = null;
+var currentPlatformRole = null;
+
+// ── Auth gate ──
+// Platform portal access requires profiles.platform_role IS NOT NULL.
+// No role → show denied screen (not redirect) so the user understands
+// why. Unauthenticated → index.html.
+//
+// During the transition from the old admin_role='super_admin' model to
+// platform_role, we also honour the SUPER_ADMIN_EMAILS allowlist so the
+// founders' accounts retain access while profiles.platform_role backfill
+// rolls out. Remove this once Phase 1 cleanup confirms every operator has
+// a platform_role set.
+db.auth.getSession().then(function(r) {
+  if (!r.data || !r.data.session) {
+    window.location.href = 'index.html';
+    return;
+  }
+  var user = r.data.session.user;
+  currentUserId = user.id;
+  currentUserEmail = user.email;
+
+  var SUPER_ADMIN_EMAILS = ['lichtensteinryan@gmail.com'];
+  var isSuperAdminEmail = user.email && SUPER_ADMIN_EMAILS.indexOf(user.email.toLowerCase()) !== -1;
+
+  db.from('profiles').select('platform_role, admin_role, display_name').eq('user_id', currentUserId).limit(1)
+    .then(function(pr) {
+      var profile = (pr.data && pr.data.length > 0) ? pr.data[0] : null;
+      var platformRole = profile && profile.platform_role;
+
+      // Transition fallback: legacy super admins are treated as
+      // platform_super_admin until backfill sets the column.
+      if (!platformRole && (isSuperAdminEmail || (profile && profile.admin_role === 'super_admin'))) {
+        platformRole = 'platform_super_admin';
+      }
+
+      if (!platformRole) {
+        document.getElementById('platform-loading').style.display = 'none';
+        document.getElementById('platform-denied').classList.add('show');
+        return;
+      }
+
+      currentPlatformRole = platformRole;
+      initPlatform(user, profile || {});
+    }).catch(function() {
+      if (isSuperAdminEmail) {
+        currentPlatformRole = 'platform_super_admin';
+        initPlatform(user, {});
+        return;
+      }
+      document.getElementById('platform-loading').style.display = 'none';
+      document.getElementById('platform-denied').classList.add('show');
+    });
+}).catch(function() {
+  window.location.href = 'index.html';
+});
+
+// ── Init ──
+function initPlatform(user, profile) {
+  document.getElementById('platform-loading').style.display = 'none';
+  document.getElementById('platform-nav').style.display = 'flex';
+  document.getElementById('platform-app').style.display = 'block';
+
+  document.getElementById('navEmail').textContent = user.email;
+  document.getElementById('navRoleBadge').textContent = roleLabel(currentPlatformRole);
+
+  var displayName = profile.display_name || user.email.split('@')[0];
+  document.getElementById('sidebarAvatar').textContent = displayName.charAt(0).toUpperCase();
+  document.getElementById('sidebarName').textContent = displayName;
+  document.getElementById('sidebarRolePill').textContent = roleLabel(currentPlatformRole);
+  document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + displayName + '.';
+}
+
+function roleLabel(role) {
+  switch (role) {
+    case 'platform_super_admin': return 'Super Admin';
+    case 'platform_admin':       return 'Admin';
+    case 'platform_ops':         return 'Ops';
+    case 'platform_support':     return 'Support';
+    case 'platform_billing':     return 'Billing';
+    case 'platform_readonly':    return 'Read-only';
+    default:                     return 'Platform';
+  }
+}
+
+// ── Tab switching ──
+function switchTab(tabId) {
+  var tabs = document.querySelectorAll('.platform-tab');
+  var items = document.querySelectorAll('.sidebar-item');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  items.forEach(function(i) { i.classList.remove('active'); });
+  var tab = document.getElementById('tab-' + tabId);
+  var nav = document.getElementById('nav-' + tabId);
+  if (tab) tab.classList.add('active');
+  if (nav) nav.classList.add('active');
+}
+
+function doSignOut() {
+  db.auth.signOut().then(function() {
+    window.location.href = 'index.html';
+  });
+}
+</script>
+</body>
+</html>

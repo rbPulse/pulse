@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script src="tenant.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1405,6 +1406,25 @@ function _adminSortThead(tableId, cols) {
   }).join('');
 }
 
+// Load the active tenant's config before booting the admin UI so page
+// code can read window.Tenant (brand, features, terminology, etc).
+// Tenant failure is logged but non-fatal during Phase 0 so admins can
+// still operate if tenant.js or the tenants row has a problem. The
+// fallback is removed once every portal reliably reads from window.Tenant.
+function _bootAdminWithTenant(user, profile) {
+  if (!window.TenantBootstrap) {
+    console.warn('[admin] tenant.js not loaded; booting without tenant context');
+    initAdmin(user, profile);
+    return;
+  }
+  window.TenantBootstrap.init(db)
+    .then(function() { initAdmin(user, profile); })
+    .catch(function(err) {
+      console.warn('[admin] tenant load failed, booting without tenant context', err);
+      initAdmin(user, profile);
+    });
+}
+
 // ── Auth gate ──
 db.auth.getSession().then(function(r) {
   if (!r.data || !r.data.session) {
@@ -1443,11 +1463,11 @@ db.auth.getSession().then(function(r) {
         profile.admin_role = 'super_admin';
       }
       currentAdminRole = profile.admin_role || profile.role || 'super_admin';
-      initAdmin(user, profile);
+      _bootAdminWithTenant(user, profile);
     }).catch(function() {
       if (isSuperAdminEmail) {
         currentAdminRole = 'super_admin';
-        initAdmin(user, { role: 'super_admin', admin_role: 'super_admin' });
+        _bootAdminWithTenant(user, { role: 'super_admin', admin_role: 'super_admin' });
         return;
       }
       window.location.href = 'portal.html';

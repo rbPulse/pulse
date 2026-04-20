@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="tenant.js"></script>
+<script src="terminology.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7434,7 +7435,15 @@ function _bootPortalWithTenant(user) {
     return;
   }
   window.TenantBootstrap.init(db)
-    .then(function() { applyTenantBrand(); initPortal(user); })
+    .then(function() {
+      // Terminology must init after Tenant so it can read
+      // window.Tenant.terminology. Terminology.t() anywhere downstream
+      // returns the configured term (or default) — portal.html's
+      // full audit of hardcoded member-facing strings is a follow-up.
+      if (window.Terminology) window.Terminology.init();
+      applyTenantBrand();
+      initPortal(user);
+    })
     .catch(function(err) {
       console.warn('[portal] tenant load failed, booting without tenant context', err);
       initPortal(user);
@@ -7470,7 +7479,14 @@ function applyTenantBrand() {
     var els = document.querySelectorAll(sel);
     for (var i = 0; i < els.length; i++) els[i].textContent = wordmark;
   });
-  document.title = wordmark;
+
+  // Role noun ("Member" by default, "Patient" / "Client" at other
+  // tenants) composes with the wordmark for the document title so the
+  // browser tab reflects both the tenant brand and the end-user
+  // vocabulary. Falls through to "Member" if terminology.js didn't
+  // load — matches the bundled catalog default.
+  var roleNoun = (window.Terminology ? window.Terminology.t('member') : 'Member');
+  document.title = roleNoun + ' Portal | ' + wordmark;
 
   if (brand.favicon_url) {
     var link = document.querySelector('link[rel="icon"]');

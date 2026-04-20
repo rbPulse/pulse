@@ -330,7 +330,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 0     | **Done**      | Migrations 010–012 run; `tenant.js` wired into admin + portal; seed tenant "pulse" live. |
 | 1     | **Done**      | Shell (auth gate, slate accent, 10-section sidebar), Clients directory (list + stats + filter), Create-client form (slug validation + initial admin wiring), Client detail modal (read-only + config layer status), Lifecycle state controls (role-gated + audit-logged), `tokens.css` created and wired into `platform.html`. |
 | 2     | **Done (with carry-overs)** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. Sandboxed live preview panel updates as the operator types. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav + loading + title, accent → `--amber` override, favicon). `portal.html` reads `Tenant.brand.*` (wordmark + favicon + title; accent deferred — see below). |
-| 3–15  | Not started   | See sections above. |
+| 3     | **Foundations done; full refactor = carry-over** | `terminology.js` shipped with a catalog of ~30 renameable terms across 4 groups (people, clinical, workflow, commercial) and a single `Terminology.t(key)` accessor with `{ lower }` / `{ upper }` opts. Operator portal's Terminology tab renders one input per term (grouped, with live "overridden" badges) and a 4-line live preview. Save writes diff-only to `tenants.terminology` JSONB with audit log. `admin.html` and `portal.html` both load `terminology.js` + call `Terminology.init()` after tenant resolves; PoC replacement in each (role noun in document title / loading screen) proves the plumbing. See carry-over below for the per-portal string audit. |
+| 4–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -356,6 +357,26 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   render" option in the plan). Upgrade to iframe previews alongside
   Phase 13's view-as console, where the downstream portals will learn
   to accept an operator preview session.
+
+### Carry-over from Phase 3
+
+- Full per-portal string audit. `terminology.js` + `Terminology.t()` are
+  plumbed into `admin.html` and `portal.html`, but most hardcoded
+  strings ("Patients" in the admin sidebar, "Live Consults", "Messages",
+  all the tab titles and stat labels) haven't been routed through the
+  helper yet. Slice by portal per PHASES.md — each portal is a
+  dedicated PR with a pass through every renameable string and a
+  visual QA pass after. Do `admin.html` first (smaller + operator-
+  facing, so regressions are caught fast); then `portal.html`.
+- Pulse tenant needs a terminology override setting `member → "Patient"`
+  and `members → "Patients"` to match the current admin sidebar text
+  before the per-portal audit lands. Otherwise Pulse's sidebar flips
+  to "Members" on first refactor. Operator can do this via the
+  Terminology tab in platform.html.
+- Two `portal.html` wordmark instances in JS template strings (called
+  out in Phase 2 carry-over) also hardcode terminology-adjacent copy —
+  address both at the same time when rebuilding those templates to
+  read from `window.Tenant`.
 
 ### Carry-over from Phase 1
 

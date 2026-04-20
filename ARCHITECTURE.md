@@ -36,24 +36,36 @@ Why not schema-per-tenant or database-per-tenant:
 ### 2. Tenant resolution: path-based
 
 URL pattern for client portals: `/t/{slug}/{portal}.html` (e.g.
-`/t/acme/admin.html`, `/t/pulse/portal.html`). A small bootstrap
-(`tenant.js`) on every downstream portal:
+`/t/acme/admin.html`). A small bootstrap (`tenant.js`) on every
+downstream portal:
 
 1. Reads the slug from `window.location.pathname`.
 2. Looks up the tenant record (id + config snapshot).
 3. Exposes a global `window.Tenant` object with config for the rest
    of the page to consume.
-4. Calls `supabase.rpc('set_current_tenant', { p_tenant_id })` so RLS
-   sees the active tenant for the session.
+4. When no `/t/{slug}/` prefix is present, falls back to the Pulse
+   tenant so root-path URLs keep working.
 
-**Pulse is not special.** It lives at `/t/pulse/*` like every other
-tenant. The existing root-path URLs (`/admin.html`, `/portal.html`,
-etc.) are preserved as HTTP redirects to `/t/pulse/*` so bookmarks
-and auth callbacks don't 404. This costs a few lines of routing
-config now in exchange for not having "Pulse is the special case
-forever" baked into the code.
+**Pulse URL move is deferred.** The architectural goal — "Pulse is
+not special" — is honoured for everything that matters: tenant_id
+scoping, RLS, JSONB config, multi-tenant auth. The only remaining
+Pulse-specific thing is its URL living at root (`/admin.html`,
+`/portal.html`) instead of `/t/pulse/*`.
 
-Files that stay at root (not tenant-scoped):
+The physical URL move is deferred because GitHub Pages (current host)
+doesn't support server-side redirects, so a clean move requires
+either file duplication or a CI build step. Neither is worth the
+cost right now: `tenant.js` already abstracts URL shape from portal
+code, so nothing downstream cares. We revisit when either condition
+fires:
+
+- Pulse moves off GitHub Pages to hosting with redirect support
+  (Vercel, Netlify, Cloudflare Pages, a proper web server).
+- Tenant #2 is onboarded and we build `/t/{slug}/*` routing for
+  real — at which point folding Pulse into the same scheme is
+  incremental.
+
+Files that stay at root (not tenant-scoped, never moving):
 
 - `platform.html` — cross-tenant operator portal. Gated by
   `profiles.platform_role IS NOT NULL`.

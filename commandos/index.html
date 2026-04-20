@@ -7000,7 +7000,15 @@ function workflowDiff(prev, next) {
 // migration 014 runs) shows an inline error for just that section
 // instead of blanking the whole tab.
 function buildCatalogTab(t) {
-  return '<div id="catalogBody"><div class="catalog-loading">Loading catalog…</div></div>';
+  // R6: Catalog editing moved to tenant admin. CommandOS keeps the
+  // read-only count summary (same queries) so operators can see fleet-
+  // wide catalog health at a glance without leaving the modal. CRUD
+  // deep-links to tenant admin. The original renderCatalogBody still
+  // runs under afterRenderCatalogTab to populate the summary.
+  return '<div id="catalogBody"><div class="catalog-loading">Loading catalog…</div></div>' +
+    '<div class="brand-actions" style="margin-top:12px;">' +
+      '<a class="form-btn primary" href="/t/' + escAttr(t.slug) + '/admin/#setup-catalog" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
+    '</div>';
 }
 
 function afterRenderCatalogTab(t) {

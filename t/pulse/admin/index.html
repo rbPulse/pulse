@@ -762,10 +762,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Catalog</div>
           <div class="tab-subtitle">Protocols, categories, product types, packages &mdash; everything in this tenant&rsquo;s offering.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Catalog editor moves here in R6</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">The existing &ldquo;Configuration&rdquo; tab in the Legacy section holds the pre-multi-tenant catalog editor. R6 reconciles it with the tenant-scoped catalog and lands here.</div>
-        </div>
+        <div id="catalog-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading catalog…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-workflow">
@@ -1822,6 +1819,7 @@ function switchTab(tabId) {
   // Setup-tab lazy-loaders. Each Setup pane renders on first entry.
   if (tabId === 'setup-brand'       && typeof renderBrandSetup       === 'function') renderBrandSetup();
   if (tabId === 'setup-terminology' && typeof renderTerminologySetup === 'function') renderTerminologySetup();
+  if (tabId === 'setup-catalog'     && typeof renderCatalogSetup     === 'function') renderCatalogSetup();
 }
 
 // ── Load overview stats ──
@@ -5987,6 +5985,49 @@ function saveTerminologySetup() {
       console.error('[admin] terminology save failed', err);
       if (errEl) { errEl.className = 'brand-form-err show'; errEl.textContent = (err && err.message) || 'Save failed.'; }
     });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// R6: CATALOG SETUP (read-only summary)
+// Fetches protocol / category / product_type / package counts for
+// this tenant. Editing still happens through the legacy
+// Configuration tab until R6 carry-over merges the two. That
+// reconciliation needs the Configuration tab to stop inserting
+// with tenant_id=NULL (pre-multi-tenant assumption) and start
+// scoping inserts to window.Tenant.id.
+// ══════════════════════════════════════════════════════════════════
+function renderCatalogSetup() {
+  var body = document.getElementById('catalog-setup-body');
+  if (!body) return;
+  if (!window.Tenant) {
+    body.innerHTML = '<div style="padding:30px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:13px;">Tenant context not loaded. Reload the page.</div>';
+    return;
+  }
+  var tid = window.Tenant.id;
+  Promise.all([
+    db.from('protocol_templates').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false),
+    db.from('protocol_categories').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false),
+    db.from('protocol_product_types').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false),
+    db.from('protocol_packages').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false).then(function(r){return r;}).catch(function(){return {count:null};})
+  ]).then(function(results) {
+    body.innerHTML = '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">This tenant\u2019s catalog</div>' +
+        '<div class="brand-form-section-sub">Live counts against protocol_templates / protocol_categories / protocol_product_types / protocol_packages, scoped to this tenant. CRUD happens today through the Legacy \u2192 Configuration tab; R6 carry-over merges that editor into this surface with full tenant scoping.</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;"><div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Active protocols</div><div style="font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;color:var(--text);">' + (results[0].count || 0) + '</div></div>' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;"><div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Categories</div><div style="font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;color:var(--text);">' + (results[1].count || 0) + '</div></div>' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;"><div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Product types</div><div style="font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;color:var(--text);">' + (results[2].count || 0) + '</div></div>' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;"><div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Packages</div><div style="font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;color:var(--text);">' + (results[3].count || 0) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="brand-actions">' +
+        '<button class="form-btn primary" onclick="switchTab(\'configure\')">Open Configuration (legacy editor) \u2192</button>' +
+      '</div>' +
+    '</div>';
+  }).catch(function(err) {
+    body.innerHTML = '<div style="padding:20px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:12px;">' + (err && err.message || 'Load failed') + '</div>';
+  });
 }
 </script>
 </body>

@@ -7250,6 +7250,35 @@ var _TERM_PREVIEW_LINES = [
 ];
 
 function buildTerminologyTab(t) {
+  // R5: Terminology editing moved to the tenant admin portal.
+  // CommandOS shows a read-only summary + deep link. Legacy editor
+  // code preserved below the early return.
+  var READ_ONLY_PLACEHOLDER = true;
+  if (READ_ONLY_PLACEHOLDER) {
+    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-terminology';
+    var over = t.terminology || {};
+    var overrideCount = Object.keys(over).length;
+    var sample = Object.keys(over).slice(0, 6);
+    return '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Terminology</div>' +
+        '<div class="brand-form-section-sub">Terminology is authored by this tenant\u2019s admin. Click through to the tenant admin\u2019s Setup \u2192 Terminology tab when operators need to assist.</div>' +
+        (overrideCount > 0
+          ? '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);margin-bottom:10px;"><strong>' + overrideCount + '</strong> override' + (overrideCount === 1 ? '' : 's') + ' from defaults.</div>' +
+            (sample.length > 0
+              ? '<div style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);line-height:1.7;">' +
+                  sample.map(function(k) { return escHtml(k) + ' \u2192 ' + escHtml(over[k]); }).join('<br/>') +
+                  (overrideCount > 6 ? '<br/>…' + (overrideCount - 6) + ' more' : '') +
+                '</div>'
+              : '')
+          : '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:24px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;">No overrides yet. This tenant uses the bundled defaults.</div>') +
+      '</div>' +
+      '<div class="brand-actions">' +
+        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
+      '</div>' +
+    '</div>';
+  }
+
   if (!window.Terminology) {
     return '<div class="detail-tab-placeholder">' +
       '<div class="detail-tab-placeholder-title">terminology.js not loaded</div>' +

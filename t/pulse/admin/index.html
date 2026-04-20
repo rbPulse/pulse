@@ -587,6 +587,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .form-btn.primary:disabled{opacity:0.4;cursor:not-allowed;}
 .form-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
 .form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+
+/* ══════════════════════════════════════════════════════════════════
+   R5: TERMINOLOGY SETUP — ported from CommandOS.
+   ══════════════════════════════════════════════════════════════════ */
+.term-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:4px;overflow:hidden;}
+.term-preview-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:14px 20px 10px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:space-between;}
+.term-preview-label-note{font-weight:500;letter-spacing:0.02em;text-transform:none;color:var(--text3);}
+.term-preview-body{padding:18px 22px;display:flex;flex-direction:column;gap:10px;}
+.term-preview-line{font-family:'Inter',sans-serif;font-size:13px;color:var(--text);line-height:1.6;}
+.term-preview-line .term-preview-slot{background:var(--amber-tint);border-bottom:1px dashed var(--amber-border);padding:0 4px;border-radius:4px;color:var(--amber);font-weight:600;}
+.term-group{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
+.term-group + .term-group{margin-top:14px;}
+.term-group-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.term-group-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.term-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
+.term-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.term-field-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.term-field label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text2);text-transform:uppercase;}
+.term-field-default{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
+.term-field-default.overridden{color:var(--amber);font-style:normal;font-weight:600;}
+.term-field input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.term-field input:focus{border-color:var(--amber);}
+.term-field input::placeholder{color:var(--text4);}
+.term-field-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+@media(max-width:800px){ .term-grid{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
@@ -727,12 +752,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-setup-terminology">
         <div class="tab-header">
           <div class="tab-title">Terminology</div>
-          <div class="tab-subtitle">Rename the nouns Pulse uses &mdash; members become patients, protocols become plans, etc.</div>
+          <div class="tab-subtitle">Rename the nouns your tenant uses. Overrides flow into the downstream portals via the shared terminology helper.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Terminology editor moves here in R5</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">~30 renameable terms across 4 groups. Currently edited from CommandOS; R5 migrates it so tenant admins own their own vocabulary.</div>
-        </div>
+        <div id="terminology-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading terminology…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-catalog">
@@ -1798,7 +1820,8 @@ function switchTab(tabId) {
   if (nav) nav.classList.add('active');
 
   // Setup-tab lazy-loaders. Each Setup pane renders on first entry.
-  if (tabId === 'setup-brand' && typeof renderBrandSetup === 'function') renderBrandSetup();
+  if (tabId === 'setup-brand'       && typeof renderBrandSetup       === 'function') renderBrandSetup();
+  if (tabId === 'setup-terminology' && typeof renderTerminologySetup === 'function') renderTerminologySetup();
 }
 
 // ── Load overview stats ──
@@ -5778,6 +5801,192 @@ function _brandHexToRgba(hex, alpha) {
   var g = parseInt(h.substring(2,4),16);
   var b = parseInt(h.substring(4,6),16);
   return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// R5: TERMINOLOGY SETUP
+// Ports CommandOS's Terminology tab into tenant admin's Setup →
+// Terminology. Same live preview + delegated input listener + diff-
+// only save. Uses window.Terminology catalog (terminology.js) for
+// the key list + defaults + groups.
+// ══════════════════════════════════════════════════════════════════
+var _TERM_PREVIEW_LINES = [
+  'Welcome back, {member}. You have 2 {doses} scheduled this week.',
+  '{clinician} reviewed your latest {consultation} and approved your {prescription}.',
+  'Your {protocol} is ready. Tap "Start" to begin your first {dose}.',
+  'Need a {refill}? Message your {clinician} — they usually respond within 24 hours.'
+];
+
+function renderTerminologySetup() {
+  var body = document.getElementById('terminology-setup-body');
+  if (!body) return;
+  if (!window.Terminology) {
+    body.innerHTML = '<div style="padding:30px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:13px;">terminology.js not loaded. Reload the page.</div>';
+    return;
+  }
+  if (!window.Tenant) {
+    body.innerHTML = '<div style="padding:30px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:13px;">Tenant context not loaded. Reload the page.</div>';
+    return;
+  }
+  body.innerHTML = buildTerminologySetupForm(window.Tenant);
+  wireTerminologySetupForm();
+  updateTerminologySetupPreview();
+}
+
+function buildTerminologySetupForm(t) {
+  var overrides = t.terminology || {};
+  var groups    = window.Terminology.GROUPS;
+  var keys      = window.Terminology.KEYS;
+  var out = '<div class="brand-form">' +
+    '<div class="term-preview" id="termPreview">' +
+      '<div class="term-preview-label">' +
+        '<span>Live preview</span>' +
+        '<span class="term-preview-label-note">Updates as you type. Click Save to persist.</span>' +
+      '</div>' +
+      '<div class="term-preview-body" id="termPreviewBody">' +
+        _TERM_PREVIEW_LINES.map(function(_, idx) {
+          return '<div class="term-preview-line" id="termPreviewLine-' + idx + '"></div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+  groups.forEach(function(group) {
+    var groupKeys = keys.filter(function(k) { return k.group === group.key; });
+    if (groupKeys.length === 0) return;
+    out += '<div class="term-group">' +
+      '<div class="term-group-title">' + _brandEscHtml(group.label) + '</div>' +
+      '<div class="term-group-sub">' + _brandEscHtml(group.description) + '</div>' +
+      '<div class="term-grid">' +
+        groupKeys.map(function(entry) {
+          var val = typeof overrides[entry.key] === 'string' ? overrides[entry.key] : '';
+          var isOverridden = val && val !== entry.default;
+          return '<div class="term-field">' +
+            '<div class="term-field-row">' +
+              '<label for="term-' + _brandEscAttr(entry.key) + '">' + _brandEscHtml(entry.key) + '</label>' +
+              '<span class="term-field-default' + (isOverridden ? ' overridden' : '') +
+                '" id="term-badge-' + _brandEscAttr(entry.key) + '">' +
+                (isOverridden ? 'Overridden' : 'Default: ' + _brandEscHtml(entry.default)) +
+              '</span>' +
+            '</div>' +
+            '<input type="text" id="term-' + _brandEscAttr(entry.key) +
+              '" value="' + _brandEscAttr(val) + '" placeholder="' + _brandEscAttr(entry.default) +
+              '" data-term-key="' + _brandEscAttr(entry.key) +
+              '" data-term-default="' + _brandEscAttr(entry.default) + '"/>' +
+            '<div class="term-field-help">' + _brandEscHtml(entry.description) + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  out += '<div id="termError" class="brand-form-err"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn primary" id="termSaveBtn" onclick="saveTerminologySetup()">Save Terminology</button>' +
+    '</div>' +
+  '</div>';
+  return out;
+}
+
+function wireTerminologySetupForm() {
+  var panel = document.getElementById('tab-setup-terminology');
+  if (!panel) return;
+  panel.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el || !el.getAttribute || !el.getAttribute('data-term-key')) return;
+    var key = el.getAttribute('data-term-key');
+    var def = el.getAttribute('data-term-default');
+    var value = (el.value || '').trim();
+    var badge = document.getElementById('term-badge-' + key);
+    if (badge) {
+      if (value && value !== def) {
+        badge.className = 'term-field-default overridden';
+        badge.textContent = 'Overridden';
+      } else {
+        badge.className = 'term-field-default';
+        badge.textContent = 'Default: ' + def;
+      }
+    }
+    updateTerminologySetupPreview();
+  });
+}
+
+function updateTerminologySetupPreview() {
+  if (!window.Terminology) return;
+  var keys = window.Terminology.KEYS;
+  var current = {};
+  keys.forEach(function(entry) {
+    var el = document.getElementById('term-' + entry.key);
+    var v = el ? (el.value || '').trim() : '';
+    current[entry.key] = v || entry.default;
+  });
+  _TERM_PREVIEW_LINES.forEach(function(template, idx) {
+    var rendered = template.replace(/\{([a-z_]+)\}/g, function(_, k) {
+      var val = current[k] != null ? current[k] : k;
+      return '<span class="term-preview-slot">' + _brandEscHtml(val.toLowerCase()) + '</span>';
+    });
+    var lineEl = document.getElementById('termPreviewLine-' + idx);
+    if (lineEl) lineEl.innerHTML = rendered;
+  });
+}
+
+function saveTerminologySetup() {
+  if (!window.Tenant || !window.Terminology) return;
+  var t = window.Tenant;
+  var errEl = document.getElementById('termError');
+  if (errEl) { errEl.className = 'brand-form-err'; errEl.textContent = ''; }
+
+  // Only persist non-default overrides — same shape as the legacy
+  // CommandOS save path.
+  var next = {};
+  window.Terminology.KEYS.forEach(function(entry) {
+    var el = document.getElementById('term-' + entry.key);
+    if (!el) return;
+    var v = (el.value || '').trim();
+    if (v && v !== entry.default) next[entry.key] = v;
+  });
+
+  var prev = t.terminology || {};
+  var diff = {};
+  var allKeys = {};
+  Object.keys(prev).forEach(function(k) { allKeys[k] = true; });
+  Object.keys(next).forEach(function(k) { allKeys[k] = true; });
+  Object.keys(allKeys).forEach(function(k) {
+    var a = prev[k] || '', b = next[k] || '';
+    if (a !== b) diff[k] = { from: a, to: b };
+  });
+
+  var btn = document.getElementById('termSaveBtn');
+  btn.disabled = true;
+
+  db.from('tenants').update({ terminology: next }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      if (Object.keys(diff).length === 0) return;
+      return db.from('audit_logs').insert({
+        action: 'tenant.terminology_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        tenant_id: t.id,
+        change_type: 'terminology',
+        before_snapshot: { terminology: prev },
+        after_snapshot:  { terminology: next },
+        details: JSON.stringify({ source: 'tenant-admin', diff: diff })
+      }).catch(function(e){ console.warn('[admin] terminology audit failed', e); });
+    })
+    .then(function() {
+      btn.disabled = false;
+      t.terminology = next;
+      // Re-init the shared helper so downstream code sees the new
+      // values without a page reload.
+      if (window.Terminology) { window.Terminology.reset(); window.Terminology.init(); }
+      showToast && showToast('Terminology saved.', 'success');
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[admin] terminology save failed', err);
+      if (errEl) { errEl.className = 'brand-form-err show'; errEl.textContent = (err && err.message) || 'Save failed.'; }
+    });
 }
 </script>
 </body>

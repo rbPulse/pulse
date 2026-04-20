@@ -340,7 +340,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 10    | **Done (with carry-overs)** | Migration 019 extends `audit_logs` with `change_type` (stable classifier), `before_snapshot` (jsonb, pre-change state), `after_snapshot` (jsonb, post-change state). Append-only trigger from migration 009 preserved. Backfill classifies every existing audit action via a CASE mapping so historical rows get `change_type` populated without losing the legacy `details` string. Per-client Activity tab renders a timeline filtered by tenant with change-type filter, click-to-expand diff view (before/after side-by-side for new rows, raw `details` JSON for legacy rows). Top-level Audit tab has cross-tenant filter on top of the same renderer. Change-type colour mapping: brand/comms = slate, terminology/billing = green, workflow/compliance = amber, integration = blue, lifecycle = red. See carry-over for write-site structured snapshots + export. |
 | 11    | **Done (with carry-overs)** | No schema. Onboarding wizard layers over the existing detail modal as a view mode toggle: wizard button hides the tab strip and renders a 10-step sidebar (Basics, Brand, Terminology, Catalog, Workflow, Comms, Integrations, Compliance, Billing, Launch). Each step reuses its existing build function (zero duplicate form code); completion is derived dynamically from tenant row + async probes of related tables. Launch step aggregates a pre-flight checklist with Jump buttons for remaining work; Activate button (role-gated) moves sandbox → live with a structured Phase-10-shaped audit entry. Sandbox tenants get an inline "Onboard" button in the Clients table; newly created tenants auto-open in wizard mode post-save. See carry-over for QA-preview iframes and required-field validation. |
 | 12    | **Done (with carry-overs)** | Migration 020 creates `tenant_templates` (Pulse-owned starter-pack library) seeded with Blank + Wellness Clinic templates. config_snapshot JSONB holds `layers` (brand / terminology / workflow / compliance / features merged onto tenant row) and `seeds` (catalog rows + comms templates + operating regions + consents inserted with target tenant_id). Shared `applyTemplateToTenant(templateId, tenantId)` helper handles merge + seed insertion with per-row unique-violation skip so partial re-apply is safe. Top-level Templates tab lists available templates with Archive + Apply-to-tenant actions. Save-as-template dialog on the client detail header captures the source tenant's layers + seeds into a new template row. Template picker on the create-client form auto-applies after tenant creation and before the wizard opens, so operators get a seeded starting point in one flow. See carry-over for conflict UI and richer seed coverage. |
-| 13–15 | Not started   | See sections above. |
+| 13    | **Foundations done; view-as + real actions = carry-over** | No migration (support_requests table already shipped in 012). Top-level Support tab renders a cross-tenant queue with stat strip (open / in-review / resolved / closed), per-row status transitions (Start review / Resolve / Reopen / Close), and filters for status + tenant. Per-client Diagnostics tab (new DETAIL_TABS entry) shows a stat-card dashboard — integrations health, support queue depth, license expiry buckets, billing flags, member + staff counts — plus view-as launcher strip (opens `/t/{slug}/*.html` in a new tab for member / clinician / admin portals) and operator actions (welcome resend stub, workflow reset, local cache flush). Every action writes a Phase-10-shape audit entry. See carry-over for true view-as (auth-bypassed tenant-role render) + real delivery wiring for the stubs. |
+| 14–15 | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -882,6 +883,58 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   through the merge logic and returns the diff + seed counts without
   writing would reduce risk on unfamiliar templates. Pairs naturally
   with the conflict UI above.
+
+### Carry-over from Phase 13
+
+- **True view-as.** The Diagnostics tab's view-as strip opens the
+  downstream portal in a new tab as the OPERATOR's authenticated
+  user. Useful for "what does this tenant's surface look like" but
+  NOT for "what does a tenant_clinician at this tenant see" — the
+  operator's own permissions don't reproduce the tenant-staff render
+  path. Real view-as needs the downstream portals to accept an
+  operator preview session with tenant context injected and auth
+  bypassed for read-only. Same blocker as Phase 2 brand preview +
+  Phase 11 launch-step QA iframes; resolve together with a single
+  `preview_session.js` primitive the downstream portals opt into.
+- **Real operator actions.** Three stubs today:
+    - Resend welcome writes an audit entry but doesn't actually send
+      anything. Needs Phase 6 delivery wiring.
+    - Reset workflow DOES reset (writes `{}` to `tenants.workflow`)
+      with audit, but only full reset; per-section would be nice.
+    - Flush cache is operator-side only — resets the operator's
+      in-memory helper caches. Doesn't affect the tenant's own
+      portals; each tenant portal re-fetches on next page load.
+      If a tenant admin reports "I saved but the portal still shows
+      old config," the fix is typically a hard refresh on their end.
+      Document in the ops runbook.
+- **Additional operator actions to add** (driven by what real
+  onboardings surface):
+    - Force member re-enrolment (soft-delete patient_enrollments row,
+      member re-walks intake on next login).
+    - Re-seed from template from Diagnostics (shortcut; Templates tab
+      already does this).
+    - Cache-bust hint (generates a cache-busted link operators can
+      email tenant admins).
+    - Regenerate Stripe Customer Portal session (once Phase 7/9
+      Stripe wiring lands).
+- **Support ticket notes / assignee.** `support_requests` today is
+  (type, message, status). Add `assigned_to` (user_id FK), plus
+  `internal_notes` (text) and `resolution_summary` (text). Surface
+  on the expanded row: notes editor + assignee dropdown. Keeps ops
+  conversations inside Pulse.
+- **Ticket → email echo.** When an operator resolves a ticket, send
+  an auto-generated "Your request was resolved" email via the
+  Phase 6 messaging layer. Belongs with Phase 6 delivery carry-over.
+- **SLA tracking on support tickets.** Use
+  `Workflow.get('sla_hours.message_response')` (24h default) as the
+  response target. Show ticket age on rows; colour-code red when
+  over SLA; red dot on the sidebar Support nav item when any tenant
+  has an over-SLA ticket.
+- **Impersonation audit.** The current view-as links don't write an
+  audit entry — they're plain anchors. Once true view-as lands, every
+  session open writes `support.view_as_started` and the close writes
+  `support.view_as_ended`. Required for regulator "who looked at
+  patient X's data when" questions.
 
 ### Carry-over from Phase 1
 

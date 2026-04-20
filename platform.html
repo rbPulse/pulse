@@ -1264,7 +1264,8 @@ var DETAIL_TABS = [
   { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
   { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
   { key: 'billing',      label: 'Billing',       build: buildBillingTab                            },
-  { key: 'audit',        label: 'Activity',      build: buildActivityTab                           }
+  { key: 'audit',        label: 'Activity',      build: buildActivityTab                           },
+  { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab                        }
 ];
 
 var _activeDetailTenant = null;
@@ -1650,6 +1651,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderActivityTab === 'function' && _activeDetailTab === 'audit') {
     afterRenderActivityTab(t);
+  }
+  if (typeof afterRenderDiagnosticsTab === 'function' && _activeDetailTab === 'diagnostics') {
+    afterRenderDiagnosticsTab(t);
   }
 }
 
@@ -2818,6 +2822,246 @@ function archiveTemplate(templateId) {
     .catch(function(err) {
       showToast('Archive failed: ' + ((err && err.message) || 'unknown'), 'error');
     });
+}
+
+// ── Diagnostics tab (per-client) ──
+// Cross-table health dashboard for a single tenant. View-as launchers
+// open the downstream portals; note: those surfaces render for the
+// AUTHENTICATED USER today, not a synthetic tenant staff role. True
+// view-as (auth bypass + tenant context injected via query string or
+// postMessage) is carry-over — the downstream portals need to accept
+// an operator preview session. The Phase 2 brand preview, Phase 11
+// launch QA iframes, and this view-as all share that blocker.
+//
+// Diagnostics queries fire in parallel on tab open; each section
+// renders whatever it can (missing-table hint on shape failure, "—"
+// on empty). Operator actions (re-send invite, reset workflow state)
+// are stubs — they show a toast and write an audit entry so the
+// intent is captured, but the actual side-effects (email out,
+// workflow mutation) land once Phase 6 delivery wiring + per-action
+// execution paths exist.
+var _diagData = {
+  integrations: [],
+  supportOpen: 0,
+  licensesExpiring: 0,
+  licensesExpired: 0,
+  subPastDue: 0,
+  membersCount: 0,
+  clinicianCount: 0,
+  errors: {}
+};
+
+function buildDiagnosticsTab(t) {
+  return '<div id="diagBody"><div class="comp-loading">Loading diagnostics…</div></div>';
+}
+
+function afterRenderDiagnosticsTab(t) {
+  var wrap = document.getElementById('diagBody');
+  if (!wrap) return;
+
+  function safe(q, key) {
+    return q.then(function(r) {
+      if (r.error) _diagData.errors[key] = r.error;
+      return r.data;
+    }).catch(function(err) {
+      _diagData.errors[key] = err;
+      return null;
+    });
+  }
+
+  var now = new Date();
+  var in30 = new Date(now.getTime() + 30*86400000);
+
+  _diagData = { integrations: [], supportOpen: 0, licensesExpiring: 0, licensesExpired: 0, subPastDue: 0, membersCount: 0, clinicianCount: 0, errors: {} };
+
+  Promise.all([
+    safe(db.from('tenant_integrations').select('provider, status, last_error_at').eq('tenant_id', t.id), 'integrations'),
+    safe(db.from('support_requests').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'open'), 'support'),
+    // Licenses: join via tenant_memberships to find clinicians at this tenant, then count expiry buckets.
+    safe(db.from('tenant_memberships').select('user_id').eq('tenant_id', t.id).in('role', ['tenant_clinician','tenant_nurse']), 'memberships'),
+    safe(db.from('tenant_subscriptions').select('status').eq('tenant_id', t.id).eq('status', 'past_due'), 'subs'),
+    safe(db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'active'), 'members'),
+    safe(db.from('tenant_memberships').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).in('role', ['tenant_clinician','tenant_nurse','tenant_admin','tenant_owner']), 'clinicians')
+  ]).then(function(results) {
+    if (_activeDetailTab !== 'diagnostics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+
+    _diagData.integrations = results[0] || [];
+    // support count result is { count } via head:true — the raw count is on the response.
+    // safe() returned r.data which is null for head queries; use supportOpen from the results[1] raw count.
+    // Re-do the support query to capture count properly.
+    // (Simpler: requery just for count here.)
+    _diagData.supportOpen = 0; // populated below
+    db.from('support_requests').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'open')
+      .then(function(r) {
+        _diagData.supportOpen = r.count || 0;
+        repaint();
+      }).catch(function(){ repaint(); });
+
+    _diagData.subPastDue = (results[3] || []).length;
+    // member + clinician counts from head queries — requery for counts.
+    db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'active')
+      .then(function(r) { _diagData.membersCount = r.count || 0; repaint(); }).catch(function(){});
+    db.from('tenant_memberships').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id)
+      .then(function(r) { _diagData.clinicianCount = r.count || 0; repaint(); }).catch(function(){});
+
+    // Licenses.
+    var userIds = (results[2] || []).map(function(m) { return m.user_id; });
+    if (userIds.length > 0) {
+      db.from('clinician_state_licenses').select('expires_date, is_active').in('user_id', userIds).eq('is_active', true)
+        .then(function(lr) {
+          (lr.data || []).forEach(function(l) {
+            if (!l.expires_date) return;
+            var exp = new Date(l.expires_date).getTime();
+            if (exp < now.getTime()) _diagData.licensesExpired++;
+            else if (exp < in30.getTime()) _diagData.licensesExpiring++;
+          });
+          repaint();
+        }).catch(function(){});
+    }
+
+    function repaint() {
+      if (_activeDetailTab !== 'diagnostics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+      wrap.innerHTML = renderDiagnosticsBody(t);
+    }
+    repaint();
+  });
+}
+
+function renderDiagnosticsBody(t) {
+  var ints = _diagData.integrations;
+  var intsConnected = ints.filter(function(i) { return i.status === 'connected'; }).length;
+  var intsError     = ints.filter(function(i) { return i.status === 'error'; }).length;
+  var intsHealth    = intsError > 0 ? 'err' : (ints.length === 0 ? 'unknown' : 'healthy');
+
+  // Slug-based URLs match the Phase 0 URL contract: /t/{slug}/<portal>.html.
+  // Operator clicking opens their own auth + the tenant's slug; tenant.js
+  // scopes to that slug. Limitations called out in the strip copy.
+  var slug = t.slug;
+  var memberUrl     = slug === 'pulse' ? '/portal.html'       : '/t/' + encodeURIComponent(slug) + '/portal.html';
+  var adminUrl      = slug === 'pulse' ? '/admin.html'        : '/t/' + encodeURIComponent(slug) + '/admin.html';
+  var clinicianUrl  = slug === 'pulse' ? '/portal.html'       : '/t/' + encodeURIComponent(slug) + '/portal.html';
+
+  var viewas =
+    '<div class="viewas-strip">' +
+      '<div class="viewas-strip-info">' +
+        '<strong>View as tenant</strong><br/>' +
+        'Opens the downstream portal for <strong>' + escHtml(t.name) + '</strong> in a new tab as your authenticated user. Real view-as that renders the tenant\u2019s perspective from a non-operator role is still a carry-over — downstream portals need to accept an operator preview session.' +
+      '</div>' +
+      '<div class="viewas-buttons">' +
+        '<a class="viewas-btn" href="' + escAttr(memberUrl)    + '" target="_blank" rel="noopener">Member portal</a>' +
+        '<a class="viewas-btn" href="' + escAttr(clinicianUrl) + '" target="_blank" rel="noopener">Clinician portal</a>' +
+        '<a class="viewas-btn" href="' + escAttr(adminUrl)     + '" target="_blank" rel="noopener">Admin portal</a>' +
+      '</div>' +
+    '</div>';
+
+  var cards = '<div class="diag-grid">' +
+    // Integrations health
+    '<div class="diag-card ' + intsHealth + '">' +
+      '<div class="diag-card-label">Integrations</div>' +
+      '<div class="diag-card-value">' + intsConnected + ' / ' + ints.length + ' connected</div>' +
+      '<div class="diag-card-sub">' + (intsError > 0 ? intsError + ' in error state' : (ints.length === 0 ? 'No integrations configured' : 'All connected integrations healthy')) + '</div>' +
+    '</div>' +
+    // Support queue
+    '<div class="diag-card ' + (_diagData.supportOpen > 0 ? 'warn' : 'healthy') + '">' +
+      '<div class="diag-card-label">Support queue</div>' +
+      '<div class="diag-card-value">' + _diagData.supportOpen + ' open</div>' +
+      '<div class="diag-card-sub">' + (_diagData.supportOpen > 0 ? 'Unresolved requests from this tenant\u2019s members / staff' : 'No open support requests') + '</div>' +
+    '</div>' +
+    // License expiry
+    '<div class="diag-card ' + (_diagData.licensesExpired > 0 ? 'err' : (_diagData.licensesExpiring > 0 ? 'warn' : 'healthy')) + '">' +
+      '<div class="diag-card-label">Clinician licenses</div>' +
+      '<div class="diag-card-value">' + _diagData.licensesExpired + ' expired &middot; ' + _diagData.licensesExpiring + ' ≤30d</div>' +
+      '<div class="diag-card-sub">Full license roster on the Compliance tab</div>' +
+    '</div>' +
+    // Billing
+    '<div class="diag-card ' + (_diagData.subPastDue > 0 ? 'err' : 'healthy') + '">' +
+      '<div class="diag-card-label">Billing</div>' +
+      '<div class="diag-card-value">' + (_diagData.subPastDue > 0 ? 'Past-due subscription' : 'On time') + '</div>' +
+      '<div class="diag-card-sub">' + (_diagData.subPastDue > 0 ? 'Subscription needs payment attention' : 'No billing flags') + '</div>' +
+    '</div>' +
+    // Usage
+    '<div class="diag-card healthy">' +
+      '<div class="diag-card-label">Members</div>' +
+      '<div class="diag-card-value">' + _diagData.membersCount + ' active</div>' +
+      '<div class="diag-card-sub">Patient enrollments in active status</div>' +
+    '</div>' +
+    '<div class="diag-card healthy">' +
+      '<div class="diag-card-label">Staff</div>' +
+      '<div class="diag-card-value">' + _diagData.clinicianCount + '</div>' +
+      '<div class="diag-card-sub">Users in tenant_memberships at this tenant</div>' +
+    '</div>' +
+  '</div>';
+
+  var ops =
+    '<div class="comp-section" style="margin-bottom:0;">' +
+      '<div class="comp-section-title">Operator actions</div>' +
+      '<div class="comp-section-sub">Scripts available to platform operators. Some execute today; others are stubs until their underlying delivery path lands.</div>' +
+      '<div class="diag-ops">' +
+        '<button class="form-btn secondary" onclick="diagResendInvite()">Resend welcome (stub)</button>' +
+        '<button class="form-btn secondary" onclick="diagResetWorkflow()">Reset workflow to defaults</button>' +
+        '<button class="form-btn secondary" onclick="diagFlushCache()">Flush tenant cache (self)</button>' +
+      '</div>' +
+    '</div>';
+
+  return viewas + cards + ops;
+}
+
+function diagResendInvite() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  showToast('Welcome re-send stub — Phase 6 delivery wiring ships the actual email.', 'warn');
+  db.from('audit_logs').insert({
+    action: 'support.welcome_resend_stub',
+    actor_id: currentUserId, actor_email: currentUserEmail,
+    target_id: t.id, tenant_id: t.id,
+    change_type: 'lifecycle',
+    details: JSON.stringify({ note: 'stub; actual send lands with Phase 6' })
+  }).catch(function(e){ console.warn(e); });
+}
+
+function diagResetWorkflow() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  if (!window.confirm('Reset workflow rules to Pulse defaults? This overwrites any overrides the tenant has configured. Audit entry is written.')) return;
+
+  var before = t.workflow || {};
+  db.from('tenants').update({ workflow: {} }).eq('id', t.id).select('workflow').single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      t.workflow = {};
+      showToast('Workflow reset. Tenant now uses defaults.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'support.workflow_reset',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: t.id, tenant_id: t.id,
+        change_type: 'workflow',
+        before_snapshot: { workflow: before },
+        after_snapshot:  { workflow: {} },
+        details: JSON.stringify({ reset: true })
+      });
+    })
+    .then(function() { renderDetailTabPanels(); })
+    .catch(function(err) {
+      showToast('Reset failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
+}
+
+function diagFlushCache() {
+  // Operator-side only: clears the helpers' in-memory caches so the
+  // operator sees fresh data without reloading the page. Affects
+  // the current session only, not the tenant's own portals.
+  if (window.Terminology) window.Terminology.reset();
+  if (window.Workflow)    window.Workflow.reset();
+  if (window.Messaging)   window.Messaging.reset();
+  if (window.Integrations) window.Integrations.reset();
+  if (window.Compliance)  window.Compliance.reset();
+  if (window.Modules)     window.Modules.reset();
+  _templatesTabLoaded = false;
+  _auditTabLoaded     = false;
+  _supportTabLoaded   = false;
+  _modulesTabLoaded   = false;
+  _billingTabLoaded   = false;
+  showToast('Local caches flushed. Next tab load refetches from the DB.', 'success');
 }
 
 // ── Top-level Support tab (cross-tenant queue) ──

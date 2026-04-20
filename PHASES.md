@@ -339,7 +339,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 9     | **Foundations done; Stripe sync + feature-gate refactor = carry-over** | Migration 018 creates `plans` (seeded with Starter / Pro / Enterprise), `tenant_subscriptions` (partial unique index — one active sub per tenant; canceled rows stay as history), `module_entitlements` (sourced from plan or manually granted, with expiry for trials). `modules.js` ships a catalog of 16 modules across 5 categories (core, clinical, commercial, analytics, enterprise) and a `Modules.isEnabled(key)` feature-gate accessor. Per-client Billing tab manages subscription + per-module entitlements. Two top-level fleet tabs: **Modules** (catalog with adoption counts + plan-membership chips) and **Billing** (MRR, ARR, plan mix, churn flags). `admin.html` + `portal.html` load modules.js and fire `Modules.init()` in parallel. See carry-over for Stripe sync, Customer Portal embed, and the downstream feature-gate refactor. |
 | 10    | **Done (with carry-overs)** | Migration 019 extends `audit_logs` with `change_type` (stable classifier), `before_snapshot` (jsonb, pre-change state), `after_snapshot` (jsonb, post-change state). Append-only trigger from migration 009 preserved. Backfill classifies every existing audit action via a CASE mapping so historical rows get `change_type` populated without losing the legacy `details` string. Per-client Activity tab renders a timeline filtered by tenant with change-type filter, click-to-expand diff view (before/after side-by-side for new rows, raw `details` JSON for legacy rows). Top-level Audit tab has cross-tenant filter on top of the same renderer. Change-type colour mapping: brand/comms = slate, terminology/billing = green, workflow/compliance = amber, integration = blue, lifecycle = red. See carry-over for write-site structured snapshots + export. |
 | 11    | **Done (with carry-overs)** | No schema. Onboarding wizard layers over the existing detail modal as a view mode toggle: wizard button hides the tab strip and renders a 10-step sidebar (Basics, Brand, Terminology, Catalog, Workflow, Comms, Integrations, Compliance, Billing, Launch). Each step reuses its existing build function (zero duplicate form code); completion is derived dynamically from tenant row + async probes of related tables. Launch step aggregates a pre-flight checklist with Jump buttons for remaining work; Activate button (role-gated) moves sandbox → live with a structured Phase-10-shaped audit entry. Sandbox tenants get an inline "Onboard" button in the Clients table; newly created tenants auto-open in wizard mode post-save. See carry-over for QA-preview iframes and required-field validation. |
-| 12–15 | Not started   | See sections above. |
+| 12    | **Done (with carry-overs)** | Migration 020 creates `tenant_templates` (Pulse-owned starter-pack library) seeded with Blank + Wellness Clinic templates. config_snapshot JSONB holds `layers` (brand / terminology / workflow / compliance / features merged onto tenant row) and `seeds` (catalog rows + comms templates + operating regions + consents inserted with target tenant_id). Shared `applyTemplateToTenant(templateId, tenantId)` helper handles merge + seed insertion with per-row unique-violation skip so partial re-apply is safe. Top-level Templates tab lists available templates with Archive + Apply-to-tenant actions. Save-as-template dialog on the client detail header captures the source tenant's layers + seeds into a new template row. Template picker on the create-client form auto-applies after tenant creation and before the wizard opens, so operators get a seeded starting point in one flow. See carry-over for conflict UI and richer seed coverage. |
+| 13–15 | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -832,6 +833,55 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   are typically opened from the Clients table, worked through, and
   closed. Add if the onboarding flow grows long enough that
   operators want to resume at the specific step they left off.
+
+### Carry-over from Phase 12
+
+- **Conflict UI on apply.** Applying a template to a tenant with
+  existing config silently merges layers (template keys overwrite
+  tenant keys; untouched tenant keys stay) and swallows per-row
+  unique-violations on seeds. That's the right default for a sandbox
+  tenant, but an operator applying to a configured tenant should see
+  "These layers will overwrite: brand, terminology. These seeds skip
+  because keys already exist: 3 protocols, 1 consent." Add a pre-
+  flight diff dialog to the Apply picker.
+- **Richer seed coverage.** The initial seed shape covers the six
+  most impactful tables (catalog rows, comms, regions, consents).
+  Tables not yet templated: `tenant_integrations` (credentials
+  intentionally excluded per Phase 7 posture, but `config` bag +
+  provider slot could seed), `tenant_locations` (address + hours
+  shape), `tenant_subscriptions` default plan reference, default
+  `module_entitlements`. Extend the snapshot + apply + save paths
+  together when a real tenant needs one of them.
+- **Template versioning.** Templates are replaced in-place today
+  (save with an existing key UPDATE via ON CONFLICT during the
+  seed migration, but the app-level save flow rejects on duplicate
+  key). Adding a `version` column + treating saves as new versions
+  would let operators evolve a template without breaking past
+  applications. Shape is already in migration 020's rollback notes
+  for future extension. Wait for the second iteration to
+  demonstrate the need.
+- **Template export / import.** A template is just a JSONB blob —
+  export it as a .json file so a template authored on one Pulse
+  install can be loaded into another (sales demo env → prod, say).
+  Quick follow-up: add an Export button on each card that downloads
+  `config_snapshot` as JSON, and an Import dropzone that pastes the
+  blob into the save-template form pre-populated.
+- **Apply-in-wizard step.** Today the wizard doesn't have a
+  "Choose template" step — the picker lives on the create-client
+  form instead. Operators who open the wizard on an existing
+  tenant can't apply a template from within the wizard. Low
+  priority since the top-level Templates tab covers that path,
+  but if operators ask "can I apply a template to a tenant mid-
+  wizard?", add step 0.5 between Basics and Brand.
+- **Source-tenant attribution.** `source_tenant_id` is populated on
+  save-as-template but not surfaced in the Templates list UI. Adding
+  "Saved from: Acme Health" to each template card gives operators
+  context on where an opinionated template came from.
+- **Test-apply / dry-run.** No way to preview what a template will
+  apply without actually applying it. A "Dry run" action that runs
+  through the merge logic and returns the diff + seed counts without
+  writing would reduce risk on unfamiliar templates. Pairs naturally
+  with the conflict UI above.
 
 ### Carry-over from Phase 1
 

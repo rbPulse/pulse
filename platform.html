@@ -617,6 +617,37 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
 
+<!-- SAVE AS TEMPLATE DIALOG -->
+<div class="tmpl-picker-backdrop" id="tmplSaveBackdrop" onclick="closeSaveAsTemplate()"></div>
+<div class="tmpl-picker" id="tmplSave" role="dialog" aria-modal="true">
+  <h3>Save as template</h3>
+  <p>Captures this tenant\u2019s current brand, terminology, workflow, compliance + features layers plus active catalog + comms + regions + consents as a reusable starter. Empty layers are skipped. The template is saved Pulse-wide; any operator can apply it to a new or existing tenant later.</p>
+  <div class="brand-form-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="brand-form-field">
+      <label for="tmplSaveKey">Key</label>
+      <input type="text" id="tmplSaveKey" placeholder="wellness-v2" autocomplete="off"/>
+      <div class="brand-help">Lowercase, slug-style. Used as the template identifier.</div>
+    </div>
+    <div class="brand-form-field">
+      <label for="tmplSaveName">Name</label>
+      <input type="text" id="tmplSaveName" placeholder="Wellness Clinic v2"/>
+    </div>
+    <div class="brand-form-field full">
+      <label for="tmplSaveDesc">Description</label>
+      <textarea id="tmplSaveDesc" style="min-height:60px;" placeholder="What makes this template distinct? When should an operator pick it?"></textarea>
+    </div>
+    <div class="brand-form-field">
+      <label for="tmplSaveVertical">Vertical</label>
+      <input type="text" id="tmplSaveVertical" placeholder="wellness | primary_care | mental_health"/>
+    </div>
+  </div>
+  <div id="tmplSaveError" class="form-err" style="display:none;margin-bottom:10px;"></div>
+  <div class="brand-actions">
+    <button class="form-btn secondary" onclick="closeSaveAsTemplate()">Cancel</button>
+    <button class="form-btn primary" id="tmplSaveBtn" onclick="confirmSaveAsTemplate()">Save template</button>
+  </div>
+</div>
+
 <!-- TEMPLATE APPLY PICKER -->
 <div class="tmpl-picker-backdrop" id="tmplPickerBackdrop" onclick="closeTemplatePicker()"></div>
 <div class="tmpl-picker" id="tmplPicker" role="dialog" aria-modal="true">
@@ -641,6 +672,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="detail-title" id="clientDetailTitle">Client</div>
       <span class="status-pill" id="clientDetailPill"></span>
       <button class="wizard-mode-toggle" id="wizardToggleBtn" onclick="toggleWizardMode()">Wizard</button>
+      <button class="wizard-mode-toggle" onclick="openSaveAsTemplate()">Save as template</button>
     </div>
     <button class="detail-close" onclick="closeClientDetail()">Close</button>
   </div>
@@ -810,6 +842,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <label for="newClientAdminEmail">Initial admin email (optional)</label>
               <input type="email" id="newClientAdminEmail" placeholder="owner@acmehealth.com" autocomplete="off"/>
               <div class="form-help">Matched against existing profiles. Unknown emails are skipped (no invite sent).</div>
+            </div>
+            <div class="form-field">
+              <label for="newClientTemplate">Start from template (optional)</label>
+              <select id="newClientTemplate">
+                <option value="">— None (blank tenant) —</option>
+              </select>
+              <div class="form-help">If picked, the template\u2019s layers + seed items apply automatically after the tenant is created.</div>
             </div>
           </div>
           <div id="newClientError" class="form-err" style="margin-bottom:14px;display:none;"></div>
@@ -2261,6 +2300,85 @@ function renderActivityList() {
   return renderAuditList(filtered, null);
 }
 
+// ── Save-as-template ──
+// Inverse of applyTemplateToTenant. Reads the source tenant's JSONB
+// layers + seed rows across the tenant-scoped catalog/comms/compliance
+// tables, packages them into the config_snapshot shape documented in
+// migration 020, inserts a tenant_templates row.
+function saveTenantAsTemplate(tenantId, opts) {
+  // opts: { key, name, description, vertical }
+  return db.from('tenants').select('brand, terminology, workflow, compliance, features').eq('id', tenantId).single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var tenant = r.data;
+
+      // Only include layers that have content — empty {} stays out of
+      // the snapshot so applying a template with no brand defined
+      // doesn't blank a target's brand.
+      var layers = {};
+      ['brand','terminology','workflow','compliance','features'].forEach(function(k) {
+        if (tenant[k] && typeof tenant[k] === 'object' && Object.keys(tenant[k]).length > 0) {
+          layers[k] = tenant[k];
+        }
+      });
+
+      // Pull seed rows. Every query scoped to this tenant + non-
+      // archived; per-query .catch lets missing tables (e.g. operator
+      // on a tenant whose compliance rows are empty, or migration not
+      // run) skip gracefully.
+      function safe(q) { return q.then(function(r) { return r.data || []; }).catch(function() { return []; }); }
+
+      return Promise.all([
+        safe(db.from('protocol_categories').select('name, display_order').eq('tenant_id', tenantId).eq('is_archived', false)),
+        safe(db.from('protocol_product_types').select('name, display_order').eq('tenant_id', tenantId).eq('is_archived', false)),
+        safe(db.from('protocol_templates').select('key, name, product_type, category, compounds, price, refill_price, subscription_cadence').eq('tenant_id', tenantId).eq('is_archived', false)),
+        safe(db.from('communication_templates').select('key, channel, subject, body, variables, cadence').eq('tenant_id', tenantId).eq('is_enabled', true)),
+        safe(db.from('tenant_regions').select('state').eq('tenant_id', tenantId).eq('is_allowed', true)),
+        safe(db.from('tenant_consents').select('key, version, title, body, requires_signature, effective_date').eq('tenant_id', tenantId).eq('is_archived', false).order('version', { ascending: false }))
+      ]).then(function(results) {
+        // Consents: collapse to latest version per key so applying to
+        // a new tenant doesn't duplicate old versions.
+        var consentsRaw = results[5];
+        var consentsByKey = {};
+        consentsRaw.forEach(function(c) {
+          if (!consentsByKey[c.key] || (consentsByKey[c.key].version || 0) < (c.version || 0)) {
+            consentsByKey[c.key] = c;
+          }
+        });
+
+        var seeds = {
+          categories:      results[0],
+          product_types:   results[1],
+          protocols:       results[2],
+          comms_templates: results[3],
+          regions:         results[4].map(function(r) { return r.state; }),
+          consents:        Object.values(consentsByKey)
+        };
+
+        // Strip empty seed arrays for cleanliness.
+        Object.keys(seeds).forEach(function(k) {
+          if (!seeds[k] || seeds[k].length === 0) delete seeds[k];
+        });
+
+        return { layers: layers, seeds: seeds };
+      });
+    })
+    .then(function(snapshot) {
+      return db.from('tenant_templates').insert({
+        key:             opts.key,
+        name:            opts.name,
+        description:     opts.description || null,
+        vertical:        opts.vertical || null,
+        source_tenant_id: tenantId,
+        config_snapshot: snapshot,
+        created_by:      currentUserId
+      }).select().single().then(function(r) {
+        if (r.error) throw r.error;
+        return r.data;
+      });
+    });
+}
+
 // ── Template application ──
 // Shared helper used by the top-level Templates tab and the
 // create-client flow. Takes a template id + target tenant id, merges
@@ -2560,6 +2678,81 @@ function confirmApplyTemplate() {
       console.error('[platform] template apply failed', err);
       setPickerError((err && err.message) || 'Apply failed.');
     });
+}
+
+function openSaveAsTemplate() {
+  if (!_activeDetailTenant) return;
+  ['tmplSaveKey','tmplSaveName','tmplSaveDesc','tmplSaveVertical'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // Pre-fill key + name from the source tenant's slug for a sensible default.
+  document.getElementById('tmplSaveKey').value = (_activeDetailTenant.slug || '') + '-template';
+  document.getElementById('tmplSaveName').value = (_activeDetailTenant.name || '') + ' starter';
+  setSaveError('');
+  document.getElementById('tmplSaveBackdrop').classList.add('show');
+  document.getElementById('tmplSave').classList.add('show');
+}
+
+function closeSaveAsTemplate() {
+  document.getElementById('tmplSaveBackdrop').classList.remove('show');
+  document.getElementById('tmplSave').classList.remove('show');
+}
+
+function setSaveError(msg) {
+  var el = document.getElementById('tmplSaveError');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function confirmSaveAsTemplate() {
+  if (!_activeDetailTenant) return;
+  var key = document.getElementById('tmplSaveKey').value.trim().toLowerCase();
+  var name = document.getElementById('tmplSaveName').value.trim();
+  var desc = document.getElementById('tmplSaveDesc').value.trim();
+  var vertical = document.getElementById('tmplSaveVertical').value.trim().toLowerCase();
+
+  setSaveError('');
+  if (!key)  { setSaveError('Key is required.'); return; }
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(key)) {
+    setSaveError('Key must be lowercase, dash-separated, no leading or trailing dash.');
+    return;
+  }
+  if (!name) { setSaveError('Name is required.'); return; }
+
+  var btn = document.getElementById('tmplSaveBtn');
+  btn.disabled = true;
+
+  saveTenantAsTemplate(_activeDetailTenant.id, {
+    key: key, name: name, description: desc, vertical: vertical || null
+  }).then(function(row) {
+    btn.disabled = false;
+    closeSaveAsTemplate();
+    showToast('Template "' + name + '" saved.', 'success');
+    // Refresh the Templates tab's cache so a visit after save sees the new row.
+    _templatesTabLoaded = false;
+
+    return db.from('audit_logs').insert({
+      action: 'tenant.template_saved',
+      actor_id: currentUserId,
+      actor_email: currentUserEmail,
+      target_id: _activeDetailTenant.id,
+      tenant_id: _activeDetailTenant.id,
+      change_type: 'lifecycle',
+      after_snapshot: { template_id: row.id, template_key: row.key, template_name: row.name },
+      details: JSON.stringify({ template_id: row.id, template_key: row.key })
+    }).catch(function(e){ console.warn('[platform] template-save audit failed', e); });
+  }).catch(function(err) {
+    btn.disabled = false;
+    var msg = (err && err.message) || 'Save failed.';
+    if (/duplicate key|unique/i.test(msg)) {
+      setSaveError('Key "' + key + '" is already taken.');
+    } else {
+      setSaveError(msg);
+    }
+    console.error('[platform] template save failed', err);
+  });
 }
 
 function archiveTemplate(templateId) {
@@ -5518,6 +5711,21 @@ function toggleCreateClientForm() {
   var showing = form.classList.toggle('show');
   if (showing) {
     document.getElementById('newClientName').focus();
+    // Populate the template picker lazily on first open. Failure is
+    // silent — tenant creation still works without a template chosen.
+    var sel = document.getElementById('newClientTemplate');
+    if (sel && sel.options.length <= 1) {
+      db.from('tenant_templates').select('id, key, name').eq('is_archived', false).order('display_order')
+        .then(function(r) {
+          if (r.error) return;
+          (r.data || []).forEach(function(tpl) {
+            var opt = document.createElement('option');
+            opt.value = tpl.id;
+            opt.textContent = tpl.name;
+            sel.appendChild(opt);
+          });
+        }).catch(function(){});
+    }
   } else {
     // Reset on close so the form isn't stale next time it opens.
     document.getElementById('newClientName').value = '';
@@ -5554,11 +5762,12 @@ function wireCreateClientAutoSlug() {
 }
 
 function submitCreateClient() {
-  var name     = document.getElementById('newClientName').value.trim();
-  var slug     = document.getElementById('newClientSlug').value.trim().toLowerCase();
-  var lc       = document.getElementById('newClientLifecycle').value;
-  var email    = document.getElementById('newClientAdminEmail').value.trim().toLowerCase();
-  var btn      = document.getElementById('newClientSubmit');
+  var name       = document.getElementById('newClientName').value.trim();
+  var slug       = document.getElementById('newClientSlug').value.trim().toLowerCase();
+  var lc         = document.getElementById('newClientLifecycle').value;
+  var email      = document.getElementById('newClientAdminEmail').value.trim().toLowerCase();
+  var templateId = document.getElementById('newClientTemplate').value;
+  var btn        = document.getElementById('newClientSubmit');
 
   setCreateError('');
 
@@ -5618,10 +5827,26 @@ function submitCreateClient() {
       }
       // Auto-open the new tenant in onboarding wizard mode. Most-natural
       // next action after creation: walk the 10-step config flow.
-      // loadClients fires first so the cached _clients array has the
-      // new row before openClientDetail looks it up.
+      // If a template was picked, apply it BEFORE refreshing + opening
+      // so the wizard sees the seeded state on first render.
       var newTenantId = result.tenant && result.tenant.id;
-      loadClients().then(function() {
+      var chain = templateId && newTenantId
+        ? applyTemplateToTenant(templateId, newTenantId)
+            .then(function(applyResult) {
+              var seedMsg = Object.keys(applyResult.counts || {}).length
+                ? ' Seeded: ' + Object.keys(applyResult.counts).map(function(k) { return applyResult.counts[k] + ' ' + k.replace('protocol_','').replace('tenant_',''); }).join(', ') + '.'
+                : '';
+              showToast('Template applied.' + seedMsg, 'success');
+            })
+            .catch(function(err) {
+              console.error('[platform] auto-apply failed', err);
+              showToast('Tenant created but template apply failed: ' + ((err && err.message) || 'unknown'), 'error');
+            })
+        : Promise.resolve();
+
+      chain.then(function() {
+        return loadClients();
+      }).then(function() {
         if (newTenantId) openClientDetail(newTenantId, /* startInWizard */ true);
       });
     })

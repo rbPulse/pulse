@@ -115,6 +115,36 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .platform-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .table-empty{padding:40px 20px;text-align:center;font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);}
 
+/* ── CREATE FORM (inline) ── */
+.create-form{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:26px;margin-bottom:20px;display:none;box-shadow:var(--shadow);}
+.create-form.show{display:block;}
+.form-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.form-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:18px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.form-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.form-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.form-field input,.form-field select{background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
+.form-field input::placeholder{color:var(--text4);}
+.form-field input:focus,.form-field select:focus{border-color:var(--slate);}
+.form-field select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+.form-field .form-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+.form-field .form-err{font-family:'Inter',sans-serif;font-size:11px;color:var(--red);line-height:1.4;}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;}
+.form-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 20px;border-radius:var(--radius-pill);border:none;cursor:pointer;transition:opacity .15s,background .15s;}
+.form-btn.primary{background:var(--slate);color:#fff;}
+.form-btn.primary:hover{opacity:0.88;}
+.form-btn.primary:disabled{opacity:0.4;cursor:not-allowed;}
+.form-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
+.form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+@media(max-width:900px){ .form-grid{grid-template-columns:1fr;} }
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text);z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 12px 32px rgba(20,20,20,0.12);max-width:380px;}
+.toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.toast.success{border-color:var(--green-border);color:var(--green);}
+.toast.error{border-color:var(--red-border);color:var(--red);}
+.toast.warn{border-color:var(--amber-border);color:var(--amber);}
+
 /* ── STATUS PILLS ── */
 .status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
 .status-pill.sandbox{color:var(--text3);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
@@ -133,6 +163,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 </style>
 </head>
 <body>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
 
 <!-- LOADING -->
 <div id="platform-loading">
@@ -264,7 +297,45 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <option value="suspended">Suspended</option>
             <option value="archived">Archived</option>
           </select>
+          <button class="toolbar-btn" id="newClientBtn" onclick="toggleCreateClientForm()">+ New Client</button>
           <span class="toolbar-count" id="clientsCount"></span>
+        </div>
+
+        <!-- CREATE FORM -->
+        <div class="create-form" id="createClientForm">
+          <div class="form-title">Create a new client</div>
+          <div class="form-sub">Provisions a tenant row. If you provide an initial admin email, we'll add a tenant_owner membership if that user exists in Pulse today. Invite flow for unknown emails lands in a later phase.</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="newClientName">Name</label>
+              <input type="text" id="newClientName" placeholder="Acme Health" autocomplete="off"/>
+            </div>
+            <div class="form-field">
+              <label for="newClientSlug">Slug</label>
+              <input type="text" id="newClientSlug" placeholder="acme-health" autocomplete="off"/>
+              <div class="form-help">Lowercase letters, digits, hyphens. Used in URLs: /t/<slug>/.</div>
+            </div>
+            <div class="form-field">
+              <label for="newClientLifecycle">Lifecycle state</label>
+              <select id="newClientLifecycle">
+                <option value="sandbox" selected>Sandbox</option>
+                <option value="live">Live</option>
+                <option value="suspended">Suspended</option>
+                <option value="archived">Archived</option>
+              </select>
+              <div class="form-help">Default is Sandbox; promote to Live once config is complete.</div>
+            </div>
+            <div class="form-field">
+              <label for="newClientAdminEmail">Initial admin email (optional)</label>
+              <input type="email" id="newClientAdminEmail" placeholder="owner@acmehealth.com" autocomplete="off"/>
+              <div class="form-help">Matched against existing profiles. Unknown emails are skipped (no invite sent).</div>
+            </div>
+          </div>
+          <div id="newClientError" class="form-err" style="margin-bottom:14px;display:none;"></div>
+          <div class="form-actions">
+            <button class="form-btn secondary" onclick="toggleCreateClientForm()">Cancel</button>
+            <button class="form-btn primary" id="newClientSubmit" onclick="submitCreateClient()">Create Client</button>
+          </div>
         </div>
 
         <div class="platform-table-wrap">
@@ -477,6 +548,7 @@ function initPlatform(user, profile) {
   // so the Clients tab is responsive the instant data arrives.
   document.getElementById('clientsSearch').addEventListener('input', renderClientsTable);
   document.getElementById('clientsLifecycleFilter').addEventListener('change', renderClientsTable);
+  wireCreateClientAutoSlug();
 
   loadClients();
 }
@@ -590,6 +662,142 @@ function renderClientsTable() {
       '<td>' + formatDate(t.created_at) + '</td>' +
     '</tr>';
   }).join('');
+}
+
+// ── Create client ──
+// Server-side check constraints on the tenants table:
+//   slug ~ '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+//   slug NOT IN ('admin','portal','platform','api','t','tenants','assets','static')
+// Client-side validation mirrors those so the user gets a fast, specific
+// error instead of a generic Postgres CHECK violation.
+var RESERVED_SLUGS = ['admin','portal','platform','api','t','tenants','assets','static'];
+var SLUG_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+function toggleCreateClientForm() {
+  var form = document.getElementById('createClientForm');
+  var showing = form.classList.toggle('show');
+  if (showing) {
+    document.getElementById('newClientName').focus();
+  } else {
+    // Reset on close so the form isn't stale next time it opens.
+    document.getElementById('newClientName').value = '';
+    document.getElementById('newClientSlug').value = '';
+    document.getElementById('newClientLifecycle').value = 'sandbox';
+    document.getElementById('newClientAdminEmail').value = '';
+    setCreateError('');
+  }
+}
+
+function setCreateError(msg) {
+  var el = document.getElementById('newClientError');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// Auto-derive slug from name as the user types — until they edit the
+// slug field themselves, at which point we stop overwriting their input.
+function wireCreateClientAutoSlug() {
+  var nameEl = document.getElementById('newClientName');
+  var slugEl = document.getElementById('newClientSlug');
+  var userTouchedSlug = false;
+  slugEl.addEventListener('input', function() { userTouchedSlug = true; });
+  nameEl.addEventListener('input', function() {
+    if (userTouchedSlug) return;
+    slugEl.value = (nameEl.value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  });
+}
+
+function submitCreateClient() {
+  var name     = document.getElementById('newClientName').value.trim();
+  var slug     = document.getElementById('newClientSlug').value.trim().toLowerCase();
+  var lc       = document.getElementById('newClientLifecycle').value;
+  var email    = document.getElementById('newClientAdminEmail').value.trim().toLowerCase();
+  var btn      = document.getElementById('newClientSubmit');
+
+  setCreateError('');
+
+  if (!name) { setCreateError('Name is required.'); return; }
+  if (!slug) { setCreateError('Slug is required.'); return; }
+  if (!SLUG_RE.test(slug)) {
+    setCreateError('Slug must be lowercase letters, digits, or hyphens; no leading or trailing hyphen.');
+    return;
+  }
+  if (RESERVED_SLUGS.indexOf(slug) !== -1) {
+    setCreateError('"' + slug + '" is reserved. Pick a different slug.');
+    return;
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setCreateError('Admin email looks malformed.');
+    return;
+  }
+
+  btn.disabled = true;
+  db.from('tenants').insert({
+    slug: slug,
+    name: name,
+    lifecycle_state: lc,
+    created_by: currentUserId
+  }).select('id, slug, name, lifecycle_state, created_at').single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var tenant = r.data;
+      if (!email) return { tenant: tenant, membership: null, emailMissing: false };
+
+      // Look up the admin user by email. If found → create a tenant_owner
+      // membership. If not → still return success, but flag it so the
+      // toast can tell the operator the invite was deferred.
+      return db.from('profiles').select('user_id').eq('email', email).limit(1)
+        .then(function(pr) {
+          var profile = (pr.data && pr.data[0]) || null;
+          if (!profile) return { tenant: tenant, membership: null, emailMissing: true };
+          return db.from('tenant_memberships').insert({
+            tenant_id: tenant.id,
+            user_id: profile.user_id,
+            role: 'tenant_owner'
+          }).then(function(mr) {
+            if (mr.error) throw mr.error;
+            return { tenant: tenant, membership: true, emailMissing: false };
+          });
+        });
+    })
+    .then(function(result) {
+      btn.disabled = false;
+      toggleCreateClientForm();
+      if (result.emailMissing) {
+        showToast('Client created. Admin "' + email + '" not found in Pulse — skipped.', 'warn');
+      } else if (result.membership) {
+        showToast('Client created and admin assigned.', 'success');
+      } else {
+        showToast('Client created.', 'success');
+      }
+      loadClients();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      var msg = (err && err.message) || 'Failed to create client.';
+      // Unique-violation on slug gives a clearer message than the raw Postgres one.
+      if (/duplicate key|unique/i.test(msg)) {
+        setCreateError('Slug "' + slug + '" is already taken.');
+      } else {
+        setCreateError(msg);
+      }
+      console.error('[platform] create client failed', err);
+    });
+}
+
+var _toastTimer = null;
+function showToast(msg, kind) {
+  var el = document.getElementById('toast');
+  el.className = 'toast show ' + (kind || '');
+  el.textContent = msg;
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function() { el.className = 'toast'; }, 3800);
 }
 
 // ── Helpers ──

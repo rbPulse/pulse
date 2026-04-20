@@ -153,6 +153,41 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── ACTIVITY TAB (per-client) + AUDIT top-level ── */
+.audit-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.audit-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.audit-toolbar .filter-select{min-width:160px;}
+.audit-count{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-left:auto;}
+.audit-list{display:flex;flex-direction:column;gap:6px;}
+.audit-entry{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:start;}
+.audit-entry-time{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.5;}
+.audit-entry-body{min-width:0;}
+.audit-entry-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.audit-entry-action{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text);}
+.audit-entry-type{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:var(--radius-pill);background:var(--card2);color:var(--text3);border:1px solid var(--border);}
+.audit-entry-type.brand{background:var(--slate-tint);color:var(--slate);border-color:var(--slate-border);}
+.audit-entry-type.terminology{background:var(--green-tint);color:var(--green);border-color:var(--green-border);}
+.audit-entry-type.workflow{background:var(--amber-tint);color:var(--amber);border-color:var(--amber-border);}
+.audit-entry-type.comms{background:var(--slate-tint);color:var(--slate);border-color:var(--slate-border);}
+.audit-entry-type.integration{background:var(--blue-tint);color:var(--blue);border-color:var(--blue-border);}
+.audit-entry-type.compliance{background:var(--amber-tint);color:var(--amber);border-color:var(--amber-border);}
+.audit-entry-type.billing{background:var(--green-tint);color:var(--green);border-color:var(--green-border);}
+.audit-entry-type.lifecycle{background:var(--red-tint);color:var(--red);border-color:var(--red-border);}
+.audit-entry-actor{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.audit-entry-actor-email{color:var(--text2);font-weight:500;}
+.audit-entry-expand{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 10px;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s;white-space:nowrap;}
+.audit-entry-expand:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.audit-entry-detail{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:none;}
+.audit-entry.expanded .audit-entry-detail{display:block;}
+.audit-diff{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;}
+.audit-diff-col{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;max-height:260px;overflow-y:auto;}
+.audit-diff-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.audit-diff-content{white-space:pre-wrap;word-break:break-word;color:var(--text);line-height:1.5;}
+.audit-diff-col.before{border-left:3px solid var(--red);}
+.audit-diff-col.after{border-left:3px solid var(--green);}
+.audit-legacy-details{grid-column:1 / -1;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5;max-height:260px;overflow-y:auto;}
+@media(max-width:700px){ .audit-entry{grid-template-columns:1fr;} .audit-diff{grid-template-columns:1fr;} }
+
 /* ── MODULES TOP-LEVEL TAB ── */
 .mod-category{margin-bottom:22px;}
 .mod-category-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
@@ -1051,7 +1086,7 @@ var DETAIL_TABS = [
   { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
   { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
   { key: 'billing',      label: 'Billing',       build: buildBillingTab                            },
-  { key: 'audit',        label: 'Activity',      phase: 'Phase 10', desc: 'Every config change on this tenant with before/after diff.' }
+  { key: 'audit',        label: 'Activity',      build: buildActivityTab                           }
 ];
 
 var _activeDetailTenant = null;
@@ -1133,6 +1168,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderBillingTab === 'function' && _activeDetailTab === 'billing') {
     afterRenderBillingTab(t);
+  }
+  if (typeof afterRenderActivityTab === 'function' && _activeDetailTab === 'audit') {
+    afterRenderActivityTab(t);
   }
 }
 
@@ -1650,6 +1688,187 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Audit / activity rendering (shared between per-client and fleet) ──
+// Single render path for audit entries so the per-client Activity tab
+// and the top-level Audit tab stay visually consistent. Both surfaces
+// are append-only reads — no mutation anywhere in this code path.
+//
+// Change-type filter uses the structured `change_type` column (from
+// migration 019). Rows with no change_type (legacy entries from before
+// the migration, or actions not yet classified) show up in "All" and
+// fall into an "Other" bucket when a type filter is active.
+var AUDIT_TYPES = [
+  { key: 'brand',         label: 'Brand'         },
+  { key: 'terminology',   label: 'Terminology'   },
+  { key: 'workflow',      label: 'Workflow'      },
+  { key: 'comms',         label: 'Comms'         },
+  { key: 'integration',   label: 'Integrations'  },
+  { key: 'compliance',    label: 'Compliance'    },
+  { key: 'billing',       label: 'Billing'       },
+  { key: 'lifecycle',     label: 'Lifecycle'     }
+];
+
+function renderAuditToolbar(includeTenantFilter, currentType, currentTenantId, tenantOptions) {
+  var typeOpts = '<option value="">All types</option>' +
+    AUDIT_TYPES.map(function(ty) {
+      return '<option value="' + escAttr(ty.key) + '"' + (ty.key === currentType ? ' selected' : '') + '>' + escHtml(ty.label) + '</option>';
+    }).join('');
+
+  var tenantSelect = '';
+  if (includeTenantFilter) {
+    var opts = '<option value="">All tenants</option>' +
+      tenantOptions.map(function(t) {
+        return '<option value="' + escAttr(t.id) + '"' + (t.id === currentTenantId ? ' selected' : '') + '>' + escHtml(t.name) + '</option>';
+      }).join('');
+    tenantSelect = '<select class="filter-select" id="auditTenantFilter">' + opts + '</select>';
+  }
+
+  return '<div class="audit-toolbar">' +
+    '<select class="filter-select" id="auditTypeFilter">' + typeOpts + '</select>' +
+    tenantSelect +
+    '<span class="audit-count" id="auditCount"></span>' +
+  '</div>';
+}
+
+function renderAuditList(entries, tenantsById) {
+  if (entries.length === 0) return '<div class="comp-empty">No audit entries match.</div>';
+  return '<div class="audit-list">' +
+    entries.map(function(e, idx) { return renderAuditEntry(e, idx, tenantsById); }).join('') +
+  '</div>';
+}
+
+function renderAuditEntry(e, idx, tenantsById) {
+  var when = formatDateTime(e.created_at);
+  var actor = e.actor_email
+    ? '<span class="audit-entry-actor-email">' + escHtml(e.actor_email) + '</span>'
+    : (e.actor_id ? '<span class="mono">' + escHtml(String(e.actor_id).slice(0,8)) + '…</span>' : '—');
+  var tenantName = tenantsById && e.tenant_id && tenantsById[e.tenant_id]
+    ? tenantsById[e.tenant_id].name
+    : null;
+
+  var hasStructured = e.before_snapshot != null || e.after_snapshot != null;
+  var hasLegacy     = !hasStructured && e.details;
+
+  var detailBody = '';
+  if (hasStructured) {
+    detailBody = '<div class="audit-diff">' +
+      '<div class="audit-diff-col before">' +
+        '<div class="audit-diff-label">Before</div>' +
+        '<div class="audit-diff-content">' + escHtml(formatJson(e.before_snapshot)) + '</div>' +
+      '</div>' +
+      '<div class="audit-diff-col after">' +
+        '<div class="audit-diff-label">After</div>' +
+        '<div class="audit-diff-content">' + escHtml(formatJson(e.after_snapshot)) + '</div>' +
+      '</div>' +
+    '</div>';
+  } else if (hasLegacy) {
+    // Legacy rows store a JSON string in `details`. Try to pretty-print
+    // if it parses; otherwise show raw. Rows predating Phase 10 use
+    // this shape.
+    var pretty = e.details;
+    try {
+      var parsed = JSON.parse(e.details);
+      pretty = JSON.stringify(parsed, null, 2);
+    } catch (err) { /* leave as-is */ }
+    detailBody = '<div class="audit-legacy-details">' + escHtml(pretty) + '</div>';
+  } else {
+    detailBody = '<div class="audit-legacy-details" style="color:var(--text4);">No detail payload.</div>';
+  }
+
+  return '<div class="audit-entry" id="auditEntry-' + idx + '">' +
+    '<div class="audit-entry-time">' + escHtml(when) + '</div>' +
+    '<div class="audit-entry-body">' +
+      '<div class="audit-entry-head">' +
+        '<span class="audit-entry-action">' + escHtml(e.action || '—') + '</span>' +
+        (e.change_type ? '<span class="audit-entry-type ' + escAttr(e.change_type) + '">' + escHtml(e.change_type) + '</span>' : '') +
+        (tenantName ? '<span class="audit-entry-type">' + escHtml(tenantName) + '</span>' : '') +
+      '</div>' +
+      '<div class="audit-entry-actor">' + actor + '</div>' +
+    '</div>' +
+    '<button class="audit-entry-expand" onclick="toggleAuditEntry(' + idx + ')">Details</button>' +
+    '<div class="audit-entry-detail">' + detailBody + '</div>' +
+  '</div>';
+}
+
+function toggleAuditEntry(idx) {
+  var el = document.getElementById('auditEntry-' + idx);
+  if (el) el.classList.toggle('expanded');
+}
+
+function formatJson(v) {
+  if (v == null) return '—';
+  try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); }
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  // Short form: "Jan 3, 14:22" — skip the year unless it's not this year.
+  var now = new Date();
+  var opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return d.toLocaleString(undefined, opts);
+}
+
+// ── Activity tab (per-client) ──
+var _activityData = { entries: [], type: '' };
+
+function buildActivityTab(t) {
+  return '<div id="activityBody"><div class="audit-loading">Loading activity…</div></div>';
+}
+
+function afterRenderActivityTab(t) {
+  var wrap = document.getElementById('activityBody');
+  if (!wrap) return;
+
+  db.from('audit_logs')
+    .select('id, action, change_type, actor_id, actor_email, target_id, tenant_id, details, before_snapshot, after_snapshot, created_at')
+    .or('tenant_id.eq.' + t.id + ',target_id.eq.' + t.id)
+    .order('created_at', { ascending: false })
+    .limit(500)
+    .then(function(r) {
+      if (_activeDetailTab !== 'audit' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+      if (r.error) {
+        var hint = migrationHint(r.error, '019_audit_change_management.sql');
+        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load activity</strong><br/>' +
+          escHtml(r.error.message || '') +
+          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+        return;
+      }
+      _activityData.entries = r.data || [];
+      _activityData.type = '';
+      wrap.innerHTML = renderActivityBody();
+      document.getElementById('auditTypeFilter').addEventListener('change', function() {
+        _activityData.type = this.value;
+        document.getElementById('activityListInner').outerHTML =
+          '<div id="activityListInner">' + renderActivityList() + '</div>';
+      });
+    })
+    .catch(function(err) {
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderActivityBody() {
+  return renderAuditToolbar(false, _activityData.type) +
+    '<div id="activityListInner">' + renderActivityList() + '</div>';
+}
+
+function renderActivityList() {
+  var filtered = _activityData.entries.filter(function(e) {
+    if (!_activityData.type) return true;
+    return e.change_type === _activityData.type;
+  });
+  var count = filtered.length;
+  var total = _activityData.entries.length;
+  setTimeout(function() {
+    var c = document.getElementById('auditCount');
+    if (c) c.textContent = (count === total ? total + ' entries' : count + ' of ' + total);
+  }, 0);
+  return renderAuditList(filtered, null);
 }
 
 // ── Top-level Modules tab (fleet-wide) ──

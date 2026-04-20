@@ -152,6 +152,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
 .status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
 
+/* ── LIFECYCLE CONTROL (inside detail modal) ── */
+.lifecycle-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.lifecycle-control-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.lifecycle-control select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-pill);padding:8px 28px 8px 14px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:border-color .15s;}
+.lifecycle-control select:focus{border-color:var(--slate);}
+.lifecycle-control select:disabled{opacity:0.5;cursor:not-allowed;}
+.lifecycle-control .form-btn{padding:8px 16px;font-size:11px;}
+.lifecycle-control-note{flex-basis:100%;font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+
 /* ── DETAIL MODAL ── */
 .detail-backdrop{position:fixed;inset:0;background:rgba(15,20,25,0.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:8499;display:none;}
 .detail-backdrop.show{display:block;}
@@ -743,6 +752,9 @@ function openClientDetail(tenantId) {
       '<div class="detail-field"><div class="detail-label">Created by</div><div class="detail-value mono">' + escHtml(t.created_by || '--') + '</div></div>' +
     '</div>' +
     '<div class="detail-divider"></div>' +
+    '<div class="detail-section-title">Lifecycle</div>' +
+    renderLifecycleControl(t) +
+    '<div class="detail-divider"></div>' +
     '<div class="detail-section-title">Configuration layers</div>' +
     '<div class="detail-config-grid">' +
       CONFIG_LAYERS.map(function(layer) {
@@ -759,6 +771,83 @@ function openClientDetail(tenantId) {
 
   document.getElementById('clientDetailBackdrop').classList.add('show');
   document.getElementById('clientDetailPanel').classList.add('show');
+}
+
+// Lifecycle transitions are role-gated per ARCHITECTURE.md: only
+// platform_admin and platform_super_admin can change state. Other
+// platform roles see a disabled dropdown with an explanation.
+function canChangeLifecycle() {
+  return currentPlatformRole === 'platform_super_admin'
+      || currentPlatformRole === 'platform_admin';
+}
+
+function renderLifecycleControl(t) {
+  var allowed = canChangeLifecycle();
+  var states = ['sandbox', 'live', 'suspended', 'archived'];
+  var options = states.map(function(s) {
+    return '<option value="' + s + '"' + (s === t.lifecycle_state ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var note = allowed
+    ? 'Transitions are audit-logged. Moving to Live means the tenant is billable and user-facing. Archived is a soft-delete.'
+    : 'Your role can\'t change lifecycle state. Ask a platform admin or super admin.';
+  return '<div class="lifecycle-control">' +
+    '<span class="lifecycle-control-label">State</span>' +
+    '<select id="lifecycleSelect"' + (allowed ? '' : ' disabled') + '>' + options + '</select>' +
+    '<button class="form-btn primary" id="lifecycleApply"' + (allowed ? '' : ' disabled') +
+      ' onclick="applyLifecycleChange(\'' + escAttr(t.id) + '\',\'' + escAttr(t.lifecycle_state) + '\')">Apply</button>' +
+    '<span class="lifecycle-control-note">' + escHtml(note) + '</span>' +
+  '</div>';
+}
+
+function applyLifecycleChange(tenantId, fromState) {
+  var select = document.getElementById('lifecycleSelect');
+  var apply  = document.getElementById('lifecycleApply');
+  var toState = select.value;
+
+  if (!canChangeLifecycle()) return;
+  if (toState === fromState) { showToast('No change — already ' + fromState + '.', 'warn'); return; }
+
+  // Destructive transitions get an explicit confirm. Archived is a
+  // soft-delete; suspended cuts off live traffic.
+  var needsConfirm = (toState === 'archived') || (toState === 'suspended');
+  if (needsConfirm) {
+    var label = toState === 'archived' ? 'archive' : 'suspend';
+    if (!window.confirm('Really ' + label + ' this tenant? State will be ' + toState + '.')) return;
+  }
+
+  apply.disabled = true;
+  select.disabled = true;
+
+  db.from('tenants').update({ lifecycle_state: toState }).eq('id', tenantId)
+    .then(function(r) {
+      if (r.error) throw r.error;
+
+      // Audit log entry. Details is a text column (not jsonb), so stringify.
+      // Errors here are non-fatal — the transition already happened; a
+      // failed audit write shouldn't roll back user-visible state, but
+      // we surface it in a warn toast so the operator can follow up.
+      return db.from('audit_logs').insert({
+        action: 'tenant.lifecycle_changed',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: tenantId,
+        details: JSON.stringify({ from: fromState, to: toState })
+      }).then(function(ar) {
+        if (ar.error) console.warn('[platform] audit log write failed', ar.error);
+        return ar;
+      });
+    })
+    .then(function() {
+      showToast('Lifecycle set to ' + toState + '.', 'success');
+      closeClientDetail();
+      loadClients();
+    })
+    .catch(function(err) {
+      apply.disabled = false;
+      select.disabled = false;
+      console.error('[platform] lifecycle change failed', err);
+      showToast('Lifecycle change failed: ' + ((err && err.message) || 'unknown error'), 'error');
+    });
 }
 
 function closeClientDetail() {

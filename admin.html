@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="tenant.js"></script>
 <script src="terminology.js"></script>
+<script src="workflow.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1415,11 +1416,12 @@ function _bootAdminWithTenant(user, profile) {
   }
   window.TenantBootstrap.init(db)
     .then(function() {
-      // Terminology must init after Tenant so it can read
-      // window.Tenant.terminology. Both helpers are no-ops if their
-      // script tags failed to load, so a missed script is logged but
-      // doesn't stop admin from booting.
+      // Terminology and Workflow must init after Tenant so they can
+      // read window.Tenant.terminology / window.Tenant.workflow. All
+      // three helpers are no-ops if their script tags failed to load,
+      // so a missed script is logged but doesn't stop admin booting.
       if (window.Terminology) window.Terminology.init();
+      if (window.Workflow)    window.Workflow.init();
       applyTenantBrand();
       initAdmin(user, profile);
     })

@@ -332,7 +332,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 2     | **Done (with carry-overs)** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. Sandboxed live preview panel updates as the operator types. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav + loading + title, accent → `--amber` override, favicon). `portal.html` reads `Tenant.brand.*` (wordmark + favicon + title; accent deferred — see below). |
 | 3     | **Foundations done; full refactor = carry-over** | `terminology.js` shipped with a catalog of ~30 renameable terms across 4 groups (people, clinical, workflow, commercial) and a single `Terminology.t(key)` accessor with `{ lower }` / `{ upper }` opts. Operator portal's Terminology tab renders one input per term (grouped, with live "overridden" badges) and a 4-line live preview. Save writes diff-only to `tenants.terminology` JSONB with audit log. `admin.html` and `portal.html` both load `terminology.js` + call `Terminology.init()` after tenant resolves; PoC replacement in each (role noun in document title / loading screen) proves the plumbing. See carry-over below for the per-portal string audit. |
 | 4     | **Foundations done; full CRUD + downstream refactor = carry-over** | Migration 014 extends the catalog schema: per-tenant key uniqueness on `protocol_templates` (dropped the global UNIQUE, added composite `(tenant_id, key)`), `refill_price` + `subscription_cadence` columns, new `protocol_packages` table with JSONB `items` bundle + RLS following the Phase 0 staff/platform template. Operator portal's Catalog tab fetches and displays all four catalog tables (protocols, categories, product types, packages) scoped to the selected tenant with per-section error hints (e.g. "run migration 014" when `protocol_packages` is missing). See carry-over for the editor UI and the downstream refactor. |
-| 5–15  | Not started   | See sections above. |
+| 5     | **Foundations done; execution-path refactor = carry-over** | `workflow.js` ships with a rich SCHEMA catalog (6 sections, ~15 fields: intake, consult, refill, sla_hours, assignment, follow_up) and a dot-path accessor (`Workflow.get('refill.eligibility_days_before_runout')`). Operator portal's Workflow tab auto-renders from SCHEMA with type-appropriate inputs (toggle / bounded number / enum select), live override badges, client-side validation. Save writes full shape to `tenants.workflow` JSONB with diff-only audit log. `admin.html` and `portal.html` both load `workflow.js` + call `Workflow.init()` after tenant resolves. Execution-path refactor — replacing every hardcoded SLA timer, refill window, consult policy branch, assignment rule across all three portal surfaces — is the multi-session carry-over the PHASES.md 3.5-week estimate anticipates. |
+| 6–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -428,6 +429,58 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   Decide during the Phase 4 follow-up whether packages ship as a
   separate catalog section in the member protocol picker or are
   flattened into the regular protocol list with a "bundle of N" badge.
+
+### Carry-over from Phase 5
+
+- **Execution-path refactor.** This is the big piece PHASES.md flags
+  as 3.5 weeks on its own. `Workflow.get()` is available everywhere
+  but nothing reads it yet. Every hardcoded SLA, refill window, consult
+  branch, assignment rule across the three portal surfaces needs a
+  pass. Slice by concern (not by portal) — a single refactor PR
+  typically touches all three surfaces when it refactors one rule:
+
+  1. **Refill eligibility.** Search for places computing
+     "can this member refill?" (date arithmetic on prescriptions /
+     dose_logs). Route through
+     `Workflow.get('refill.eligibility_days_before_runout')` and
+     `Workflow.get('refill.clinician_review_required')`.
+
+  2. **Consult policy.** Branches that decide "does this member
+     need a consult before this Rx?" — replace the hardcoded rule
+     with `Workflow.get('consult.policy')` and the
+     enum-to-behaviour mapping.
+
+  3. **SLA timers.** Anywhere admin.html highlights stale queues
+     or sends escalation notifications on magic-number hour
+     thresholds — route through the `sla_hours.*` fields.
+
+  4. **Assignment strategy.** Admin.html's clinician-assignment
+     logic (currently round-robin by default). Read strategy +
+     state-license toggle + max-concurrent from `assignment.*`.
+
+  5. **Follow-up cadence.** Any scheduled job or client-side
+     reminder that fires on hardcoded day intervals — route through
+     `follow_up.cadence_days` and `follow_up.after_refill_check_days`.
+
+  Each of the five is a dedicated PR with a visual QA pass on the
+  real workflow it governs. Plan the 2-week buffer PHASES.md
+  recommends before shipping Phase 5 as "done".
+
+- **Default override seeding for the Pulse tenant.** The bundled
+  defaults are reasonable general-purpose values. If Pulse today
+  runs with specific thresholds (e.g. a 14-day refill window instead
+  of the default 7), capture the actual values in Pulse's
+  `tenants.workflow` before the refactor starts — otherwise the
+  first hardcoded-to-`Workflow.get()` replacement silently changes
+  Pulse's operating rules. Use the Workflow tab to set these now.
+
+- **Downstream validation / enforcement.** Client-side validation in
+  the Workflow tab prevents bad form input, but nothing enforces the
+  shape at the DB level. A Phase 10 (audit) or Phase 13 (support)
+  concern: add an integrity check that logs-and-repairs tenants whose
+  workflow JSONB diverges from SCHEMA (missing section, stray key,
+  out-of-range value). Not urgent — the operator UI is the only
+  writer today.
 
 ### Carry-over from Phase 1
 

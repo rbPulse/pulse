@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="tenant.js"></script>
 <script src="terminology.js"></script>
+<script src="workflow.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7436,11 +7437,15 @@ function _bootPortalWithTenant(user) {
   }
   window.TenantBootstrap.init(db)
     .then(function() {
-      // Terminology must init after Tenant so it can read
-      // window.Tenant.terminology. Terminology.t() anywhere downstream
-      // returns the configured term (or default) — portal.html's
-      // full audit of hardcoded member-facing strings is a follow-up.
+      // Terminology + Workflow init after Tenant so they can read
+      // window.Tenant.terminology / window.Tenant.workflow.
+      // Terminology.t() and Workflow.get() are then available
+      // anywhere downstream — portal.html's full audit of hardcoded
+      // terminology strings and hardcoded workflow rules (refill
+      // windows, SLA timers, consult policies) is a multi-session
+      // carry-over.
       if (window.Terminology) window.Terminology.init();
+      if (window.Workflow)    window.Workflow.init();
       applyTenantBrand();
       initPortal(user);
     })

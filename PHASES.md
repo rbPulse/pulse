@@ -335,20 +335,23 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 
 ### Carry-over from Phase 2
 
-- `portal.html` accent color override. `portal.html` runs in two body
-  modes (member-mode, clinician-mode) with namespaced `--m-*` / `--cl-*`
-  accent tokens. Re-pointing the right variable for the right mode is
-  a larger refactor than Phase 2's slice warranted. Do it as part of
-  the next `portal.html` touch.
+- `portal.html` accent color override. Portal.html hosts BOTH the member
+  portal (`body.member-mode`) and the clinician portal
+  (`body.clinician-mode`) in one file, each with its own namespaced
+  accent tokens (`--m-*` for member, `--cl-*` for clinician). The
+  `applyTenantBrand()` hook runs before the body class is set, so it
+  needs to either (a) override both `--m-*` and `--cl-*` accent
+  variables up-front, or (b) re-run after `initPortal` decides the
+  mode. Option (b) is simpler and is what the next portal touch
+  should do.
 - Two `portal.html` wordmark instances live inside JS template strings
   (welcome-card brand ~line 14723, consult-reminder nav ~line 21093)
   and still read hardcoded "PULSE" because they render after the
   `applyTenantBrand()` hook fires. Rebuild those templates to read from
   `window.Tenant.brand.wordmark` when the template is built.
-- `clinician.html` doesn't exist yet. Gets the same hook on creation.
-- `portal.html` and `clinician.html` still carry inline `:root` blocks
-  that duplicate `tokens.css` tokens (Phase 1 carry-over). Migrate
-  alongside the brand touch above.
+- `portal.html` still carries an inline `:root` block that duplicates
+  `tokens.css` tokens (Phase 1 carry-over). Migrate alongside the brand
+  touch above.
 - Orphaned storage objects: replacing a logo uploads a new file with a
   timestamp suffix; the old file stays. Cleanup job belongs with the
   Phase 10 audit/retention work, not Phase 2.
@@ -360,14 +363,29 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 
 ### Carry-over from Phase 3
 
-- Full per-portal string audit. `terminology.js` + `Terminology.t()` are
-  plumbed into `admin.html` and `portal.html`, but most hardcoded
-  strings ("Patients" in the admin sidebar, "Live Consults", "Messages",
-  all the tab titles and stat labels) haven't been routed through the
-  helper yet. Slice by portal per PHASES.md — each portal is a
-  dedicated PR with a pass through every renameable string and a
-  visual QA pass after. Do `admin.html` first (smaller + operator-
-  facing, so regressions are caught fast); then `portal.html`.
+- Full per-surface string audit. `terminology.js` + `Terminology.t()`
+  are plumbed into `admin.html` and `portal.html`, but most hardcoded
+  strings haven't been routed through the helper yet. Three distinct
+  surfaces need a pass, even though they live in two files:
+
+  1. **Admin portal** (`admin.html`) — "Patients" in the sidebar,
+     "Live Consults", "Messages", tab titles, stat labels, detail
+     modal copy. Start here: smaller file, operator-facing, regressions
+     are caught fast.
+
+  2. **Member portal** (`portal.html` rendering under
+     `body.member-mode`) — every string a patient sees: welcome
+     card, protocol/plan copy, dose/session language, refill/renewal
+     language, support copy. This is the largest audit of the three
+     and needs visual QA on the real member journey.
+
+  3. **Clinician portal** (`portal.html` rendering under
+     `body.clinician-mode`) — every string a clinician sees: queue
+     labels, patient list headers, review flows, message composer
+     labels. Can be sliced separately from the member audit because
+     the clinician-mode code paths are distinct from the member-mode
+     ones inside the same file.
+
 - Pulse tenant needs a terminology override setting `member → "Patient"`
   and `members → "Patients"` to match the current admin sidebar text
   before the per-portal audit lands. Otherwise Pulse's sidebar flips

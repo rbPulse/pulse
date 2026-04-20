@@ -12,8 +12,15 @@ provision and manage independent clinic tenants. Each tenant runs its
 own configured instance of the downstream portals:
 
 - `admin.html` — clinic admin portal
-- `portal.html` — member/patient portal
-- `clinician.html` (or equivalent) — clinician portal
+- `portal.html` — both the member/patient portal AND the clinician portal,
+  rendered from the same file with the UI switched by a body class at
+  boot: `body.member-mode` for end-users, `body.clinician-mode` for
+  staff with a `clinician` or `admin` profile role. Same URL, same
+  file, different render path. When a new downstream portal is needed
+  ("a family-member view", "an ops dashboard"), the question is always
+  "mode inside portal.html, or new file?" — inline inside portal.html
+  unless the two experiences diverge enough that they'd share very
+  little code.
 
 Pulse itself is the pilot tenant. New clients follow the same pattern.
 

@@ -335,7 +335,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 5     | **Foundations done; execution-path refactor = carry-over** | `workflow.js` ships with a rich SCHEMA catalog (6 sections, ~15 fields: intake, consult, refill, sla_hours, assignment, follow_up) and a dot-path accessor (`Workflow.get('refill.eligibility_days_before_runout')`). Operator portal's Workflow tab auto-renders from SCHEMA with type-appropriate inputs (toggle / bounded number / enum select), live override badges, client-side validation. Save writes full shape to `tenants.workflow` JSONB with diff-only audit log. `admin.html` and `portal.html` both load `workflow.js` + call `Workflow.init()` after tenant resolves. Execution-path refactor — replacing every hardcoded SLA timer, refill window, consult policy branch, assignment rule across all three portal surfaces — is the multi-session carry-over the PHASES.md 3.5-week estimate anticipates. |
 | 6     | **Foundations done; delivery + trigger refactor = carry-over** | Migration 015 adds `communication_templates(tenant_id, key, channel, subject, body, variables, cadence)` with composite unique on `(tenant_id, key, channel)` and RLS (staff read / tenant-owner+admin write / platform read-write). `messaging.js` ships a catalog of ~7 default templates (member welcome, intake confirmation, refill approved/denied, consult scheduled/reminder, follow-up) with `Messaging.resolve(key, channel)` / `Messaging.render(key, vars, channel)` helpers. Operator Comms tab lists every template grouped by namespace; each card has subject/body editors, clickable variable chips that insert `{{tokens}}` at the cursor, per-template save + reset + preview (with hardcoded sample data). `admin.html` and `portal.html` load messaging.js and fire `Messaging.init()` in parallel with page boot. See carry-over for delivery wiring and automation-trigger refactor. |
 | 7     | **Foundations done; delivery + Vault + webhook router = carry-over** | Migration 016 creates `tenant_integrations(tenant_id, provider, status, credentials jsonb, config jsonb, last_connected_at, last_error, last_error_at)` with platform-only RLS on the base table and a SECURITY DEFINER RPC (`tenant_integrations_for_my_tenants`) that returns a non-secret projection to tenant staff. `integrations.js` ships a catalog of 7 providers (Stripe, Daily.co, Resend, Twilio, Labcorp, Stripe Identity, Shippo) with credential + config field schemas. Operator Integrations tab renders one card per provider grouped by category; Connect/Edit/Disconnect/Test actions manage the row. Password fields always render blank on edit — leaving blank keeps the stored value. Audit log redacts credential VALUES (writes `credential_keys: [...]` instead). `admin.html` + `portal.html` load integrations.js and fire `Integrations.init()` in parallel with page boot. See carry-over for the real delivery path, Vault migration, and the webhook router. |
-| 8–15  | Not started   | See sections above. |
+| 8     | **Foundations done; data-export + alerts + read-site gating = carry-over** | Migration 017 creates four compliance tables in one migration: `tenant_locations` (addresses, hours, primary-flag with partial unique index), `tenant_regions` (operating states with allowed/blocked/unset tri-state), `tenant_consents` (versioned — editing creates a new version so prior signatures stay traceable), `clinician_state_licenses` (per-user, cross-tenant). `compliance.js` ships the US states catalog + `tenantOperatesIn` / `cliniciansLicensedIn` / `licensesExpiringWithin` / `primaryLocation` helpers. Operator Compliance tab has four sections: clickable states grid with cycle-semantics (unset → allowed → blocked → unset), locations CRUD with primary management, consent templates with versioned edit flow, read-only licenses summary with expiry stat cards (expired / ≤30d / ≤60d). `admin.html` + `portal.html` load compliance.js and fire `Compliance.init()` in parallel. See carry-over for data-export, license-expiry notifications, and the read-site gates that actually enforce state restrictions. |
+| 9–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -589,6 +590,66 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   failures" link that shows recent `webhook_events` rows where the
   handler errored. Helps ops diagnose a down integration without
   SSHing into logs.
+
+### Carry-over from Phase 8
+
+- **State-restriction read sites.** `Compliance.tenantOperatesIn`
+  is available in admin + portal, but nothing gates on it yet. Key
+  read-sites to wire:
+    - Member intake submit: reject if the member's state isn't in
+      the tenant's operating states. Surface a specific "We don't
+      currently operate in {state}" message, not a generic error.
+    - Checkout: block cart submission in unsupported states.
+    - Clinician assignment: combine with
+      `Compliance.cliniciansLicensedIn(memberState)` +
+      `Workflow.get('assignment.respect_state_license')` to narrow
+      the assignable pool. Admin portal currently ignores the
+      license check; this is where the Phase 5 assignment carry-
+      over intersects with Phase 8.
+- **Data export endpoint per tenant.** PHASES.md Phase 8 lists a
+  GDPR/HIPAA-contract data export as a deliverable. Build a
+  platform-triggered Edge Function that: (1) verifies the caller
+  is platform_admin+, (2) collects all tenant-scoped rows across
+  every Phase 0-8 table into a zip (CSV per table + consent
+  signatures as PDFs if signed), (3) uploads to a time-limited
+  signed URL, (4) writes an audit_logs entry. Triggered from a
+  new "Export data" button on the Compliance tab.
+- **License expiry notifications.** `licensesExpiringWithin`
+  returns the expiring rows but no automation fires on them. Wire
+  a daily scheduled job that checks for 60/30/7-day expiries and
+  sends the clinician + their tenant admins a notification via
+  the Phase 6 messaging layer (add the `license.expiring` template
+  to the default catalog). Requires the Phase 6 delivery wiring
+  to be done first; coordinate with the Phase 6 trigger-refactor
+  carry-over.
+- **License CRUD on the clinician profile.** The Compliance tab
+  surfaces licenses read-only because editing is a per-clinician
+  concern, not per-tenant. Add a Licenses section to the clinician
+  profile surface (admin.html user detail + clinician-mode
+  portal.html own-profile view) with add/edit/archive + document
+  upload to the `brand-assets` or a new `license-docs` storage
+  bucket.
+- **Consent signatures table.** The schema versions consent
+  templates but nothing records which member signed which version.
+  Add `member_consent_signatures(user_id, tenant_id, consent_id,
+  signed_at, ip_address, user_agent)` with RLS allowing the member
+  to read their own and tenant admins to read all. Hook into member
+  intake so signing a required consent writes the signature row.
+- **User-label resolution in Licenses summary.** The Licenses
+  section shows "User &lt;id-prefix&gt;…" because resolving the
+  profile display name cross-tenant isn't trivial (operator hasn't
+  necessarily cached profiles for this tenant). Add a small bulk
+  profile fetch keyed by user_id when the tab loads, or wait for
+  Phase 13's view-as console which does the same cache lookup.
+- **Per-location hours editor.** The `tenant_locations.hours` JSONB
+  column holds operating hours but the UI doesn't render or edit
+  them yet. Design the hours editor when a tenant first asks for
+  it — until then, the field is documented in the schema for
+  future use.
+- **Archived locations visibility.** Archived locations are hidden
+  from the operator view today. Add a "Show archived" toggle and a
+  small-print footer like "3 archived" so deliberate hide-vs-delete
+  is discoverable.
 
 ### Carry-over from Phase 1
 

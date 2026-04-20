@@ -13,6 +13,7 @@
 <script src="workflow.js"></script>
 <script src="messaging.js"></script>
 <script src="integrations.js"></script>
+<script src="compliance.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1439,6 +1440,15 @@ function _bootAdminWithTenant(user, profile) {
       if (window.Integrations && window.Tenant)
         window.Integrations.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[admin] integrations init failed; treating all as disconnected', e);
+        });
+      // Compliance is async too. Admin surfaces that gate clinician
+      // assignment on state-license match, or surface expiring-license
+      // banners, read from Compliance after init resolves. Pre-resolve
+      // calls to tenantOperatesIn / cliniciansLicensedIn return empty
+      // which is a safe default (nothing assigned, no one listed).
+      if (window.Compliance && window.Tenant)
+        window.Compliance.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[admin] compliance init failed; treating as empty', e);
         });
       applyTenantBrand();
       initAdmin(user, profile);

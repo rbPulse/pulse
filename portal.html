@@ -13,6 +13,7 @@
 <script src="workflow.js"></script>
 <script src="messaging.js"></script>
 <script src="integrations.js"></script>
+<script src="compliance.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7459,6 +7460,17 @@ function _bootPortalWithTenant(user) {
       if (window.Integrations && window.Tenant)
         window.Integrations.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[portal] integrations init failed; treating all as disconnected', e);
+        });
+      // Compliance init fires in parallel too. Member intake needs
+      // Compliance.tenantOperatesIn(memberState) to gate state-
+      // restricted flows; clinician assignment reads
+      // cliniciansLicensedIn(memberState) when Workflow's
+      // respect_state_license rule is on. Both are downstream-
+      // refactor carry-overs — plumbing ships here so the calls
+      // work once read-sites land.
+      if (window.Compliance && window.Tenant)
+        window.Compliance.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[portal] compliance init failed; treating as empty', e);
         });
       applyTenantBrand();
       initPortal(user);

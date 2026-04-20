@@ -811,12 +811,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-setup-comms">
         <div class="tab-header">
           <div class="tab-title">Communications</div>
-          <div class="tab-subtitle">Email / SMS / push templates, sender identity, reminder cadence.</div>
+          <div class="tab-subtitle">Email / SMS / push templates. Overrides flow through <code>messaging.js</code> at send time.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Communications editor moves here in R8</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">7 default template keys with per-tenant overrides. Phase 6 delivery wiring still pending; when that lands, this surface exposes test-send from inside the tenant admin.</div>
-        </div>
+        <div id="comms-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading communications…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-compliance">
@@ -824,32 +821,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Compliance</div>
           <div class="tab-subtitle">Operating states, locations, consent templates, clinician licenses.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Compliance editor moves here in R9</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">4 sub-sections (states / locations / consents / licenses). License CRUD moves to per-user profile instead of per-tenant &mdash; see Phase 8 carry-over.</div>
-        </div>
+        <div id="compliance-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading compliance…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-integrations">
         <div class="tab-header">
           <div class="tab-title">Integrations</div>
-          <div class="tab-subtitle">Stripe, Daily.co, Resend, Twilio, labs, shipping, ID verification. Connection status + config.</div>
+          <div class="tab-subtitle">Connection status and non-secret configuration. Credentials remain in CommandOS (platform-only).</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Integration status + config move here in R10</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">Status (connected/disconnected/error) + non-secret config visible to tenant admins. Credentials stay operator-authored in CommandOS &mdash; the security boundary from Phase 7 is preserved.</div>
-        </div>
+        <div id="integrations-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading integrations…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-subscription">
         <div class="tab-header">
           <div class="tab-title">Subscription</div>
-          <div class="tab-subtitle">Plan, billing cycle, next invoice, Stripe Customer Portal link.</div>
+          <div class="tab-subtitle">Plan, billing cycle, period. Plan changes handled by your CommandOS account manager.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Self-service subscription lands here in R13</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">Read-only view of this tenant&rsquo;s plan + usage + invoices. Plan change funnels through Stripe Customer Portal. Platform-side override stays in CommandOS.</div>
-        </div>
+        <div id="subscription-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading subscription…</div></div>
       </div>
 
       <!-- OVERVIEW TAB -->
@@ -1853,6 +1841,12 @@ function switchTab(tabId) {
   if (tabId === 'setup-terminology' && typeof renderTerminologySetup === 'function') renderTerminologySetup();
   if (tabId === 'setup-catalog'     && typeof renderCatalogSetup     === 'function') renderCatalogSetup();
   if (tabId === 'setup-workflow'    && typeof renderWorkflowSetup    === 'function') renderWorkflowSetup();
+  if (tabId === 'setup-comms'       && typeof renderCommsSetup       === 'function') renderCommsSetup();
+  if (tabId === 'setup-compliance'  && typeof renderComplianceSetup  === 'function') renderComplianceSetup();
+  if (tabId === 'setup-integrations'&& typeof renderIntegrationsSetup=== 'function') renderIntegrationsSetup();
+  if (tabId === 'subscription'      && typeof renderSubscriptionView === 'function') renderSubscriptionView();
+  if (tabId === 'audit'             && typeof renderActivityView     === 'function') renderActivityView();
+  if (tabId === 'analytics'         && typeof renderAnalyticsView    === 'function') renderAnalyticsView();
 }
 
 // ── Load overview stats ──
@@ -6245,6 +6239,167 @@ function saveWorkflowSetup() {
       console.error('[admin] workflow save failed', err);
       if (errEl) { errEl.className = 'brand-form-err show'; errEl.textContent = (err && err.message) || 'Save failed.'; }
     });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// R8: COMMS SETUP (summary + override count)
+// R9: COMPLIANCE SETUP (state grid + locations + consents counts)
+// R10: INTEGRATIONS SETUP (status list via the public view RPC)
+// R11: ANALYTICS VIEW (this-tenant stat cards)
+// R12: ACTIVITY VIEW (this-tenant audit timeline)
+// R13: SUBSCRIPTION VIEW (read-only plan + dates)
+//
+// These six surfaces are scoped down compared to the CommandOS
+// originals — tenant admins get a live, tenant-filtered summary
+// and a clear "full editor lands in follow-up" note. Full CRUD
+// is R8-R13 carry-over; today operators still assist via
+// CommandOS for the authoring flows.
+// ══════════════════════════════════════════════════════════════════
+
+function _summaryCard(label, value, sub) {
+  return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">' + _brandEscHtml(label) + '</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;color:var(--text);">' + _brandEscHtml(String(value)) + '</div>' +
+    (sub ? '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">' + _brandEscHtml(sub) + '</div>' : '') +
+  '</div>';
+}
+
+function _summarySection(body, title, sub, actions) {
+  body.innerHTML = '<div class="brand-form">' +
+    '<div class="brand-form-section">' +
+      '<div class="brand-form-section-title">' + _brandEscHtml(title) + '</div>' +
+      '<div class="brand-form-section-sub">' + _brandEscHtml(sub) + '</div>' +
+    '</div>' + '<div id="_summary-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;"></div>' +
+    (actions || '') +
+  '</div>';
+}
+
+// ── R8: Comms ──
+function renderCommsSetup() {
+  var body = document.getElementById('comms-setup-body');
+  if (!body || !window.Tenant) return;
+  db.from('communication_templates').select('id, key, channel, is_enabled', { count: 'exact' }).eq('tenant_id', window.Tenant.id)
+    .then(function(r) {
+      var rows = r.data || [];
+      var total = rows.length;
+      var enabled = rows.filter(function(x) { return x.is_enabled !== false; }).length;
+      var byChannel = { email: 0, sms: 0, push: 0 };
+      rows.forEach(function(x) { byChannel[x.channel] = (byChannel[x.channel] || 0) + 1; });
+      _summarySection(body, 'Communications', 'Tenant-specific overrides of the bundled template catalog (messaging.js). Full editor lands in a follow-up commit; today overrides are authored from CommandOS.', '');
+      document.getElementById('_summary-content').innerHTML =
+        _summaryCard('Template overrides', total, 'rows in communication_templates') +
+        _summaryCard('Enabled', enabled, (total - enabled) + ' disabled') +
+        _summaryCard('Email', byChannel.email || 0) +
+        _summaryCard('SMS', byChannel.sms || 0);
+    }).catch(function(err) {
+      body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+    });
+}
+
+// ── R9: Compliance ──
+function renderComplianceSetup() {
+  var body = document.getElementById('compliance-setup-body');
+  if (!body || !window.Tenant) return;
+  var tid = window.Tenant.id;
+  Promise.all([
+    db.from('tenant_regions').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_allowed', true),
+    db.from('tenant_locations').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false),
+    db.from('tenant_consents').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false)
+  ]).then(function(results) {
+    _summarySection(body, 'Compliance', 'Operating states, physical locations, consent templates. CRUD authored from CommandOS today; tenant-admin editor lands in a follow-up.', '');
+    document.getElementById('_summary-content').innerHTML =
+      _summaryCard('Operating states', results[0].count || 0) +
+      _summaryCard('Active locations', results[1].count || 0) +
+      _summaryCard('Consent templates', results[2].count || 0, 'non-archived versions');
+  }).catch(function(err) {
+    body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+  });
+}
+
+// ── R10: Integrations ──
+// Reads the tenant_integrations_public view via the SECURITY DEFINER
+// RPC from migration 016 so tenant admins see status + config but
+// never the credentials.
+function renderIntegrationsSetup() {
+  var body = document.getElementById('integrations-setup-body');
+  if (!body || !window.Tenant) return;
+  db.rpc('tenant_integrations_for_my_tenants')
+    .then(function(r) {
+      var rows = (r.data || []).filter(function(x) { return x.tenant_id === window.Tenant.id; });
+      var connected = rows.filter(function(x) { return x.status === 'connected'; }).length;
+      var errored = rows.filter(function(x) { return x.status === 'error'; }).length;
+      _summarySection(body, 'Integrations', 'Status + non-secret config of external providers connected to this tenant. Credentials remain in CommandOS; contact your operator to connect a new provider.', '');
+      var rowsHtml = rows.length === 0
+        ? '<div style="padding:16px;background:var(--card);border:1px dashed var(--border-strong);border-radius:10px;color:var(--text3);font-size:12px;">No integrations provisioned yet.</div>'
+        : rows.map(function(x) {
+            var color = x.status === 'connected' ? 'var(--green)' : (x.status === 'error' ? 'var(--red)' : 'var(--text3)');
+            return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;"><span style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:var(--text);">' + _brandEscHtml(x.provider) + '</span><span style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:' + color + ';">' + _brandEscHtml(x.status) + '</span></div>';
+          }).join('');
+      document.getElementById('_summary-content').style.display = 'flex';
+      document.getElementById('_summary-content').style.flexDirection = 'column';
+      document.getElementById('_summary-content').style.gap = '6px';
+      document.getElementById('_summary-content').innerHTML = rowsHtml;
+    }).catch(function(err) {
+      body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+    });
+}
+
+// ── R11: Analytics (per-tenant) ──
+function renderAnalyticsView() {
+  // Admin.html already has its own Analytics tab with existing data
+  // loaders (loadAnalytics* functions). This render function is
+  // wired through switchTab for consistency, but the tab's existing
+  // rendering runs untouched because the tab already has content.
+  // No-op today; full tenant analytics port is R11 carry-over.
+}
+
+// ── R12: Activity (per-tenant audit timeline) ──
+function renderActivityView() {
+  // admin.html already has tab-audit wired to loadAuditFeed or
+  // similar existing logic. Like Analytics above, R12 carry-over
+  // fully reconciles the existing admin audit surface with
+  // CommandOS's before/after-diff rendering.
+}
+
+// ── R13: Subscription ──
+function renderSubscriptionView() {
+  var body = document.getElementById('subscription-body');
+  if (!body || !window.Tenant) return;
+  var tid = window.Tenant.id;
+  Promise.all([
+    db.from('tenant_subscriptions').select('plan_id, status, billing_cycle, current_period_start, current_period_end, trial_end').eq('tenant_id', tid).in('status', ['trialing','active','past_due','paused','incomplete']).limit(1),
+    db.from('plans').select('id, name, monthly_price, annual_price, description').order('display_order')
+  ]).then(function(results) {
+    var sub = (results[0].data || [])[0];
+    var plansById = {}; (results[1].data || []).forEach(function(p) { plansById[p.id] = p; });
+    if (!sub) {
+      body.innerHTML = '<div class="brand-form"><div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Subscription</div>' +
+        '<div class="brand-form-section-sub">No active subscription on file. Contact your CommandOS account manager to assign a plan.</div>' +
+        '</div></div>';
+      return;
+    }
+    var plan = plansById[sub.plan_id] || { name: '(unknown)', monthly_price: null };
+    var priceTxt = (sub.billing_cycle === 'annual' && plan.annual_price != null)
+      ? '$' + Number(plan.annual_price).toFixed(2) + '/yr'
+      : (plan.monthly_price != null ? '$' + Number(plan.monthly_price).toFixed(2) + '/mo' : 'Custom');
+    body.innerHTML = '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Subscription</div>' +
+        '<div class="brand-form-section-sub">Current plan + period. Plan changes flow through your CommandOS account manager.</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">' +
+        _summaryCard('Plan', plan.name, plan.description ? plan.description.slice(0, 60) + (plan.description.length > 60 ? '…' : '') : '') +
+        _summaryCard('Price', priceTxt, sub.billing_cycle) +
+        _summaryCard('Status', sub.status) +
+        _summaryCard('Period start', sub.current_period_start ? new Date(sub.current_period_start).toLocaleDateString() : '\u2014') +
+        _summaryCard('Period end', sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '\u2014') +
+        (sub.trial_end ? _summaryCard('Trial end', new Date(sub.trial_end).toLocaleDateString()) : '') +
+      '</div>' +
+    '</div>';
+  }).catch(function(err) {
+    body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+  });
 }
 </script>
 </body>

@@ -1571,11 +1571,12 @@ function openClientDetail(tenantId, startInWizard) {
   pill.className = 'status-pill ' + t.lifecycle_state;
   pill.textContent = t.lifecycle_state;
 
-  // Populate the View-as menu with URLs for this tenant. Pulse tenant
-  // uses the root URLs; every other tenant uses /t/{slug}/*.html.
+  // Populate the View-as menu with URLs for this tenant. Every
+  // tenant — including Pulse — lives at /t/{slug}/ after R2c; the
+  // previous slug === 'pulse' special-case is gone.
   var slug = t.slug;
-  var memberUrl    = slug === 'pulse' ? '/portal.html' : '/t/' + encodeURIComponent(slug) + '/portal.html';
-  var adminUrl     = slug === 'pulse' ? '/admin.html'  : '/t/' + encodeURIComponent(slug) + '/admin.html';
+  var memberUrl    = '/t/' + encodeURIComponent(slug) + '/portal/';
+  var adminUrl     = '/t/' + encodeURIComponent(slug) + '/admin/';
   var mEl = document.getElementById('headerMenu-viewAs-member');
   var cEl = document.getElementById('headerMenu-viewAs-clinician');
   var aEl = document.getElementById('headerMenu-viewAs-admin');

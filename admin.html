@@ -540,7 +540,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div class="loading-icon">
     <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
   </div>
-  <div class="loading-wordmark">Pulse Admin</div>
+  <div class="loading-wordmark" id="loadingWordmark">Pulse Admin</div>
 </div>
 
 <!-- NAV -->
@@ -1413,11 +1413,66 @@ function _bootAdminWithTenant(user, profile) {
     return;
   }
   window.TenantBootstrap.init(db)
-    .then(function() { initAdmin(user, profile); })
+    .then(function() { applyTenantBrand(); initAdmin(user, profile); })
     .catch(function(err) {
       console.warn('[admin] tenant load failed, booting without tenant context', err);
       initAdmin(user, profile);
     });
+}
+
+// ── Tenant branding ──
+// Applies the active tenant's brand layer to the admin surface before
+// initAdmin paints anything the operator can see. Every overridable
+// thing here has a sensible default baked into the page, so a tenant
+// with an empty brand JSONB still renders correctly as "PULSE".
+//
+// What we override:
+//   - Wordmark text in the nav (default: "PULSE")
+//   - --amber CSS variable (the admin portal's accent) + its tint and
+//     border variants. We reuse --amber rather than introducing a new
+//     --accent token because every existing rule in the file already
+//     references --amber; pointing that var at the tenant's color is
+//     the minimum-diff way to rebrand without rewriting the stylesheet.
+//   - Favicon link in <head>
+//   - <title> if a wordmark is set
+//
+// Deliberately NOT touching: the member portal's green or the loading
+// icon color. Admin's accent is amber-by-default; tenant config
+// replaces the amber slot. Other portals handle their own accents.
+function applyTenantBrand() {
+  var brand = (window.Tenant && window.Tenant.brand) || {};
+
+  var wordmark = (brand.wordmark || '').trim() || 'PULSE';
+  var navName = document.querySelector('.nav-name');
+  if (navName) navName.textContent = wordmark;
+  var loadingEl = document.getElementById('loadingWordmark');
+  if (loadingEl) loadingEl.textContent = wordmark + ' Admin';
+  document.title = 'Admin | ' + wordmark;
+
+  if (brand.accent_color && /^#[0-9a-fA-F]{6}$/.test(brand.accent_color)) {
+    var hex = brand.accent_color;
+    document.documentElement.style.setProperty('--amber',        hex);
+    document.documentElement.style.setProperty('--amber-tint',   _adminHexToRgba(hex, 0.10));
+    document.documentElement.style.setProperty('--amber-border', _adminHexToRgba(hex, 0.30));
+  }
+
+  if (brand.favicon_url) {
+    var link = document.querySelector('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = brand.favicon_url;
+  }
+}
+
+function _adminHexToRgba(hex, alpha) {
+  var h = hex.replace('#', '');
+  var r = parseInt(h.substring(0, 2), 16);
+  var g = parseInt(h.substring(2, 4), 16);
+  var b = parseInt(h.substring(4, 6), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
 
 // ── Auth gate ──

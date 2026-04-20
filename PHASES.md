@@ -329,7 +329,21 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 |-------|---------------|-------|
 | 0     | **Done**      | Migrations 010–012 run; `tenant.js` wired into admin + portal; seed tenant "pulse" live. |
 | 1     | **Done**      | Shell (auth gate, slate accent, 10-section sidebar), Clients directory (list + stats + filter), Create-client form (slug validation + initial admin wiring), Client detail modal (read-only + config layer status), Lifecycle state controls (role-gated + audit-logged), `tokens.css` created and wired into `platform.html`. |
-| 2–15  | Not started   | See sections above. |
+| 2     | **In progress** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav, accent → `--amber` override, favicon → `<link rel="icon">`). |
+| 3–15  | Not started   | See sections above. |
+
+### Carry-over from Phase 2
+
+- `portal.html` and `clinician.html` (when it lands) still need the
+  same `applyTenantBrand()` hook as `admin.html`. Deferred because
+  `portal.html` is 1.2MB and needs visual QA across the member-facing
+  journey that can't be verified headlessly.
+- Brand preview iframe (embed tenant's downstream portal in the
+  operator modal) — deferred until at least two portals read from
+  `Tenant.brand`, so there's meaningful output to preview.
+- Orphaned storage objects: replacing a logo uploads a new file with a
+  timestamp suffix; the old file stays. Cleanup job belongs with the
+  Phase 10 audit/retention work, not Phase 2.
 
 ### Carry-over from Phase 1
 

@@ -153,6 +153,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── MODULES TOP-LEVEL TAB ── */
+.mod-category{margin-bottom:22px;}
+.mod-category-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.mod-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;}
+.mod-card-info{min-width:0;}
+.mod-card-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.mod-card-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);font-weight:400;}
+.mod-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;line-height:1.5;}
+.mod-card-adoption{text-align:right;min-width:120px;}
+.mod-adoption-value{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:-0.01em;font-variant-numeric:tabular-nums;}
+.mod-adoption-label{font-family:'Inter',sans-serif;font-size:10px;color:var(--text3);margin-top:2px;}
+.mod-card-plan-chips{display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
+.mod-plan-chip{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.08em;padding:2px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
+
+/* ── BILLING TOP-LEVEL TAB ── */
+.bill-fleet-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px;}
+.bill-fleet-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;box-shadow:var(--shadow);}
+.bill-fleet-stat-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.bill-fleet-stat-value{font-family:'Inter',sans-serif;font-size:28px;font-weight:600;letter-spacing:-0.02em;color:var(--text);font-variant-numeric:tabular-nums;}
+.bill-fleet-stat-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:4px;}
+.bill-plan-breakdown{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:18px;}
+.bill-plan-row-breakdown{display:grid;grid-template-columns:1fr 120px 80px 120px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-family:'Inter',sans-serif;font-size:13px;}
+.bill-plan-row-breakdown:last-child{border-bottom:none;}
+.bill-plan-row-breakdown strong{color:var(--text);font-weight:600;}
+.bill-plan-row-breakdown .num{text-align:right;font-variant-numeric:tabular-nums;}
+.bill-churn-list{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
+.bill-churn-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:8px 0;font-family:'Inter',sans-serif;font-size:13px;border-bottom:1px solid var(--border);}
+.bill-churn-row:last-child{border-bottom:none;}
+
 /* ── BILLING TAB (per-client) ── */
 .bill-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .bill-plan-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
@@ -706,13 +735,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-modules">
         <div class="tab-header">
           <div class="tab-title">Modules</div>
-          <div class="tab-subtitle">Feature modules entitled per tenant.</div>
+          <div class="tab-subtitle">Module catalog with fleet-wide adoption. Each module is a feature gate downstream portals call via <code>Modules.isEnabled(key)</code>.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Module catalog</div>
-          <div class="placeholder-body">Define the module catalog (live video, ePrescribing, labs, messaging, analytics add-ons). Per-tenant entitlement comes from the plan they're on, with manual overrides allowed. Feature flags in downstream portals read from this table.</div>
-          <div class="placeholder-phase">Phase 9</div>
-        </div>
+        <div id="modulesTabBody"><div class="comp-loading">Loading module catalog…</div></div>
       </div>
 
       <!-- INTEGRATIONS -->
@@ -732,13 +757,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-billing">
         <div class="tab-header">
           <div class="tab-title">Billing</div>
-          <div class="tab-subtitle">Plans, subscriptions, MRR.</div>
+          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn. Per-tenant subscription management lives inside each client\u2019s Billing tab.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Pulse internal billing</div>
-          <div class="placeholder-body">Per-tenant subscription status, plan line items, monthly cost. Platform-level MRR, by-plan breakdown, churn flags. Stripe is the source of truth; operator portal embeds the Customer Portal link rather than rebuilding invoicing.</div>
-          <div class="placeholder-phase">Phase 9</div>
-        </div>
+        <div id="billingTabBody"><div class="comp-loading">Loading billing overview…</div></div>
       </div>
 
       <!-- ANALYTICS -->
@@ -907,6 +928,12 @@ function switchTab(tabId) {
   var nav = document.getElementById('nav-' + tabId);
   if (tab) tab.classList.add('active');
   if (nav) nav.classList.add('active');
+
+  // Lazy-load top-level tabs that pull fleet-wide data. Each has its
+  // own body container; loaders mark body as loaded so switching back
+  // doesn't re-fetch. Operators refreshing the data = reload the page.
+  if (tabId === 'modules' && !_modulesTabLoaded)   loadModulesTab();
+  if (tabId === 'billing' && !_billingTabLoaded)   loadBillingTab();
 }
 
 function doSignOut() {
@@ -1623,6 +1650,223 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Top-level Modules tab (fleet-wide) ──
+// Lists every module in the catalog with adoption counts (how many
+// tenants have it enabled) and plan membership chips (which plans
+// include it). Fleet-wide read = single aggregate over
+// module_entitlements + plans; operators see at a glance which modules
+// are broadly adopted vs niche.
+var _modulesTabLoaded = false;
+
+function loadModulesTab() {
+  var wrap = document.getElementById('modulesTabBody');
+  if (!wrap) return;
+  _modulesTabLoaded = true;
+
+  Promise.all([
+    db.from('module_entitlements').select('module_key, enabled').eq('enabled', true),
+    db.from('plans').select('key, name, included_modules').eq('is_archived', false)
+  ]).then(function(results) {
+    if (results[0].error || results[1].error) {
+      var err = results[0].error || results[1].error;
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err.message || 'Load failed')) +
+        ((migrationHint(err, '018_billing_modules.sql')) ? '<br/><br/>' + escHtml(migrationHint(err, '018_billing_modules.sql')) : '') + '</div>';
+      return;
+    }
+    var adoption = {};
+    (results[0].data || []).forEach(function(r) { adoption[r.module_key] = (adoption[r.module_key] || 0) + 1; });
+    var plansByModule = {};
+    (results[1].data || []).forEach(function(p) {
+      (p.included_modules || []).forEach(function(mk) {
+        if (!plansByModule[mk]) plansByModule[mk] = [];
+        plansByModule[mk].push(p);
+      });
+    });
+    wrap.innerHTML = renderModulesTabBody(adoption, plansByModule);
+  }).catch(function(err) {
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+function renderModulesTabBody(adoption, plansByModule) {
+  var catalog = (window.Modules && window.Modules.CATALOG) || [];
+  var categories = (window.Modules && window.Modules.CATEGORIES) || [];
+
+  var out = '';
+  categories.forEach(function(cat) {
+    var catMods = catalog.filter(function(m) { return m.category === cat.key; });
+    if (catMods.length === 0) return;
+    out += '<div class="mod-category">' +
+      '<div class="mod-category-title">' + escHtml(cat.label) + '</div>' +
+      catMods.map(function(mod) {
+        var count  = adoption[mod.key] || 0;
+        var plans  = plansByModule[mod.key] || [];
+        var chips  = plans.map(function(p) { return '<span class="mod-plan-chip">' + escHtml(p.name) + '</span>'; }).join('');
+        return '<div class="mod-card">' +
+          '<div class="mod-card-info">' +
+            '<div class="mod-card-name">' + escHtml(mod.label) +
+              '<span class="mod-card-key">' + escHtml(mod.key) + '</span>' +
+            '</div>' +
+            '<div class="mod-card-desc">' + escHtml(mod.description) + '</div>' +
+          '</div>' +
+          '<div class="mod-card-adoption">' +
+            '<div class="mod-adoption-value">' + count + '</div>' +
+            '<div class="mod-adoption-label">' + (count === 1 ? 'tenant' : 'tenants') + '</div>' +
+          '</div>' +
+          '<div class="mod-card-plan-chips">' + (chips || '<span class="mod-adoption-label">Not in any plan</span>') + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  });
+  return out;
+}
+
+// ── Top-level Billing tab (fleet-wide MRR) ──
+var _billingTabLoaded = false;
+
+function loadBillingTab() {
+  var wrap = document.getElementById('billingTabBody');
+  if (!wrap) return;
+  _billingTabLoaded = true;
+
+  Promise.all([
+    db.from('plans').select('*').order('display_order'),
+    db.from('tenant_subscriptions').select('*'),
+    db.from('tenants').select('id, name, slug, lifecycle_state')
+  ]).then(function(results) {
+    if (results[0].error || results[1].error || results[2].error) {
+      var err = results[0].error || results[1].error || results[2].error;
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err.message || 'Load failed')) +
+        ((migrationHint(err, '018_billing_modules.sql')) ? '<br/><br/>' + escHtml(migrationHint(err, '018_billing_modules.sql')) : '') + '</div>';
+      return;
+    }
+    wrap.innerHTML = renderBillingTabBody(
+      results[0].data || [],
+      results[1].data || [],
+      results[2].data || []
+    );
+  }).catch(function(err) {
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+function renderBillingTabBody(plans, subscriptions, tenants) {
+  var tenantsById = {};
+  tenants.forEach(function(t) { tenantsById[t.id] = t; });
+  var plansById = {};
+  plans.forEach(function(p) { plansById[p.id] = p; });
+
+  // Active subs only for MRR math. Canceled rows stay in subs for history.
+  var active = subscriptions.filter(function(s) {
+    return s.status === 'active' || s.status === 'trialing' || s.status === 'past_due';
+  });
+
+  // MRR: monthly subs count full price, annual subs divide by 12.
+  var mrr = 0, arr = 0;
+  active.forEach(function(s) {
+    var plan = plansById[s.plan_id];
+    if (!plan) return;
+    if (s.billing_cycle === 'annual' && plan.annual_price != null) {
+      mrr += Number(plan.annual_price) / 12;
+      arr += Number(plan.annual_price);
+    } else if (plan.monthly_price != null) {
+      mrr += Number(plan.monthly_price);
+      arr += Number(plan.monthly_price) * 12;
+    }
+  });
+
+  var byStatus = { trialing: 0, active: 0, past_due: 0, canceled: 0, paused: 0, incomplete: 0 };
+  subscriptions.forEach(function(s) { byStatus[s.status] = (byStatus[s.status] || 0) + 1; });
+
+  var stats = '<div class="bill-fleet-stats">' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">MRR</div>' +
+      '<div class="bill-fleet-stat-value">$' + mrr.toFixed(0) + '</div>' +
+      '<div class="bill-fleet-stat-sub">monthly recurring across active + trialing + past-due</div>' +
+    '</div>' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">ARR</div>' +
+      '<div class="bill-fleet-stat-value">$' + arr.toFixed(0) + '</div>' +
+      '<div class="bill-fleet-stat-sub">annualised from current MRR</div>' +
+    '</div>' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">Active</div>' +
+      '<div class="bill-fleet-stat-value">' + byStatus.active + '</div>' +
+      '<div class="bill-fleet-stat-sub">paying subscriptions</div>' +
+    '</div>' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">Trialing</div>' +
+      '<div class="bill-fleet-stat-value">' + byStatus.trialing + '</div>' +
+      '<div class="bill-fleet-stat-sub">in trial window</div>' +
+    '</div>' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">Past due</div>' +
+      '<div class="bill-fleet-stat-value' + (byStatus.past_due > 0 ? '" style="color:var(--amber)' : '') + '">' + byStatus.past_due + '</div>' +
+      '<div class="bill-fleet-stat-sub">payment failures to chase</div>' +
+    '</div>' +
+    '<div class="bill-fleet-stat">' +
+      '<div class="bill-fleet-stat-label">Canceled</div>' +
+      '<div class="bill-fleet-stat-value">' + byStatus.canceled + '</div>' +
+      '<div class="bill-fleet-stat-sub">historical</div>' +
+    '</div>' +
+  '</div>';
+
+  // Per-plan breakdown: subs per plan + MRR contribution.
+  var perPlan = {};
+  active.forEach(function(s) {
+    var plan = plansById[s.plan_id];
+    if (!plan) return;
+    if (!perPlan[plan.id]) perPlan[plan.id] = { plan: plan, count: 0, mrr: 0 };
+    perPlan[plan.id].count++;
+    if (s.billing_cycle === 'annual' && plan.annual_price != null) perPlan[plan.id].mrr += Number(plan.annual_price) / 12;
+    else if (plan.monthly_price != null) perPlan[plan.id].mrr += Number(plan.monthly_price);
+  });
+  var planRows = plans.map(function(p) {
+    var row = perPlan[p.id] || { count: 0, mrr: 0 };
+    var pct = mrr > 0 ? Math.round((row.mrr / mrr) * 100) : 0;
+    return '<div class="bill-plan-row-breakdown">' +
+      '<strong>' + escHtml(p.name) + '</strong>' +
+      '<span>$' + (p.monthly_price != null ? Number(p.monthly_price).toFixed(0) : 'custom') + '/mo</span>' +
+      '<span class="num">' + row.count + '</span>' +
+      '<span class="num">$' + row.mrr.toFixed(0) + ' (' + pct + '%)</span>' +
+    '</div>';
+  }).join('');
+
+  var breakdown = '<div class="bill-plan-breakdown">' +
+    '<div class="comp-section-head"><div class="comp-section-title">Plan mix</div></div>' +
+    '<div class="bill-plan-row-breakdown" style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);">' +
+      '<span>Plan</span><span>Price</span><span class="num">Subs</span><span class="num">MRR contrib</span>' +
+    '</div>' +
+    planRows +
+  '</div>';
+
+  // Churn flags: past_due + subscriptions with cancel_at_period_end.
+  var churn = subscriptions.filter(function(s) {
+    return s.status === 'past_due' || s.cancel_at_period_end;
+  });
+  var churnRows = churn.length === 0
+    ? '<div class="comp-empty">No churn flags right now.</div>'
+    : churn.map(function(s) {
+        var tenant = tenantsById[s.tenant_id] || { name: '(unknown)' };
+        var plan = plansById[s.plan_id] || { name: '?' };
+        var reason = s.status === 'past_due'
+          ? 'Past due'
+          : (s.cancel_at_period_end ? 'Cancelling at period end ' + (s.current_period_end ? formatDate(s.current_period_end) : '') : '');
+        return '<div class="bill-churn-row">' +
+          '<strong>' + escHtml(tenant.name) + '</strong>' +
+          '<span>' + escHtml(plan.name) + '</span>' +
+          '<span style="color:var(--amber);font-weight:600;">' + escHtml(reason) + '</span>' +
+        '</div>';
+      }).join('');
+
+  var churnBlock = '<div class="bill-churn-list">' +
+    '<div class="comp-section-head"><div class="comp-section-title">Churn flags</div></div>' +
+    churnRows +
+  '</div>';
+
+  return stats + breakdown + churnBlock;
 }
 
 // ── Billing tab (per-client) ──

@@ -153,6 +153,48 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── DASHBOARD ── */
+.dash-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px;flex-wrap:wrap;}
+.dash-hero-quickactions{display:flex;gap:8px;flex-wrap:wrap;}
+.dash-hero-quickactions .toolbar-btn{font-size:12px;padding:9px 18px;}
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+.dash-col-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;align-items:start;}
+@media(max-width:900px){.dash-col-wrap{grid-template-columns:1fr;}}
+.dash-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);}
+.dash-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border);}
+.dash-panel-title{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
+.dash-panel-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.dash-panel-body{padding:8px 0;}
+.dash-panel-body.empty{padding:28px;text-align:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);}
+
+/* Needs attention list */
+.dash-attn-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.dash-attn-row:last-child{border-bottom:none;}
+.dash-attn-row:hover{background:rgba(20,20,20,0.02);}
+.dash-attn-row.sev-critical{border-left:3px solid var(--red);}
+.dash-attn-row.sev-warn{border-left:3px solid var(--amber);}
+.dash-attn-row.sev-info{border-left:3px solid var(--slate);}
+.dash-attn-sev{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);white-space:nowrap;}
+.dash-attn-row.sev-critical .dash-attn-sev{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+.dash-attn-row.sev-warn     .dash-attn-sev{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.dash-attn-row.sev-info     .dash-attn-sev{color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);}
+.dash-attn-body{min-width:0;}
+.dash-attn-headline{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);line-height:1.4;}
+.dash-attn-tenant{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
+.dash-attn-jump{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);font-weight:500;white-space:nowrap;}
+.dash-attn-empty{padding:32px 20px;text-align:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);}
+.dash-attn-empty strong{color:var(--green);font-weight:600;}
+
+/* Recent activity strip */
+.dash-activity-row{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);font-family:'Inter',sans-serif;font-size:12px;}
+.dash-activity-row:last-child{border-bottom:none;}
+.dash-activity-time{color:var(--text3);font-variant-numeric:tabular-nums;font-size:11px;white-space:nowrap;}
+.dash-activity-body{min-width:0;}
+.dash-activity-action{color:var(--text2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-activity-tenant{color:var(--text3);font-size:11px;margin-top:2px;}
+.dash-refresh{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 12px;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;}
+.dash-refresh:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+
 /* ── ANALYTICS (fleet + per-client) ── */
 .an-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:22px;}
@@ -867,14 +909,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- DASHBOARD -->
       <div class="platform-tab active" id="tab-dashboard">
         <div class="tab-header">
-          <div class="tab-title">Platform Dashboard</div>
+          <div class="tab-title" id="dashboardTitle">Platform Dashboard</div>
           <div class="tab-subtitle" id="welcomeMsg">Welcome.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Fleet-wide overview</div>
-          <div class="placeholder-body">Active clients, total staff, active patients, consult volume, GMV, churn risk, integration failures, module adoption. Agents ("3 tenants need attention") surface here too.</div>
-          <div class="placeholder-phase">Phase 14</div>
-        </div>
+        <div id="dashboardBody"><div class="an-loading">Loading dashboard…</div></div>
       </div>
 
       <!-- CLIENTS -->
@@ -1136,6 +1174,11 @@ function initPlatform(user, profile) {
   document.getElementById('clientsLifecycleFilter').addEventListener('change', renderClientsTable);
   wireCreateClientAutoSlug();
 
+  // Dashboard is the default-visible tab, so switchTab doesn't fire
+  // on initial page load — kick off the dashboard fetch here. Clients
+  // table loads in parallel so the data is cached when the operator
+  // navigates there (and the "+ New Client" quick-action works).
+  loadDashboard();
   loadClients();
 }
 
@@ -1165,6 +1208,7 @@ function switchTab(tabId) {
   // Lazy-load top-level tabs that pull fleet-wide data. Each has its
   // own body container; loaders mark body as loaded so switching back
   // doesn't re-fetch. Operators refreshing the data = reload the page.
+  if (tabId === 'dashboard' && !_dashboardLoaded)    loadDashboard();
   if (tabId === 'modules'   && !_modulesTabLoaded)   loadModulesTab();
   if (tabId === 'billing'   && !_billingTabLoaded)   loadBillingTab();
   if (tabId === 'audit'     && !_auditTabLoaded)     loadAuditTab();
@@ -3236,6 +3280,307 @@ function renderTenantAnalyticsBody(t, d) {
   '</div>';
 
   return stats + modulesPanel + activityPanel;
+}
+
+// ── Dashboard (top-level landing) ──
+// Default-visible tab on page load. Three sections:
+//   1. Fleet stats row — at-a-glance numbers that matter day-to-day
+//   2. Needs-attention feed — ranked by severity from real signals
+//      (integration errors > past-due subs > expired/expiring licenses >
+//      sandbox stalled > live tenants missing primary location). Each
+//      item is clickable to open the offending tenant's detail modal.
+//   3. Recent activity — last ~10 audit entries across all tenants
+//
+// Loaded once on boot (from initPlatform, not switchTab, since the
+// Dashboard is the default active tab and switchTab wouldn't fire).
+// Refresh button re-runs the parallel fetch; nothing else mutates this
+// surface.
+//
+// The Needs-attention feed today is rule-based triggers inlined. Phase
+// 15's agent layer extends this same surface — each agent produces
+// recommendations that flow into the same feed (with the same card
+// shape) instead of replacing the rule-based entries.
+var _dashboardLoaded = false;
+
+function loadDashboard() {
+  var wrap = document.getElementById('dashboardBody');
+  if (!wrap) return;
+  _dashboardLoaded = true;
+
+  var since30   = new Date(Date.now() - 30*86400000).toISOString();
+  var since14   = new Date(Date.now() - 14*86400000).toISOString();
+  var now       = new Date().toISOString();
+  var in30      = new Date(Date.now() + 30*86400000).toISOString();
+
+  function safe(q) {
+    return q.then(function(r) { return r; }).catch(function(e) { return { error: e, data: null, count: null }; });
+  }
+
+  Promise.all([
+    // Fleet stats
+    safe(db.from('tenants').select('id, name, slug, lifecycle_state, created_at')),
+    safe(db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('status', 'active')),
+    safe(db.from('support_requests').select('id', { count: 'exact', head: true }).eq('status', 'open')),
+    safe(db.from('tenant_subscriptions').select('id, tenant_id, plan_id, status, billing_cycle, cancel_at_period_end')),
+    safe(db.from('plans').select('id, name, monthly_price, annual_price')),
+    // Needs-attention signals
+    safe(db.from('tenant_integrations').select('tenant_id, provider, status, last_error').eq('status', 'error')),
+    safe(db.from('clinician_state_licenses').select('user_id, state, license_number, expires_date, is_active').eq('is_active', true).lte('expires_date', in30.slice(0, 10))),
+    safe(db.from('tenant_memberships').select('tenant_id, user_id').in('role', ['tenant_clinician','tenant_nurse','tenant_admin','tenant_owner'])),
+    safe(db.from('tenant_locations').select('tenant_id, is_primary, is_archived').eq('is_primary', true).eq('is_archived', false)),
+    // Recent activity
+    safe(db.from('audit_logs').select('id, action, change_type, actor_email, tenant_id, target_id, created_at').order('created_at', { ascending: false }).limit(10))
+  ]).then(function(results) {
+    var tenants = (results[0].data || []);
+    var tenantsById = {}; tenants.forEach(function(t) { tenantsById[t.id] = t; });
+
+    var membersCount  = results[1].count || 0;
+    var supportOpen   = results[2].count || 0;
+    var subs          = results[3].data || [];
+    var plans         = results[4].data || [];
+    var intErrors     = results[5].data || [];
+    var expiring      = results[6].data || [];
+    var memberships   = results[7].data || [];
+    var primaryLocs   = results[8].data || [];
+    var recentEntries = results[9].data || [];
+
+    // Fleet stat computations.
+    var liveTenants    = tenants.filter(function(t) { return t.lifecycle_state === 'live'; }).length;
+    var sandboxTenants = tenants.filter(function(t) { return t.lifecycle_state === 'sandbox'; }).length;
+
+    var plansById = {}; plans.forEach(function(p) { plansById[p.id] = p; });
+    var activeSubs = subs.filter(function(s) {
+      return s.status === 'active' || s.status === 'trialing' || s.status === 'past_due';
+    });
+    var mrr = 0;
+    activeSubs.forEach(function(s) {
+      var plan = plansById[s.plan_id]; if (!plan) return;
+      if (s.billing_cycle === 'annual' && plan.annual_price != null) mrr += Number(plan.annual_price) / 12;
+      else if (plan.monthly_price != null) mrr += Number(plan.monthly_price);
+    });
+    var pastDue = subs.filter(function(s) { return s.status === 'past_due'; }).length;
+
+    // Build needs-attention list.
+    var attn = buildAttentionList({
+      tenants:      tenants,
+      tenantsById:  tenantsById,
+      intErrors:    intErrors,
+      pastDueSubs:  subs.filter(function(s) { return s.status === 'past_due' || s.cancel_at_period_end; }),
+      licenses:     expiring,
+      memberships:  memberships,
+      primaryLocs:  primaryLocs,
+      sandboxCutoff: since14
+    });
+
+    wrap.innerHTML = renderDashboardBody({
+      liveTenants:    liveTenants,
+      sandboxTenants: sandboxTenants,
+      totalTenants:   tenants.length,
+      members:        membersCount,
+      mrr:            mrr,
+      activeSubs:     activeSubs.length,
+      supportOpen:    supportOpen,
+      intErrorCount:  intErrors.length,
+      pastDue:        pastDue,
+      attn:           attn,
+      recent:         recentEntries,
+      tenantsById:    tenantsById
+    });
+  }).catch(function(err) {
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+// Produce the ranked needs-attention list. Each entry is
+// { severity, tenant, tenantId, headline, action }.
+// Severity ranking: critical > warn > info.
+function buildAttentionList(d) {
+  var items = [];
+
+  // 1. Integration errors (critical).
+  d.intErrors.forEach(function(e) {
+    var t = d.tenantsById[e.tenant_id]; if (!t) return;
+    items.push({
+      severity: 'critical',
+      tenantId: e.tenant_id,
+      tenant:   t.name,
+      headline: escHtml(e.provider) + ' integration in error state' + (e.last_error ? ': ' + escHtml(e.last_error.slice(0, 80)) : ''),
+      action:   'Open Integrations →'
+    });
+  });
+
+  // 2. Past-due / scheduled-to-cancel subscriptions (critical).
+  d.pastDueSubs.forEach(function(s) {
+    var t = d.tenantsById[s.tenant_id]; if (!t) return;
+    var reason = s.status === 'past_due'
+      ? 'Subscription is past due'
+      : 'Cancelling at period end';
+    items.push({
+      severity: s.status === 'past_due' ? 'critical' : 'warn',
+      tenantId: s.tenant_id,
+      tenant:   t.name,
+      headline: reason,
+      action:   'Open Billing →'
+    });
+  });
+
+  // 3. Expired + expiring licenses. Scope to clinicians with a
+  // membership somewhere; use the first membership's tenant as the
+  // card owner. (A clinician at multiple tenants produces multiple
+  // cards — one per tenant that depends on that license. Intentional:
+  // each tenant's ops wants to know.)
+  var membershipsByUser = {};
+  (d.memberships || []).forEach(function(m) {
+    if (!membershipsByUser[m.user_id]) membershipsByUser[m.user_id] = [];
+    membershipsByUser[m.user_id].push(m.tenant_id);
+  });
+  var nowTs = Date.now();
+  d.licenses.forEach(function(l) {
+    if (!l.expires_date) return;
+    var expTs = new Date(l.expires_date).getTime();
+    var tenantsForUser = membershipsByUser[l.user_id] || [];
+    tenantsForUser.forEach(function(tid) {
+      var t = d.tenantsById[tid]; if (!t) return;
+      var isExpired = expTs < nowTs;
+      items.push({
+        severity: isExpired ? 'critical' : 'warn',
+        tenantId: tid,
+        tenant:   t.name,
+        headline: (isExpired ? 'License expired' : 'License expires soon') +
+                  ' — ' + escHtml(l.state) + ' ' + escHtml(l.license_number || '(no number)') +
+                  (l.expires_date ? ' (' + formatDate(l.expires_date) + ')' : ''),
+        action:   'Open Compliance →'
+      });
+    });
+  });
+
+  // 4. Sandbox stalled >14 days.
+  d.tenants.forEach(function(t) {
+    if (t.lifecycle_state !== 'sandbox') return;
+    if (!t.created_at || t.created_at > d.sandboxCutoff) return;
+    items.push({
+      severity: 'info',
+      tenantId: t.id,
+      tenant:   t.name,
+      headline: 'Stuck in sandbox since ' + formatDate(t.created_at),
+      action:   'Open Onboarding →'
+    });
+  });
+
+  // 5. Live tenants without a primary location.
+  var hasPrimary = {}; (d.primaryLocs || []).forEach(function(l) { hasPrimary[l.tenant_id] = true; });
+  d.tenants.forEach(function(t) {
+    if (t.lifecycle_state !== 'live') return;
+    if (hasPrimary[t.id]) return;
+    items.push({
+      severity: 'warn',
+      tenantId: t.id,
+      tenant:   t.name,
+      headline: 'Live tenant with no primary location set',
+      action:   'Open Locations →'
+    });
+  });
+
+  // Rank: critical > warn > info. Cap total at 25.
+  var sevOrder = { critical: 0, warn: 1, info: 2 };
+  items.sort(function(a, b) { return sevOrder[a.severity] - sevOrder[b.severity]; });
+  return items.slice(0, 25);
+}
+
+function renderDashboardBody(d) {
+  var email = currentUserEmail || 'operator';
+  var welcome = 'You have ' + d.attn.length + ' item' + (d.attn.length === 1 ? '' : 's') + ' needing attention.';
+  // Update the subtitle in-place.
+  var sub = document.getElementById('welcomeMsg');
+  if (sub) sub.textContent = welcome;
+
+  var hero = '<div class="dash-hero">' +
+    '<div></div>' +
+    '<div class="dash-hero-quickactions">' +
+      '<button class="toolbar-btn" onclick="switchTab(\'clients\'); setTimeout(function(){var b=document.getElementById(\'newClientBtn\'); if(b) b.click();}, 50);">+ New Client</button>' +
+      '<button class="toolbar-btn secondary" onclick="switchTab(\'clients\')">All Clients</button>' +
+    '</div>' +
+  '</div>';
+
+  var stats = '<div class="dash-stats">' +
+    dashStat('Live clients',     d.liveTenants,    (d.sandboxTenants > 0 ? d.sandboxTenants + ' in sandbox' : 'all active')) +
+    dashStat('Active members',   d.members,        'across the fleet') +
+    dashStat('MRR',              '$' + d.mrr.toFixed(0), d.activeSubs + ' active subs') +
+    dashStat('Open support',     d.supportOpen,    d.supportOpen > 0 ? 'needs triage' : 'queue clear', d.supportOpen > 0 ? 'warn' : '') +
+    dashStat('Integration errors', d.intErrorCount, d.intErrorCount > 0 ? 'check Integrations' : 'all connected', d.intErrorCount > 0 ? 'err' : '') +
+    dashStat('Past-due subs',    d.pastDue,        d.pastDue > 0 ? 'billing action' : 'clean',             d.pastDue > 0 ? 'err' : '') +
+  '</div>';
+
+  var attnPanel = '<div class="dash-panel">' +
+    '<div class="dash-panel-head">' +
+      '<div class="dash-panel-title">Needs attention</div>' +
+      '<div class="dash-panel-meta">' + d.attn.length + ' items · ranked by severity</div>' +
+    '</div>' +
+    '<div class="dash-panel-body' + (d.attn.length === 0 ? ' empty' : '') + '">' +
+      (d.attn.length === 0
+        ? '<div class="dash-attn-empty"><strong>Everything looks clean.</strong><br/>No integration errors, no overdue billing, no expiring licenses.</div>'
+        : d.attn.map(renderAttentionRow).join(''))
+    + '</div>' +
+  '</div>';
+
+  var recentPanel = '<div class="dash-panel">' +
+    '<div class="dash-panel-head">' +
+      '<div class="dash-panel-title">Recent activity</div>' +
+      '<button class="dash-refresh" onclick="refreshDashboard()">Refresh</button>' +
+    '</div>' +
+    '<div class="dash-panel-body' + (d.recent.length === 0 ? ' empty' : '') + '">' +
+      (d.recent.length === 0
+        ? 'No audit entries yet.'
+        : d.recent.map(function(e) { return renderActivityRow(e, d.tenantsById); }).join(''))
+    + '</div>' +
+  '</div>';
+
+  return hero + stats +
+    '<div class="dash-col-wrap">' +
+      attnPanel +
+      recentPanel +
+    '</div>';
+}
+
+function dashStat(label, value, sub, kind) {
+  var valueClass = kind === 'err' ? ' err' : (kind === 'warn' ? ' warn' : '');
+  return '<div class="an-stat">' +
+    '<div class="an-stat-label">' + escHtml(label) + '</div>' +
+    '<div class="an-stat-value' + valueClass + '">' + escHtml(String(value)) + '</div>' +
+    '<div class="an-stat-sub">' + escHtml(sub) + '</div>' +
+  '</div>';
+}
+
+function renderAttentionRow(item) {
+  return '<div class="dash-attn-row sev-' + escAttr(item.severity) + '" onclick="openClientDetail(\'' + escAttr(item.tenantId) + '\')">' +
+    '<span class="dash-attn-sev">' + escHtml(item.severity) + '</span>' +
+    '<div class="dash-attn-body">' +
+      '<div class="dash-attn-headline">' + item.headline + '</div>' +
+      '<div class="dash-attn-tenant">' + escHtml(item.tenant) + '</div>' +
+    '</div>' +
+    '<span class="dash-attn-jump">' + escHtml(item.action) + '</span>' +
+  '</div>';
+}
+
+function renderActivityRow(e, tenantsById) {
+  var tenant = tenantsById[e.tenant_id];
+  var tenantLabel = tenant ? tenant.name : (e.tenant_id ? '(unknown)' : '');
+  var when = formatDateTime(e.created_at);
+  return '<div class="dash-activity-row">' +
+    '<span class="dash-activity-time">' + escHtml(when) + '</span>' +
+    '<div class="dash-activity-body">' +
+      '<div class="dash-activity-action">' + escHtml(e.action || '—') + '</div>' +
+      '<div class="dash-activity-tenant">' +
+        (tenantLabel ? escHtml(tenantLabel) + ' · ' : '') +
+        (e.actor_email ? escHtml(e.actor_email) : '') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function refreshDashboard() {
+  _dashboardLoaded = false;
+  loadDashboard();
 }
 
 // ── Top-level Analytics tab (fleet-wide) ──

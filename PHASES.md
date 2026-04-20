@@ -341,7 +341,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 11    | **Done (with carry-overs)** | No schema. Onboarding wizard layers over the existing detail modal as a view mode toggle: wizard button hides the tab strip and renders a 10-step sidebar (Basics, Brand, Terminology, Catalog, Workflow, Comms, Integrations, Compliance, Billing, Launch). Each step reuses its existing build function (zero duplicate form code); completion is derived dynamically from tenant row + async probes of related tables. Launch step aggregates a pre-flight checklist with Jump buttons for remaining work; Activate button (role-gated) moves sandbox → live with a structured Phase-10-shaped audit entry. Sandbox tenants get an inline "Onboard" button in the Clients table; newly created tenants auto-open in wizard mode post-save. See carry-over for QA-preview iframes and required-field validation. |
 | 12    | **Done (with carry-overs)** | Migration 020 creates `tenant_templates` (Pulse-owned starter-pack library) seeded with Blank + Wellness Clinic templates. config_snapshot JSONB holds `layers` (brand / terminology / workflow / compliance / features merged onto tenant row) and `seeds` (catalog rows + comms templates + operating regions + consents inserted with target tenant_id). Shared `applyTemplateToTenant(templateId, tenantId)` helper handles merge + seed insertion with per-row unique-violation skip so partial re-apply is safe. Top-level Templates tab lists available templates with Archive + Apply-to-tenant actions. Save-as-template dialog on the client detail header captures the source tenant's layers + seeds into a new template row. Template picker on the create-client form auto-applies after tenant creation and before the wizard opens, so operators get a seeded starting point in one flow. See carry-over for conflict UI and richer seed coverage. |
 | 13    | **Foundations done; view-as + real actions = carry-over** | No migration (support_requests table already shipped in 012). Top-level Support tab renders a cross-tenant queue with stat strip (open / in-review / resolved / closed), per-row status transitions (Start review / Resolve / Reopen / Close), and filters for status + tenant. Per-client Diagnostics tab (new DETAIL_TABS entry) shows a stat-card dashboard — integrations health, support queue depth, license expiry buckets, billing flags, member + staff counts — plus view-as launcher strip (opens `/t/{slug}/*.html` in a new tab for member / clinician / admin portals) and operator actions (welcome resend stub, workflow reset, local cache flush). Every action writes a Phase-10-shape audit entry. See carry-over for true view-as (auth-bypassed tenant-role render) + real delivery wiring for the stubs. |
-| 14–15 | Not started   | See sections above. |
+| 14    | **Foundations done; snapshot job + richer metrics = carry-over** | Migration 021 creates `analytics_snapshots(tenant_id?, snapshot_date, metric_group, values jsonb)` with RLS + composite unique (partial index for NULL tenant_id fleet rows). Shape ready for the daily snapshot job. Today everything renders via read-time aggregation against live tables. Top-level Analytics tab: 7 fleet stats (live clients, active members, consults 30d, MRR, churn risk, integration failures, open support) + top-8 module adoption bars. Per-client Analytics tab (new DETAIL_TABS entry) adds member count, 30-day consult / Rx / appointment / message volume, open support, subscription summary with renewal date, enabled-modules grouped by source, and a relative 30-day activity bar chart. Every dashboard degrades gracefully on per-query failure. See carry-over for the snapshot job, richer funnel metrics, and the Pulse charting extraction. |
+| 15    | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -935,6 +936,70 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   session open writes `support.view_as_started` and the close writes
   `support.view_as_ended`. Required for regulator "who looked at
   patient X's data when" questions.
+
+### Carry-over from Phase 14
+
+- **Daily snapshot job.** `analytics_snapshots` table shipped empty
+  via migration 021. The job that writes to it — per-tenant metric
+  aggregation run daily via pg_cron or a Supabase Edge Function —
+  is the top carry-over. Shape conventions to define when building:
+  metric_group='funnel' holds intake→consult→Rx→refill counts;
+  'sla' holds response-time compliance; 'billing' holds MRR + ARR
+  + plan mix; 'comms' holds messages sent / delivery failure rate;
+  'licenses' holds expiry buckets. Producer writes one row per
+  (tenant, day, group). Consumer (trend charts) reads a range of
+  dates for a given group.
+- **Funnel drop-off metrics.** Current per-tenant Analytics shows
+  30-day consult / Rx / appointment counts but NOT the conversion
+  funnel: intake started → submitted → consult scheduled → Rx
+  issued → first refill. Each step needs an event-level query that
+  requires a schema audit (consultations table has intake-type
+  rows, prescriptions has first-vs-refill distinction, etc.).
+  Scoped out of foundations because a wrong funnel metric is worse
+  than no funnel metric — let real ops use the activity counts and
+  ask "what do I need to see?" before building.
+- **SLA compliance percentages.** Phase 5's workflow.sla_hours
+  defines targets but nothing measures actual compliance. Add an
+  SLA panel to the per-tenant Analytics tab that computes:
+  % intake reviews within SLA, % refills approved within SLA,
+  % messages responded within SLA. Requires a clinician-action
+  timestamp column on the relevant tables (not audited; may
+  already exist on consultations / prescriptions). Pairs with the
+  snapshot job so historical compliance trends render as a line.
+- **Trend charts.** Today all numbers are current-snapshot. Once
+  the snapshot job populates analytics_snapshots, add 30-day trend
+  sparklines to every stat card ("members: 127 ↑ from 112 last
+  week"). Same horizontal-bar chart primitive extended to a tiny
+  line chart, or Use Pulse's existing admin.html `renderBarChart`
+  once extracted.
+- **Chart extraction from admin.html.** PHASES.md says "Charts use
+  admin.html's existing chart components (renderBarChart etc.)."
+  platform.html builds its own inline div-based bars today rather
+  than importing from admin.html. Extract the chart helpers into a
+  shared `charts.js` once admin.html gets its next refactor —
+  scheduled alongside the `tokens.css` extraction follow-up
+  (Phase 1 carry-over) since both live in admin.html's `<style>` +
+  `<script>` blocks.
+- **GMV tracking.** The fleet dashboard shows MRR (from plans) but
+  not GMV (gross merchandise value — sum of member-side purchases).
+  GMV requires a payments table that doesn't exist yet;
+  `tenant_subscriptions` tracks Pulse's revenue FROM tenants, not
+  member revenue THROUGH tenants. Add when the Phase 7 Stripe
+  webhook router lands and starts recording payment_intent events.
+- **Per-clinician load.** "Requests per clinician" is a known Phase
+  14 deliverable from the original plan. Requires joining
+  consultations / prescriptions / appointments to clinician user_id
+  then grouping. Works once the above per-event timestamps are
+  audited; skip until then.
+- **Export CSV / PDF.** Analytics data is typically shared with
+  clients or internal execs. Add "Export CSV" on each panel + a
+  "Share this dashboard" action that generates a static snapshot
+  URL. Defer until ops asks.
+- **Filtering fleet view by lifecycle / plan / vertical.** Right
+  now the fleet Analytics tab shows ALL tenants. Narrowing to
+  "only live tenants" or "only tenants on Pro plan" is a
+  reasonable next ask. Add dropdown filters to the top of the
+  fleet panel when the request surfaces.
 
 ### Carry-over from Phase 1
 

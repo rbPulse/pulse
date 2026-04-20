@@ -1299,6 +1299,7 @@ var DETAIL_TABS = [
   { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
   { key: 'billing',      label: 'Billing',       build: buildBillingTab                            },
   { key: 'audit',        label: 'Activity',      build: buildActivityTab                           },
+  { key: 'analytics',    label: 'Analytics',     build: buildTenantAnalyticsTab                    },
   { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab                        }
 ];
 
@@ -1685,6 +1686,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderActivityTab === 'function' && _activeDetailTab === 'audit') {
     afterRenderActivityTab(t);
+  }
+  if (typeof afterRenderTenantAnalyticsTab === 'function' && _activeDetailTab === 'analytics') {
+    afterRenderTenantAnalyticsTab(t);
   }
   if (typeof afterRenderDiagnosticsTab === 'function' && _activeDetailTab === 'diagnostics') {
     afterRenderDiagnosticsTab(t);
@@ -3096,6 +3100,142 @@ function diagFlushCache() {
   _modulesTabLoaded   = false;
   _billingTabLoaded   = false;
   showToast('Local caches flushed. Next tab load refetches from the DB.', 'success');
+}
+
+// ── Per-tenant Analytics tab ──
+// Read-time aggregation scoped to a single tenant. Parallel counts
+// + a few list fetches for the "enabled modules" and "recent
+// activity" panels. Same degraded-gracefully pattern as the fleet
+// tab — a failed query shows "—" rather than blocking the render.
+function buildTenantAnalyticsTab(t) {
+  return '<div id="tenantAnBody"><div class="an-loading">Loading analytics…</div></div>';
+}
+
+function afterRenderTenantAnalyticsTab(t) {
+  var wrap = document.getElementById('tenantAnBody');
+  if (!wrap) return;
+
+  var since30 = new Date(Date.now() - 30*86400000).toISOString();
+
+  function count(q) {
+    return q.then(function(r) { return r.count || 0; }).catch(function() { return null; });
+  }
+  function data(q) {
+    return q.then(function(r) { return r.data || []; }).catch(function() { return []; });
+  }
+
+  Promise.all([
+    count(db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'active')),
+    count(db.from('consultations').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).gte('created_at', since30)),
+    count(db.from('prescriptions').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).gte('created_at', since30)),
+    count(db.from('support_requests').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'open')),
+    count(db.from('appointments').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).gte('created_at', since30)),
+    count(db.from('messages').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).gte('created_at', since30)),
+    data(db.from('module_entitlements').select('module_key, enabled, source').eq('tenant_id', t.id).eq('enabled', true)),
+    data(db.from('tenant_subscriptions').select('plan_id, status, billing_cycle, current_period_end').eq('tenant_id', t.id).in('status', ['trialing','active','past_due','paused','incomplete']).limit(1)),
+    data(db.from('plans').select('id, name, monthly_price, annual_price'))
+  ]).then(function(results) {
+    if (_activeDetailTab !== 'analytics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+
+    wrap.innerHTML = renderTenantAnalyticsBody(t, {
+      members:      results[0],
+      consults30:   results[1],
+      rx30:         results[2],
+      supportOpen:  results[3],
+      appts30:      results[4],
+      messages30:   results[5],
+      entitlements: results[6],
+      sub:          (results[7][0] || null),
+      plans:        results[8]
+    });
+  });
+}
+
+function renderTenantAnalyticsBody(t, d) {
+  function fmt(n) { return n == null ? '\u2014' : String(n); }
+
+  // Subscription summary (if any active).
+  var plansById = {};
+  d.plans.forEach(function(p) { plansById[p.id] = p; });
+  var subStr = '—';
+  if (d.sub) {
+    var plan = plansById[d.sub.plan_id];
+    subStr = (plan ? plan.name : '?') + ' (' + d.sub.status + ', ' + d.sub.billing_cycle + ')';
+  }
+
+  var stats = '<div class="an-stats">' +
+    '<div class="an-stat"><div class="an-stat-label">Active members</div>' +
+      '<div class="an-stat-value">' + fmt(d.members) + '</div>' +
+      '<div class="an-stat-sub">patient_enrollments status=active</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Consults, 30d</div>' +
+      '<div class="an-stat-value">' + fmt(d.consults30) + '</div>' +
+      '<div class="an-stat-sub">new consultation records</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Rx issued, 30d</div>' +
+      '<div class="an-stat-value">' + fmt(d.rx30) + '</div>' +
+      '<div class="an-stat-sub">new prescriptions created</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Appointments, 30d</div>' +
+      '<div class="an-stat-value">' + fmt(d.appts30) + '</div>' +
+      '<div class="an-stat-sub">scheduled appointments</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Messages, 30d</div>' +
+      '<div class="an-stat-value">' + fmt(d.messages30) + '</div>' +
+      '<div class="an-stat-sub">async messaging volume</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Open support</div>' +
+      '<div class="an-stat-value' + (d.supportOpen > 0 ? ' warn' : '') + '">' + fmt(d.supportOpen) + '</div>' +
+      '<div class="an-stat-sub">unresolved requests</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Subscription</div>' +
+      '<div class="an-stat-value" style="font-size:14px;">' + escHtml(subStr) + '</div>' +
+      '<div class="an-stat-sub">' + (d.sub && d.sub.current_period_end ? 'renews ' + formatDate(d.sub.current_period_end) : 'no active sub') + '</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Enabled modules</div>' +
+      '<div class="an-stat-value">' + d.entitlements.length + '</div>' +
+      '<div class="an-stat-sub">module_entitlements enabled=true</div></div>' +
+  '</div>';
+
+  // Enabled module list by source.
+  var bySource = { plan: [], override: [], addon: [], trial: [] };
+  d.entitlements.forEach(function(e) { (bySource[e.source] || (bySource[e.source] = [])).push(e); });
+  var moduleGroups = ['plan','override','addon','trial']
+    .filter(function(src) { return bySource[src] && bySource[src].length > 0; })
+    .map(function(src) {
+      return '<div style="margin-bottom:8px;">' +
+        '<span class="comms-key" style="margin-right:8px;text-transform:uppercase;letter-spacing:0.1em;">' + escHtml(src) + '</span>' +
+        bySource[src].map(function(e) {
+          var mod = window.Modules && window.Modules.forKey(e.module_key);
+          return '<span class="mod-plan-chip" style="margin-right:4px;">' + escHtml(mod ? mod.label : e.module_key) + '</span>';
+        }).join('') +
+      '</div>';
+    }).join('');
+  if (!moduleGroups) moduleGroups = '<div class="catalog-empty" style="padding:12px;">No modules enabled for this tenant yet.</div>';
+
+  var modulesPanel = '<div class="an-panel">' +
+    '<div class="an-panel-title">Enabled modules</div>' +
+    '<div class="an-panel-sub">Grouped by source so it\u2019s obvious which modules come from the plan vs were manually granted.</div>' +
+    moduleGroups +
+  '</div>';
+
+  // Activity intensity "bars" — simple visual of 30d activity.
+  var maxActivity = Math.max(d.consults30 || 0, d.rx30 || 0, d.appts30 || 0, d.messages30 || 0, 1);
+  function activityBar(label, count, cls) {
+    var c = count == null ? 0 : count;
+    var pct = Math.round((c / maxActivity) * 100);
+    return '<div class="an-bar-row">' +
+      '<span class="an-bar-label">' + escHtml(label) + '</span>' +
+      '<div class="an-bar-track"><div class="an-bar-fill ' + cls + '" style="width:' + pct + '%;"></div></div>' +
+      '<span class="an-bar-value">' + fmt(count) + '</span>' +
+    '</div>';
+  }
+
+  var activityPanel = '<div class="an-panel">' +
+    '<div class="an-panel-title">30-day activity</div>' +
+    '<div class="an-panel-sub">Relative volume across core clinical + comms paths. Use as a quick "is this tenant active" check.</div>' +
+    '<div class="an-bars">' +
+      activityBar('Consultations', d.consults30, 'green') +
+      activityBar('Prescriptions', d.rx30, 'green') +
+      activityBar('Appointments', d.appts30, 'green') +
+      activityBar('Messages', d.messages30, 'green') +
+    '</div>' +
+  '</div>';
+
+  return stats + modulesPanel + activityPanel;
 }
 
 // ── Top-level Analytics tab (fleet-wide) ──

@@ -153,6 +153,43 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── ANALYTICS (fleet + per-client) ── */
+.an-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:22px;}
+.an-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);}
+.an-stat-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.an-stat-value{font-family:'Inter',sans-serif;font-size:26px;font-weight:600;color:var(--text);letter-spacing:-0.02em;font-variant-numeric:tabular-nums;}
+.an-stat-value.warn{color:var(--amber);}
+.an-stat-value.err{color:var(--red);}
+.an-stat-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;}
+.an-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
+.an-panel-title{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.an-panel-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+
+/* Horizontal bar chart (SVG-free — pure div-based so it reflows
+   cleanly with the grid around it). */
+.an-bars{display:flex;flex-direction:column;gap:8px;}
+.an-bar-row{display:grid;grid-template-columns:140px 1fr auto;gap:10px;align-items:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);}
+.an-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.an-bar-track{height:10px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-pill);overflow:hidden;position:relative;}
+.an-bar-fill{height:100%;background:var(--slate);border-radius:var(--radius-pill);transition:width .3s;}
+.an-bar-fill.green{background:var(--green);}
+.an-bar-fill.amber{background:var(--amber);}
+.an-bar-fill.red{background:var(--red);}
+.an-bar-value{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;white-space:nowrap;}
+
+/* Funnel — vertical steps with widths proportional to drop-off. */
+.an-funnel{display:flex;flex-direction:column;gap:6px;}
+.an-funnel-step{display:grid;grid-template-columns:160px 1fr auto;gap:10px;align-items:center;font-family:'Inter',sans-serif;font-size:12px;}
+.an-funnel-label{color:var(--text);font-weight:500;}
+.an-funnel-bar{height:28px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;position:relative;}
+.an-funnel-fill{height:100%;background:linear-gradient(90deg,var(--slate),var(--slate-tint));display:flex;align-items:center;padding:0 10px;font-size:11px;color:#fff;font-weight:500;}
+.an-funnel-value{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;white-space:nowrap;}
+.an-funnel-drop{font-family:'Inter',sans-serif;font-size:11px;color:var(--red);margin-top:-2px;margin-bottom:4px;padding-left:168px;font-variant-numeric:tabular-nums;}
+
+.an-refresh{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:5px 12px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;float:right;transition:background .15s;}
+.an-refresh:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+
 /* ── SUPPORT TOP-LEVEL TAB ── */
 .sup-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .sup-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
@@ -974,13 +1011,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-analytics">
         <div class="tab-header">
           <div class="tab-title">Analytics</div>
-          <div class="tab-subtitle">Cross-tenant funnels, SLAs, capacity.</div>
+          <div class="tab-subtitle">Fleet-wide metrics computed live against production tables. Per-tenant drill-down on each client\u2019s Analytics tab.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Platform analytics</div>
-          <div class="placeholder-body">Fleet dashboards plus per-tenant drill-downs (funnel drop-off, refill conversion, SLA performance, clinician load, payment failures, no-shows, inactivity). Daily snapshot job aggregates into analytics_snapshots.</div>
-          <div class="placeholder-phase">Phase 14</div>
-        </div>
+        <div id="analyticsTabBody"><div class="comp-loading">Loading analytics…</div></div>
       </div>
 
       <!-- SUPPORT -->
@@ -1137,6 +1170,7 @@ function switchTab(tabId) {
   if (tabId === 'audit'     && !_auditTabLoaded)     loadAuditTab();
   if (tabId === 'templates' && !_templatesTabLoaded) loadTemplatesTab();
   if (tabId === 'support'   && !_supportTabLoaded)   loadSupportTab();
+  if (tabId === 'analytics' && !_analyticsTabLoaded) loadAnalyticsTab();
 }
 
 function doSignOut() {
@@ -3062,6 +3096,148 @@ function diagFlushCache() {
   _modulesTabLoaded   = false;
   _billingTabLoaded   = false;
   showToast('Local caches flushed. Next tab load refetches from the DB.', 'success');
+}
+
+// ── Top-level Analytics tab (fleet-wide) ──
+// Read-time aggregation against the production tables. At Pulse's
+// scale (<50 tenants) this is fine; when the fleet grows, the
+// analytics_snapshots table (migration 021) becomes the target for
+// a daily snapshot job that replaces the live queries with
+// pre-aggregated reads.
+//
+// Cross-table queries run in parallel; each panel renders whatever
+// it can. Failed queries show a subdued "—" rather than blocking
+// the whole dashboard.
+var _analyticsTabLoaded = false;
+var _analyticsData = {};
+
+function loadAnalyticsTab() {
+  var wrap = document.getElementById('analyticsTabBody');
+  if (!wrap) return;
+  _analyticsTabLoaded = true;
+
+  var since30 = new Date(Date.now() - 30*86400000).toISOString();
+
+  function safe(q) {
+    return q.then(function(r) { return r; }).catch(function(e) { return { error: e, data: null, count: null }; });
+  }
+
+  Promise.all([
+    safe(db.from('tenants').select('id, lifecycle_state, name')),
+    safe(db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('status', 'active')),
+    safe(db.from('consultations').select('id', { count: 'exact', head: true }).gte('created_at', since30)),
+    safe(db.from('support_requests').select('id', { count: 'exact', head: true }).eq('status', 'open')),
+    safe(db.from('tenant_subscriptions').select('id, status, plan_id, billing_cycle, cancel_at_period_end')),
+    safe(db.from('tenant_integrations').select('status')),
+    safe(db.from('module_entitlements').select('module_key, enabled')),
+    safe(db.from('plans').select('id, name, monthly_price, annual_price'))
+  ]).then(function(results) {
+    if (_activeDetailTab) { /* no-op, we're on a top-level tab */ }
+
+    _analyticsData = {
+      tenants:      results[0].data || [],
+      members:      results[1].count || 0,
+      consults30:   results[2].count || 0,
+      supportOpen:  results[3].count || 0,
+      subs:         results[4].data || [],
+      integrations: results[5].data || [],
+      entitlements: results[6].data || [],
+      plans:        results[7].data || []
+    };
+    wrap.innerHTML = renderAnalyticsBody();
+  }).catch(function(err) {
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+function renderAnalyticsBody() {
+  var d = _analyticsData;
+  var liveTenants = d.tenants.filter(function(t) { return t.lifecycle_state === 'live'; }).length;
+  var sandboxTenants = d.tenants.filter(function(t) { return t.lifecycle_state === 'sandbox'; }).length;
+
+  var activeSubs = d.subs.filter(function(s) { return s.status === 'active' || s.status === 'trialing' || s.status === 'past_due'; });
+  var plansById = {};
+  d.plans.forEach(function(p) { plansById[p.id] = p; });
+
+  var mrr = 0;
+  activeSubs.forEach(function(s) {
+    var plan = plansById[s.plan_id];
+    if (!plan) return;
+    if (s.billing_cycle === 'annual' && plan.annual_price != null) mrr += Number(plan.annual_price) / 12;
+    else if (plan.monthly_price != null) mrr += Number(plan.monthly_price);
+  });
+
+  var churnRisk = d.subs.filter(function(s) {
+    return s.status === 'past_due' || s.cancel_at_period_end;
+  }).length;
+
+  var intsError = d.integrations.filter(function(i) { return i.status === 'error'; }).length;
+
+  // Module adoption — top N by tenant count.
+  var adoption = {};
+  d.entitlements.forEach(function(e) {
+    if (!e.enabled) return;
+    adoption[e.module_key] = (adoption[e.module_key] || 0) + 1;
+  });
+  var topModules = Object.keys(adoption)
+    .map(function(k) { return { key: k, count: adoption[k] }; })
+    .sort(function(a, b) { return b.count - a.count; })
+    .slice(0, 8);
+  var maxAdoption = topModules.length ? topModules[0].count : 1;
+
+  var stats = '<div class="an-stats">' +
+    '<div class="an-stat"><div class="an-stat-label">Live clients</div>' +
+      '<div class="an-stat-value">' + liveTenants + '</div>' +
+      '<div class="an-stat-sub">' + sandboxTenants + ' in sandbox</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Active members</div>' +
+      '<div class="an-stat-value">' + d.members + '</div>' +
+      '<div class="an-stat-sub">patient_enrollments status=active</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Consults, 30d</div>' +
+      '<div class="an-stat-value">' + d.consults30 + '</div>' +
+      '<div class="an-stat-sub">new consultation records</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">MRR</div>' +
+      '<div class="an-stat-value">$' + mrr.toFixed(0) + '</div>' +
+      '<div class="an-stat-sub">active + trialing + past-due</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Churn risk</div>' +
+      '<div class="an-stat-value' + (churnRisk > 0 ? ' warn' : '') + '">' + churnRisk + '</div>' +
+      '<div class="an-stat-sub">past-due or cancel-at-period-end</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Integration failures</div>' +
+      '<div class="an-stat-value' + (intsError > 0 ? ' err' : '') + '">' + intsError + '</div>' +
+      '<div class="an-stat-sub">connected → error state</div></div>' +
+    '<div class="an-stat"><div class="an-stat-label">Support open</div>' +
+      '<div class="an-stat-value' + (d.supportOpen > 0 ? ' warn' : '') + '">' + d.supportOpen + '</div>' +
+      '<div class="an-stat-sub">across all tenants</div></div>' +
+  '</div>';
+
+  var adoptionBars;
+  if (topModules.length === 0) {
+    adoptionBars = '<div class="catalog-empty" style="padding:16px;">No module entitlements yet.</div>';
+  } else {
+    adoptionBars = '<div class="an-bars">' + topModules.map(function(m) {
+      var mod = window.Modules && window.Modules.forKey(m.key);
+      var label = mod ? mod.label : m.key;
+      var pct = Math.round((m.count / maxAdoption) * 100);
+      return '<div class="an-bar-row">' +
+        '<span class="an-bar-label">' + escHtml(label) + '</span>' +
+        '<div class="an-bar-track"><div class="an-bar-fill" style="width:' + pct + '%;"></div></div>' +
+        '<span class="an-bar-value">' + m.count + ' tenant' + (m.count === 1 ? '' : 's') + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  var adoptionPanel = '<div class="an-panel">' +
+    '<button class="an-refresh" onclick="refreshAnalyticsTab()">Refresh</button>' +
+    '<div class="an-panel-title">Module adoption</div>' +
+    '<div class="an-panel-sub">Top enabled modules across the fleet. Zero-adoption modules are candidates for removal; 100% adoption modules are candidates for promotion into Core.</div>' +
+    adoptionBars +
+  '</div>';
+
+  return stats + adoptionPanel;
+}
+
+function refreshAnalyticsTab() {
+  _analyticsTabLoaded = false;
+  loadAnalyticsTab();
 }
 
 // ── Top-level Support tab (cross-tenant queue) ──

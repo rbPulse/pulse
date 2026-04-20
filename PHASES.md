@@ -328,5 +328,18 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | Phase | State         | Notes |
 |-------|---------------|-------|
 | 0     | **Done**      | Migrations 010–012 run; `tenant.js` wired into admin + portal; seed tenant "pulse" live. |
-| 1     | **In progress** | Shell live (`platform.html` with auth gate, slate accent, sidebar w/ all 10 section placeholders). Remaining: Clients directory, Create-tenant form, Tenant detail page, Lifecycle state controls, `tokens.css` extraction. |
+| 1     | **Done**      | Shell (auth gate, slate accent, 10-section sidebar), Clients directory (list + stats + filter), Create-client form (slug validation + initial admin wiring), Client detail modal (read-only + config layer status), Lifecycle state controls (role-gated + audit-logged), `tokens.css` created and wired into `platform.html`. |
 | 2–15  | Not started   | See sections above. |
+
+### Carry-over from Phase 1
+
+- `admin.html` and `portal.html` still define their own `:root` blocks
+  inline. They should `<link rel="stylesheet" href="tokens.css">` and
+  delete the duplicated tokens. Safe to do in the Phase 2 PRs that
+  refactor those portals for brand config, since those PRs already
+  visit each portal's `<head>`. Until then, duplicate definitions are
+  harmless — the portal's inline `:root` wins for any token defined in
+  both places, so nothing regresses.
+- "Plan" column on the Clients table is deferred to Phase 9 (when the
+  `plans` / `tenant_subscriptions` tables land) rather than carrying a
+  placeholder value that communicates nothing.

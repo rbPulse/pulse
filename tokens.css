@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Pulse — shared design tokens
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Single source of truth for the cream/beige visual system shared across
+ * every portal: operator (platform.html), admin, member, clinician.
+ *
+ * Portals should <link rel="stylesheet" href="tokens.css"> in their <head>
+ * BEFORE their inline <style> block, so portal-specific overrides (accent
+ * aliases, legacy aliases still referenced by inline scripts) can cleanly
+ * override any token defined here just by re-declaring it in the portal's
+ * own :root.
+ *
+ * Extraction cadence: this file ships with platform.html (Phase 1). The
+ * downstream portals still carry their own :root blocks with duplicate
+ * definitions — they migrate to load this file over the Phase 2 PRs that
+ * touch them anyway (brand refactor). Having duplicate definitions
+ * temporarily is fine because the portal's own :root wins.
+ *
+ * What belongs here:
+ *   - Surfaces (bg, card, border)
+ *   - Text hierarchy
+ *   - Semantic palette (green / amber / blue / red / slate)
+ *   - Shadow stack
+ *   - Radius scale
+ *
+ * What DOESN'T belong here:
+ *   - Accent aliases (--primary, --accent). Each portal picks its own
+ *     accent from the semantic palette — admin uses amber, member uses
+ *     green, operator uses slate. Portals define those aliases locally.
+ *   - Portal-specific overrides.
+ *   - Component styles. Keep this file to raw design tokens; component
+ *     CSS stays with the portal that owns it until we have enough reuse
+ *     to justify extracting components too.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Surfaces ── */
+  --bg:            #F7F5EF;
+  --bg2:           #F3F0E8;
+  --card:          #FBFAF6;
+  --card2:         #F5F1E8;
+
+  /* ── Borders ── */
+  --border:        rgba(20,20,20,0.08);
+  --border-strong: rgba(20,20,20,0.14);
+
+  /* ── Text hierarchy ── */
+  --text:          #111111;
+  --text2:         #4a4e4a;
+  --text3:         #6B6F6B;
+  --text4:         #8A8F8A;
+
+  /* ── Semantic palette ──
+   * Each color has a solid value + 10% tint + ~25% border variant so pills
+   * and soft backgrounds stay consistent across portals. Keep these in
+   * sync — if you touch the hex, touch the tint and border too.
+   */
+
+  /* Green — member portal accent; success states everywhere else. */
+  --green:         #2F6F55;
+  --green-tint:    rgba(47,111,85,0.10);
+  --green-border:  rgba(47,111,85,0.25);
+
+  /* Amber — admin portal accent; warning/paused states everywhere else. */
+  --amber:         #92710a;
+  --amber-tint:    rgba(234,179,8,0.10);
+  --amber-border:  rgba(234,179,8,0.30);
+
+  /* Blue — clinician portal accent; neutral info states everywhere else. */
+  --blue:          #3b6fc8;
+  --blue-tint:     rgba(59,111,200,0.10);
+  --blue-border:   rgba(59,111,200,0.25);
+
+  /* Red — error/destructive across all portals. */
+  --red:           #c14a4a;
+  --red-tint:      rgba(193,74,74,0.08);
+  --red-border:    rgba(193,74,74,0.25);
+
+  /* Slate — operator portal accent. Deliberately distinct from the three
+   * downstream accents so Pulse internal users never confuse the platform
+   * surface with a tenant-side admin surface. */
+  --slate:         #3a4a5c;
+  --slate-tint:    rgba(58,74,92,0.10);
+  --slate-border:  rgba(58,74,92,0.25);
+
+  /* ── Shadow stack ── */
+  --shadow:        0 2px 8px rgba(20,20,20,0.04), 0 1px 2px rgba(20,20,20,0.02);
+  --shadow-lg:     0 12px 32px rgba(20,20,20,0.12), 0 2px 8px rgba(20,20,20,0.04);
+
+  /* ── Radius scale ── */
+  --radius:        14px;
+  --radius-sm:     10px;
+  --radius-btn:    10px;
+  --radius-pill:   999px;
+}

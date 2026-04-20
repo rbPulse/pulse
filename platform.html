@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="tokens.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script src="terminology.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -146,6 +147,30 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-url-input:focus{border-color:var(--slate);}
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
+
+/* ── TERMINOLOGY TAB ── */
+.term-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:4px;overflow:hidden;}
+.term-preview-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:14px 20px 10px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:space-between;}
+.term-preview-label-note{font-weight:500;letter-spacing:0.02em;text-transform:none;color:var(--text3);}
+.term-preview-body{padding:18px 22px;display:flex;flex-direction:column;gap:10px;}
+.term-preview-line{font-family:'Inter',sans-serif;font-size:13px;color:var(--text);line-height:1.6;}
+.term-preview-line .term-preview-slot{background:var(--slate-tint);border-bottom:1px dashed var(--slate-border);padding:0 4px;border-radius:4px;color:var(--slate);font-weight:600;}
+
+.term-group{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
+.term-group + .term-group{margin-top:14px;}
+.term-group-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.term-group-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.term-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
+.term-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.term-field-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.term-field label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text2);text-transform:uppercase;}
+.term-field-default{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
+.term-field-default.overridden{color:var(--slate);font-style:normal;font-weight:600;}
+.term-field input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.term-field input:focus{border-color:var(--slate);}
+.term-field input::placeholder{color:var(--text4);}
+.term-field-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
+@media(max-width:800px){ .term-grid{grid-template-columns:1fr;} }
 
 /* ── BRAND PREVIEW ── */
 .brand-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;box-shadow:var(--shadow);margin-bottom:4px;}
@@ -789,7 +814,7 @@ var CONFIG_LAYERS = [
 var DETAIL_TABS = [
   { key: 'overview',     label: 'Overview',      build: buildOverviewTab                           },
   { key: 'brand',        label: 'Brand',         build: buildBrandTab                              },
-  { key: 'terminology',  label: 'Terminology',   phase: 'Phase 3', desc: 'Configure per-tenant copy: member vs patient, protocol vs plan, clinician vs provider, and ~30 other patient-facing keys.' },
+  { key: 'terminology',  label: 'Terminology',   build: buildTerminologyTab                        },
   { key: 'catalog',      label: 'Catalog',       phase: 'Phase 4', desc: 'Per-tenant product catalog, dosing options, pricing, subscription cadence, package bundles.' },
   { key: 'workflow',     label: 'Workflow',      phase: 'Phase 5', desc: 'Intake rules, refill SLAs, escalation rules, consult policies, auto-assign strategy.' },
   { key: 'comms',        label: 'Communications', phase: 'Phase 6', desc: 'Email/SMS/push templates, sender identity, reminder cadence.' },
@@ -853,9 +878,13 @@ function renderDetailTabPanels() {
   }).join('');
 
   // Post-render hooks for tabs that need runtime wiring (event listeners,
-  // focus, etc.). Overview + placeholders need none; Brand wires its form.
+  // focus, etc.). Overview + placeholders need none; Brand + Terminology
+  // wire their forms.
   if (typeof afterRenderBrandTab === 'function' && _activeDetailTab === 'brand') {
     afterRenderBrandTab(t);
+  }
+  if (typeof afterRenderTerminologyTab === 'function' && _activeDetailTab === 'terminology') {
+    afterRenderTerminologyTab(t);
   }
 }
 
@@ -1373,6 +1402,229 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Terminology tab ──
+// Reads Terminology.KEYS / Terminology.GROUPS (loaded from terminology.js)
+// to render one input per renameable term, grouped into sections. Each
+// input shows the default inline until the operator types something; the
+// "Default" hint flips to a "Overridden" badge so it's obvious at a
+// glance which terms differ from the bundled vocabulary.
+//
+// Stored shape mirrors the catalog: a flat JSONB object
+// { member: "Patient", members: "Patients", ... }. Only non-empty
+// overrides are persisted — clearing a field removes the override so
+// the default comes back. This keeps the JSONB small and the audit
+// diff focused on meaningful changes.
+//
+// Live preview shows four example sentences composed from the current
+// form values so operators can see copy in context before saving.
+var _TERM_PREVIEW_LINES = [
+  'Welcome back, {member}. You have 2 {doses} scheduled this week.',
+  '{clinician} reviewed your latest {consultation} and approved your {prescription}.',
+  'Your {protocol} is ready. Tap "Start" to begin your first {dose}.',
+  'Need a {refill}? Message your {clinician} — they usually respond within 24 hours.'
+];
+
+function buildTerminologyTab(t) {
+  if (!window.Terminology) {
+    return '<div class="detail-tab-placeholder">' +
+      '<div class="detail-tab-placeholder-title">terminology.js not loaded</div>' +
+      '<div class="detail-tab-placeholder-body">Reload the page — the terminology helper is missing from this session.</div>' +
+    '</div>';
+  }
+
+  var overrides = t.terminology || {};
+  var groups    = window.Terminology.GROUPS;
+  var keys      = window.Terminology.KEYS;
+
+  var out = '<div class="brand-form">';
+
+  // ── Live preview ──
+  out += '<div class="term-preview" id="termPreview">' +
+    '<div class="term-preview-label">' +
+      '<span>Live preview</span>' +
+      '<span class="term-preview-label-note">Updates as you type. Click Save Terminology to persist.</span>' +
+    '</div>' +
+    '<div class="term-preview-body" id="termPreviewBody">' +
+      _TERM_PREVIEW_LINES.map(function(line, idx) {
+        return '<div class="term-preview-line" id="termPreviewLine-' + idx + '"></div>';
+      }).join('') +
+    '</div>' +
+  '</div>';
+
+  // ── One section per group ──
+  groups.forEach(function(group) {
+    var groupKeys = keys.filter(function(k) { return k.group === group.key; });
+    if (groupKeys.length === 0) return;
+    out += '<div class="term-group">' +
+      '<div class="term-group-title">' + escHtml(group.label) + '</div>' +
+      '<div class="term-group-sub">' + escHtml(group.description) + '</div>' +
+      '<div class="term-grid">' +
+        groupKeys.map(function(entry) {
+          var val = typeof overrides[entry.key] === 'string' ? overrides[entry.key] : '';
+          var isOverridden = val && val !== entry.default;
+          return '<div class="term-field">' +
+            '<div class="term-field-row">' +
+              '<label for="term-' + escAttr(entry.key) + '">' + escHtml(entry.key) + '</label>' +
+              '<span class="term-field-default' + (isOverridden ? ' overridden' : '') +
+                '" id="term-badge-' + escAttr(entry.key) + '">' +
+                (isOverridden ? 'Overridden' : 'Default: ' + escHtml(entry.default)) +
+              '</span>' +
+            '</div>' +
+            '<input type="text" id="term-' + escAttr(entry.key) +
+              '" value="' + escAttr(val) + '" placeholder="' + escAttr(entry.default) +
+              '" data-term-key="' + escAttr(entry.key) +
+              '" data-term-default="' + escAttr(entry.default) + '"/>' +
+            '<div class="term-field-help">' + escHtml(entry.description) + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  out += '<div id="termError" class="form-err" style="display:none;"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
+      '<button class="form-btn primary" id="termSaveBtn" onclick="saveTerminology()">Save Terminology</button>' +
+    '</div>';
+
+  out += '</div>';
+  return out;
+}
+
+function afterRenderTerminologyTab(t) {
+  if (!window.Terminology) return;
+
+  // Attach a single delegated input listener on the tab panel. Each
+  // input carries data-term-key so we know which entry mutated without
+  // wiring N listeners individually.
+  var panel = document.getElementById('detailPanel-terminology');
+  if (!panel) return;
+
+  panel.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el || !el.getAttribute || !el.getAttribute('data-term-key')) return;
+    var key    = el.getAttribute('data-term-key');
+    var def    = el.getAttribute('data-term-default');
+    var value  = (el.value || '').trim();
+    var badge  = document.getElementById('term-badge-' + key);
+    if (badge) {
+      if (value && value !== def) {
+        badge.className = 'term-field-default overridden';
+        badge.textContent = 'Overridden';
+      } else {
+        badge.className = 'term-field-default';
+        badge.textContent = 'Default: ' + def;
+      }
+    }
+    updateTerminologyPreview();
+  });
+
+  updateTerminologyPreview();
+}
+
+// Rewrites the preview lines using whatever's currently in the form
+// fields (or defaults for keys the operator hasn't touched). Called on
+// initial render and after each keystroke.
+function updateTerminologyPreview() {
+  if (!window.Terminology) return;
+  var keys = window.Terminology.KEYS;
+  var current = {};
+  keys.forEach(function(entry) {
+    var el = document.getElementById('term-' + entry.key);
+    var v = el ? (el.value || '').trim() : '';
+    current[entry.key] = v || entry.default;
+  });
+
+  _TERM_PREVIEW_LINES.forEach(function(template, idx) {
+    var rendered = template.replace(/\{([a-z_]+)\}/g, function(_, key) {
+      var val = current[key] != null ? current[key] : key;
+      return '<span class="term-preview-slot">' + escHtml(val.toLowerCase()) + '</span>';
+    });
+    var lineEl = document.getElementById('termPreviewLine-' + idx);
+    if (lineEl) lineEl.innerHTML = rendered;
+  });
+}
+
+function setTermError(msg) {
+  var el = document.getElementById('termError');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveTerminology() {
+  var t = _activeDetailTenant;
+  if (!t || !window.Terminology) return;
+
+  setTermError('');
+
+  // Only persist overrides — leave keys blank if the value matches the
+  // default (or is empty). Keeps the JSONB small and the audit diff
+  // semantic: "they changed 3 terms" instead of "they saved 30 terms,
+  // 27 of which were the defaults written back verbatim".
+  var next = {};
+  window.Terminology.KEYS.forEach(function(entry) {
+    var el = document.getElementById('term-' + entry.key);
+    if (!el) return;
+    var v = (el.value || '').trim();
+    if (v && v !== entry.default) next[entry.key] = v;
+  });
+
+  var prev = t.terminology || {};
+  var diff = terminologyDiff(prev, next);
+  var btn = document.getElementById('termSaveBtn');
+  btn.disabled = true;
+
+  db.from('tenants').update({ terminology: next }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      if (Object.keys(diff).length === 0) return;
+      return db.from('audit_logs').insert({
+        action: 'tenant.terminology_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify(diff)
+      }).then(function(ar) {
+        if (ar.error) console.warn('[platform] terminology audit write failed', ar.error);
+      });
+    })
+    .then(function() {
+      btn.disabled = false;
+      t.terminology = next;
+      showToast('Terminology saved.', 'success');
+      // Re-init the shared helper so if anything else on this page
+      // reads Terminology.t() (future carry-over), it sees the new
+      // values without a reload.
+      if (window.Terminology && window.Tenant) {
+        window.Tenant.terminology = next;
+        window.Terminology.reset();
+        window.Terminology.init();
+      }
+      loadClients();
+      renderDetailTabPanels();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[platform] terminology save failed', err);
+      setTermError((err && err.message) || 'Save failed.');
+    });
+}
+
+function terminologyDiff(prev, next) {
+  var diff = {};
+  var allKeys = {};
+  Object.keys(prev || {}).forEach(function(k) { allKeys[k] = true; });
+  Object.keys(next || {}).forEach(function(k) { allKeys[k] = true; });
+  Object.keys(allKeys).forEach(function(k) {
+    var a = prev[k] || '';
+    var b = next[k] || '';
+    if (a !== b) diff[k] = { from: a, to: b };
+  });
+  return diff;
 }
 
 // Produce a { key: { from, to } } diff of the fields that actually

@@ -671,12 +671,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .toast.error{border-color:var(--red-border);color:var(--red);}
 .toast.warn{border-color:var(--amber-border);color:var(--amber);}
 
-/* ── STATUS PILLS ── */
-.status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
+/* ── PILL PRIMITIVES ──
+   Shared base class used by every status/state pill in the portal.
+   Add alongside a semantic modifier:
+     <span class="pill pill--live">live</span>
+     <span class="pill pill--warn">past due</span>
+     <span class="pill pill--err">error</span>
+
+   Migration note: legacy classes (.status-pill, .int-status-pill,
+   .sup-row-status, .bill-sub-status-pill) now add `.pill` alongside
+   their original class for base styling; their own definitions keep
+   ONLY the color variant overrides. Chip / badge variants (smaller,
+   different weight) stay as their own classes for now — this is
+   the minimum base-dedup, not a full primitives pass. */
+.pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;white-space:nowrap;}
+.pill--muted{color:var(--text3);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
+.pill--live, .pill--green{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);}
+.pill--warn, .pill--amber{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.pill--err,  .pill--red{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+.pill--info, .pill--slate{color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);}
+.pill--blue{color:var(--blue);background:var(--blue-tint);border:1px solid var(--blue-border);}
+
+/* ── STATUS PILLS (legacy classes; base comes from .pill) ── */
 .status-pill.sandbox{color:var(--text3);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
 .status-pill.live{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);}
 .status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
 .status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+/* `.status-pill` base retained so existing render sites that don't
+   add `.pill` still look correct until they're migrated. */
+.status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
 
 /* ── HEADER QUICK-ACTIONS (detail modal) ── */
 .detail-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}

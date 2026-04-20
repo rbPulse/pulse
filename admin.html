@@ -704,11 +704,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <div class="cc-empty">Loading...</div>
           </div>
         </div>
-
-        <!-- Hidden: Overdue section kept for loadOverdueReviews compatibility -->
-        <div id="overdueSection" style="display:none;">
-          <tbody id="overdueBody"></tbody>
-        </div>
       </div>
 
       <!-- USERS TAB -->
@@ -5119,65 +5114,6 @@ function renderEventVolume() {
   }).catch(function() { el.innerHTML = '<div class="cc-empty">Failed to load event volume.</div>'; });
 }
 
-async function loadOverdueReviews() {
-  try {
-    var cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    // Get pending consultations older than 24h
-    var r = await db.from('consultations')
-      .select('id, user_id, assigned_clinician_id, created_at')
-      .eq('review_status', 'pending_review')
-      .lt('created_at', cutoff);
-
-    if (!r.data || r.data.length === 0) {
-      document.getElementById('statOverdue').textContent = '0';
-      document.getElementById('overdueSection').style.display = 'none';
-      return;
-    }
-
-    // For each, check if clinician has sent any messages
-    var overdueList = [];
-    for (var i = 0; i < r.data.length; i++) {
-      var c = r.data[i];
-      var msgCheck = await db.from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('thread_id', c.user_id)
-        .eq('sender_role', 'clinician');
-
-      if (!msgCheck.count || msgCheck.count === 0) {
-        overdueList.push(c);
-      }
-    }
-
-    document.getElementById('statOverdue').textContent = overdueList.length;
-
-    if (overdueList.length === 0) {
-      document.getElementById('overdueSection').style.display = 'none';
-      return;
-    }
-
-    document.getElementById('overdueSection').style.display = 'block';
-
-    // Resolve names from profileCache (already loaded)
-    var tbody = document.getElementById('overdueBody');
-    tbody.innerHTML = overdueList.map(function(c) {
-      var patientName = profileName(c.user_id);
-      var clinicianName = profileName(c.assigned_clinician_id);
-      var submitted = c.created_at ? new Date(c.created_at).toLocaleString() : '--';
-      var hoursAgo = Math.round((Date.now() - new Date(c.created_at).getTime()) / 3600000);
-      return '<tr>' +
-        '<td style="color:var(--text);font-weight:500;">' + escHtml(patientName) + '</td>' +
-        '<td>' + escHtml(clinicianName) + '</td>' +
-        '<td>' + submitted + '</td>' +
-        '<td style="color:var(--red);font-weight:600;">' + hoursAgo + 'h</td>' +
-        '</tr>';
-    }).join('');
-  } catch(e) {
-    console.warn('[Pulse] overdue reviews check failed:', e);
-    document.getElementById('statOverdue').textContent = '0';
-  }
-}
-
 // ── Update initAdmin to load all phases ──
 var _origInitAdmin = initAdmin;
 initAdmin = function(user, profile) {
@@ -5188,7 +5124,6 @@ initAdmin = function(user, profile) {
   cacheProfiles().then(function() {
     loadAppointments();
     loadMessages();
-    loadOverdueReviews();
   });
   loadAuditLogs();
   loadConfigure();

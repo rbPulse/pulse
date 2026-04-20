@@ -1,28 +1,46 @@
-# Pulse Platform — Architecture
+# CommandOS — Architecture
 
-Living doc for the multi-tenant platform built on top of Pulse. Every
+Living doc for the multi-tenant clinical-operations platform. Every
 downstream decision should be consistent with what's below. If reality
 diverges from this doc, update the doc, not reality.
 
+## Naming
+
+- **CommandOS** is the platform — the global control plane. Authored
+  by Pulse internal ops; manages every tenant on the system.
+- **Pulse** is tenant #1. It runs on CommandOS the same way any future
+  tenant would. Pulse is not special. No root URL privileges, no
+  schema exceptions, no code paths that check for `slug === 'pulse'`
+  beyond the transition fallback in `tenant.js`.
+
+Do not refer to CommandOS as "Pulse" anywhere in product copy, URLs,
+code comments, docs, or conversation. "Platform" is acceptable as a
+role qualifier (`platform_role`, `platform_admin`) because it's a
+neutral scoping term; the product name is CommandOS.
+
 ## Purpose
 
-Pulse is becoming a multi-tenant clinical operations platform. A single
-"platform portal" (`platform.html`) lets the Pulse internal team
-provision and manage independent clinic tenants. Each tenant runs its
-own configured instance of the downstream portals:
+CommandOS lets a platform operator provision and manage independent
+clinic tenants from a single control plane. Each tenant runs its own
+configured instance of two downstream portals:
 
-- `admin.html` — clinic admin portal
-- `portal.html` — both the member/patient portal AND the clinician portal,
-  rendered from the same file with the UI switched by a body class at
-  boot: `body.member-mode` for end-users, `body.clinician-mode` for
-  staff with a `clinician` or `admin` profile role. Same URL, same
-  file, different render path. When a new downstream portal is needed
-  ("a family-member view", "an ops dashboard"), the question is always
-  "mode inside portal.html, or new file?" — inline inside portal.html
-  unless the two experiences diverge enough that they'd share very
-  little code.
+- `admin.html` — clinic admin portal. One per tenant. Authors
+  tenant-owned configuration (brand, terminology, catalog, workflow,
+  communications, compliance, tenant-side integrations config) and
+  handles daily operations (users, patients, consults, messages,
+  queues).
+- `portal.html` — both the member/patient portal AND the clinician
+  portal, rendered from the same file with the UI switched by a body
+  class at boot: `body.member-mode` for end-users, `body.clinician-mode`
+  for staff with a `clinician` or `admin` profile role. Same URL,
+  same file, different render path. When a new downstream portal is
+  needed ("a family-member view", "an ops dashboard"), the question
+  is always "mode inside portal.html, or new file?" — inline inside
+  portal.html unless the two experiences diverge enough that they'd
+  share very little code.
 
-Pulse itself is the pilot tenant. New clients follow the same pattern.
+The three portals above run PER TENANT. CommandOS itself runs ONCE
+and is NOT tenant-scoped — it sees every tenant.
 
 ## Core decisions
 
@@ -42,49 +60,85 @@ Why not schema-per-tenant or database-per-tenant:
 
 ### 2. Tenant resolution: path-based
 
-URL pattern for client portals: `/t/{slug}/{portal}.html` (e.g.
-`/t/acme/admin.html`). A small bootstrap (`tenant.js`) on every
-downstream portal:
+URL pattern for tenant portals: `/t/{slug}/{portal-path}` (e.g.
+`/t/acme/admin/`, `/t/pulse/portal/`). A small bootstrap (`tenant.js`)
+on every downstream portal:
 
 1. Reads the slug from `window.location.pathname`.
 2. Looks up the tenant record (id + config snapshot).
 3. Exposes a global `window.Tenant` object with config for the rest
    of the page to consume.
 4. When no `/t/{slug}/` prefix is present, falls back to the Pulse
-   tenant so root-path URLs keep working.
+   tenant — transition fallback so legacy bookmarks still resolve
+   while R2c migration is in flight. Remove the fallback in R2f once
+   the root no longer serves tenant content.
 
-**Pulse URL move is deferred.** The architectural goal — "Pulse is
-not special" — is honoured for everything that matters: tenant_id
-scoping, RLS, JSONB config, multi-tenant auth. The only remaining
-Pulse-specific thing is its URL living at root (`/admin.html`,
-`/portal.html`) instead of `/t/pulse/*`.
+### 3. Target URL structure
 
-The physical URL move is deferred because GitHub Pages (current host)
-doesn't support server-side redirects, so a clean move requires
-either file duplication or a CI build step. Neither is worth the
-cost right now: `tenant.js` already abstracts URL shape from portal
-code, so nothing downstream cares. We revisit when either condition
-fires:
+```
+/                     Universal root router.
+                      Checks the Supabase session, dispatches by
+                      profile: platform_role → /commandos/,
+                      tenant staff → /t/{slug}/admin/, patient →
+                      /t/{slug}/portal/. Shows a minimal sign-in
+                      form if no session. No tenant branding. No
+                      marketing. ~10KB target.
 
-- Pulse moves off GitHub Pages to hosting with redirect support
-  (Vercel, Netlify, Cloudflare Pages, a proper web server).
-- Tenant #2 is onboarded and we build `/t/{slug}/*` routing for
-  real — at which point folding Pulse into the same scheme is
-  incremental.
+/commandos/           CommandOS — the platform control plane.
+                      Gated by profiles.platform_role IS NOT NULL.
+                      NOT tenant-scoped; sees every tenant.
 
-Files that stay at root (not tenant-scoped, never moving):
+/t/{slug}/admin/      Tenant admin portal — authors tenant-owned
+                      configuration + handles daily operations for
+                      this specific tenant. Same code, different
+                      tenant context per slug.
 
-- `platform.html` — cross-tenant operator portal. Gated by
-  `profiles.platform_role IS NOT NULL`.
-- `pulse-client.html` — Pulse's marketing/site page. Public.
-- `index.html` — landing / login.
-- Shared assets (`tokens.css`, `tenant.js`, images).
+/t/{slug}/portal/     Tenant member/clinician portal. Dual-mode
+                      render via body.member-mode /
+                      body.clinician-mode based on the
+                      authenticated user's profile role.
 
-Subdomain routing (`acme.pulse.clinic`) is explicitly deferred. DNS
+/t/{slug}/            Optional tenant landing / marketing page.
+                      Serves pre-auth traffic ("customers looking
+                      at Pulse"). Contains the tenant's sign-up
+                      CTA. Per-tenant; each tenant brings their
+                      own content or hosts externally and points
+                      DNS at their own domain.
+```
+
+Pulse has no URL privileges. Its admin portal lives at
+`/t/pulse/admin/`. Its marketing lives at `/t/pulse/`. Other tenants
+use the same shape with their own slug.
+
+Subdomain routing (`acme.commandos.app`) is explicitly deferred. DNS
 and SSL overhead with no functional gain over path-based. Revisit if
-a client contractually demands a vanity domain.
+a client contractually demands a vanity domain AND tenant count
+crosses ~20 (the point at which path collisions between tenants
+become a design concern).
 
-### 3. Config storage: JSONB on tenant row
+### 4. Files at repo root (current, transitional)
+
+Root should eventually hold only the universal router + shared
+assets. Today it contains the following transitional files:
+
+- `commandos/index.html` — CommandOS. **Final location.**
+- `platform.html` — redirect stub pointing at `/commandos/`.
+  Removed in R2f.
+- `admin.html` — Pulse's admin portal at root. Moves to
+  `/t/pulse/admin/` in R2c.
+- `portal.html` — Pulse's member/clinician portal at root. Moves to
+  `/t/pulse/portal/` in R2c.
+- `consultation.html`, `checkout.html`, `quiz.html` — Pulse's
+  member-journey flows. Move to `/t/pulse/...` in R2c.
+- `index.html` — Pulse's marketing + sign-in. Splits in R2d:
+  sign-in becomes the universal router at `/`; marketing moves to
+  `/t/pulse/`.
+- Shared assets (`tokens.css`, `tenant.js`, `terminology.js`,
+  `workflow.js`, `messaging.js`, `integrations.js`, `compliance.js`,
+  `modules.js`) — these stay at root; they're imported from every
+  portal regardless of path depth via relative `../` references.
+
+### 5. Config storage: JSONB on tenant row
 
 Each tenant gets one row in `tenants` with config organised into
 typed JSONB columns:
@@ -110,7 +164,7 @@ High-cardinality per-tenant data that isn't config (catalog items,
 templates, clinician rosters) lives in separate tables, all scoped by
 `tenant_id`.
 
-### 4. Lifecycle states
+### 6. Lifecycle states
 
 Every tenant has a `lifecycle_state`:
 
@@ -126,7 +180,7 @@ State transitions are audit-logged and role-gated (only
 `platform_admin` and `platform_super_admin` can move to `live` or
 `suspended`).
 
-### 5. Auth + membership model
+### 7. Auth + membership model
 
 `profiles` remains a global per-user record (identity, name, avatar,
 auth metadata). It is NOT tenant-scoped — a single human with one
@@ -196,7 +250,7 @@ superseded by this model. Phase 0's migration will backfill them:
 The old columns are kept for one release as a safety net, then
 removed in Phase 1 cleanup.
 
-### 6. RLS policy patterns
+### 8. RLS policy patterns
 
 Two canonical templates depending on table type.
 
@@ -315,16 +369,18 @@ A full database dump is taken before running 011. Rollback = restore
 the dump. This is the only phase where a full restore is the
 disaster-recovery plan; every later phase is forward-fixable.
 
-## Platform portal specifics
+## CommandOS specifics
 
-`platform.html` at repo root. Lives outside the `/t/{slug}/` path
-tree. Access gated by `profiles.platform_role IS NOT NULL`.
+`commandos/index.html` served from `/commandos/`. Lives outside the
+`/t/{slug}/` path tree. Access gated by `profiles.platform_role IS
+NOT NULL`. Never tenant-scoped; never renders a single tenant's
+config as if it were its own.
 
-Design system: reuses admin.html's cream/beige theme, card layout,
-`admin-table` + sortable headers, status pills, sidebar nav. Accent
-colour is **slate** (`#3a4a5c`) — visually distinct from admin's
-amber so internal users never confuse the two surfaces. A dedicated
-"PLATFORM" role badge uses the slate accent.
+Design system: cream/beige theme shared with the tenant portals via
+`tokens.css`. Accent colour is **slate** (`#3a4a5c`) — visually
+distinct from the tenant admin portal's amber so operators never
+confuse the two surfaces. A "CommandOS" role badge uses the slate
+accent.
 
 A shared `tokens.css` (extracted from admin.html in Phase 1) will
 hold the common design tokens. Operator portal + the three downstream

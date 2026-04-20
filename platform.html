@@ -153,6 +153,38 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── INTEGRATIONS TOP-LEVEL TAB ── */
+.intop-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.intop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px;}
+.intop-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;box-shadow:var(--shadow);}
+.intop-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+.intop-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);}
+.intop-card-category{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);background:var(--card2);padding:3px 8px;border-radius:var(--radius-pill);border:1px solid var(--border);}
+.intop-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
+.intop-card-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-family:'Inter',sans-serif;font-size:12px;border-bottom:1px solid var(--border);}
+.intop-card-row:last-child{border-bottom:none;}
+.intop-card-row-label{color:var(--text3);letter-spacing:0.02em;}
+.intop-card-row-value{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;}
+.intop-card-row-value.green{color:var(--green);}
+.intop-card-row-value.warn{color:var(--amber);}
+.intop-card-row-value.err{color:var(--red);}
+
+/* ── SETTINGS TAB ── */
+.set-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:20px 22px;margin-bottom:14px;box-shadow:var(--shadow);}
+.set-section-title{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.set-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5;}
+.set-roster-row{display:grid;grid-template-columns:1fr 200px 110px;gap:12px;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;font-family:'Inter',sans-serif;font-size:13px;}
+.set-roster-row.self{border-left:3px solid var(--slate);}
+.set-roster-user{min-width:0;}
+.set-roster-name{font-weight:500;color:var(--text);}
+.set-roster-email{font-size:11px;color:var(--text3);font-family:'SF Mono',Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.set-roster-select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-pill);padding:6px 28px 6px 12px;font-family:'Inter',sans-serif;font-size:11px;color:var(--text2);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+.set-roster-actions{display:flex;gap:6px;justify-content:flex-end;}
+.set-roster-actions .form-btn{padding:5px 10px;font-size:10px;}
+.set-add-row{display:grid;grid-template-columns:1fr 200px auto;gap:12px;align-items:end;margin-top:14px;}
+.set-add-row .form-field{min-width:0;}
+.set-placeholder-block{padding:26px;text-align:center;background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;}
+
 /* ── DASHBOARD ── */
 .dash-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px;flex-wrap:wrap;}
 .dash-hero-quickactions{display:flex;gap:8px;flex-wrap:wrap;}
@@ -1027,13 +1059,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-integrations">
         <div class="tab-header">
           <div class="tab-title">Integrations</div>
-          <div class="tab-subtitle">Provider catalog and credential management.</div>
+          <div class="tab-subtitle">Provider adoption + reliability across the fleet. Per-tenant credentials live inside each client\u2019s detail modal.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Integration providers</div>
-          <div class="placeholder-body">Catalog of available providers (Stripe, Daily.co, Resend, Twilio, EHR, shipping, ID verification). Per-tenant credentials stored encrypted (Supabase Vault / pgcrypto). Webhook routing resolves incoming events back to the owning tenant.</div>
-          <div class="placeholder-phase">Phase 7</div>
-        </div>
+        <div id="integrationsTabBody"><div class="an-loading">Loading integrations overview…</div></div>
       </div>
 
       <!-- BILLING -->
@@ -1076,13 +1104,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-settings">
         <div class="tab-header">
           <div class="tab-title">Settings</div>
-          <div class="tab-subtitle">Platform-level configuration and operator roster.</div>
+          <div class="tab-subtitle">Platform-level configuration. Operator roster today; more sections as platform-wide settings emerge.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Platform settings</div>
-          <div class="placeholder-body">Operator directory (users carrying a platform_role, with role assignment and revocation). Platform-level defaults. Global feature flags. Reserved for anything that isn't tenant-scoped.</div>
-          <div class="placeholder-phase">Phase 1 (next)</div>
-        </div>
+        <div id="settingsTabBody"><div class="an-loading">Loading settings…</div></div>
       </div>
 
     </main>
@@ -1208,13 +1232,15 @@ function switchTab(tabId) {
   // Lazy-load top-level tabs that pull fleet-wide data. Each has its
   // own body container; loaders mark body as loaded so switching back
   // doesn't re-fetch. Operators refreshing the data = reload the page.
-  if (tabId === 'dashboard' && !_dashboardLoaded)    loadDashboard();
-  if (tabId === 'modules'   && !_modulesTabLoaded)   loadModulesTab();
-  if (tabId === 'billing'   && !_billingTabLoaded)   loadBillingTab();
-  if (tabId === 'audit'     && !_auditTabLoaded)     loadAuditTab();
-  if (tabId === 'templates' && !_templatesTabLoaded) loadTemplatesTab();
-  if (tabId === 'support'   && !_supportTabLoaded)   loadSupportTab();
-  if (tabId === 'analytics' && !_analyticsTabLoaded) loadAnalyticsTab();
+  if (tabId === 'dashboard'    && !_dashboardLoaded)       loadDashboard();
+  if (tabId === 'modules'      && !_modulesTabLoaded)      loadModulesTab();
+  if (tabId === 'billing'      && !_billingTabLoaded)      loadBillingTab();
+  if (tabId === 'audit'        && !_auditTabLoaded)        loadAuditTab();
+  if (tabId === 'templates'    && !_templatesTabLoaded)    loadTemplatesTab();
+  if (tabId === 'support'      && !_supportTabLoaded)      loadSupportTab();
+  if (tabId === 'analytics'    && !_analyticsTabLoaded)    loadAnalyticsTab();
+  if (tabId === 'integrations' && !_integrationsTabLoaded) loadIntegrationsTab();
+  if (tabId === 'settings'     && !_settingsTabLoaded)     loadSettingsTab();
 }
 
 function doSignOut() {
@@ -3280,6 +3306,294 @@ function renderTenantAnalyticsBody(t, d) {
   '</div>';
 
   return stats + modulesPanel + activityPanel;
+}
+
+// ── Top-level Integrations tab (fleet adoption + reliability) ──
+// Per-provider cards showing adoption (how many tenants connected),
+// reliability (error count + last_error_at summary), and the catalog
+// description. Reads tenant_integrations across the fleet — platform-
+// user read path from migration 016.
+var _integrationsTabLoaded = false;
+
+function loadIntegrationsTab() {
+  var wrap = document.getElementById('integrationsTabBody');
+  if (!wrap) return;
+  _integrationsTabLoaded = true;
+
+  db.from('tenant_integrations')
+    .select('tenant_id, provider, status, last_connected_at, last_error, last_error_at')
+    .then(function(r) {
+      if (r.error) {
+        var hint = migrationHint(r.error, '016_tenant_integrations.sql');
+        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load integrations</strong><br/>' +
+          escHtml(r.error.message || '') + (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+        return;
+      }
+      wrap.innerHTML = renderIntegrationsTopBody(r.data || []);
+    })
+    .catch(function(err) {
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderIntegrationsTopBody(rows) {
+  var providers  = (window.Integrations && window.Integrations.PROVIDERS)  || [];
+  var categories = (window.Integrations && window.Integrations.CATEGORIES) || [];
+
+  // Index rows per provider.
+  var byProvider = {};
+  providers.forEach(function(p) { byProvider[p.key] = { connected: 0, disconnected: 0, error: 0, lastErrors: [] }; });
+  rows.forEach(function(r) {
+    var bucket = byProvider[r.provider];
+    if (!bucket) return;
+    if (r.status === 'connected')    bucket.connected++;
+    if (r.status === 'disconnected') bucket.disconnected++;
+    if (r.status === 'error')        { bucket.error++; if (r.last_error) bucket.lastErrors.push(r.last_error); }
+  });
+
+  // Global stat strip
+  var totalConnected = 0, totalError = 0, totalRows = rows.length;
+  rows.forEach(function(r) {
+    if (r.status === 'connected') totalConnected++;
+    if (r.status === 'error')     totalError++;
+  });
+
+  var stats = '<div class="an-stats">' +
+    dashStat('Total integrations',  totalRows,     'rows in tenant_integrations') +
+    dashStat('Connected',           totalConnected,'healthy across the fleet', totalConnected > 0 ? '' : '') +
+    dashStat('In error',            totalError,    totalError > 0 ? 'needs investigation' : 'all clear', totalError > 0 ? 'err' : '') +
+    dashStat('Providers configured', Object.keys(byProvider).filter(function(k) { return (byProvider[k].connected + byProvider[k].error) > 0; }).length, 'of ' + providers.length + ' catalogued') +
+  '</div>';
+
+  // Grouped per-category provider cards.
+  var body = '';
+  categories.forEach(function(cat) {
+    var catProviders = providers.filter(function(p) { return p.category === cat.key; });
+    if (catProviders.length === 0) return;
+    body += '<div class="mod-category"><div class="mod-category-title">' + escHtml(cat.label) + '</div>' +
+      '<div class="intop-grid">' +
+        catProviders.map(function(p) {
+          var b = byProvider[p.key] || { connected: 0, disconnected: 0, error: 0, lastErrors: [] };
+          var errClass = b.error > 0 ? ' err' : '';
+          var connClass = b.connected > 0 ? ' green' : '';
+          var latestErr = b.lastErrors.length ? b.lastErrors[0].slice(0, 120) : '';
+          return '<div class="intop-card">' +
+            '<div class="intop-card-head">' +
+              '<span class="intop-card-title">' + escHtml(p.label) + '</span>' +
+              '<span class="intop-card-category">' + escHtml(cat.label) + '</span>' +
+            '</div>' +
+            '<div class="intop-card-desc">' + escHtml(p.description) + '</div>' +
+            '<div class="intop-card-row"><span class="intop-card-row-label">Connected</span>' +
+              '<span class="intop-card-row-value' + connClass + '">' + b.connected + ' tenant' + (b.connected === 1 ? '' : 's') + '</span></div>' +
+            '<div class="intop-card-row"><span class="intop-card-row-label">Disconnected</span>' +
+              '<span class="intop-card-row-value">' + b.disconnected + '</span></div>' +
+            '<div class="intop-card-row"><span class="intop-card-row-label">In error</span>' +
+              '<span class="intop-card-row-value' + errClass + '">' + b.error + '</span></div>' +
+            (latestErr ? '<div class="intop-card-row"><span class="intop-card-row-label">Latest error</span>' +
+              '<span class="intop-card-row-value err" style="font-size:10px;font-weight:500;max-width:60%;text-align:right;white-space:normal;">' + escHtml(latestErr) + '</span></div>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  return stats + body;
+}
+
+// ── Top-level Settings tab ──
+// Operator roster (profiles.platform_role) today; more sections as
+// platform-wide settings surface. Add / change role / revoke — each
+// writes to profiles + an audit entry with change_type='access'.
+var _settingsTabLoaded = false;
+var _settingsRoster = [];
+
+var PLATFORM_ROLES = [
+  { value: 'platform_super_admin', label: 'Super Admin' },
+  { value: 'platform_admin',       label: 'Admin'       },
+  { value: 'platform_ops',         label: 'Ops'         },
+  { value: 'platform_support',     label: 'Support'     },
+  { value: 'platform_billing',     label: 'Billing'     },
+  { value: 'platform_readonly',    label: 'Read-only'   }
+];
+
+function loadSettingsTab() {
+  var wrap = document.getElementById('settingsTabBody');
+  if (!wrap) return;
+  _settingsTabLoaded = true;
+
+  db.from('profiles')
+    .select('user_id, email, display_name, platform_role')
+    .not('platform_role', 'is', null)
+    .order('email')
+    .then(function(r) {
+      if (r.error) {
+        wrap.innerHTML = '<div class="catalog-error">' + escHtml(r.error.message || 'Load failed') + '</div>';
+        return;
+      }
+      _settingsRoster = r.data || [];
+      wrap.innerHTML = renderSettingsBody();
+    })
+    .catch(function(err) {
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderSettingsBody() {
+  var canManage = currentPlatformRole === 'platform_super_admin' || currentPlatformRole === 'platform_admin';
+
+  var rows = _settingsRoster.map(function(u) { return renderRosterRow(u, canManage); }).join('');
+  if (_settingsRoster.length === 0) rows = '<div class="set-placeholder-block">No operators in the roster yet. Add someone below.</div>';
+
+  var addRow = canManage
+    ? '<div class="set-add-row">' +
+        '<div class="form-field" style="margin:0;">' +
+          '<label for="setAddEmail" style="display:block;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Add by email</label>' +
+          '<input type="email" id="setAddEmail" placeholder="name@example.com" autocomplete="off"/>' +
+        '</div>' +
+        '<div class="form-field" style="margin:0;">' +
+          '<label for="setAddRole" style="display:block;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Role</label>' +
+          '<select id="setAddRole" class="set-roster-select" style="width:100%;">' +
+            PLATFORM_ROLES.map(function(r) { return '<option value="' + r.value + '"' + (r.value === 'platform_ops' ? ' selected' : '') + '>' + r.label + '</option>'; }).join('') +
+          '</select>' +
+        '</div>' +
+        '<button class="form-btn primary" onclick="addOperator()">Add operator</button>' +
+      '</div>' +
+      '<div id="setAddError" class="form-err" style="display:none;margin-top:10px;"></div>'
+    : '<div class="set-placeholder-block">Your role can\u2019t manage the operator roster. Platform Admin or Super Admin required.</div>';
+
+  var rosterSection = '<div class="set-section">' +
+    '<div class="set-section-title">Operator roster</div>' +
+    '<div class="set-section-sub">Users with `profiles.platform_role` set. Every row here can read the platform portal; write permissions scale with role (Super Admin / Admin can change lifecycle + billing; Ops + Support have narrower scopes).</div>' +
+    rows +
+    addRow +
+  '</div>';
+
+  var futureSection = '<div class="set-section">' +
+    '<div class="set-section-title">More sections land here</div>' +
+    '<div class="set-section-sub">Reserved for platform-wide config that isn\u2019t tenant-scoped: global feature flags, default policies, webhook-router settings. Each lands alongside the feature that needs it.</div>' +
+    '<div class="set-placeholder-block">No additional settings yet.</div>' +
+  '</div>';
+
+  return rosterSection + futureSection;
+}
+
+function renderRosterRow(u, canManage) {
+  var isSelf = u.user_id === currentUserId;
+  var name = u.display_name || (u.email || '').split('@')[0] || '(unnamed)';
+  var selectOpts = PLATFORM_ROLES.map(function(r) {
+    return '<option value="' + r.value + '"' + (r.value === u.platform_role ? ' selected' : '') + '>' + r.label + '</option>';
+  }).join('');
+
+  return '<div class="set-roster-row' + (isSelf ? ' self' : '') + '">' +
+    '<div class="set-roster-user">' +
+      '<div class="set-roster-name">' + escHtml(name) + (isSelf ? ' (you)' : '') + '</div>' +
+      '<div class="set-roster-email">' + escHtml(u.email || '') + '</div>' +
+    '</div>' +
+    (canManage && !isSelf
+      ? '<select class="set-roster-select" onchange="changeOperatorRole(\'' + escAttr(u.user_id) + '\', this.value, \'' + escAttr(u.platform_role) + '\')">' + selectOpts + '</select>'
+      : '<span style="color:var(--text3);font-size:11px;">' + escHtml(PLATFORM_ROLES.find(function(r) { return r.value === u.platform_role; }) ? PLATFORM_ROLES.find(function(r) { return r.value === u.platform_role; }).label : u.platform_role) + '</span>') +
+    '<div class="set-roster-actions">' +
+      (canManage && !isSelf
+        ? '<button class="form-btn secondary" onclick="revokeOperator(\'' + escAttr(u.user_id) + '\')">Revoke</button>'
+        : '<span style="color:var(--text4);font-size:10px;">' + (isSelf ? 'self' : 'read-only') + '</span>') +
+    '</div>' +
+  '</div>';
+}
+
+function setAddError(msg) {
+  var el = document.getElementById('setAddError');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function addOperator() {
+  var email = (document.getElementById('setAddEmail').value || '').trim().toLowerCase();
+  var role  = document.getElementById('setAddRole').value;
+  setAddError('');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setAddError('Enter a valid email.');
+    return;
+  }
+  db.from('profiles').select('user_id, email, display_name, platform_role').eq('email', email).limit(1)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var profile = (r.data && r.data[0]) || null;
+      if (!profile) { setAddError('No Pulse account with that email. The user must sign in once before they can be granted a platform role.'); return; }
+      if (profile.platform_role === role) { setAddError('Already has that role.'); return; }
+
+      var prevRole = profile.platform_role;
+      return db.from('profiles').update({ platform_role: role }).eq('user_id', profile.user_id).select().single()
+        .then(function(ur) {
+          if (ur.error) throw ur.error;
+          _settingsRoster = _settingsRoster.filter(function(x) { return x.user_id !== ur.data.user_id; });
+          _settingsRoster.push(ur.data);
+          _settingsRoster.sort(function(a, b) { return (a.email || '').localeCompare(b.email || ''); });
+          document.getElementById('settingsTabBody').innerHTML = renderSettingsBody();
+          showToast('Operator added.', 'success');
+          return db.from('audit_logs').insert({
+            action: 'access.platform_role_granted',
+            actor_id: currentUserId, actor_email: currentUserEmail,
+            target_id: ur.data.user_id,
+            change_type: 'access',
+            before_snapshot: { platform_role: prevRole },
+            after_snapshot:  { platform_role: role },
+            details: JSON.stringify({ email: email, from: prevRole, to: role })
+          }).catch(function(e){ console.warn('[platform] roster audit failed', e); });
+        });
+    })
+    .catch(function(err) {
+      setAddError((err && err.message) || 'Failed.');
+    });
+}
+
+function changeOperatorRole(userId, nextRole, prevRole) {
+  if (nextRole === prevRole) return;
+  db.from('profiles').update({ platform_role: nextRole }).eq('user_id', userId).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var i = _settingsRoster.findIndex(function(u) { return u.user_id === userId; });
+      if (i >= 0) _settingsRoster[i] = r.data;
+      document.getElementById('settingsTabBody').innerHTML = renderSettingsBody();
+      showToast('Role updated.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'access.platform_role_changed',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: userId,
+        change_type: 'access',
+        before_snapshot: { platform_role: prevRole },
+        after_snapshot:  { platform_role: nextRole },
+        details: JSON.stringify({ from: prevRole, to: nextRole })
+      }).catch(function(e){ console.warn('[platform] roster audit failed', e); });
+    })
+    .catch(function(err) {
+      showToast('Role change failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
+}
+
+function revokeOperator(userId) {
+  if (!window.confirm('Revoke this operator\u2019s platform access? They can still sign in as their tenant-scoped user; they just won\u2019t see platform.html.')) return;
+  var before = _settingsRoster.find(function(u) { return u.user_id === userId; });
+  db.from('profiles').update({ platform_role: null }).eq('user_id', userId).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _settingsRoster = _settingsRoster.filter(function(u) { return u.user_id !== userId; });
+      document.getElementById('settingsTabBody').innerHTML = renderSettingsBody();
+      showToast('Access revoked.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'access.platform_role_revoked',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: userId,
+        change_type: 'access',
+        before_snapshot: before ? { platform_role: before.platform_role } : null,
+        after_snapshot:  { platform_role: null },
+        details: JSON.stringify({ was: before && before.platform_role })
+      }).catch(function(e){ console.warn('[platform] roster audit failed', e); });
+    })
+    .catch(function(err) {
+      showToast('Revoke failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
 }
 
 // ── Dashboard (top-level landing) ──

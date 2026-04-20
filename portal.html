@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
+<script src="tenant.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7420,7 +7421,28 @@ var PREVIEW_MODE = window.__PULSE_PREVIEW || false;
 var currentUserId    = null;
 var currentUserEmail = null;
 
-// PREVIEW_MODE: skip Supabase entirely — no auth, no network calls
+// Load the active tenant's config before booting the member UI so page
+// code can read window.Tenant (brand, features, terminology, etc).
+// Tenant load failure is logged but non-fatal during Phase 0 so members
+// can still access the portal if tenant.js or the tenants row has a
+// problem; the fallback is removed once every portal reliably reads
+// from window.Tenant.
+function _bootPortalWithTenant(user) {
+  if (!window.TenantBootstrap) {
+    console.warn('[portal] tenant.js not loaded; booting without tenant context');
+    initPortal(user);
+    return;
+  }
+  window.TenantBootstrap.init(db)
+    .then(function() { initPortal(user); })
+    .catch(function(err) {
+      console.warn('[portal] tenant load failed, booting without tenant context', err);
+      initPortal(user);
+    });
+}
+
+// PREVIEW_MODE: skip Supabase entirely — no auth, no network calls.
+// Also skip tenant init since there's no db / no authenticated session.
 if (PREVIEW_MODE) {
   initPortal({ email: 'preview@pulse.com', id: 'preview-uid', created_at: new Date().toISOString(), user_metadata: {} });
 } else {
@@ -7429,7 +7451,7 @@ if (PREVIEW_MODE) {
       window.location.href = 'index.html';
       return;
     }
-    initPortal(r.data.session.user);
+    _bootPortalWithTenant(r.data.session.user);
   }).catch(function(err) {
     console.warn('[Pulse] getSession failed:', err);
     window.location.href = 'index.html';

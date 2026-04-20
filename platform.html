@@ -126,6 +126,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .form-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 @media(max-width:900px){ .form-grid{grid-template-columns:1fr;} }
 
+/* ── ASSET UPLOADER ── */
+.asset-uploader{display:flex;gap:14px;align-items:flex-start;}
+.asset-thumb{width:84px;height:84px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+.asset-thumb img{max-width:100%;max-height:100%;object-fit:contain;}
+.asset-thumb.empty{background:repeating-linear-gradient(45deg,var(--card),var(--card) 8px,var(--card2) 8px,var(--card2) 16px);color:var(--text4);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;}
+.asset-thumb.square{width:48px;height:48px;}
+.asset-actions{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0;}
+.asset-row{display:flex;gap:8px;align-items:center;}
+.asset-file-label{display:inline-block;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:7px 14px;border-radius:var(--radius-pill);background:var(--slate);color:#fff;cursor:pointer;transition:opacity .15s;}
+.asset-file-label:hover{opacity:0.88;}
+.asset-file-label input[type="file"]{display:none;}
+.asset-btn{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:6px 12px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;}
+.asset-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.asset-btn.danger{color:var(--red);border-color:var(--red-border);}
+.asset-btn.danger:hover{background:var(--red-tint);}
+.asset-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.asset-url-input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;color:var(--text2);outline:none;width:100%;transition:border-color .15s;}
+.asset-url-input:focus{border-color:var(--slate);}
+.asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.asset-status.err{color:var(--red);}
+
 /* ── BRAND TAB ── */
 .brand-form{display:flex;flex-direction:column;gap:18px;}
 .brand-form-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;}
@@ -946,17 +967,44 @@ function buildBrandTab(t) {
     '</div>' +
 
     '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Assets (URLs)</div>' +
-      '<div class="brand-form-section-sub">Point at externally-hosted images for now. Supabase Storage upload UI lands in the next commit; these URL fields stay after for teams with their own CDN.</div>' +
+      '<div class="brand-form-section-title">Assets</div>' +
+      '<div class="brand-form-section-sub">Upload files to Pulse Storage or paste an external URL if your team already hosts assets on a CDN. Uploads are served publicly so downstream portals can render them without a signed URL.</div>' +
       '<div class="brand-form-grid">' +
+
         '<div class="brand-form-field">' +
-          '<label for="brandLogoUrl">Logo URL</label>' +
-          '<input type="text" id="brandLogoUrl" value="' + escAttr(b.logo_url) + '" placeholder="https://…/logo.png"/>' +
+          '<label>Logo</label>' +
+          '<div class="asset-uploader">' +
+            '<div class="asset-thumb' + (b.logo_url ? '' : ' empty') + '" id="brandLogoThumb">' +
+              (b.logo_url ? '<img src="' + escAttr(b.logo_url) + '" alt="Logo preview"/>' : 'No logo') +
+            '</div>' +
+            '<div class="asset-actions">' +
+              '<div class="asset-row">' +
+                '<label class="asset-file-label">Upload<input type="file" accept="image/*" id="brandLogoFile" onchange="handleAssetUpload(\'logo\')"/></label>' +
+                '<button type="button" class="asset-btn danger" id="brandLogoRemove" onclick="clearAsset(\'logo\')"' + (b.logo_url ? '' : ' disabled') + '>Remove</button>' +
+              '</div>' +
+              '<input type="text" id="brandLogoUrl" class="asset-url-input" value="' + escAttr(b.logo_url) + '" placeholder="https://…/logo.png or leave blank"/>' +
+              '<div class="asset-status" id="brandLogoStatus"></div>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
+
         '<div class="brand-form-field">' +
-          '<label for="brandFaviconUrl">Favicon URL</label>' +
-          '<input type="text" id="brandFaviconUrl" value="' + escAttr(b.favicon_url) + '" placeholder="https://…/favicon.ico"/>' +
+          '<label>Favicon</label>' +
+          '<div class="asset-uploader">' +
+            '<div class="asset-thumb square' + (b.favicon_url ? '' : ' empty') + '" id="brandFaviconThumb">' +
+              (b.favicon_url ? '<img src="' + escAttr(b.favicon_url) + '" alt="Favicon preview"/>' : 'None') +
+            '</div>' +
+            '<div class="asset-actions">' +
+              '<div class="asset-row">' +
+                '<label class="asset-file-label">Upload<input type="file" accept="image/*,image/x-icon" id="brandFaviconFile" onchange="handleAssetUpload(\'favicon\')"/></label>' +
+                '<button type="button" class="asset-btn danger" id="brandFaviconRemove" onclick="clearAsset(\'favicon\')"' + (b.favicon_url ? '' : ' disabled') + '>Remove</button>' +
+              '</div>' +
+              '<input type="text" id="brandFaviconUrl" class="asset-url-input" value="' + escAttr(b.favicon_url) + '" placeholder="https://…/favicon.ico or leave blank"/>' +
+              '<div class="asset-status" id="brandFaviconStatus"></div>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
+
       '</div>' +
     '</div>' +
 
@@ -979,6 +1027,100 @@ function buildBrandTab(t) {
   '</div>';
 }
 
+// ── Asset upload ──
+// Uploads go to the public `brand-assets` bucket created in migration
+// 013. Path convention: {tenant_id}/{kind}-{timestamp}.{ext}. The
+// timestamp suffix avoids caching confusion when an operator replaces
+// an asset — the old file stays (and should be cleaned up later), the
+// new file has a new URL so browsers don't serve the stale one.
+//
+// RLS on the bucket gates writes to platform users; logic here is just
+// "upload, set URL, update preview, user still has to click Save to
+// persist brand.logo_url into the tenants row."
+var ASSET_MAX_BYTES = 2 * 1024 * 1024; // 2 MB — plenty for logos; favicons are tiny
+var ASSET_KINDS = {
+  logo:    { fileId: 'brandLogoFile',    urlId: 'brandLogoUrl',    thumbId: 'brandLogoThumb',    statusId: 'brandLogoStatus',    removeId: 'brandLogoRemove',    alt: 'Logo preview'    },
+  favicon: { fileId: 'brandFaviconFile', urlId: 'brandFaviconUrl', thumbId: 'brandFaviconThumb', statusId: 'brandFaviconStatus', removeId: 'brandFaviconRemove', alt: 'Favicon preview' }
+};
+
+function handleAssetUpload(kind) {
+  var cfg = ASSET_KINDS[kind];
+  var t = _activeDetailTenant;
+  if (!cfg || !t) return;
+
+  var fileEl   = document.getElementById(cfg.fileId);
+  var statusEl = document.getElementById(cfg.statusId);
+  var file = fileEl.files && fileEl.files[0];
+  if (!file) return;
+
+  if (file.size > ASSET_MAX_BYTES) {
+    statusEl.className = 'asset-status err';
+    statusEl.textContent = 'File is ' + formatBytes(file.size) + ' — limit is ' + formatBytes(ASSET_MAX_BYTES) + '.';
+    fileEl.value = '';
+    return;
+  }
+
+  var ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+  var path = t.id + '/' + kind + '-' + Date.now() + '.' + ext;
+
+  statusEl.className = 'asset-status';
+  statusEl.textContent = 'Uploading…';
+
+  db.storage.from('brand-assets').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType: file.type || undefined
+  }).then(function(r) {
+    if (r.error) throw r.error;
+    var pub = db.storage.from('brand-assets').getPublicUrl(path);
+    var publicUrl = pub && pub.data && pub.data.publicUrl;
+    if (!publicUrl) throw new Error('no public URL returned');
+
+    document.getElementById(cfg.urlId).value = publicUrl;
+    setAssetPreview(kind, publicUrl);
+    document.getElementById(cfg.removeId).disabled = false;
+
+    statusEl.className = 'asset-status';
+    statusEl.textContent = 'Uploaded. Click Save Brand to persist.';
+    fileEl.value = '';
+  }).catch(function(err) {
+    console.error('[platform] upload failed', err);
+    statusEl.className = 'asset-status err';
+    statusEl.textContent = 'Upload failed: ' + ((err && err.message) || 'unknown error');
+    fileEl.value = '';
+  });
+}
+
+function clearAsset(kind) {
+  var cfg = ASSET_KINDS[kind];
+  if (!cfg) return;
+  document.getElementById(cfg.urlId).value = '';
+  setAssetPreview(kind, '');
+  document.getElementById(cfg.removeId).disabled = true;
+  var statusEl = document.getElementById(cfg.statusId);
+  statusEl.className = 'asset-status';
+  statusEl.textContent = 'Cleared. Click Save Brand to persist.';
+}
+
+function setAssetPreview(kind, url) {
+  var cfg = ASSET_KINDS[kind];
+  if (!cfg) return;
+  var thumb = document.getElementById(cfg.thumbId);
+  if (url) {
+    thumb.classList.remove('empty');
+    thumb.innerHTML = '<img src="' + escAttr(url) + '" alt="' + escAttr(cfg.alt) + '"/>';
+  } else {
+    thumb.classList.add('empty');
+    thumb.innerHTML = kind === 'favicon' ? 'None' : 'No logo';
+  }
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 // Keep the color picker and hex field in sync. Called after the brand
 // form is rendered because the event-listener targets don't exist until
 // then (the tab re-renders on every switch).
@@ -993,6 +1135,19 @@ function afterRenderBrandTab(t) {
   hex.addEventListener('input', function() {
     var v = hex.value.trim();
     if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v.toLowerCase();
+  });
+
+  // Keep asset thumbnails in sync when the operator edits the URL
+  // field directly (e.g. pasting a CDN URL instead of uploading).
+  ['logo', 'favicon'].forEach(function(kind) {
+    var urlEl    = document.getElementById(ASSET_KINDS[kind].urlId);
+    var removeEl = document.getElementById(ASSET_KINDS[kind].removeId);
+    if (!urlEl || !removeEl) return;
+    urlEl.addEventListener('input', function() {
+      var v = urlEl.value.trim();
+      setAssetPreview(kind, v);
+      removeEl.disabled = !v;
+    });
   });
 }
 

@@ -331,7 +331,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 1     | **Done**      | Shell (auth gate, slate accent, 10-section sidebar), Clients directory (list + stats + filter), Create-client form (slug validation + initial admin wiring), Client detail modal (read-only + config layer status), Lifecycle state controls (role-gated + audit-logged), `tokens.css` created and wired into `platform.html`. |
 | 2     | **Done (with carry-overs)** | Client detail modal refactored to tabbed structure (placeholders for all Phase 3–10 surfaces). Brand tab: wordmark, accent color, sender identity, support contacts, footer copy, legal name. Migration 013 adds `brand-assets` storage bucket (public-read, platform-write). Logo + favicon upload with thumbnail previews. Sandboxed live preview panel updates as the operator types. `admin.html` reads `Tenant.brand.*` via `applyTenantBrand()` hook (wordmark → nav + loading + title, accent → `--amber` override, favicon). `portal.html` reads `Tenant.brand.*` (wordmark + favicon + title; accent deferred — see below). |
 | 3     | **Foundations done; full refactor = carry-over** | `terminology.js` shipped with a catalog of ~30 renameable terms across 4 groups (people, clinical, workflow, commercial) and a single `Terminology.t(key)` accessor with `{ lower }` / `{ upper }` opts. Operator portal's Terminology tab renders one input per term (grouped, with live "overridden" badges) and a 4-line live preview. Save writes diff-only to `tenants.terminology` JSONB with audit log. `admin.html` and `portal.html` both load `terminology.js` + call `Terminology.init()` after tenant resolves; PoC replacement in each (role noun in document title / loading screen) proves the plumbing. See carry-over below for the per-portal string audit. |
-| 4–15  | Not started   | See sections above. |
+| 4     | **Foundations done; full CRUD + downstream refactor = carry-over** | Migration 014 extends the catalog schema: per-tenant key uniqueness on `protocol_templates` (dropped the global UNIQUE, added composite `(tenant_id, key)`), `refill_price` + `subscription_cadence` columns, new `protocol_packages` table with JSONB `items` bundle + RLS following the Phase 0 staff/platform template. Operator portal's Catalog tab fetches and displays all four catalog tables (protocols, categories, product types, packages) scoped to the selected tenant with per-section error hints (e.g. "run migration 014" when `protocol_packages` is missing). See carry-over for the editor UI and the downstream refactor. |
+| 5–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -395,6 +396,38 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   out in Phase 2 carry-over) also hardcode terminology-adjacent copy —
   address both at the same time when rebuilding those templates to
   read from `window.Tenant`.
+
+### Carry-over from Phase 4
+
+- **Catalog editor UI.** The Catalog tab in platform.html is read-only
+  today. Full CRUD (create/edit/archive protocols, categories, product
+  types, packages with drag-to-reorder) needs porting from admin.html's
+  existing Configure tab, scoped to the selected tenant instead of the
+  global `tenant_id IS NULL` assumption the current admin UI makes.
+- **Admin portal's Configure tab refactor.** `admin.html` has an
+  existing catalog editor (search for `tab-configure`) that writes to
+  `protocol_templates` / `protocol_categories` / `protocol_product_types`.
+  Its queries don't filter by `tenant_id` — they assume a single-tenant
+  world. Needs a pass to add `.eq('tenant_id', Tenant.id)` on every read
+  and set `tenant_id: Tenant.id` on every insert. Until this lands, a
+  tenant admin inserting a new protocol from their own admin UI creates
+  a row with `tenant_id` set by the default (likely NULL or a Postgres
+  error depending on the NOT NULL constraint set by migration 011);
+  double-check the constraint before touching this.
+- **Downstream portal refactor.** `portal.html` (member + clinician)
+  and the checkout / consultation flows still read catalog data without
+  a tenant filter. Slice this alongside the admin.html refactor — each
+  portal is a separate PR with a visual QA pass on a real member
+  journey.
+- **Pricing display in the downstream portals.** `refill_price` and
+  `subscription_cadence` are new columns; nothing reads them yet. The
+  next pass through the checkout and refill flows should surface refill
+  pricing separately from initial pricing and show cadence where
+  relevant ("$49 / month" instead of just "$49").
+- **Package renderer.** No downstream portal renders packages today.
+  Decide during the Phase 4 follow-up whether packages ship as a
+  separate catalog section in the member protocol picker or are
+  flattened into the regular protocol list with a "bundle of N" badge.
 
 ### Carry-over from Phase 1
 

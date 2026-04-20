@@ -148,6 +148,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── CATALOG TAB ── */
+.catalog-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.catalog-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
+.catalog-stat{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;}
+.catalog-stat-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.catalog-stat-value{font-family:'Inter',sans-serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
+.catalog-stat-sub{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);margin-top:2px;}
+.catalog-section{margin-bottom:22px;}
+.catalog-section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+.catalog-section-title{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text2);}
+.catalog-section-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.catalog-empty{padding:22px 18px;text-align:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);}
+.catalog-error{padding:18px;font-family:'Inter',sans-serif;font-size:12px;color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);border-radius:var(--radius-sm);line-height:1.5;}
+.catalog-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.catalog-chip{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:5px 12px;border-radius:var(--radius-pill);background:var(--card2);border:1px solid var(--border);color:var(--text2);}
+.catalog-chip.archived{opacity:0.55;text-decoration:line-through;}
+.catalog-table td.price{font-variant-numeric:tabular-nums;color:var(--text);font-weight:500;}
+.catalog-table td.muted{color:var(--text4);}
+.catalog-cadence-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);display:inline-block;}
+.catalog-archived-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:rgba(20,20,20,0.04);color:var(--text3);border:1px solid var(--border);display:inline-block;}
+
 /* ── TERMINOLOGY TAB ── */
 .term-preview{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:4px;overflow:hidden;}
 .term-preview-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);padding:14px 20px 10px;border-bottom:1px solid var(--border);background:var(--card2);display:flex;align-items:center;justify-content:space-between;}
@@ -815,7 +836,7 @@ var DETAIL_TABS = [
   { key: 'overview',     label: 'Overview',      build: buildOverviewTab                           },
   { key: 'brand',        label: 'Brand',         build: buildBrandTab                              },
   { key: 'terminology',  label: 'Terminology',   build: buildTerminologyTab                        },
-  { key: 'catalog',      label: 'Catalog',       phase: 'Phase 4', desc: 'Per-tenant product catalog, dosing options, pricing, subscription cadence, package bundles.' },
+  { key: 'catalog',      label: 'Catalog',       build: buildCatalogTab                            },
   { key: 'workflow',     label: 'Workflow',      phase: 'Phase 5', desc: 'Intake rules, refill SLAs, escalation rules, consult policies, auto-assign strategy.' },
   { key: 'comms',        label: 'Communications', phase: 'Phase 6', desc: 'Email/SMS/push templates, sender identity, reminder cadence.' },
   { key: 'integrations', label: 'Integrations',  phase: 'Phase 7', desc: 'Stripe, Daily.co, Resend, EHR, shipping, ID verification credentials and webhook routing.' },
@@ -885,6 +906,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderTerminologyTab === 'function' && _activeDetailTab === 'terminology') {
     afterRenderTerminologyTab(t);
+  }
+  if (typeof afterRenderCatalogTab === 'function' && _activeDetailTab === 'catalog') {
+    afterRenderCatalogTab(t);
   }
 }
 
@@ -1402,6 +1426,247 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Catalog tab ──
+// Read-only view for Phase 4 foundations. Fetches the four catalog
+// tables (protocol_templates, protocol_categories, protocol_product_types,
+// protocol_packages) filtered to the selected tenant, then renders each
+// as a compact read-only section. CRUD UI (editor modals, drag-to-
+// reorder, archive/unarchive) comes in a follow-up commit; this pass
+// proves tenant scoping works end-to-end and gives operators the
+// shortcut "is this tenant's catalog configured" visibility without
+// cracking open the SQL client.
+//
+// Per-query .catch() so a missing table (e.g. protocol_packages before
+// migration 014 runs) shows an inline error for just that section
+// instead of blanking the whole tab.
+function buildCatalogTab(t) {
+  return '<div id="catalogBody"><div class="catalog-loading">Loading catalog…</div></div>';
+}
+
+function afterRenderCatalogTab(t) {
+  var wrap = document.getElementById('catalogBody');
+  if (!wrap) return;
+
+  function safe(promise, label) {
+    return promise.then(function(r) {
+      if (r.error) return { error: r.error, data: [], label: label };
+      return { data: r.data || [], label: label };
+    }).catch(function(err) {
+      return { error: err, data: [], label: label };
+    });
+  }
+
+  Promise.all([
+    safe(db.from('protocol_templates')
+          .select('id, key, name, product_type, category, price, refill_price, subscription_cadence, is_archived, compounds')
+          .eq('tenant_id', t.id).order('category', { ascending: true, nullsLast: true }).order('name'),
+         'protocols'),
+    safe(db.from('protocol_categories')
+          .select('id, name, display_order, is_archived')
+          .eq('tenant_id', t.id).order('display_order'),
+         'categories'),
+    safe(db.from('protocol_product_types')
+          .select('id, name, display_order, is_archived')
+          .eq('tenant_id', t.id).order('display_order'),
+         'types'),
+    safe(db.from('protocol_packages')
+          .select('id, key, name, description, price, refill_price, cadence, items, is_archived')
+          .eq('tenant_id', t.id).order('display_order'),
+         'packages')
+  ]).then(function(results) {
+    // Guard: tab might have switched away before the fetch resolved.
+    if (_activeDetailTab !== 'catalog' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+    wrap.innerHTML = renderCatalogBody(t, {
+      protocols:  results[0],
+      categories: results[1],
+      types:      results[2],
+      packages:   results[3]
+    });
+  });
+}
+
+function renderCatalogBody(t, sections) {
+  var protocols  = sections.protocols.data;
+  var categories = sections.categories.data;
+  var types      = sections.types.data;
+  var packages   = sections.packages.data;
+
+  // Stat strip — active counts over total counts, so operators see at a
+  // glance whether a tenant has inventory vs everything archived.
+  var stats = [
+    { label: 'Protocols',     active: countActive(protocols),  total: protocols.length  },
+    { label: 'Categories',    active: countActive(categories), total: categories.length },
+    { label: 'Product types', active: countActive(types),      total: types.length      },
+    { label: 'Packages',      active: countActive(packages),   total: packages.length   }
+  ];
+
+  var out = '<div class="catalog-stats">' +
+    stats.map(function(s) {
+      return '<div class="catalog-stat">' +
+        '<div class="catalog-stat-label">' + escHtml(s.label) + '</div>' +
+        '<div class="catalog-stat-value">' + s.active + '</div>' +
+        '<div class="catalog-stat-sub">' + (s.total === s.active ? 'all active' : (s.total - s.active) + ' archived') + '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+
+  out += renderProtocolsSection(protocols, sections.protocols.error);
+  out += renderCategoriesSection(categories, sections.categories.error);
+  out += renderTypesSection(types, sections.types.error);
+  out += renderPackagesSection(packages, sections.packages.error);
+
+  out += '<div class="brand-actions" style="margin-top:10px;">' +
+    '<span class="catalog-section-sub" style="flex:1;">Read-only view. Edit UI ships in a follow-up Phase 4 commit.</span>' +
+  '</div>';
+
+  return out;
+}
+
+function countActive(rows) {
+  var n = 0;
+  for (var i = 0; i < rows.length; i++) if (!rows[i].is_archived) n++;
+  return n;
+}
+
+function renderProtocolsSection(protocols, err) {
+  var body;
+  if (err) {
+    body = sectionError('Failed to load protocol_templates', err);
+  } else if (protocols.length === 0) {
+    body = '<div class="catalog-empty">No protocols scoped to this tenant yet.</div>';
+  } else {
+    body = '<div class="platform-table-wrap">' +
+      '<table class="platform-table catalog-table">' +
+        '<thead><tr>' +
+          '<th>Name</th><th>Key</th><th>Category</th><th>Product type</th>' +
+          '<th class="num">Price</th><th class="num">Refill</th>' +
+          '<th>Cadence</th><th>Status</th>' +
+        '</tr></thead>' +
+        '<tbody>' +
+          protocols.map(function(p) {
+            var priceTxt  = p.price != null ? formatMoney(p.price) : '<span class="muted">—</span>';
+            var refillTxt = p.refill_price != null ? formatMoney(p.refill_price) : '<span class="muted">—</span>';
+            return '<tr>' +
+              '<td>' + escHtml(p.name || '—') + '</td>' +
+              '<td class="mono">' + escHtml(p.key || '—') + '</td>' +
+              '<td>' + escHtml(p.category || '—') + '</td>' +
+              '<td>' + escHtml(p.product_type || '—') + '</td>' +
+              '<td class="num price">' + priceTxt + '</td>' +
+              '<td class="num price">' + refillTxt + '</td>' +
+              '<td>' + (p.subscription_cadence
+                          ? '<span class="catalog-cadence-pill">' + escHtml(p.subscription_cadence) + '</span>'
+                          : '<span class="muted">one-time</span>') + '</td>' +
+              '<td>' + (p.is_archived ? '<span class="catalog-archived-pill">archived</span>' : '<span class="status-pill live">active</span>') + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+  }
+  return sectionWrap('Protocols', 'Named clinical offerings. tenant-scoped; each tenant gets its own list.', body);
+}
+
+function renderCategoriesSection(categories, err) {
+  var body;
+  if (err) {
+    body = sectionError('Failed to load protocol_categories', err);
+  } else if (categories.length === 0) {
+    body = '<div class="catalog-empty">No categories scoped to this tenant yet.</div>';
+  } else {
+    body = '<div class="catalog-chips">' +
+      categories.map(function(c) {
+        return '<span class="catalog-chip' + (c.is_archived ? ' archived' : '') + '">' +
+          escHtml(c.name) + '</span>';
+      }).join('') +
+    '</div>';
+  }
+  return sectionWrap('Categories', 'Grouping used on the member protocol-request form.', body);
+}
+
+function renderTypesSection(types, err) {
+  var body;
+  if (err) {
+    body = sectionError('Failed to load protocol_product_types', err);
+  } else if (types.length === 0) {
+    body = '<div class="catalog-empty">No product types scoped to this tenant yet.</div>';
+  } else {
+    body = '<div class="catalog-chips">' +
+      types.map(function(pt) {
+        return '<span class="catalog-chip' + (pt.is_archived ? ' archived' : '') + '">' +
+          escHtml(pt.name) + '</span>';
+      }).join('') +
+    '</div>';
+  }
+  return sectionWrap('Product types', 'Dropdown options on the protocol editor (e.g. Pod, Stack).', body);
+}
+
+function renderPackagesSection(packages, err) {
+  var body;
+  if (err) {
+    // Most common reason this fails today: migration 014 hasn't run yet.
+    // Surface a specific hint rather than just the raw error.
+    var msg = (err.message || '').toLowerCase();
+    var hint = /does not exist|relation .* does not exist/.test(msg)
+      ? 'Run migration 014_catalog_pricing.sql in the Supabase SQL editor to create the protocol_packages table.'
+      : null;
+    body = sectionError('Failed to load protocol_packages', err, hint);
+  } else if (packages.length === 0) {
+    body = '<div class="catalog-empty">No packages scoped to this tenant yet.</div>';
+  } else {
+    body = '<div class="platform-table-wrap">' +
+      '<table class="platform-table catalog-table">' +
+        '<thead><tr>' +
+          '<th>Name</th><th>Key</th><th>Items</th>' +
+          '<th class="num">Price</th><th class="num">Refill</th>' +
+          '<th>Cadence</th><th>Status</th>' +
+        '</tr></thead>' +
+        '<tbody>' +
+          packages.map(function(p) {
+            var itemCount = Array.isArray(p.items) ? p.items.length : 0;
+            var priceTxt  = p.price != null ? formatMoney(p.price) : '<span class="muted">—</span>';
+            var refillTxt = p.refill_price != null ? formatMoney(p.refill_price) : '<span class="muted">—</span>';
+            return '<tr>' +
+              '<td>' + escHtml(p.name || '—') + '</td>' +
+              '<td class="mono">' + escHtml(p.key || '—') + '</td>' +
+              '<td class="num">' + itemCount + '</td>' +
+              '<td class="num price">' + priceTxt + '</td>' +
+              '<td class="num price">' + refillTxt + '</td>' +
+              '<td>' + (p.cadence
+                          ? '<span class="catalog-cadence-pill">' + escHtml(p.cadence) + '</span>'
+                          : '<span class="muted">one-time</span>') + '</td>' +
+              '<td>' + (p.is_archived ? '<span class="catalog-archived-pill">archived</span>' : '<span class="status-pill live">active</span>') + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+  }
+  return sectionWrap('Packages', 'Bundles of protocols sold together at a package-level price.', body);
+}
+
+function sectionWrap(title, sub, body) {
+  return '<div class="catalog-section">' +
+    '<div class="catalog-section-header">' +
+      '<div class="catalog-section-title">' + escHtml(title) + '</div>' +
+      '<div class="catalog-section-sub">' + escHtml(sub) + '</div>' +
+    '</div>' + body +
+  '</div>';
+}
+
+function sectionError(msg, err, hint) {
+  var errText = (err && err.message) || String(err);
+  return '<div class="catalog-error">' +
+    '<strong>' + escHtml(msg) + '</strong><br/>' +
+    escHtml(errText) +
+    (hint ? '<br/><br/>' + escHtml(hint) : '') +
+  '</div>';
+}
+
+function formatMoney(n) {
+  if (n == null || isNaN(n)) return '—';
+  return '$' + Number(n).toFixed(2);
 }
 
 // ── Terminology tab ──

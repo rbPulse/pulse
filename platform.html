@@ -12,6 +12,7 @@
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
 <script src="messaging.js"></script>
+<script src="integrations.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -149,6 +150,39 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-url-input:focus{border-color:var(--slate);}
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
+
+/* ── INTEGRATIONS TAB ── */
+.int-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.int-category{margin-bottom:22px;}
+.int-category-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.int-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);}
+.int-card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+.int-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.int-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
+.int-status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
+.int-status-pill.connected{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);}
+.int-status-pill.disconnected{color:var(--text3);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
+.int-status-pill.error{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+.int-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;}
+.int-meta strong{color:var(--text2);font-weight:500;}
+.int-meta .int-error{color:var(--red);}
+.int-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;}
+.int-actions .form-btn{padding:7px 14px;font-size:11px;}
+.int-form{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-top:12px;display:none;}
+.int-form.show{display:block;}
+.int-form-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.int-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:12px;}
+.int-form-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.int-form-field.full{grid-column:1 / -1;}
+.int-form-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text2);}
+.int-form-field label .req{color:var(--red);}
+.int-form-field input[type="text"],.int-form-field input[type="password"],.int-form-field input[type="url"]{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);outline:none;transition:border-color .15s;}
+.int-form-field input:focus{border-color:var(--slate);}
+.int-form-field select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 28px 8px 12px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+.int-form-field .int-help{font-family:'Inter',sans-serif;font-size:10px;color:var(--text3);line-height:1.4;}
+.int-bool-row{display:flex;align-items:center;gap:8px;min-height:32px;}
+.int-section-heading{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin:8px 0 8px;padding-top:8px;border-top:1px dashed var(--border);}
+.int-section-heading:first-child{border-top:none;padding-top:0;margin-top:0;}
 
 /* ── COMMS TAB ── */
 .comms-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
@@ -895,7 +929,7 @@ var DETAIL_TABS = [
   { key: 'catalog',      label: 'Catalog',       build: buildCatalogTab                            },
   { key: 'workflow',     label: 'Workflow',      build: buildWorkflowTab                           },
   { key: 'comms',        label: 'Communications', build: buildCommsTab                              },
-  { key: 'integrations', label: 'Integrations',  phase: 'Phase 7', desc: 'Stripe, Daily.co, Resend, EHR, shipping, ID verification credentials and webhook routing.' },
+  { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
   { key: 'compliance',   label: 'Compliance',    phase: 'Phase 8', desc: 'Operating states, consent templates, disclaimer sets, license tracking, region restrictions.' },
   { key: 'billing',      label: 'Billing',       phase: 'Phase 9', desc: 'Plan selection, module entitlement overrides, Stripe customer portal link.' },
   { key: 'audit',        label: 'Activity',      phase: 'Phase 10', desc: 'Every config change on this tenant with before/after diff.' }
@@ -971,6 +1005,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderCommsTab === 'function' && _activeDetailTab === 'comms') {
     afterRenderCommsTab(t);
+  }
+  if (typeof afterRenderIntegrationsTab === 'function' && _activeDetailTab === 'integrations') {
+    afterRenderIntegrationsTab(t);
   }
 }
 
@@ -1487,6 +1524,357 @@ function saveBrand() {
       btn.disabled = false;
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
+    });
+}
+
+// ── Integrations tab ──
+// Reads the provider catalog from integrations.js and lists one card
+// per provider grouped by category. Each card shows connection status,
+// bookkeeping timestamps, and action buttons. Connecting/editing
+// expands an inline form with credential + config fields sourced from
+// the catalog; submit upserts tenant_integrations (credentials stay
+// platform-only via RLS). Disconnect blanks credentials and flips the
+// status pill — doesn't delete the row, so last_connected_at /
+// last_error history survive.
+//
+// Test connection is intentionally a stub — real provider pings live
+// server-side (Edge Function) so tenant credentials never leak to the
+// client. The button calls an RPC that the server implements; until
+// that lands, we just optimistically update last_connected_at and
+// show "test stub" messaging.
+var _intRows = {}; // provider → row (platform-read includes credentials; that's us)
+
+function buildIntegrationsTab(t) {
+  if (!window.Integrations) {
+    return '<div class="detail-tab-placeholder">' +
+      '<div class="detail-tab-placeholder-title">integrations.js not loaded</div>' +
+      '<div class="detail-tab-placeholder-body">Reload the page — the integrations helper is missing from this session.</div>' +
+    '</div>';
+  }
+  return '<div id="intBody"><div class="int-loading">Loading integrations…</div></div>';
+}
+
+function afterRenderIntegrationsTab(t) {
+  var wrap = document.getElementById('intBody');
+  if (!wrap) return;
+
+  // Platform users can read credentials too (we need the existing
+  // config bag to pre-fill edit forms). Hit the base table directly.
+  db.from('tenant_integrations')
+    .select('id, provider, status, credentials, config, last_connected_at, last_error, last_error_at')
+    .eq('tenant_id', t.id)
+    .then(function(r) {
+      if (_activeDetailTab !== 'integrations' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+
+      _intRows = {};
+      if (r.error) {
+        var msg = (r.error.message || '').toLowerCase();
+        var hint = /does not exist|relation .* does not exist/.test(msg)
+          ? 'Run migration 016_tenant_integrations.sql in the Supabase SQL editor to create the table.'
+          : null;
+        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load integrations</strong><br/>' +
+          escHtml(r.error.message || '') +
+          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+        return;
+      }
+      (r.data || []).forEach(function(row) { _intRows[row.provider] = row; });
+      wrap.innerHTML = renderIntegrationsBody(t);
+    })
+    .catch(function(err) {
+      if (_activeDetailTab !== 'integrations' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderIntegrationsBody(t) {
+  var categories = window.Integrations.CATEGORIES;
+  var providers  = window.Integrations.PROVIDERS;
+
+  var out = '';
+  categories.forEach(function(cat) {
+    var catProviders = providers.filter(function(p) { return p.category === cat.key; });
+    if (catProviders.length === 0) return;
+    out += '<div class="int-category">' +
+      '<div class="int-category-title">' + escHtml(cat.label) + '</div>' +
+      catProviders.map(renderIntegrationCard).join('') +
+    '</div>';
+  });
+  return out;
+}
+
+function renderIntegrationCard(provider) {
+  var row = _intRows[provider.key];
+  var status = row ? row.status : 'disconnected';
+  var isConnected = status === 'connected';
+
+  var meta = '';
+  if (row) {
+    var bits = [];
+    if (row.last_connected_at) {
+      bits.push('<strong>Connected</strong> ' + formatDate(row.last_connected_at));
+    }
+    if (row.last_error && row.last_error_at) {
+      bits.push('<span class="int-error"><strong>Last error</strong> ' + escHtml(row.last_error) + ' (' + formatDate(row.last_error_at) + ')</span>');
+    }
+    if (bits.length) meta = '<div class="int-meta">' + bits.join(' &middot; ') + '</div>';
+  }
+
+  return '<div class="int-card" data-provider="' + escAttr(provider.key) + '">' +
+    '<div class="int-card-header">' +
+      '<div class="int-card-title">' +
+        escHtml(provider.label) +
+        '<span class="int-status-pill ' + status + '">' + status + '</span>' +
+      '</div>' +
+      '<div class="int-actions">' +
+        (isConnected
+          ? '<button class="form-btn secondary" onclick="testIntegration(\'' + escAttr(provider.key) + '\')">Test</button>' +
+            '<button class="form-btn secondary" onclick="showIntegrationForm(\'' + escAttr(provider.key) + '\')">Edit</button>' +
+            '<button class="form-btn secondary" onclick="disconnectIntegration(\'' + escAttr(provider.key) + '\')">Disconnect</button>'
+          : '<button class="form-btn primary" onclick="showIntegrationForm(\'' + escAttr(provider.key) + '\')">Connect</button>'
+        ) +
+      '</div>' +
+    '</div>' +
+    '<div class="int-card-desc">' + escHtml(provider.description) + '</div>' +
+    meta +
+    renderIntegrationForm(provider, row) +
+  '</div>';
+}
+
+function renderIntegrationForm(provider, row) {
+  var idBase = 'int-' + provider.key;
+  var creds  = (row && row.credentials) || {};
+  var config = (row && row.config) || {};
+
+  var credFields = provider.credentials.map(function(f) {
+    return renderIntFormField(idBase + '-cred-' + f.name, f, creds[f.name], /*isCredential*/ true);
+  }).join('');
+
+  var configFields = provider.config.map(function(f) {
+    return renderIntFormField(idBase + '-cfg-' + f.name, f, config[f.name], /*isCredential*/ false);
+  }).join('');
+
+  return '<div class="int-form" id="' + idBase + '-form">' +
+    (credFields
+      ? '<div class="int-section-heading">Credentials</div>' +
+        '<div class="int-form-grid">' + credFields + '</div>'
+      : '') +
+    (configFields
+      ? '<div class="int-section-heading">Configuration</div>' +
+        '<div class="int-form-grid">' + configFields + '</div>'
+      : '') +
+    '<div id="' + idBase + '-err" class="form-err" style="display:none;"></div>' +
+    '<div class="int-actions">' +
+      '<button class="form-btn secondary" onclick="hideIntegrationForm(\'' + escAttr(provider.key) + '\')">Cancel</button>' +
+      '<button class="form-btn primary" onclick="saveIntegration(\'' + escAttr(provider.key) + '\')">' +
+        (row ? 'Update' : 'Connect') +
+      '</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderIntFormField(id, field, currentValue, isCredential) {
+  var cls = (field.type === 'enum' || field.type === 'bool') ? 'int-form-field full' : 'int-form-field';
+  var reqMark = field.required ? ' <span class="req">*</span>' : '';
+  var label = '<label for="' + escAttr(id) + '">' + escHtml(field.label || field.name) + reqMark + '</label>';
+  var help  = field.description ? '<div class="int-help">' + escHtml(field.description) + '</div>' : '';
+
+  var input;
+  if (field.type === 'password') {
+    // Password inputs render blank when editing an existing row — the
+    // operator types a new value only if they want to change it. Leaving
+    // blank on an edit means "keep the stored value"; the save path
+    // distinguishes blank from empty-string.
+    var placeholder = (currentValue ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (leave blank to keep)' : (field.placeholder || ''));
+    input = '<input type="password" id="' + escAttr(id) + '" placeholder="' + escAttr(placeholder) + '" autocomplete="off"/>';
+  } else if (field.type === 'url' || field.type === 'text') {
+    input = '<input type="' + (field.type === 'url' ? 'url' : 'text') + '" id="' + escAttr(id) +
+            '" value="' + escAttr(currentValue != null ? String(currentValue) : '') +
+            '" placeholder="' + escAttr(field.placeholder || '') + '" autocomplete="off"/>';
+  } else if (field.type === 'enum') {
+    var v = currentValue != null ? currentValue : field.default;
+    input = '<select id="' + escAttr(id) + '">' +
+      (field.options || []).map(function(o) {
+        return '<option value="' + escAttr(o.value) + '"' + (o.value === v ? ' selected' : '') + '>' + escHtml(o.label) + '</option>';
+      }).join('') +
+    '</select>';
+  } else if (field.type === 'bool') {
+    var checked = currentValue != null ? !!currentValue : !!field.default;
+    input = '<div class="int-bool-row"><label class="workflow-toggle">' +
+      '<input type="checkbox" id="' + escAttr(id) + '"' + (checked ? ' checked' : '') + '/>' +
+      '<span class="workflow-toggle-slider"></span>' +
+      '<span class="workflow-toggle-label">' + (checked ? 'On' : 'Off') + '</span>' +
+    '</label></div>';
+  } else {
+    input = '<span class="muted">unsupported field type: ' + escHtml(field.type) + '</span>';
+  }
+
+  return '<div class="' + cls + '">' + label + input + help + '</div>';
+}
+
+function showIntegrationForm(providerKey) {
+  var form = document.getElementById('int-' + providerKey + '-form');
+  if (form) form.classList.add('show');
+}
+
+function hideIntegrationForm(providerKey) {
+  var form = document.getElementById('int-' + providerKey + '-form');
+  if (form) form.classList.remove('show');
+  // Reset bool toggle labels (checkboxes preserve state, but if the
+  // user flipped something and then cancelled, the label may be out
+  // of sync on the next open. Simpler to re-render the whole body.)
+  var wrap = document.getElementById('intBody');
+  if (wrap && _activeDetailTenant) wrap.innerHTML = renderIntegrationsBody(_activeDetailTenant);
+}
+
+function setIntegrationError(providerKey, msg) {
+  var el = document.getElementById('int-' + providerKey + '-err');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveIntegration(providerKey) {
+  var t = _activeDetailTenant;
+  var provider = window.Integrations && window.Integrations.forKey(providerKey);
+  if (!t || !provider) return;
+
+  setIntegrationError(providerKey, '');
+
+  var existing = _intRows[providerKey] || null;
+  var existingCreds  = (existing && existing.credentials) || {};
+  var nextCreds = {};
+  var nextConfig = {};
+
+  // Credentials: blank password fields mean "keep the stored value".
+  for (var i = 0; i < provider.credentials.length; i++) {
+    var f = provider.credentials[i];
+    var el = document.getElementById('int-' + providerKey + '-cred-' + f.name);
+    if (!el) continue;
+    var raw = (f.type === 'bool') ? !!el.checked : (el.value || '');
+    if (f.type === 'password') {
+      if (raw === '' || raw == null) {
+        // Keep existing value if any.
+        if (existingCreds[f.name] != null) nextCreds[f.name] = existingCreds[f.name];
+      } else {
+        nextCreds[f.name] = raw;
+      }
+    } else {
+      if (raw !== '' && raw != null) nextCreds[f.name] = raw;
+      else if (existingCreds[f.name] != null) nextCreds[f.name] = existingCreds[f.name];
+    }
+    if (f.required && (nextCreds[f.name] == null || nextCreds[f.name] === '')) {
+      setIntegrationError(providerKey, f.label + ' is required.');
+      return;
+    }
+  }
+
+  // Config: always persist current form values.
+  for (var j = 0; j < provider.config.length; j++) {
+    var cf = provider.config[j];
+    var cel = document.getElementById('int-' + providerKey + '-cfg-' + cf.name);
+    if (!cel) continue;
+    var cv;
+    if (cf.type === 'bool') cv = !!cel.checked;
+    else                    cv = cel.value;
+    if (cf.required && (cv === '' || cv == null)) {
+      setIntegrationError(providerKey, cf.label + ' is required.');
+      return;
+    }
+    nextConfig[cf.name] = cv;
+  }
+
+  db.from('tenant_integrations').upsert({
+    tenant_id:   t.id,
+    provider:    providerKey,
+    status:      'connected',
+    credentials: nextCreds,
+    config:      nextConfig,
+    last_connected_at: new Date().toISOString(),
+    last_error:  null,
+    last_error_at: null,
+    created_by:  currentUserId
+  }, { onConflict: 'tenant_id,provider' }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intRows[providerKey] = r.data;
+      var wrap = document.getElementById('intBody');
+      if (wrap) wrap.innerHTML = renderIntegrationsBody(t);
+      showToast(provider.label + ' connected.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.integration_connected',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        // Details is redacted: provider + config only, NEVER credentials.
+        details: JSON.stringify({
+          provider: providerKey,
+          config: nextConfig,
+          credential_keys: Object.keys(nextCreds)
+        })
+      }).catch(function(e){ console.warn('[platform] integration audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] integration save failed', err);
+      setIntegrationError(providerKey, (err && err.message) || 'Save failed.');
+    });
+}
+
+function disconnectIntegration(providerKey) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  if (!window.confirm('Disconnect this integration? The stored credentials will be cleared; configuration and history stay.')) return;
+
+  db.from('tenant_integrations').update({
+    status: 'disconnected',
+    credentials: {},
+    last_error: null,
+    last_error_at: null
+  }).eq('tenant_id', t.id).eq('provider', providerKey).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intRows[providerKey] = r.data;
+      var wrap = document.getElementById('intBody');
+      if (wrap) wrap.innerHTML = renderIntegrationsBody(t);
+      showToast('Disconnected.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'tenant.integration_disconnected',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify({ provider: providerKey })
+      }).catch(function(e){ console.warn('[platform] integration audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] integration disconnect failed', err);
+      showToast('Disconnect failed: ' + ((err && err.message) || 'unknown error'), 'error');
+    });
+}
+
+function testIntegration(providerKey) {
+  // Stub: real provider pings go through a server-side Edge Function
+  // so credentials never round-trip through the browser for the test
+  // call. Until that Edge Function lands (see Phase 7 carry-over),
+  // optimistically stamp last_connected_at and surface a notice.
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  showToast('Test-connection stub — server-side ping lands in a follow-up. Marked as fresh.', 'warn');
+
+  db.from('tenant_integrations').update({
+    last_connected_at: new Date().toISOString(),
+    last_error: null,
+    last_error_at: null
+  }).eq('tenant_id', t.id).eq('provider', providerKey).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intRows[providerKey] = r.data;
+      var wrap = document.getElementById('intBody');
+      if (wrap) wrap.innerHTML = renderIntegrationsBody(t);
+    })
+    .catch(function(err) {
+      console.error('[platform] integration test stub failed', err);
     });
 }
 

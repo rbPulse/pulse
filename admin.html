@@ -14,6 +14,7 @@
 <script src="messaging.js"></script>
 <script src="integrations.js"></script>
 <script src="compliance.js"></script>
+<script src="modules.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1449,6 +1450,14 @@ function _bootAdminWithTenant(user, profile) {
       if (window.Compliance && window.Tenant)
         window.Compliance.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[admin] compliance init failed; treating as empty', e);
+        });
+      // Modules init reads module_entitlements; downstream feature
+      // gates call Modules.isEnabled(key). Pre-resolve returns false
+      // which is the conservative default for a gate (don't show the
+      // UI until we know the tenant has access).
+      if (window.Modules && window.Tenant)
+        window.Modules.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[admin] modules init failed; treating all as disabled', e);
         });
       applyTenantBrand();
       initAdmin(user, profile);

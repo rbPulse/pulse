@@ -14,6 +14,7 @@
 <script src="messaging.js"></script>
 <script src="integrations.js"></script>
 <script src="compliance.js"></script>
+<script src="modules.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7471,6 +7472,15 @@ function _bootPortalWithTenant(user) {
       if (window.Compliance && window.Tenant)
         window.Compliance.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[portal] compliance init failed; treating as empty', e);
+        });
+      // Modules init — member + clinician portals gate UI on
+      // Modules.isEnabled. Live video button doesn't render without
+      // 'live_video'; lab results section hidden without 'labs';
+      // etc. Read-site gating is the Phase 9 carry-over. Pre-resolve
+      // returns false which is the safe default.
+      if (window.Modules && window.Tenant)
+        window.Modules.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[portal] modules init failed; treating all as disabled', e);
         });
       applyTenantBrand();
       initPortal(user);

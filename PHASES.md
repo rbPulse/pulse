@@ -336,7 +336,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 6     | **Foundations done; delivery + trigger refactor = carry-over** | Migration 015 adds `communication_templates(tenant_id, key, channel, subject, body, variables, cadence)` with composite unique on `(tenant_id, key, channel)` and RLS (staff read / tenant-owner+admin write / platform read-write). `messaging.js` ships a catalog of ~7 default templates (member welcome, intake confirmation, refill approved/denied, consult scheduled/reminder, follow-up) with `Messaging.resolve(key, channel)` / `Messaging.render(key, vars, channel)` helpers. Operator Comms tab lists every template grouped by namespace; each card has subject/body editors, clickable variable chips that insert `{{tokens}}` at the cursor, per-template save + reset + preview (with hardcoded sample data). `admin.html` and `portal.html` load messaging.js and fire `Messaging.init()` in parallel with page boot. See carry-over for delivery wiring and automation-trigger refactor. |
 | 7     | **Foundations done; delivery + Vault + webhook router = carry-over** | Migration 016 creates `tenant_integrations(tenant_id, provider, status, credentials jsonb, config jsonb, last_connected_at, last_error, last_error_at)` with platform-only RLS on the base table and a SECURITY DEFINER RPC (`tenant_integrations_for_my_tenants`) that returns a non-secret projection to tenant staff. `integrations.js` ships a catalog of 7 providers (Stripe, Daily.co, Resend, Twilio, Labcorp, Stripe Identity, Shippo) with credential + config field schemas. Operator Integrations tab renders one card per provider grouped by category; Connect/Edit/Disconnect/Test actions manage the row. Password fields always render blank on edit — leaving blank keeps the stored value. Audit log redacts credential VALUES (writes `credential_keys: [...]` instead). `admin.html` + `portal.html` load integrations.js and fire `Integrations.init()` in parallel with page boot. See carry-over for the real delivery path, Vault migration, and the webhook router. |
 | 8     | **Foundations done; data-export + alerts + read-site gating = carry-over** | Migration 017 creates four compliance tables in one migration: `tenant_locations` (addresses, hours, primary-flag with partial unique index), `tenant_regions` (operating states with allowed/blocked/unset tri-state), `tenant_consents` (versioned — editing creates a new version so prior signatures stay traceable), `clinician_state_licenses` (per-user, cross-tenant). `compliance.js` ships the US states catalog + `tenantOperatesIn` / `cliniciansLicensedIn` / `licensesExpiringWithin` / `primaryLocation` helpers. Operator Compliance tab has four sections: clickable states grid with cycle-semantics (unset → allowed → blocked → unset), locations CRUD with primary management, consent templates with versioned edit flow, read-only licenses summary with expiry stat cards (expired / ≤30d / ≤60d). `admin.html` + `portal.html` load compliance.js and fire `Compliance.init()` in parallel. See carry-over for data-export, license-expiry notifications, and the read-site gates that actually enforce state restrictions. |
-| 9–15  | Not started   | See sections above. |
+| 9     | **Foundations done; Stripe sync + feature-gate refactor = carry-over** | Migration 018 creates `plans` (seeded with Starter / Pro / Enterprise), `tenant_subscriptions` (partial unique index — one active sub per tenant; canceled rows stay as history), `module_entitlements` (sourced from plan or manually granted, with expiry for trials). `modules.js` ships a catalog of 16 modules across 5 categories (core, clinical, commercial, analytics, enterprise) and a `Modules.isEnabled(key)` feature-gate accessor. Per-client Billing tab manages subscription + per-module entitlements. Two top-level fleet tabs: **Modules** (catalog with adoption counts + plan-membership chips) and **Billing** (MRR, ARR, plan mix, churn flags). `admin.html` + `portal.html` load modules.js and fire `Modules.init()` in parallel. See carry-over for Stripe sync, Customer Portal embed, and the downstream feature-gate refactor. |
+| 10–15 | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -650,6 +651,84 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   from the operator view today. Add a "Show archived" toggle and a
   small-print footer like "3 archived" so deliberate hide-vs-delete
   is discoverable.
+
+### Carry-over from Phase 9
+
+- **Stripe sync — inbound (webhooks).** The `tenant_subscriptions`
+  and `module_entitlements` tables can be populated manually today.
+  Real billing flow should have Stripe drive state via webhooks:
+  `customer.subscription.created/updated/deleted`,
+  `invoice.payment_succeeded/failed`, `customer.subscription.
+  trial_will_end`. Each event looks up the tenant by
+  `stripe_customer_id`, updates the matching row. Build on Phase 7's
+  webhook router carry-over.
+- **Stripe sync — outbound (changes flow back).** When an operator
+  assigns a plan or switches cycle on the per-client Billing tab,
+  that should call a server-side RPC that updates the Stripe
+  subscription (proration, cycle change, cancel scheduling) — NOT
+  just the DB row. Today the tab is DB-only; Stripe's out of sync
+  the moment anyone touches it. Add
+  `stripe.update_subscription(tenant_id, plan_id, cycle)` to the
+  Phase 7 server-side layer; wire the Billing tab's Save button
+  through it.
+- **Customer Portal embed.** PHASES.md explicitly says "Use Stripe
+  Customer Portal link for invoicing UI — don't rebuild it." Add a
+  server-side RPC (`stripe.create_billing_portal_session`) that
+  returns a short-lived portal URL; surface a "Manage subscription"
+  button on the tenant admin's own billing screen (admin.html, not
+  platform.html) that redirects there. Keeps Pulse out of the
+  invoice-rendering business.
+- **Feature-gate refactor.** `Modules.isEnabled()` is plumbed into
+  admin.html + portal.html but no read-site reads it yet. Known
+  gates to add when the per-module UI work lands:
+    - `live_video`: gates the video-consult button in the member
+      portal and the "Create video appointment" action in admin.
+      Requires the Daily.co integration (Phase 7) connected too;
+      both gates should be AND-ed.
+    - `e_prescribing`: gates the prescribe flow; without, the
+      clinician writes a standard Rx record instead of transmitting.
+    - `labs`: gates the labs tab in admin + the lab results section
+      on the member chart.
+    - `advanced_analytics`: gates the Analytics top-level tab in
+      admin.html (collapse to "basic" view when off).
+    - `multi_location`: gates the Locations UI and the
+      per-location picker on member intake.
+    - `white_label`: gates Pulse attribution in portal.html footers
+      (when on, hide "Powered by Pulse"; when off, show it).
+    - `custom_sso`: gates the SSO config panel inside admin.html's
+      tenant self-serve surface (which itself is a future feature).
+- **Plan CRUD on the operator portal.** Plans are seeded by the
+  migration; the top-level Modules tab shows plan chips but there's
+  no UI to add/edit/archive plans. Add a Plans editor (inside the
+  top-level Modules tab or its own surface) with the same pattern
+  as the Compliance tab's sections — list, inline form, archive.
+  Important: editing a plan's `included_modules` array should NOT
+  silently revoke entitlements from existing tenants on that plan;
+  either prompt the operator or require an explicit sync step.
+- **Proration semantics.** When a tenant changes plans mid-cycle,
+  today nothing prorates anything — the DB row flips and the next
+  invoice reflects the new price. Once Stripe sync lands, Stripe
+  does the proration automatically. Document the behaviour in
+  Billing tab copy so operators don't get surprised.
+- **Trial expiry automation.** `expires_at` on `module_entitlements`
+  is honoured by `Modules.isEnabled()` at read time (expired means
+  disabled), but no job actively flips `enabled=false` when an
+  entitlement expires. Add a nightly cleanup that sets
+  `enabled=false` on expired rows so the DB state stays honest +
+  audit trail reflects the auto-disable. Alternatively, rely on the
+  read-time check alone and accept that
+  `module_entitlements.enabled` might report stale data between the
+  expiry moment and the cleanup — either approach is defensible.
+- **Past-due escalation workflow.** The fleet Billing tab surfaces
+  past-due subs in the churn-flags section, but nothing fires
+  actions. Hook the Phase 6 messaging layer (once delivery wiring
+  lands) to send a dunning template to the tenant admin on
+  `past_due` status, escalating weekly.
+- **Per-module analytics.** Which tenants use which modules HOW
+  MUCH? `Modules.isEnabled` is binary; actual usage telemetry
+  (live_video calls per month, labs ordered, api_access requests)
+  would inform pricing and module consolidation. Belongs with Phase
+  14 analytics work — note the cross-dependency.
 
 ### Carry-over from Phase 1
 

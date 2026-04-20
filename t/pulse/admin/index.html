@@ -612,6 +612,41 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .term-field input::placeholder{color:var(--text4);}
 .term-field-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
 @media(max-width:800px){ .term-grid{grid-template-columns:1fr;} }
+
+/* ══════════════════════════════════════════════════════════════════
+   R7: WORKFLOW SETUP — ported from CommandOS.
+   Toggle accent flipped slate → amber.
+   ══════════════════════════════════════════════════════════════════ */
+.workflow-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
+.workflow-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;cursor:pointer;transition:background .15s;user-select:none;}
+.workflow-section-head:hover{background:rgba(20,20,20,0.02);}
+.workflow-section-toggle{font-family:'Inter',sans-serif;font-size:14px;color:var(--text3);transition:transform .2s;}
+.workflow-section.collapsed .workflow-section-toggle{transform:rotate(-90deg);}
+.workflow-section-body{padding:14px 20px 18px;border-top:1px solid var(--border);}
+.workflow-section.collapsed .workflow-section-body{display:none;}
+.workflow-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.workflow-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:0;}
+.workflow-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+.workflow-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.workflow-field.full{grid-column:1 / -1;}
+.workflow-field-row{display:flex;align-items:center;gap:10px;min-height:36px;}
+.workflow-field label{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--text);letter-spacing:0;}
+.workflow-field-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.5;}
+.workflow-field-default{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
+.workflow-field-default.overridden{color:var(--amber);font-style:normal;font-weight:600;}
+.workflow-field input[type="number"]{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:120px;font-variant-numeric:tabular-nums;}
+.workflow-field input[type="number"]:focus{border-color:var(--amber);}
+.workflow-field input[type="number"].err{border-color:var(--red);}
+.workflow-field select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 32px 8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:border-color .15s;width:100%;max-width:360px;}
+.workflow-field select:focus{border-color:var(--amber);}
+.workflow-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;user-select:none;gap:10px;}
+.workflow-toggle input{position:absolute;opacity:0;pointer-events:none;}
+.workflow-toggle-slider{width:36px;height:20px;background:var(--card);border:1px solid var(--border-strong);border-radius:var(--radius-pill);position:relative;transition:background .15s,border-color .15s;flex-shrink:0;}
+.workflow-toggle-slider::after{content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:transform .15s,background .15s;}
+.workflow-toggle input:checked + .workflow-toggle-slider{background:var(--amber);border-color:var(--amber);}
+.workflow-toggle input:checked + .workflow-toggle-slider::after{transform:translateX(16px);background:#fff;}
+.workflow-toggle-label{font-family:'Inter',sans-serif;font-size:13px;color:var(--text2);}
+@media(max-width:800px){ .workflow-grid{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
@@ -768,12 +803,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-setup-workflow">
         <div class="tab-header">
           <div class="tab-title">Workflow</div>
-          <div class="tab-subtitle">Intake rules, refill SLAs, consult policies, assignment strategy, follow-up cadence.</div>
+          <div class="tab-subtitle">Intake, consult, refill, SLA, assignment, follow-up. Auto-rendered from <code>workflow.js</code> — editing a rule here changes how the downstream portals behave.</div>
         </div>
-        <div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:14px;padding:32px;text-align:center;">
-          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Workflow editor moves here in R7</div>
-          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;">6 sections, ~15 fields. Schema-driven form already built in CommandOS; R7 is a host change, not a rewrite.</div>
-        </div>
+        <div id="workflow-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading workflow…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-comms">
@@ -1820,6 +1852,7 @@ function switchTab(tabId) {
   if (tabId === 'setup-brand'       && typeof renderBrandSetup       === 'function') renderBrandSetup();
   if (tabId === 'setup-terminology' && typeof renderTerminologySetup === 'function') renderTerminologySetup();
   if (tabId === 'setup-catalog'     && typeof renderCatalogSetup     === 'function') renderCatalogSetup();
+  if (tabId === 'setup-workflow'    && typeof renderWorkflowSetup    === 'function') renderWorkflowSetup();
 }
 
 // ── Load overview stats ──
@@ -6028,6 +6061,190 @@ function renderCatalogSetup() {
   }).catch(function(err) {
     body.innerHTML = '<div style="padding:20px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:12px;">' + (err && err.message || 'Load failed') + '</div>';
   });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// R7: WORKFLOW SETUP
+// Ports CommandOS's Workflow form. Schema-driven render from
+// window.Workflow.SCHEMA (workflow.js). Saves to tenants.workflow
+// JSONB via migration 022's RLS. Every field type (bool/number/enum)
+// renders with the same patterns as CommandOS.
+// ══════════════════════════════════════════════════════════════════
+function renderWorkflowSetup() {
+  var body = document.getElementById('workflow-setup-body');
+  if (!body) return;
+  if (!window.Workflow) {
+    body.innerHTML = '<div style="padding:30px;color:var(--red);">workflow.js not loaded.</div>';
+    return;
+  }
+  if (!window.Tenant) {
+    body.innerHTML = '<div style="padding:30px;color:var(--red);">Tenant context not loaded.</div>';
+    return;
+  }
+  body.innerHTML = buildWorkflowSetupForm(window.Tenant);
+  wireWorkflowSetupForm();
+}
+
+function buildWorkflowSetupForm(t) {
+  var schema = window.Workflow.SCHEMA;
+  var defaults = window.Workflow.DEFAULTS;
+  var current = t.workflow || {};
+  var out = '<div class="brand-form">';
+  schema.forEach(function(section, idx) {
+    var collapsed = idx > 0 ? ' collapsed' : '';
+    out += '<div class="workflow-section' + collapsed + '" id="wfSection-' + _brandEscAttr(section.section) + '">' +
+      '<div class="workflow-section-head" onclick="toggleWorkflowSetupSection(\'' + _brandEscAttr(section.section) + '\')">' +
+        '<div>' +
+          '<div class="workflow-section-title">' + _brandEscHtml(section.label) + '</div>' +
+          '<div class="workflow-section-sub">' + _brandEscHtml(section.description) + '</div>' +
+        '</div>' +
+        '<span class="workflow-section-toggle">\u25BE</span>' +
+      '</div>' +
+      '<div class="workflow-section-body">' +
+        '<div class="workflow-grid">' +
+          section.fields.map(function(field) {
+            var sc = current[section.section] || {};
+            var val = Object.prototype.hasOwnProperty.call(sc, field.key) ? sc[field.key] : defaults[section.section][field.key];
+            return _renderWorkflowSetupField(section.section, field, val, defaults[section.section][field.key]);
+          }).join('') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  out += '<div id="workflowError" class="brand-form-err"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn primary" id="workflowSaveBtn" onclick="saveWorkflowSetup()">Save Workflow</button>' +
+    '</div>' +
+  '</div>';
+  return out;
+}
+
+function _renderWorkflowSetupField(sectionKey, field, val, defaultVal) {
+  var id = 'wf-' + sectionKey + '-' + field.key;
+  var isOverridden = String(val) !== String(defaultVal);
+  var cls = (field.type === 'enum') ? 'workflow-field full' : 'workflow-field';
+  var input;
+  if (field.type === 'bool') {
+    input = '<label class="workflow-toggle">' +
+      '<input type="checkbox" id="' + _brandEscAttr(id) + '" data-wf-section="' + _brandEscAttr(sectionKey) + '" data-wf-key="' + _brandEscAttr(field.key) + '" data-wf-type="bool"' + (val ? ' checked' : '') + '/>' +
+      '<span class="workflow-toggle-slider"></span>' +
+      '<span class="workflow-toggle-label">' + (val ? 'On' : 'Off') + '</span>' +
+    '</label>';
+  } else if (field.type === 'number') {
+    input = '<div class="workflow-field-row">' +
+      '<input type="number" id="' + _brandEscAttr(id) + '" value="' + _brandEscAttr(String(val)) + '" min="' + _brandEscAttr(String(field.min != null ? field.min : '')) + '" max="' + _brandEscAttr(String(field.max != null ? field.max : '')) + '" data-wf-section="' + _brandEscAttr(sectionKey) + '" data-wf-key="' + _brandEscAttr(field.key) + '" data-wf-type="number" data-wf-min="' + _brandEscAttr(String(field.min != null ? field.min : '')) + '" data-wf-max="' + _brandEscAttr(String(field.max != null ? field.max : '')) + '"/>' +
+    '</div>';
+  } else if (field.type === 'enum') {
+    input = '<select id="' + _brandEscAttr(id) + '" data-wf-section="' + _brandEscAttr(sectionKey) + '" data-wf-key="' + _brandEscAttr(field.key) + '" data-wf-type="enum">' +
+      field.options.map(function(o) {
+        return '<option value="' + _brandEscAttr(o.value) + '"' + (o.value === val ? ' selected' : '') + '>' + _brandEscHtml(o.label) + '</option>';
+      }).join('') +
+    '</select>';
+  } else {
+    input = '<span>unsupported: ' + _brandEscHtml(field.type) + '</span>';
+  }
+  var defaultBadge = '<span class="workflow-field-default' + (isOverridden ? ' overridden' : '') + '" id="' + _brandEscAttr(id) + '-badge">' +
+    (isOverridden ? 'Overridden' : 'Default: ' + _brandEscHtml(String(defaultVal))) + '</span>';
+  return '<div class="' + cls + '">' +
+    '<div class="workflow-field-row" style="justify-content:space-between;">' +
+      '<label for="' + _brandEscAttr(id) + '">' + _brandEscHtml(field.label) + '</label>' +
+      defaultBadge +
+    '</div>' +
+    input +
+    '<div class="workflow-field-help">' + _brandEscHtml(field.description) + '</div>' +
+  '</div>';
+}
+
+function toggleWorkflowSetupSection(key) {
+  var el = document.getElementById('wfSection-' + key);
+  if (el) el.classList.toggle('collapsed');
+}
+
+function wireWorkflowSetupForm() {
+  var panel = document.getElementById('tab-setup-workflow');
+  if (!panel) return;
+  panel.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el.getAttribute) return;
+    var section = el.getAttribute('data-wf-section'), key = el.getAttribute('data-wf-key'), type = el.getAttribute('data-wf-type');
+    if (!section || !key || !type) return;
+    var current = type === 'bool' ? !!el.checked : (type === 'number' ? parseFloat(el.value) : el.value);
+    var def = window.Workflow.DEFAULTS[section] ? window.Workflow.DEFAULTS[section][key] : null;
+    var id = 'wf-' + section + '-' + key;
+    if (type === 'bool') {
+      var lbl = el.parentElement && el.parentElement.querySelector('.workflow-toggle-label');
+      if (lbl) lbl.textContent = current ? 'On' : 'Off';
+    }
+    if (type === 'number') {
+      var min = parseFloat(el.getAttribute('data-wf-min')), max = parseFloat(el.getAttribute('data-wf-max'));
+      var valid = !isNaN(current) && (isNaN(min) || current >= min) && (isNaN(max) || current <= max);
+      el.classList.toggle('err', !valid);
+    }
+    var badge = document.getElementById(id + '-badge');
+    if (badge) {
+      if (String(current) !== String(def)) { badge.className = 'workflow-field-default overridden'; badge.textContent = 'Overridden'; }
+      else                                  { badge.className = 'workflow-field-default'; badge.textContent = 'Default: ' + String(def); }
+    }
+  });
+}
+
+function saveWorkflowSetup() {
+  if (!window.Tenant || !window.Workflow) return;
+  var t = window.Tenant;
+  var errEl = document.getElementById('workflowError');
+  if (errEl) { errEl.className = 'brand-form-err'; errEl.textContent = ''; }
+  var schema = window.Workflow.SCHEMA;
+  var next = {};
+  var firstError = null;
+  schema.forEach(function(section) {
+    next[section.section] = {};
+    section.fields.forEach(function(field) {
+      var el = document.getElementById('wf-' + section.section + '-' + field.key);
+      if (!el) return;
+      var v;
+      if (field.type === 'bool') v = !!el.checked;
+      else if (field.type === 'number') v = parseFloat(el.value);
+      else v = el.value;
+      if (field.type === 'number') {
+        if (isNaN(v)) { firstError = firstError || (field.label + ' must be a number.'); return; }
+        if (field.min != null && v < field.min) { firstError = firstError || (field.label + ' min ' + field.min); return; }
+        if (field.max != null && v > field.max) { firstError = firstError || (field.label + ' max ' + field.max); return; }
+      }
+      if (field.type === 'enum' && !(field.options || []).some(function(o){return o.value === v;})) {
+        firstError = firstError || (field.label + ' invalid value');
+        return;
+      }
+      next[section.section][field.key] = v;
+    });
+  });
+  if (firstError) { if (errEl) { errEl.className = 'brand-form-err show'; errEl.textContent = firstError; } return; }
+  var prev = t.workflow || {};
+  var btn = document.getElementById('workflowSaveBtn');
+  btn.disabled = true;
+  db.from('tenants').update({ workflow: next }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      return db.from('audit_logs').insert({
+        action: 'tenant.workflow_updated',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: t.id, tenant_id: t.id,
+        change_type: 'workflow',
+        before_snapshot: { workflow: prev },
+        after_snapshot:  { workflow: next },
+        details: JSON.stringify({ source: 'tenant-admin' })
+      }).catch(function(e){ console.warn('[admin] workflow audit failed', e); });
+    })
+    .then(function() {
+      btn.disabled = false;
+      t.workflow = next;
+      if (window.Workflow) { window.Workflow.reset(); window.Workflow.init(); }
+      showToast && showToast('Workflow saved.', 'success');
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[admin] workflow save failed', err);
+      if (errEl) { errEl.className = 'brand-form-err show'; errEl.textContent = (err && err.message) || 'Save failed.'; }
+    });
 }
 </script>
 </body>

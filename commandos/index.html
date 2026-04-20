@@ -6672,6 +6672,27 @@ function resetCommsTemplate(key, channel) {
 // noop. Easier to reason about the persisted JSONB if it always
 // reflects the full shape.
 function buildWorkflowTab(t) {
+  // R7: Workflow editing moved to tenant admin. CommandOS shows a
+  // summary count of overrides + deep link. Legacy editor preserved
+  // below the early return.
+  var READ_ONLY_PLACEHOLDER = true;
+  if (READ_ONLY_PLACEHOLDER) {
+    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-workflow';
+    var sections = Object.keys(t.workflow || {}).length;
+    return '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Workflow</div>' +
+        '<div class="brand-form-section-sub">Workflow rules (intake / consult / refill / SLAs / assignment / follow-up) are authored by this tenant\u2019s admin. Click through to assist.</div>' +
+        (sections > 0
+          ? '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);"><strong>' + sections + '</strong> section' + (sections === 1 ? '' : 's') + ' customised from defaults.</div>'
+          : '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:24px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Using bundled workflow defaults.</div>') +
+      '</div>' +
+      '<div class="brand-actions">' +
+        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
+      '</div>' +
+    '</div>';
+  }
+
   if (!window.Workflow) {
     return '<div class="detail-tab-placeholder">' +
       '<div class="detail-tab-placeholder-title">workflow.js not loaded</div>' +

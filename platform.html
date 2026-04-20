@@ -185,6 +185,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .comp-inline-form .brand-form-grid{grid-template-columns:1fr 1fr;}
 .comp-primary-toggle{display:flex;align-items:center;gap:8px;margin-top:10px;}
 
+/* Consents */
+.comp-consent-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.comp-consent{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;}
+.comp-consent-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.comp-consent-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.comp-consent-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);}
+.comp-consent-version{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--card2);color:var(--text3);border:1px solid var(--border);}
+.comp-consent-meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;}
+.comp-consent-body{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;max-height:120px;overflow-y:auto;white-space:pre-wrap;line-height:1.5;}
+.comp-consent-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.comp-consent-actions .form-btn{padding:5px 10px;font-size:10px;}
+
+/* Licenses */
+.comp-license-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;}
+.comp-license-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;}
+.comp-license-stat-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.comp-license-stat-value{font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
+.comp-license-stat-value.warn{color:var(--amber);}
+.comp-license-stat-value.err{color:var(--red);}
+.comp-license-list{display:flex;flex-direction:column;gap:6px;}
+.comp-license-row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:12px;}
+.comp-license-user{font-weight:500;color:var(--text);}
+.comp-license-state{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;color:var(--text2);}
+.comp-license-number{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);}
+.comp-license-expires{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.comp-license-expires.warn{color:var(--amber);font-weight:600;}
+.comp-license-expires.err{color:var(--red);font-weight:600;}
+
 /* ── INTEGRATIONS TAB ── */
 .int-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .int-category{margin-bottom:22px;}
@@ -2004,17 +2032,330 @@ function archiveLocation(locId) {
     });
 }
 
-// ── Consents + Licenses stubs (fill in the next commit) ──────────────
+// ── Consents ──────────────────────────────────────────────────────────
+// Versioned. Editing a consent creates a new row with version+1;
+// previous versions stay (archived or not) so member signatures
+// resolve back to the exact text they agreed to. UI groups rows by
+// key and shows the latest non-archived version per key by default.
 function renderConsentsSection(t) {
+  var err = _compData.errors.consents;
+  if (err) return sectionWrapCompliance('Consent templates',
+    'Versioned consent text (HIPAA authorisation, telehealth consent, payment authorisation).',
+    sectionError('Failed to load tenant_consents', err, migrationHint(err, '017_compliance.sql')));
+
+  // Group by key, pick the latest non-archived per key.
+  var byKey = {};
+  _compData.consents.forEach(function(c) {
+    if (!byKey[c.key]) byKey[c.key] = [];
+    byKey[c.key].push(c);
+  });
+  Object.keys(byKey).forEach(function(k) {
+    byKey[k].sort(function(a, b) { return (b.version || 0) - (a.version || 0); });
+  });
+
+  var keys = Object.keys(byKey);
+  var list = keys.length === 0
+    ? '<div class="comp-empty">No consent templates yet. Add one to get started.</div>'
+    : '<div class="comp-consent-list">' + keys.map(function(k) {
+        var versions = byKey[k];
+        var latest = versions.find(function(v) { return !v.is_archived; }) || versions[0];
+        return renderConsentCard(k, latest, versions);
+      }).join('') + '</div>';
+
+  var form = renderConsentForm();
+  var actions = '<div class="brand-actions" style="margin-top:10px;">' +
+    '<button class="form-btn primary" onclick="showConsentForm(null, null)">Add Consent</button>' +
+  '</div>';
+
   return sectionWrapCompliance('Consent templates',
-    'Versioned consent text (HIPAA authorisation, telehealth consent, payment authorisation). CRUD lands in the next commit.',
-    '<div class="comp-empty">Next commit.</div>');
+    'Versioned consent text shown to members during intake. Editing creates a new version; prior versions remain so past signatures stay traceable.',
+    list + form + actions);
 }
 
+function renderConsentCard(key, latest, allVersions) {
+  var bodyPreview = latest.body && latest.body.length > 220
+    ? latest.body.slice(0, 220).trim() + '…'
+    : (latest.body || '—');
+  var sigNote = latest.requires_signature ? 'Signature required' : 'No signature';
+  var effective = latest.effective_date ? 'Effective ' + formatDate(latest.effective_date) : '';
+  var versionCount = allVersions.length;
+  var archivedNote = latest.is_archived ? ' · archived (latest visible)' : '';
+
+  return '<div class="comp-consent" data-consent-id="' + escAttr(latest.id) + '">' +
+    '<div class="comp-consent-head">' +
+      '<div class="comp-consent-title">' +
+        escHtml(latest.title || '(untitled)') +
+        '<span class="comp-consent-key">' + escHtml(key) + '</span>' +
+        '<span class="comp-consent-version">v' + (latest.version || 1) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="comp-consent-meta">' +
+      escHtml(sigNote) +
+      (effective ? ' · ' + escHtml(effective) : '') +
+      (versionCount > 1 ? ' · ' + versionCount + ' versions' : '') +
+      archivedNote +
+    '</div>' +
+    '<div class="comp-consent-body">' + escHtml(bodyPreview) + '</div>' +
+    '<div class="comp-consent-actions">' +
+      '<button class="form-btn secondary" onclick="showConsentForm(\'' + escAttr(key) + '\',\'' + escAttr(latest.id) + '\')">New version</button>' +
+      (latest.is_archived
+        ? '<button class="form-btn secondary" onclick="unarchiveConsent(\'' + escAttr(latest.id) + '\')">Unarchive</button>'
+        : '<button class="form-btn secondary" onclick="archiveConsent(\'' + escAttr(latest.id) + '\')">Archive</button>'
+      ) +
+    '</div>' +
+  '</div>';
+}
+
+function renderConsentForm() {
+  return '<div class="comp-inline-form" id="consentForm">' +
+    '<div class="form-title" id="consentFormTitle">Add consent</div>' +
+    '<input type="hidden" id="consentKey" value=""/>' +
+    '<input type="hidden" id="consentPrevVersion" value="0"/>' +
+    '<div class="brand-form-grid">' +
+      '<div class="brand-form-field">' +
+        '<label for="consentKeyInput">Key</label>' +
+        '<input type="text" id="consentKeyInput" placeholder="hipaa_authorization"/>' +
+        '<div class="brand-help">Lowercase, underscore-separated. Becomes part of the template identifier.</div>' +
+      '</div>' +
+      '<div class="brand-form-field">' +
+        '<label for="consentTitle">Title</label>' +
+        '<input type="text" id="consentTitle" placeholder="HIPAA Authorization"/>' +
+      '</div>' +
+      '<div class="brand-form-field full">' +
+        '<label for="consentBody">Body</label>' +
+        '<textarea id="consentBody" style="min-height:160px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:12px;" placeholder="Consent language the member will see and sign."></textarea>' +
+      '</div>' +
+      '<div class="brand-form-field">' +
+        '<label for="consentEffectiveDate">Effective date</label>' +
+        '<input type="date" id="consentEffectiveDate"/>' +
+      '</div>' +
+      '<div class="brand-form-field">' +
+        '<label>&nbsp;</label>' +
+        '<label class="workflow-toggle" style="margin-top:8px;">' +
+          '<input type="checkbox" id="consentRequiresSig" checked/>' +
+          '<span class="workflow-toggle-slider"></span>' +
+          '<span class="workflow-toggle-label">Signature required</span>' +
+        '</label>' +
+      '</div>' +
+    '</div>' +
+    '<div id="consentError" class="form-err" style="display:none;margin-top:10px;"></div>' +
+    '<div class="brand-actions" style="margin-top:12px;">' +
+      '<button class="form-btn secondary" onclick="hideConsentForm()">Cancel</button>' +
+      '<button class="form-btn primary" onclick="saveConsent()">Save</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function showConsentForm(existingKey, existingId) {
+  var form = document.getElementById('consentForm');
+  if (!form) return;
+  var title = document.getElementById('consentFormTitle');
+
+  ['consentKey','consentKeyInput','consentTitle','consentBody','consentEffectiveDate']
+    .forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('consentPrevVersion').value = '0';
+  document.getElementById('consentRequiresSig').checked = true;
+  setConsentError('');
+
+  if (existingKey && existingId) {
+    var c = _compData.consents.find(function(x) { return x.id === existingId; });
+    if (c) {
+      title.textContent = 'New version of "' + (c.key || '') + '"';
+      document.getElementById('consentKey').value       = c.key;
+      document.getElementById('consentKeyInput').value  = c.key;
+      document.getElementById('consentKeyInput').disabled = true;
+      document.getElementById('consentTitle').value     = c.title || '';
+      document.getElementById('consentBody').value      = c.body || '';
+      document.getElementById('consentEffectiveDate').value = c.effective_date || '';
+      document.getElementById('consentRequiresSig').checked = !!c.requires_signature;
+      document.getElementById('consentPrevVersion').value = String(c.version || 1);
+    }
+  } else {
+    title.textContent = 'Add consent';
+    document.getElementById('consentKeyInput').disabled = false;
+  }
+  form.classList.add('show');
+}
+
+function hideConsentForm() {
+  var form = document.getElementById('consentForm');
+  if (form) form.classList.remove('show');
+}
+
+function setConsentError(msg) {
+  var el = document.getElementById('consentError');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveConsent() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  var existingKey  = document.getElementById('consentKey').value;
+  var keyFromInput = document.getElementById('consentKeyInput').value.trim().toLowerCase();
+  var title        = document.getElementById('consentTitle').value.trim();
+  var body         = document.getElementById('consentBody').value;
+  var effective    = document.getElementById('consentEffectiveDate').value || null;
+  var requiresSig  = document.getElementById('consentRequiresSig').checked;
+  var prevVersion  = parseInt(document.getElementById('consentPrevVersion').value || '0', 10);
+
+  var key = existingKey || keyFromInput;
+
+  setConsentError('');
+  if (!key) { setConsentError('Key is required.'); return; }
+  if (!/^[a-z0-9][a-z0-9_]*$/.test(key)) {
+    setConsentError('Key must be lowercase letters, digits, or underscores.');
+    return;
+  }
+  if (!title) { setConsentError('Title is required.'); return; }
+  if (!body)  { setConsentError('Body is required.');  return; }
+
+  // Decide version: if adding a brand-new key, compute highest existing
+  // version for that key at this tenant and increment (covers the case
+  // where someone un-archived an old key and we want to continue the
+  // version sequence). If editing (newVersion), increment prev.
+  var existingForKey = _compData.consents.filter(function(c) { return c.key === key; });
+  var nextVersion = existingForKey.length > 0
+    ? Math.max.apply(null, existingForKey.map(function(c) { return c.version || 1; })) + 1
+    : 1;
+  if (prevVersion > 0) nextVersion = Math.max(nextVersion, prevVersion + 1);
+
+  db.from('tenant_consents').insert({
+    tenant_id:  t.id,
+    key:        key,
+    version:    nextVersion,
+    title:      title,
+    body:       body,
+    requires_signature: requiresSig,
+    effective_date: effective,
+    created_by: currentUserId
+  }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _compData.consents.push(r.data);
+      hideConsentForm();
+      var wrap = document.getElementById('compBody');
+      if (wrap) wrap.innerHTML = renderComplianceBody(t);
+      showToast('Consent v' + nextVersion + ' saved.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.consent_version_added',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ consent_id: r.data.id, key: key, version: nextVersion })
+      }).catch(function(e){ console.warn('[platform] consent audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] consent save failed', err);
+      setConsentError((err && err.message) || 'Save failed.');
+    });
+}
+
+function archiveConsent(id) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  flipConsentArchive(id, true);
+}
+
+function unarchiveConsent(id) {
+  flipConsentArchive(id, false);
+}
+
+function flipConsentArchive(id, archive) {
+  var t = _activeDetailTenant;
+  db.from('tenant_consents').update({ is_archived: archive }).eq('id', id).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var i = _compData.consents.findIndex(function(c) { return c.id === id; });
+      if (i >= 0) _compData.consents[i] = r.data;
+      var wrap = document.getElementById('compBody');
+      if (wrap) wrap.innerHTML = renderComplianceBody(t);
+      showToast(archive ? 'Archived.' : 'Unarchived.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: archive ? 'tenant.consent_archived' : 'tenant.consent_unarchived',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ consent_id: id })
+      }).catch(function(e){ console.warn('[platform] consent audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] consent archive failed', err);
+      showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
+}
+
+// ── Licenses ──────────────────────────────────────────────────────────
+// Read-only summary. Lists every license held by a clinician who's a
+// member of this tenant, with expiry alerting. CRUD on licenses lives
+// on the clinician's own profile (not on the tenant surface) since a
+// single license travels with the clinician across every tenant they
+// work at. Here we just surface what's relevant to this tenant's ops.
 function renderLicensesSection(t) {
+  var err = _compData.errors.licenses;
+  if (err) return sectionWrapCompliance('Clinician licenses',
+    'Per-clinician state licenses with expiry tracking.',
+    sectionError('Failed to load clinician_state_licenses', err, migrationHint(err, '017_compliance.sql')));
+
+  var licenses = _compData.licenses || [];
+  var now      = Date.now();
+  var in30     = now + 30 * 86400000;
+  var in60     = now + 60 * 86400000;
+
+  var expired = 0, exp30 = 0, exp60 = 0;
+  licenses.forEach(function(l) {
+    if (!l.expires_date) return;
+    var exp = new Date(l.expires_date).getTime();
+    if (exp < now)      expired++;
+    else if (exp <= in30) exp30++;
+    else if (exp <= in60) exp60++;
+  });
+
+  // Map user_id → "display name or email" lookup. Without a profiles
+  // join here (which RLS may or may not allow depending on this
+  // operator's role), fall back to truncated user_id. Operator portal
+  // already caches profiles on the client-list fetch — but not
+  // cross-tenant. Accept the limitation; link to the clinician's
+  // profile for detail.
+  var userLabel = function(uid) { return 'User ' + String(uid).slice(0, 8) + '…'; };
+
+  var summary = '<div class="comp-license-summary">' +
+    '<div class="comp-license-stat"><div class="comp-license-stat-label">Active licenses</div>' +
+      '<div class="comp-license-stat-value">' + licenses.filter(function(l){return l.is_active;}).length + '</div></div>' +
+    '<div class="comp-license-stat"><div class="comp-license-stat-label">Expired</div>' +
+      '<div class="comp-license-stat-value' + (expired > 0 ? ' err' : '') + '">' + expired + '</div></div>' +
+    '<div class="comp-license-stat"><div class="comp-license-stat-label">Expiring ≤30d</div>' +
+      '<div class="comp-license-stat-value' + (exp30 > 0 ? ' err' : '') + '">' + exp30 + '</div></div>' +
+    '<div class="comp-license-stat"><div class="comp-license-stat-label">Expiring ≤60d</div>' +
+      '<div class="comp-license-stat-value' + (exp60 > 0 ? ' warn' : '') + '">' + exp60 + '</div></div>' +
+  '</div>';
+
+  var rows;
+  if (licenses.length === 0) {
+    rows = '<div class="comp-empty">No licenses on file for clinicians at this tenant yet.</div>';
+  } else {
+    rows = '<div class="comp-license-list">' + licenses.map(function(l) {
+      var exp = l.expires_date ? new Date(l.expires_date).getTime() : null;
+      var cls = 'comp-license-expires';
+      var expTxt = l.expires_date ? 'Expires ' + formatDate(l.expires_date) : 'No expiry on file';
+      if (exp != null) {
+        if (exp < now) { cls += ' err'; expTxt = 'EXPIRED ' + formatDate(l.expires_date); }
+        else if (exp <= in30) cls += ' err';
+        else if (exp <= in60) cls += ' warn';
+      }
+      return '<div class="comp-license-row">' +
+        '<span class="comp-license-user">' + escHtml(userLabel(l.user_id)) + '</span>' +
+        '<span class="comp-license-state">' + escHtml(l.state) + '</span>' +
+        '<span class="comp-license-number">' + escHtml(l.license_number || '—') + '</span>' +
+        '<span class="' + cls + '">' + escHtml(expTxt) + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
   return sectionWrapCompliance('Clinician licenses',
-    'Per-clinician state licenses with expiry tracking. Summary view lands in the next commit.',
-    '<div class="comp-empty">Next commit.</div>');
+    'Licenses held by clinicians who are members of this tenant. CRUD on individual licenses lives on the clinician\u2019s profile — a license travels with the clinician across every tenant they work at.',
+    summary + rows);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

@@ -7434,11 +7434,53 @@ function _bootPortalWithTenant(user) {
     return;
   }
   window.TenantBootstrap.init(db)
-    .then(function() { initPortal(user); })
+    .then(function() { applyTenantBrand(); initPortal(user); })
     .catch(function(err) {
       console.warn('[portal] tenant load failed, booting without tenant context', err);
       initPortal(user);
     });
+}
+
+// ── Tenant branding ──
+// Same pattern as admin.html's applyTenantBrand(): reads window.Tenant.brand
+// and rewrites the places the tenant's identity is visible. Called after
+// tenant.js resolves and before initPortal paints.
+//
+// Scope deliberately narrower than admin.html's hook: wordmark, favicon,
+// document title only. Accent color override is NOT applied here because
+// portal.html has two body modes (member-mode and clinician-mode) each
+// with their own namespaced accent tokens (--m-*, --cl-*). Re-pointing
+// the right variable for the right mode is a larger refactor than this
+// Phase 2 slice warrants; accent rebrand in the member/clinician
+// experiences lands in a follow-up.
+//
+// This hook catches wordmark instances that exist in the static HTML
+// (.nav-name, .loading-wordmark, .setup-brand-name). Two instances are
+// built at render time inside JS template strings and still hardcode
+// "PULSE" — the welcome-card brand at ~line 14723 and the consult-
+// reminder nav at ~line 21093. Those render after this hook fires, so
+// querySelectorAll can't reach them. They need to read from
+// window.Tenant.brand.wordmark when the template is built. Follow-up.
+function applyTenantBrand() {
+  var brand = (window.Tenant && window.Tenant.brand) || {};
+
+  var wordmark = (brand.wordmark || '').trim() || 'PULSE';
+  var wordmarkSelectors = ['.nav-name', '.loading-wordmark', '.setup-brand-name'];
+  wordmarkSelectors.forEach(function(sel) {
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) els[i].textContent = wordmark;
+  });
+  document.title = wordmark;
+
+  if (brand.favicon_url) {
+    var link = document.querySelector('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = brand.favicon_url;
+  }
 }
 
 // PREVIEW_MODE: skip Supabase entirely — no auth, no network calls.

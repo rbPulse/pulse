@@ -153,6 +153,32 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
 
+/* ── TEMPLATES TOP-LEVEL TAB ── */
+.tmpl-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.tmpl-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.tmpl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;box-shadow:var(--shadow);}
+.tmpl-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+.tmpl-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.tmpl-card-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);font-weight:400;}
+.tmpl-vertical-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
+.tmpl-card-desc{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;}
+.tmpl-card-summary{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.tmpl-chip{font-family:'Inter',sans-serif;font-size:10px;padding:3px 8px;border-radius:var(--radius-pill);background:var(--card2);border:1px solid var(--border);color:var(--text3);}
+.tmpl-chip strong{color:var(--text);font-weight:600;margin-right:3px;}
+.tmpl-card-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.tmpl-card-actions .form-btn{padding:6px 14px;font-size:11px;}
+
+/* Apply picker modal (lightweight overlay over the detail backdrop
+   since we reuse the same z-index stack). */
+.tmpl-picker-backdrop{position:fixed;inset:0;background:rgba(15,20,25,0.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:8600;display:none;}
+.tmpl-picker-backdrop.show{display:block;}
+.tmpl-picker{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px 30px;max-width:520px;width:calc(100% - 60px);z-index:8601;display:none;box-shadow:var(--shadow-lg);}
+.tmpl-picker.show{display:block;}
+.tmpl-picker h3{font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.01em;}
+.tmpl-picker p{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5;}
+.tmpl-picker .brand-form-field{margin-bottom:14px;}
+.tmpl-picker .brand-actions{justify-content:flex-end;}
+
 /* ── ACTIVITY TAB (per-client) + AUDIT top-level ── */
 .audit-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .audit-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
@@ -591,6 +617,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
 
+<!-- TEMPLATE APPLY PICKER -->
+<div class="tmpl-picker-backdrop" id="tmplPickerBackdrop" onclick="closeTemplatePicker()"></div>
+<div class="tmpl-picker" id="tmplPicker" role="dialog" aria-modal="true">
+  <h3 id="tmplPickerTitle">Apply template</h3>
+  <p id="tmplPickerDesc">Pick the client to apply this template to. Existing JSONB layers (brand, terminology, workflow, compliance, features) will be merged over; missing seed items (catalog rows, comms templates, operating regions, consents) will be inserted. Existing seed rows are not overwritten.</p>
+  <div class="brand-form-field">
+    <label for="tmplPickerTenant">Client</label>
+    <select id="tmplPickerTenant" class="filter-select" style="width:100%;"></select>
+  </div>
+  <div id="tmplPickerError" class="form-err" style="display:none;margin-bottom:10px;"></div>
+  <div class="brand-actions">
+    <button class="form-btn secondary" onclick="closeTemplatePicker()">Cancel</button>
+    <button class="form-btn primary" id="tmplPickerApply" onclick="confirmApplyTemplate()">Apply</button>
+  </div>
+</div>
+
 <!-- CLIENT DETAIL MODAL -->
 <div class="detail-backdrop" id="clientDetailBackdrop" onclick="closeClientDetail()"></div>
 <div class="detail-panel" id="clientDetailPanel" role="dialog" aria-modal="true" aria-labelledby="clientDetailTitle">
@@ -800,13 +842,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-templates">
         <div class="tab-header">
           <div class="tab-title">Templates</div>
-          <div class="tab-subtitle">Starter packs that seed new tenants.</div>
+          <div class="tab-subtitle">Starter packs that seed new tenants. Apply during onboarding or push to an existing tenant to bulk-add missing config.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Template library</div>
-          <div class="placeholder-body">Save a tenant's full config (brand, terminology, workflow, catalog, comms) as a reusable starter. Apply during onboarding. Seeded from Pulse + fictional verticals as worked examples.</div>
-          <div class="placeholder-phase">Phase 12</div>
-        </div>
+        <div id="templatesTabBody"><div class="tmpl-loading">Loading templates…</div></div>
       </div>
 
       <!-- MODULES -->
@@ -1006,9 +1044,10 @@ function switchTab(tabId) {
   // Lazy-load top-level tabs that pull fleet-wide data. Each has its
   // own body container; loaders mark body as loaded so switching back
   // doesn't re-fetch. Operators refreshing the data = reload the page.
-  if (tabId === 'modules' && !_modulesTabLoaded)   loadModulesTab();
-  if (tabId === 'billing' && !_billingTabLoaded)   loadBillingTab();
-  if (tabId === 'audit'   && !_auditTabLoaded)     loadAuditTab();
+  if (tabId === 'modules'   && !_modulesTabLoaded)   loadModulesTab();
+  if (tabId === 'billing'   && !_billingTabLoaded)   loadBillingTab();
+  if (tabId === 'audit'     && !_auditTabLoaded)     loadAuditTab();
+  if (tabId === 'templates' && !_templatesTabLoaded) loadTemplatesTab();
 }
 
 function doSignOut() {
@@ -2220,6 +2259,322 @@ function renderActivityList() {
     if (c) c.textContent = (count === total ? total + ' entries' : count + ' of ' + total);
   }, 0);
   return renderAuditList(filtered, null);
+}
+
+// ── Template application ──
+// Shared helper used by the top-level Templates tab and the
+// create-client flow. Takes a template id + target tenant id, merges
+// JSONB layers onto the tenant row, inserts seed items with the
+// target tenant_id. Returns { applied: { layers: [...], seeds: {...} }}
+// on success; rejects the outer promise on fatal error.
+//
+// Merge semantics:
+//   - Layers (brand, terminology, workflow, compliance, features):
+//     shallow-merged over the existing tenant value. Keys in the
+//     template overwrite keys in the tenant; keys absent from the
+//     template stay untouched.
+//   - Seeds (catalog rows, comms templates, regions, consents):
+//     inserted unconditionally. Protects against double-apply via the
+//     UNIQUE constraints already on each target table (e.g. comms
+//     templates are UNIQUE on (tenant_id, key, channel); attempting to
+//     insert a duplicate key rejects at DB level). The apply flow
+//     treats a unique-violation per row as a skip, not a fatal error,
+//     so partial re-apply is safe.
+//
+// Audit entry uses the Phase 10 structured columns: change_type =
+// 'template_apply', before/after snapshots list which layers + seed
+// counts were applied.
+function applyTemplateToTenant(templateId, targetTenantId) {
+  return db.from('tenant_templates').select('*').eq('id', templateId).single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var tpl = r.data;
+      var snap = tpl.config_snapshot || {};
+      var layers = snap.layers || {};
+      var seeds  = snap.seeds  || {};
+
+      // 1) Pull the target tenant so we can merge layers.
+      return db.from('tenants').select('brand, terminology, workflow, compliance, features')
+        .eq('id', targetTenantId).single()
+        .then(function(tr) {
+          if (tr.error) throw tr.error;
+          var target = tr.data;
+          var merged = {};
+          ['brand','terminology','workflow','compliance','features'].forEach(function(k) {
+            var baseline = target[k] || {};
+            var overlay  = layers[k];
+            if (overlay && typeof overlay === 'object') {
+              merged[k] = Object.assign({}, baseline, overlay);
+            }
+          });
+
+          // 2) Update the tenants row only if any layer changed.
+          var layerUpdate = Object.keys(merged).length > 0
+            ? db.from('tenants').update(merged).eq('id', targetTenantId)
+            : Promise.resolve({ error: null });
+
+          return layerUpdate.then(function(ur) {
+            if (ur && ur.error) throw ur.error;
+            return { tpl: tpl, layers: Object.keys(merged), seeds: seeds };
+          });
+        });
+    })
+    .then(function(ctx) {
+      // 3) Apply seed items. Each table has its own per-row insert
+      //    path; we collect counts for the summary + audit. Unique-
+      //    violations per row swallow without failing the whole apply.
+      var appliedCounts = {};
+      var jobs = [];
+
+      function seedInsert(table, rows, builder) {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        var payload = rows.map(function(r) { return builder(r); });
+        jobs.push(db.from(table).insert(payload).select().then(function(ir) {
+          if (ir.error) {
+            // Unique-violation = row already exists for this tenant.
+            // Not fatal; log and continue. Other errors bubble up.
+            var code = ir.error.code || '';
+            if (code === '23505' || /duplicate key|unique/i.test(ir.error.message || '')) {
+              // Best-effort per-row retry for partial conflicts. Try
+              // each row one at a time so the non-duplicates still
+              // land. Slow path, but applies are rare.
+              return Promise.all(payload.map(function(row) {
+                return db.from(table).insert(row).select().single().then(function(rr) {
+                  return rr.error ? null : rr.data;
+                }).catch(function() { return null; });
+              })).then(function(results) {
+                appliedCounts[table] = results.filter(Boolean).length;
+              });
+            }
+            throw ir.error;
+          }
+          appliedCounts[table] = (ir.data || []).length;
+        }));
+      }
+
+      seedInsert('protocol_categories', ctx.seeds.categories, function(c) {
+        return { tenant_id: targetTenantId, name: c.name, display_order: c.display_order || 0 };
+      });
+      seedInsert('protocol_product_types', ctx.seeds.product_types, function(p) {
+        return { tenant_id: targetTenantId, name: p.name, display_order: p.display_order || 0 };
+      });
+      seedInsert('protocol_templates', ctx.seeds.protocols, function(p) {
+        return {
+          tenant_id: targetTenantId,
+          key: p.key, name: p.name,
+          product_type: p.product_type || null,
+          category: p.category || null,
+          compounds: p.compounds || [],
+          price: p.price != null ? p.price : null,
+          refill_price: p.refill_price != null ? p.refill_price : null,
+          subscription_cadence: p.subscription_cadence || null,
+          note: p.note || null
+        };
+      });
+      seedInsert('communication_templates', ctx.seeds.comms_templates, function(c) {
+        return {
+          tenant_id: targetTenantId,
+          key: c.key, channel: c.channel || 'email',
+          subject: c.subject || null,
+          body: c.body || '',
+          variables: c.variables || [],
+          cadence: c.cadence || null
+        };
+      });
+      seedInsert('tenant_regions', ctx.seeds.regions, function(state) {
+        // Regions seed is an array of state codes, not objects.
+        var s = typeof state === 'string' ? state : (state && state.state);
+        return { tenant_id: targetTenantId, state: (s || '').toUpperCase(), is_allowed: true };
+      });
+      seedInsert('tenant_consents', ctx.seeds.consents, function(c) {
+        return {
+          tenant_id: targetTenantId,
+          key: c.key,
+          version: c.version || 1,
+          title: c.title,
+          body: c.body,
+          requires_signature: c.requires_signature !== false,
+          effective_date: c.effective_date || null
+        };
+      });
+
+      return Promise.all(jobs).then(function() {
+        return { tpl: ctx.tpl, layers: ctx.layers, counts: appliedCounts };
+      });
+    })
+    .then(function(result) {
+      // 4) Audit log. Structured columns + legacy details.
+      var summary = { template_id: result.tpl.id, template_key: result.tpl.key,
+                      layers_applied: result.layers, seed_counts: result.counts };
+      return db.from('audit_logs').insert({
+        action: 'tenant.template_applied',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: targetTenantId,
+        tenant_id: targetTenantId,
+        change_type: 'lifecycle',
+        before_snapshot: null,
+        after_snapshot: summary,
+        details: JSON.stringify(summary)
+      }).then(function() { return result; })
+        .catch(function(e) { console.warn('[platform] template-apply audit failed', e); return result; });
+    });
+}
+
+// ── Top-level Templates tab ──
+var _templatesTabLoaded = false;
+var _templates = [];
+
+function loadTemplatesTab() {
+  var wrap = document.getElementById('templatesTabBody');
+  if (!wrap) return;
+  _templatesTabLoaded = true;
+
+  db.from('tenant_templates').select('*').eq('is_archived', false).order('display_order')
+    .then(function(r) {
+      if (r.error) {
+        var hint = migrationHint(r.error, '020_tenant_templates.sql');
+        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load templates</strong><br/>' +
+          escHtml(r.error.message || '') +
+          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
+        return;
+      }
+      _templates = r.data || [];
+      wrap.innerHTML = renderTemplatesTabBody();
+    })
+    .catch(function(err) {
+      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+function renderTemplatesTabBody() {
+  if (_templates.length === 0) {
+    return '<div class="catalog-empty">No templates yet. Run migration 020 to seed the Blank + Wellness starters, or save an existing tenant\u2019s config as a template from the tenant\u2019s detail view.</div>';
+  }
+  return '<div class="tmpl-list">' + _templates.map(renderTemplateCard).join('') + '</div>';
+}
+
+function renderTemplateCard(tpl) {
+  var snap   = tpl.config_snapshot || {};
+  var layers = snap.layers || {};
+  var seeds  = snap.seeds  || {};
+
+  var chips = [];
+  ['brand','terminology','workflow','compliance','features'].forEach(function(k) {
+    if (layers[k] && typeof layers[k] === 'object' && Object.keys(layers[k]).length > 0) {
+      chips.push('<span class="tmpl-chip"><strong>' + escHtml(k) + '</strong>' + Object.keys(layers[k]).length + ' keys</span>');
+    }
+  });
+  [
+    ['protocols',       'protocols'],
+    ['categories',      'categories'],
+    ['product_types',   'product types'],
+    ['comms_templates', 'templates'],
+    ['regions',         'regions'],
+    ['consents',        'consents']
+  ].forEach(function(pair) {
+    var arr = seeds[pair[0]];
+    if (Array.isArray(arr) && arr.length > 0) {
+      chips.push('<span class="tmpl-chip"><strong>' + arr.length + '</strong>' + escHtml(pair[1]) + '</span>');
+    }
+  });
+
+  return '<div class="tmpl-card">' +
+    '<div class="tmpl-card-head">' +
+      '<div class="tmpl-card-title">' +
+        escHtml(tpl.name) +
+        '<span class="tmpl-card-key">' + escHtml(tpl.key) + '</span>' +
+        (tpl.vertical ? '<span class="tmpl-vertical-pill">' + escHtml(tpl.vertical) + '</span>' : '') +
+      '</div>' +
+    '</div>' +
+    (tpl.description ? '<div class="tmpl-card-desc">' + escHtml(tpl.description) + '</div>' : '') +
+    (chips.length ? '<div class="tmpl-card-summary">' + chips.join('') + '</div>' : '') +
+    '<div class="tmpl-card-actions">' +
+      '<button class="form-btn secondary" onclick="archiveTemplate(\'' + escAttr(tpl.id) + '\')">Archive</button>' +
+      '<button class="form-btn primary" onclick="openTemplatePicker(\'' + escAttr(tpl.id) + '\')">Apply to tenant</button>' +
+    '</div>' +
+  '</div>';
+}
+
+var _pickerTemplateId = null;
+
+function openTemplatePicker(templateId) {
+  _pickerTemplateId = templateId;
+
+  // Populate tenant options from the cached client list (_clients was
+  // loaded by loadClients at boot; if the operator hasn't visited the
+  // Clients tab yet, re-fetch lightweight).
+  var populate = _clients.length > 0
+    ? Promise.resolve({ data: _clients })
+    : db.from('tenants').select('id, name, slug, lifecycle_state').order('name');
+
+  populate.then(function(r) {
+    var rows = r.data || [];
+    var select = document.getElementById('tmplPickerTenant');
+    select.innerHTML = '<option value="">— Pick a client —</option>' +
+      rows.map(function(t) {
+        return '<option value="' + escAttr(t.id) + '">' + escHtml(t.name) + ' (' + escHtml(t.slug) + ', ' + escHtml(t.lifecycle_state) + ')</option>';
+      }).join('');
+
+    var tpl = _templates.find(function(x) { return x.id === templateId; });
+    document.getElementById('tmplPickerTitle').textContent = 'Apply "' + (tpl ? tpl.name : 'template') + '"';
+
+    setPickerError('');
+    document.getElementById('tmplPickerBackdrop').classList.add('show');
+    document.getElementById('tmplPicker').classList.add('show');
+  });
+}
+
+function closeTemplatePicker() {
+  document.getElementById('tmplPickerBackdrop').classList.remove('show');
+  document.getElementById('tmplPicker').classList.remove('show');
+  _pickerTemplateId = null;
+}
+
+function setPickerError(msg) {
+  var el = document.getElementById('tmplPickerError');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function confirmApplyTemplate() {
+  var tenantId = document.getElementById('tmplPickerTenant').value;
+  if (!tenantId) { setPickerError('Pick a client first.'); return; }
+  if (!_pickerTemplateId) return;
+
+  var btn = document.getElementById('tmplPickerApply');
+  btn.disabled = true;
+
+  applyTemplateToTenant(_pickerTemplateId, tenantId)
+    .then(function(result) {
+      btn.disabled = false;
+      closeTemplatePicker();
+      var seedMsg = Object.keys(result.counts || {}).length
+        ? Object.keys(result.counts).map(function(k) { return result.counts[k] + ' ' + k.replace('protocol_','').replace('tenant_',''); }).join(', ')
+        : 'no seeds';
+      showToast('Applied. Layers: ' + (result.layers.length ? result.layers.join(', ') : 'none') + '. Seeded: ' + seedMsg + '.', 'success');
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[platform] template apply failed', err);
+      setPickerError((err && err.message) || 'Apply failed.');
+    });
+}
+
+function archiveTemplate(templateId) {
+  if (!window.confirm('Archive this template? It will be hidden from the picker but existing audit trails remain intact.')) return;
+  db.from('tenant_templates').update({ is_archived: true }).eq('id', templateId).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _templates = _templates.filter(function(t) { return t.id !== templateId; });
+      var wrap = document.getElementById('templatesTabBody');
+      if (wrap) wrap.innerHTML = renderTemplatesTabBody();
+      showToast('Template archived.', 'success');
+    })
+    .catch(function(err) {
+      showToast('Archive failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
 }
 
 // ── Top-level Audit tab (fleet-wide) ──

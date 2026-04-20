@@ -678,6 +678,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
 .status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
 
+/* ── HEADER QUICK-ACTIONS (detail modal) ── */
+.detail-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.header-menu-wrap{position:relative;display:inline-block;}
+.header-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 0;box-shadow:var(--shadow-lg);z-index:8510;display:none;}
+.header-menu.show{display:block;}
+.header-menu-item{display:block;width:100%;background:transparent;border:none;padding:10px 16px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;text-align:left;text-decoration:none;transition:background .15s,color .15s;}
+.header-menu-item:hover{background:var(--slate-tint);color:var(--slate);}
+.header-menu-note{padding:8px 16px;font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);border-top:1px solid var(--border);line-height:1.4;}
+
 /* ── WIZARD MODE (inside detail modal) ── */
 .detail-panel.wizard-mode{max-width:1000px;}
 .wizard-body{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start;}
@@ -845,10 +854,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="detail-title-wrap">
       <div class="detail-title" id="clientDetailTitle">Client</div>
       <span class="status-pill" id="clientDetailPill"></span>
-      <button class="wizard-mode-toggle" id="wizardToggleBtn" onclick="toggleWizardMode()">Wizard</button>
-      <button class="wizard-mode-toggle" onclick="openSaveAsTemplate()">Save as template</button>
     </div>
-    <button class="detail-close" onclick="closeClientDetail()">Close</button>
+    <div class="detail-header-actions">
+      <button class="wizard-mode-toggle" id="wizardToggleBtn" onclick="toggleWizardMode()">Wizard</button>
+      <div class="header-menu-wrap">
+        <button class="wizard-mode-toggle" id="headerViewAsBtn" onclick="toggleHeaderMenu('viewAs')">View as \u25BE</button>
+        <div class="header-menu" id="headerMenu-viewAs">
+          <a class="header-menu-item" id="headerMenu-viewAs-member"    target="_blank" rel="noopener">Member portal</a>
+          <a class="header-menu-item" id="headerMenu-viewAs-clinician" target="_blank" rel="noopener">Clinician portal</a>
+          <a class="header-menu-item" id="headerMenu-viewAs-admin"     target="_blank" rel="noopener">Admin portal</a>
+          <div class="header-menu-note">Opens as your user; true view-as is a carry-over.</div>
+        </div>
+      </div>
+      <div class="header-menu-wrap">
+        <button class="wizard-mode-toggle" onclick="toggleHeaderMenu('tpl')">Templates \u25BE</button>
+        <div class="header-menu" id="headerMenu-tpl">
+          <button class="header-menu-item" onclick="closeHeaderMenus(); openApplyTemplateForThis()">Apply template…</button>
+          <button class="header-menu-item" onclick="closeHeaderMenus(); openSaveAsTemplate()">Save as template…</button>
+        </div>
+      </div>
+      <button class="detail-close" onclick="closeClientDetail()">Close</button>
+    </div>
   </div>
   <div class="detail-tabs" id="clientDetailTabs"></div>
   <div id="clientDetailBody"></div>
@@ -1447,6 +1473,19 @@ function openClientDetail(tenantId, startInWizard) {
   pill.className = 'status-pill ' + t.lifecycle_state;
   pill.textContent = t.lifecycle_state;
 
+  // Populate the View-as menu with URLs for this tenant. Pulse tenant
+  // uses the root URLs; every other tenant uses /t/{slug}/*.html.
+  var slug = t.slug;
+  var memberUrl    = slug === 'pulse' ? '/portal.html' : '/t/' + encodeURIComponent(slug) + '/portal.html';
+  var adminUrl     = slug === 'pulse' ? '/admin.html'  : '/t/' + encodeURIComponent(slug) + '/admin.html';
+  var mEl = document.getElementById('headerMenu-viewAs-member');
+  var cEl = document.getElementById('headerMenu-viewAs-clinician');
+  var aEl = document.getElementById('headerMenu-viewAs-admin');
+  if (mEl) mEl.href = memberUrl;
+  if (cEl) cEl.href = memberUrl; // portal.html serves both modes
+  if (aEl) aEl.href = adminUrl;
+
+  closeHeaderMenus();
   applyWizardModeUI();
 
   document.getElementById('clientDetailBackdrop').classList.add('show');
@@ -1459,6 +1498,66 @@ function openClientDetail(tenantId, startInWizard) {
   // check just shows as "pending".
   probeWizardCompletion(t);
 }
+
+// Header menu (View-as, Templates dropdowns) open/close handling.
+function toggleHeaderMenu(key) {
+  var menu = document.getElementById('headerMenu-' + key);
+  if (!menu) return;
+  var wasOpen = menu.classList.contains('show');
+  closeHeaderMenus();
+  if (!wasOpen) menu.classList.add('show');
+}
+
+function closeHeaderMenus() {
+  document.querySelectorAll('.header-menu').forEach(function(m) { m.classList.remove('show'); });
+}
+
+// Clicking outside a header menu closes it. Attached lazily on first
+// menu open so it doesn't pollute document-level listeners.
+document.addEventListener('click', function(e) {
+  if (!e.target.closest || !e.target.closest('.header-menu-wrap')) closeHeaderMenus();
+});
+
+// Apply-template shortcut launched from the detail header. Opens the
+// same picker modal the top-level Templates tab uses, but pre-picks
+// this tenant and shows a template dropdown instead of a tenant
+// dropdown. Backed by applyTemplateToTenant which already handles
+// the merge + seeds + audit.
+function openApplyTemplateForThis() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  // Reuse the existing apply-picker modal but repurpose the controls:
+  // the tenant is fixed to this one; the dropdown lists templates.
+  db.from('tenant_templates').select('id, name, vertical').eq('is_archived', false).order('display_order')
+    .then(function(r) {
+      if (r.error) {
+        showToast('Failed to load templates: ' + (r.error.message || ''), 'error');
+        return;
+      }
+      var rows = r.data || [];
+      if (rows.length === 0) {
+        showToast('No templates available. Create one first via "Save as template".', 'warn');
+        return;
+      }
+      _templates = rows; // make archiveTemplate + confirmApplyTemplate see fresh data
+
+      document.getElementById('tmplPickerTitle').textContent = 'Apply template to "' + (t.name || '') + '"';
+      var select = document.getElementById('tmplPickerTenant');
+      // Swap contents to a template-list for this flow.
+      select.innerHTML = rows.map(function(tpl) {
+        var v = tpl.vertical ? ' (' + tpl.vertical + ')' : '';
+        return '<option value="' + escAttr(tpl.id) + '">' + escHtml(tpl.name) + escHtml(v) + '</option>';
+      }).join('');
+      // Mark the picker so confirmApplyTemplate routes this flow.
+      _headerApplyForTenantId = t.id;
+      setPickerError('');
+      document.getElementById('tmplPickerBackdrop').classList.add('show');
+      document.getElementById('tmplPicker').classList.add('show');
+    });
+}
+
+var _headerApplyForTenantId = null;
 
 function toggleWizardMode() {
   _wizardMode = !_wizardMode;
@@ -2871,6 +2970,7 @@ function closeTemplatePicker() {
   document.getElementById('tmplPickerBackdrop').classList.remove('show');
   document.getElementById('tmplPicker').classList.remove('show');
   _pickerTemplateId = null;
+  _headerApplyForTenantId = null;
 }
 
 function setPickerError(msg) {
@@ -2881,21 +2981,51 @@ function setPickerError(msg) {
 }
 
 function confirmApplyTemplate() {
-  var tenantId = document.getElementById('tmplPickerTenant').value;
-  if (!tenantId) { setPickerError('Pick a client first.'); return; }
-  if (!_pickerTemplateId) return;
+  // Two entry points share the picker modal:
+  //   - From the top-level Templates tab: _pickerTemplateId is set,
+  //     the dropdown holds tenant IDs.
+  //   - From the client header's Apply-template: _headerApplyForTenantId
+  //     is set, the dropdown holds template IDs.
+  // Dispatch based on which state var is populated.
+  var selectValue = document.getElementById('tmplPickerTenant').value;
+  var tenantId, templateId;
+  if (_headerApplyForTenantId) {
+    tenantId   = _headerApplyForTenantId;
+    templateId = selectValue;
+    if (!templateId) { setPickerError('Pick a template first.'); return; }
+  } else {
+    tenantId   = selectValue;
+    templateId = _pickerTemplateId;
+    if (!tenantId) { setPickerError('Pick a client first.'); return; }
+    if (!templateId) return;
+  }
 
   var btn = document.getElementById('tmplPickerApply');
   btn.disabled = true;
 
-  applyTemplateToTenant(_pickerTemplateId, tenantId)
+  applyTemplateToTenant(templateId, tenantId)
     .then(function(result) {
       btn.disabled = false;
       closeTemplatePicker();
+      _headerApplyForTenantId = null;
       var seedMsg = Object.keys(result.counts || {}).length
         ? Object.keys(result.counts).map(function(k) { return result.counts[k] + ' ' + k.replace('protocol_','').replace('tenant_',''); }).join(', ')
         : 'no seeds';
       showToast('Applied. Layers: ' + (result.layers.length ? result.layers.join(', ') : 'none') + '. Seeded: ' + seedMsg + '.', 'success');
+
+      // If we applied to the currently-open tenant, refresh its cached
+      // data + re-render whichever tab is active so changes are visible.
+      if (_activeDetailTenant && _activeDetailTenant.id === tenantId) {
+        loadClients().then(function() {
+          // Replace the cached active tenant with the refreshed row.
+          var refreshed = _clients.find(function(c) { return c.id === tenantId; });
+          if (refreshed) {
+            _activeDetailTenant = refreshed;
+            if (_wizardMode) renderWizard();
+            else renderDetailTabPanels();
+          }
+        });
+      }
     })
     .catch(function(err) {
       btn.disabled = false;
@@ -3103,26 +3233,9 @@ function renderDiagnosticsBody(t) {
   var intsError     = ints.filter(function(i) { return i.status === 'error'; }).length;
   var intsHealth    = intsError > 0 ? 'err' : (ints.length === 0 ? 'unknown' : 'healthy');
 
-  // Slug-based URLs match the Phase 0 URL contract: /t/{slug}/<portal>.html.
-  // Operator clicking opens their own auth + the tenant's slug; tenant.js
-  // scopes to that slug. Limitations called out in the strip copy.
-  var slug = t.slug;
-  var memberUrl     = slug === 'pulse' ? '/portal.html'       : '/t/' + encodeURIComponent(slug) + '/portal.html';
-  var adminUrl      = slug === 'pulse' ? '/admin.html'        : '/t/' + encodeURIComponent(slug) + '/admin.html';
-  var clinicianUrl  = slug === 'pulse' ? '/portal.html'       : '/t/' + encodeURIComponent(slug) + '/portal.html';
-
-  var viewas =
-    '<div class="viewas-strip">' +
-      '<div class="viewas-strip-info">' +
-        '<strong>View as tenant</strong><br/>' +
-        'Opens the downstream portal for <strong>' + escHtml(t.name) + '</strong> in a new tab as your authenticated user. Real view-as that renders the tenant\u2019s perspective from a non-operator role is still a carry-over — downstream portals need to accept an operator preview session.' +
-      '</div>' +
-      '<div class="viewas-buttons">' +
-        '<a class="viewas-btn" href="' + escAttr(memberUrl)    + '" target="_blank" rel="noopener">Member portal</a>' +
-        '<a class="viewas-btn" href="' + escAttr(clinicianUrl) + '" target="_blank" rel="noopener">Clinician portal</a>' +
-        '<a class="viewas-btn" href="' + escAttr(adminUrl)     + '" target="_blank" rel="noopener">Admin portal</a>' +
-      '</div>' +
-    '</div>';
+  // View-as launcher moved to the detail-modal header as a dropdown
+  // quick-action (Polish 4). Diagnostics now focuses on the stat
+  // cards + operator actions.
 
   var cards = '<div class="diag-grid">' +
     // Integrations health
@@ -3173,7 +3286,7 @@ function renderDiagnosticsBody(t) {
       '</div>' +
     '</div>';
 
-  return viewas + cards + ops;
+  return cards + ops;
 }
 
 function diagResendInvite() {
@@ -7207,10 +7320,26 @@ function closeClientDetail() {
   document.getElementById('clientDetailPanel').classList.remove('show');
 }
 
-// Esc closes the detail modal. Scoped to when the panel is actually
-// visible so it doesn't interfere with form escape behaviour elsewhere.
+// Esc closes the topmost overlay — header menus first (cheapest),
+// then stacked pickers (template apply / save-as-template), then
+// the detail modal itself. Scoped so it doesn't interfere with
+// other Escape-sensitive surfaces outside the detail modal.
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
+
+  // 1. Header menus open? Close them first.
+  var anyMenuOpen = document.querySelector('.header-menu.show');
+  if (anyMenuOpen) { closeHeaderMenus(); return; }
+
+  // 2. Template picker open? Close it.
+  var picker = document.getElementById('tmplPicker');
+  if (picker && picker.classList.contains('show')) { closeTemplatePicker(); return; }
+
+  // 3. Save-as-template dialog open? Close it.
+  var saveDialog = document.getElementById('tmplSave');
+  if (saveDialog && saveDialog.classList.contains('show')) { closeSaveAsTemplate(); return; }
+
+  // 4. Client detail modal open? Close it.
   var panel = document.getElementById('clientDetailPanel');
   if (panel && panel.classList.contains('show')) closeClientDetail();
 });

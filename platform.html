@@ -488,6 +488,48 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
 .status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
 
+/* ── WIZARD MODE (inside detail modal) ── */
+.detail-panel.wizard-mode{max-width:1000px;}
+.wizard-body{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start;}
+.wizard-steps{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;}
+.wizard-step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;transition:background .15s,color .15s;user-select:none;border:1px solid transparent;}
+.wizard-step:hover{background:var(--card2);color:var(--text2);}
+.wizard-step.active{background:var(--slate-tint);color:var(--slate);border-color:var(--slate-border);font-weight:600;}
+.wizard-step-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text3);background:var(--card);}
+.wizard-step.done .wizard-step-dot{background:var(--green);border-color:var(--green);color:#fff;}
+.wizard-step.done .wizard-step-dot::after{content:'\u2713';}
+.wizard-step.active .wizard-step-dot{border-color:var(--slate);color:var(--slate);}
+.wizard-step-label{flex:1;min-width:0;}
+.wizard-step-num{opacity:0.6;font-variant-numeric:tabular-nums;margin-right:2px;}
+.wizard-panel{min-width:0;}
+.wizard-footer{display:flex;gap:10px;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);align-items:center;}
+.wizard-progress-text{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.wizard-mode-toggle{background:var(--card2);border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:5px 12px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;margin-left:8px;}
+.wizard-mode-toggle:hover{background:rgba(20,20,20,0.06);color:var(--text);}
+.wizard-mode-toggle.on{background:var(--slate);color:#fff;border-color:var(--slate);}
+
+/* Launch checklist */
+.launch-checklist{display:flex;flex-direction:column;gap:8px;margin:16px 0;}
+.launch-check{display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.launch-check.done{border-left:3px solid var(--green);}
+.launch-check.todo{border-left:3px solid var(--amber);}
+.launch-check-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.launch-check.done .launch-check-icon{background:var(--green);color:#fff;}
+.launch-check.todo .launch-check-icon{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
+.launch-check-label{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);}
+.launch-check-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;}
+.launch-check-jump{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:5px 12px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;white-space:nowrap;}
+.launch-check-jump:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+.launch-ready-card{background:var(--green-tint);border:1px solid var(--green-border);border-radius:var(--radius);padding:20px 24px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.launch-ready-card.notready{background:var(--amber-tint);border-color:var(--amber-border);}
+.launch-ready-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.launch-ready-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);margin-top:4px;}
+.launch-activate-btn{background:var(--green);color:#fff;border:none;padding:10px 22px;border-radius:var(--radius-pill);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;cursor:pointer;transition:opacity .15s;}
+.launch-activate-btn:hover{opacity:0.88;}
+.launch-activate-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+@media(max-width:700px){ .wizard-body{grid-template-columns:1fr;} .wizard-steps{position:static;} }
+
 /* ── DETAIL TABS (inside detail modal) ── */
 .detail-tabs{display:flex;gap:2px;padding:0 2px 0 2px;margin-bottom:22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .detail-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.04em;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;position:relative;}
@@ -556,6 +598,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="detail-title-wrap">
       <div class="detail-title" id="clientDetailTitle">Client</div>
       <span class="status-pill" id="clientDetailPill"></span>
+      <button class="wizard-mode-toggle" id="wizardToggleBtn" onclick="toggleWizardMode()">Wizard</button>
     </div>
     <button class="detail-close" onclick="closeClientDetail()">Close</button>
   </div>
@@ -1088,8 +1131,52 @@ var DETAIL_TABS = [
 
 var _activeDetailTenant = null;
 var _activeDetailTab    = 'overview';
+var _wizardMode         = false;
+var _wizardStepIdx      = 0;
 
-function openClientDetail(tenantId) {
+// ── Onboarding wizard steps ──
+// Nine configuration steps matching PHASES.md's Phase 11 spec, plus a
+// final "Launch" step with the pre-flight checklist. Each step points
+// at the tab key whose form the wizard renders in the main panel, and
+// declares a `completed(tenant)` predicate that inspects the tenant
+// row to decide whether this step counts as done. Predicates compute
+// dynamically rather than tracking state in a separate column — a
+// tenant config that's been filled in IS the completion state; no
+// risk of the flag drifting from the data.
+var WIZARD_STEPS = [
+  { key: 'basics',       label: 'Basics',        tab: 'overview',
+    completed: function(t) { return !!(t.name && t.slug && t.legal_name); },
+    hint: 'Legal name set + slug confirmed + lifecycle chosen.' },
+  { key: 'brand',        label: 'Brand',         tab: 'brand',
+    completed: function(t) { return !!(t.brand && (t.brand.wordmark || t.brand.logo_url)); },
+    hint: 'Wordmark or logo configured.' },
+  { key: 'terminology',  label: 'Terminology',   tab: 'terminology',
+    completed: function(t) { return !!(t.terminology && Object.keys(t.terminology).length > 0); },
+    hint: 'At least one term overridden from the defaults.' },
+  { key: 'catalog',      label: 'Catalog',       tab: 'catalog',
+    completed: function(t) { return t._catalogOk === true; /* filled by loadClients extension */ },
+    hint: 'At least one active protocol scoped to this tenant.' },
+  { key: 'workflow',     label: 'Workflow',      tab: 'workflow',
+    completed: function(t) { return !!(t.workflow && Object.keys(t.workflow).length > 0); },
+    hint: 'Workflow rules saved at least once.' },
+  { key: 'comms',        label: 'Communications', tab: 'comms',
+    completed: function(t) { return t._commsOk === true; },
+    hint: 'At least one template override persisted OR defaults reviewed.' },
+  { key: 'integrations', label: 'Integrations',  tab: 'integrations',
+    completed: function(t) { return t._integrationsOk === true; },
+    hint: 'At least one provider connected (typically Stripe for billable tenants).' },
+  { key: 'compliance',   label: 'Compliance',    tab: 'compliance',
+    completed: function(t) { return t._complianceOk === true; },
+    hint: 'At least one operating state + primary location set.' },
+  { key: 'billing',      label: 'Billing',       tab: 'billing',
+    completed: function(t) { return t._billingOk === true; },
+    hint: 'A plan assigned with an active subscription.' },
+  { key: 'launch',       label: 'Launch',        tab: null,
+    completed: function(t) { return t.lifecycle_state === 'live'; },
+    hint: 'All pre-flight checks pass; lifecycle moved to Live.' }
+];
+
+function openClientDetail(tenantId, startInWizard) {
   var t = null;
   for (var i = 0; i < _clients.length; i++) {
     if (_clients[i].id === tenantId) { t = _clients[i]; break; }
@@ -1098,17 +1185,274 @@ function openClientDetail(tenantId) {
 
   _activeDetailTenant = t;
   _activeDetailTab = 'overview';
+  _wizardMode = !!startInWizard;
+  _wizardStepIdx = 0;
 
   document.getElementById('clientDetailTitle').textContent = t.name || '(unnamed)';
   var pill = document.getElementById('clientDetailPill');
   pill.className = 'status-pill ' + t.lifecycle_state;
   pill.textContent = t.lifecycle_state;
 
-  renderDetailTabs();
-  renderDetailTabPanels();
+  applyWizardModeUI();
 
   document.getElementById('clientDetailBackdrop').classList.add('show');
   document.getElementById('clientDetailPanel').classList.add('show');
+
+  // Probe the wizard-completion async signals (presence of catalog/
+  // comms/integrations/compliance/billing rows). These write back to
+  // the cached tenant object so subsequent wizard renders pick up the
+  // results. Fire-and-forget; if any probe fails the corresponding
+  // check just shows as "pending".
+  probeWizardCompletion(t);
+}
+
+function toggleWizardMode() {
+  _wizardMode = !_wizardMode;
+  _wizardStepIdx = 0;
+  applyWizardModeUI();
+}
+
+function applyWizardModeUI() {
+  var panel  = document.getElementById('clientDetailPanel');
+  var tabs   = document.getElementById('clientDetailTabs');
+  var toggle = document.getElementById('wizardToggleBtn');
+
+  if (_wizardMode) {
+    panel.classList.add('wizard-mode');
+    tabs.style.display = 'none';
+    toggle.classList.add('on');
+    toggle.textContent = 'Exit wizard';
+    renderWizard();
+  } else {
+    panel.classList.remove('wizard-mode');
+    tabs.style.display = '';
+    toggle.classList.remove('on');
+    toggle.textContent = 'Wizard';
+    renderDetailTabs();
+    renderDetailTabPanels();
+  }
+}
+
+// Pull async completion signals for steps whose completeness can't be
+// read off the tenant row alone. Writes the result back to the cached
+// tenant object as `_catalogOk` / `_commsOk` / `_integrationsOk` /
+// `_complianceOk` / `_billingOk` booleans — the wizard step predicates
+// read these flags.
+function probeWizardCompletion(t) {
+  function flag(key, value) {
+    t[key] = value;
+    if (_wizardMode && _activeDetailTenant && _activeDetailTenant.id === t.id) {
+      renderWizard();
+    }
+  }
+
+  db.from('protocol_templates').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', t.id).eq('is_archived', false)
+    .then(function(r) { flag('_catalogOk', (r.count || 0) > 0); })
+    .catch(function() {});
+
+  db.from('communication_templates').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', t.id)
+    .then(function(r) { flag('_commsOk', (r.count || 0) > 0); })
+    .catch(function() {});
+
+  db.from('tenant_integrations').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', t.id).eq('status', 'connected')
+    .then(function(r) { flag('_integrationsOk', (r.count || 0) > 0); })
+    .catch(function() {});
+
+  Promise.all([
+    db.from('tenant_regions').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('is_allowed', true),
+    db.from('tenant_locations').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('is_primary', true).eq('is_archived', false)
+  ]).then(function(r) {
+    flag('_complianceOk', (r[0].count || 0) > 0 && (r[1].count || 0) > 0);
+  }).catch(function() {});
+
+  db.from('tenant_subscriptions').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', t.id).in('status', ['active','trialing'])
+    .then(function(r) { flag('_billingOk', (r.count || 0) > 0); })
+    .catch(function() {});
+}
+
+function renderWizard() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  var body = document.getElementById('clientDetailBody');
+
+  var stepsHtml = WIZARD_STEPS.map(function(step, idx) {
+    var done = !!step.completed(t);
+    var active = idx === _wizardStepIdx;
+    return '<div class="wizard-step' + (active ? ' active' : '') + (done ? ' done' : '') +
+      '" onclick="jumpToWizardStep(' + idx + ')">' +
+      '<span class="wizard-step-dot">' + (done ? '' : '<span class="wizard-step-num">' + (idx + 1) + '</span>') + '</span>' +
+      '<span class="wizard-step-label">' + escHtml(step.label) + '</span>' +
+    '</div>';
+  }).join('');
+
+  var current = WIZARD_STEPS[_wizardStepIdx];
+  var panelInner;
+  if (current.key === 'launch') {
+    panelInner = renderLaunchStep(t);
+  } else {
+    // Reuse the existing tab's build function so the wizard form is
+    // the same form as the full-view tab. Switch _activeDetailTab
+    // so any afterRenderXxxTab hooks wire up to the right elements.
+    _activeDetailTab = current.tab;
+    var tabEntry = DETAIL_TABS.find(function(dt) { return dt.key === current.tab; });
+    panelInner = '<div class="detail-tab-panel active" id="detailPanel-' + escAttr(current.tab) + '">' +
+      (tabEntry && tabEntry.build ? tabEntry.build(t) : '<div>No content for ' + escHtml(current.tab) + '</div>') +
+    '</div>';
+  }
+
+  var progressText = 'Step ' + (_wizardStepIdx + 1) + ' of ' + WIZARD_STEPS.length + ' — ' + escHtml(current.label);
+  var prevBtn = '<button class="form-btn secondary" onclick="wizardPrev()"' + (_wizardStepIdx === 0 ? ' disabled' : '') + '>Previous</button>';
+  var nextBtn = _wizardStepIdx < WIZARD_STEPS.length - 1
+    ? '<button class="form-btn primary" onclick="wizardNext()">Next</button>'
+    : '';
+
+  body.innerHTML =
+    '<div class="wizard-body">' +
+      '<div class="wizard-steps">' + stepsHtml + '</div>' +
+      '<div class="wizard-panel">' + panelInner + '</div>' +
+    '</div>' +
+    '<div class="wizard-footer">' +
+      prevBtn +
+      '<span class="wizard-progress-text">' + progressText + '</span>' +
+      nextBtn +
+    '</div>';
+
+  // Run the same post-render hooks the tabbed view would.
+  if (current.tab === 'brand'        && typeof afterRenderBrandTab        === 'function') afterRenderBrandTab(t);
+  if (current.tab === 'terminology'  && typeof afterRenderTerminologyTab  === 'function') afterRenderTerminologyTab(t);
+  if (current.tab === 'catalog'      && typeof afterRenderCatalogTab      === 'function') afterRenderCatalogTab(t);
+  if (current.tab === 'workflow'     && typeof afterRenderWorkflowTab     === 'function') afterRenderWorkflowTab(t);
+  if (current.tab === 'comms'        && typeof afterRenderCommsTab        === 'function') afterRenderCommsTab(t);
+  if (current.tab === 'integrations' && typeof afterRenderIntegrationsTab === 'function') afterRenderIntegrationsTab(t);
+  if (current.tab === 'compliance'   && typeof afterRenderComplianceTab   === 'function') afterRenderComplianceTab(t);
+  if (current.tab === 'billing'      && typeof afterRenderBillingTab      === 'function') afterRenderBillingTab(t);
+}
+
+function jumpToWizardStep(idx) {
+  if (idx < 0 || idx >= WIZARD_STEPS.length) return;
+  _wizardStepIdx = idx;
+  renderWizard();
+}
+
+function wizardNext() {
+  if (_wizardStepIdx < WIZARD_STEPS.length - 1) {
+    _wizardStepIdx++;
+    renderWizard();
+  }
+}
+
+function wizardPrev() {
+  if (_wizardStepIdx > 0) {
+    _wizardStepIdx--;
+    renderWizard();
+  }
+}
+
+function renderLaunchStep(t) {
+  var checks = WIZARD_STEPS.slice(0, -1).map(function(step) {
+    var done = !!step.completed(t);
+    return {
+      label: step.label,
+      hint:  step.hint,
+      done:  done,
+      step:  step
+    };
+  });
+  var incomplete = checks.filter(function(c) { return !c.done; }).length;
+  var ready = incomplete === 0 && t.lifecycle_state !== 'live';
+  var alreadyLive = t.lifecycle_state === 'live';
+
+  var list = '<div class="launch-checklist">' + checks.map(function(c, idx) {
+    var cls = c.done ? 'launch-check done' : 'launch-check todo';
+    return '<div class="' + cls + '">' +
+      '<span class="launch-check-icon">' + (c.done ? '\u2713' : '!') + '</span>' +
+      '<div>' +
+        '<div class="launch-check-label">' + escHtml(c.label) + '</div>' +
+        '<div class="launch-check-sub">' + escHtml(c.hint) + '</div>' +
+      '</div>' +
+      (c.done
+        ? '<span class="launch-check-sub">OK</span>'
+        : '<button class="launch-check-jump" onclick="jumpToWizardStep(' + idx + ')">Jump</button>'
+      ) +
+    '</div>';
+  }).join('') + '</div>';
+
+  var cta;
+  if (alreadyLive) {
+    cta = '<div class="launch-ready-card">' +
+      '<div>' +
+        '<div class="launch-ready-title">Tenant is Live</div>' +
+        '<div class="launch-ready-sub">Onboarding complete. Future changes are safe to make from the regular tabbed view.</div>' +
+      '</div>' +
+    '</div>';
+  } else if (ready) {
+    cta = '<div class="launch-ready-card">' +
+      '<div>' +
+        '<div class="launch-ready-title">Ready to launch</div>' +
+        '<div class="launch-ready-sub">All ' + checks.length + ' pre-flight checks pass. Activating moves this tenant from sandbox to Live and makes it billable and user-facing.</div>' +
+      '</div>' +
+      '<button class="launch-activate-btn" onclick="activateTenant()">Activate</button>' +
+    '</div>';
+  } else {
+    cta = '<div class="launch-ready-card notready">' +
+      '<div>' +
+        '<div class="launch-ready-title">' + incomplete + ' step' + (incomplete === 1 ? '' : 's') + ' remaining</div>' +
+        '<div class="launch-ready-sub">Resolve the items flagged above before activating. Each step links back to the relevant form.</div>' +
+      '</div>' +
+      '<button class="launch-activate-btn" disabled>Activate</button>' +
+    '</div>';
+  }
+
+  return '<div class="tab-header">' +
+      '<div class="tab-title">Launch</div>' +
+      '<div class="tab-subtitle">Pre-flight checklist. Every item must pass before the tenant can move from Sandbox to Live.</div>' +
+    '</div>' +
+    list +
+    cta;
+}
+
+function activateTenant() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  if (!canChangeLifecycle()) {
+    showToast('Only platform admins can activate tenants.', 'error');
+    return;
+  }
+  if (!window.confirm('Move this tenant from Sandbox to Live? This makes it billable and user-facing.')) return;
+
+  var prevState = t.lifecycle_state;
+  db.from('tenants').update({ lifecycle_state: 'live' }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      t.lifecycle_state = 'live';
+      // Sync the header pill.
+      var pill = document.getElementById('clientDetailPill');
+      pill.className = 'status-pill live';
+      pill.textContent = 'live';
+      renderWizard();
+      loadClients();
+      showToast('Tenant activated. Welcome aboard.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.lifecycle_changed',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        tenant_id: t.id,
+        change_type: 'lifecycle',
+        before_snapshot: { lifecycle_state: prevState },
+        after_snapshot:  { lifecycle_state: 'live' },
+        details: JSON.stringify({ from: prevState, to: 'live', via: 'wizard' })
+      }).catch(function(e){ console.warn('[platform] activation audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] activation failed', err);
+      showToast('Activation failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
 }
 
 function renderDetailTabs() {

@@ -11293,25 +11293,45 @@ function _loadClRecentActivity(el) {
       showInlineEmpty(el, 'No recent activity.', 'Activity from your patients will appear here.', { icon: 'clipboard' });
       return;
     }
-    db.from('dose_logs').select('user_id, dose_date, profiles!dose_logs_user_id_fkey(display_name, first_name, last_name, email)')
+    // Two queries instead of an embedded PostgREST join. The embedded
+    // join variant (profiles!dose_logs_user_id_fkey(...)) 400s on this
+    // schema because that FK isn't registered the way PostgREST expects,
+    // and ordering by a non-selected column was compounding the problem.
+    // Split approach: pull dose_logs sorted by dose_date (known-good
+    // column), then resolve names in a follow-up profiles query.
+    db.from('dose_logs').select('user_id, dose_date')
       .in('user_id', patientIds)
-      .order('logged_at', { ascending: false }).limit(5)
+      .order('dose_date', { ascending: false }).limit(5)
       .then(function(r) {
         if (r.error || !r.data || r.data.length === 0) {
           showInlineEmpty(el, 'No recent activity.', 'Activity from your patients will appear here.', { icon: 'clipboard' });
           return;
         }
-        el.innerHTML = r.data.map(function(d) {
-          var prof = d.profiles || {};
-          var name = prof.display_name || ((prof.first_name || '') + ' ' + (prof.last_name || '')).trim() || prof.email || d.user_id.slice(0,8).toUpperCase();
-          var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
-          var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
-        return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(name) + '</strong> Logged a dose</span><span class="activity-time-text">' + timeLabel + '</span></div>';
-      }).join('');
-    })
-    .catch(function() {
-      showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
-    });
+        var rows = r.data;
+        var uniqueIds = Object.keys(rows.reduce(function(acc, d) { acc[d.user_id] = 1; return acc; }, {}));
+        db.from('profiles').select('user_id, display_name, first_name, last_name, email')
+          .in('user_id', uniqueIds)
+          .then(function(pr) {
+            var byId = {};
+            (pr.data || []).forEach(function(p) { byId[p.user_id] = p; });
+            el.innerHTML = rows.map(function(d) {
+              var prof = byId[d.user_id] || {};
+              var name = prof.display_name
+                || ((prof.first_name || '') + ' ' + (prof.last_name || '')).trim()
+                || prof.email
+                || d.user_id.slice(0,8).toUpperCase();
+              var daysAgo = Math.floor((Date.now() - new Date(d.dose_date).getTime()) / 86400000);
+              var timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+              return '<div class="activity-row"><span class="activity-text"><strong>' + escapeHtml(name) + '</strong> Logged a dose</span><span class="activity-time-text">' + timeLabel + '</span></div>';
+            }).join('');
+          })
+          .catch(function() {
+            showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
+          });
+      })
+      .catch(function() {
+        showInlineEmpty(el, 'No recent activity.', null, { icon: 'clipboard' });
+      });
   }); // end _loadMyPatients
 }
 

@@ -12,6 +12,7 @@
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
 <script src="messaging.js"></script>
+<script src="integrations.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1430,6 +1431,14 @@ function _bootAdminWithTenant(user, profile) {
       if (window.Messaging && window.Tenant)
         window.Messaging.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[admin] messaging init failed; using defaults', e);
+        });
+      // Integrations also async (DB call). Admin surfaces that need
+      // to gate UI on "is Stripe connected?" should check
+      // Integrations.isConnected(...) after init resolves; any pre-
+      // resolve check returns false, which is the conservative default.
+      if (window.Integrations && window.Tenant)
+        window.Integrations.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[admin] integrations init failed; treating all as disconnected', e);
         });
       applyTenantBrand();
       initAdmin(user, profile);

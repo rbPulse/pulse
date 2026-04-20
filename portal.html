@@ -12,6 +12,7 @@
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
 <script src="messaging.js"></script>
+<script src="integrations.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7449,6 +7450,15 @@ function _bootPortalWithTenant(user) {
       if (window.Messaging && window.Tenant)
         window.Messaging.init(db, window.Tenant.id).catch(function(e) {
           console.warn('[portal] messaging init failed; using defaults', e);
+        });
+      // Integrations init is non-blocking too. Member and clinician
+      // surfaces that gate features on "is this integration connected?"
+      // (checkout wrapped in Stripe, live consults wrapped in Daily)
+      // should call Integrations.isConnected(...) and render a
+      // graceful disabled state if false.
+      if (window.Integrations && window.Tenant)
+        window.Integrations.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[portal] integrations init failed; treating all as disconnected', e);
         });
       applyTenantBrand();
       initPortal(user);

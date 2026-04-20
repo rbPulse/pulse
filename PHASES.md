@@ -334,7 +334,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 4     | **Foundations done; full CRUD + downstream refactor = carry-over** | Migration 014 extends the catalog schema: per-tenant key uniqueness on `protocol_templates` (dropped the global UNIQUE, added composite `(tenant_id, key)`), `refill_price` + `subscription_cadence` columns, new `protocol_packages` table with JSONB `items` bundle + RLS following the Phase 0 staff/platform template. Operator portal's Catalog tab fetches and displays all four catalog tables (protocols, categories, product types, packages) scoped to the selected tenant with per-section error hints (e.g. "run migration 014" when `protocol_packages` is missing). See carry-over for the editor UI and the downstream refactor. |
 | 5     | **Foundations done; execution-path refactor = carry-over** | `workflow.js` ships with a rich SCHEMA catalog (6 sections, ~15 fields: intake, consult, refill, sla_hours, assignment, follow_up) and a dot-path accessor (`Workflow.get('refill.eligibility_days_before_runout')`). Operator portal's Workflow tab auto-renders from SCHEMA with type-appropriate inputs (toggle / bounded number / enum select), live override badges, client-side validation. Save writes full shape to `tenants.workflow` JSONB with diff-only audit log. `admin.html` and `portal.html` both load `workflow.js` + call `Workflow.init()` after tenant resolves. Execution-path refactor — replacing every hardcoded SLA timer, refill window, consult policy branch, assignment rule across all three portal surfaces — is the multi-session carry-over the PHASES.md 3.5-week estimate anticipates. |
 | 6     | **Foundations done; delivery + trigger refactor = carry-over** | Migration 015 adds `communication_templates(tenant_id, key, channel, subject, body, variables, cadence)` with composite unique on `(tenant_id, key, channel)` and RLS (staff read / tenant-owner+admin write / platform read-write). `messaging.js` ships a catalog of ~7 default templates (member welcome, intake confirmation, refill approved/denied, consult scheduled/reminder, follow-up) with `Messaging.resolve(key, channel)` / `Messaging.render(key, vars, channel)` helpers. Operator Comms tab lists every template grouped by namespace; each card has subject/body editors, clickable variable chips that insert `{{tokens}}` at the cursor, per-template save + reset + preview (with hardcoded sample data). `admin.html` and `portal.html` load messaging.js and fire `Messaging.init()` in parallel with page boot. See carry-over for delivery wiring and automation-trigger refactor. |
-| 7–15  | Not started   | See sections above. |
+| 7     | **Foundations done; delivery + Vault + webhook router = carry-over** | Migration 016 creates `tenant_integrations(tenant_id, provider, status, credentials jsonb, config jsonb, last_connected_at, last_error, last_error_at)` with platform-only RLS on the base table and a SECURITY DEFINER RPC (`tenant_integrations_for_my_tenants`) that returns a non-secret projection to tenant staff. `integrations.js` ships a catalog of 7 providers (Stripe, Daily.co, Resend, Twilio, Labcorp, Stripe Identity, Shippo) with credential + config field schemas. Operator Integrations tab renders one card per provider grouped by category; Connect/Edit/Disconnect/Test actions manage the row. Password fields always render blank on edit — leaving blank keeps the stored value. Audit log redacts credential VALUES (writes `credential_keys: [...]` instead). `admin.html` + `portal.html` load integrations.js and fire `Integrations.init()` in parallel with page boot. See carry-over for the real delivery path, Vault migration, and the webhook router. |
+| 8–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -521,6 +522,73 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   the template's declared allow-list. Belongs with the trigger
   refactor above: when `Messaging.render(key, vars)` is called, warn
   if `vars` keys don't match `CATALOG[key].variables` names.
+
+### Carry-over from Phase 7
+
+- **Supabase Vault migration.** This is the top carry-over. Today,
+  credentials are stored inline in `tenant_integrations.credentials`
+  JSONB with RLS gating reads to platform users only. That protects
+  against tenant-session exfiltration but not against a compromised
+  platform user or accidental backup exposure. Move to Supabase
+  Vault: the column shape accommodates a vault-ref pattern
+  (`{ "vault_secret_id": "abc-..." }`) without a schema change, so
+  the swap is app-level. Order of operations: stand up Vault, write
+  all existing credentials to Vault, update the save path to write
+  vault refs instead of inline values, update the server-side
+  delivery/test path to resolve vault refs, drop any inline values
+  still present, document the new posture in
+  `supabase/migrations/016_tenant_integrations.sql`'s header.
+- **Server-side delivery paths (Edge Functions).** Every provider
+  needs a server-side wrapper so credentials never leave the DB
+  for a live call. Minimum set:
+    - `stripe.create_customer` / `stripe.create_subscription`
+    - `dailyco.create_room` / `dailyco.create_meeting_token`
+    - `resend.send_email` (called by Phase 6 send wiring)
+    - `twilio.send_sms`
+    - `labcorp.order_panel` (and the inbound result ingest)
+    - `stripe_identity.create_verification_session`
+    - `shippo.create_shipment` / `shippo.create_label`
+  Each reads `tenant_integrations.credentials` with a service-role
+  key, constructs the provider call, handles the response, and
+  writes `last_connected_at` / `last_error` back. Expose minimal
+  RPCs to the browser so admin/portal code never touches secrets.
+- **Webhook router.** External providers POST back to Pulse with
+  status updates (Stripe checkout completed, Twilio message
+  delivered, Shippo label printed, Labcorp result ready). Build a
+  single webhook receiver Edge Function that:
+    1. Extracts the tenant from the URL path (`/webhooks/{provider}/{slug}`)
+       or from provider metadata (e.g. Stripe customer metadata's
+       `tenant_id`).
+    2. Looks up `tenant_integrations.credentials.webhook_secret`
+       to verify the payload signature.
+    3. Dispatches to a per-provider handler.
+  Store each raw webhook event in a new `webhook_events(tenant_id,
+  provider, event_type, payload, received_at, processed_at, error)`
+  table so replay and debugging work.
+- **Test-connection stub → real ping.** The Integrations tab's Test
+  button optimistically stamps `last_connected_at` today. Replace
+  with an RPC that the server implements per-provider (matches the
+  `test_action` key declared in each catalog entry). The RPC reads
+  credentials, makes a read-only probe call (Stripe: retrieve
+  account; Daily: fetch domain; Resend: list domains), returns
+  success/error, and writes `last_connected_at` or `last_error`
+  back. Until the RPC lands, the button's warn-toast makes the
+  stub status explicit to the operator.
+- **Inbound Labcorp result ingest.** Labcorp posts results back
+  via webhooks once orders complete. Build the handler after the
+  generic webhook router above. Store results in a new
+  `lab_results(tenant_id, patient_id, panel, result_data, received_at)`
+  table, notify the clinician queue, surface on the patient chart.
+- **Stripe Customer Portal embed.** Phase 9 billing needs the
+  Customer Portal link generated per-tenant. Add a
+  `stripe.create_billing_portal_session` RPC to the integrations
+  server-side layer; the admin portal generates + redirects when
+  a member clicks "Manage subscription".
+- **Error-state recovery UX.** When `status='error'`, surface the
+  last error prominently on the integration card plus a "View
+  failures" link that shows recent `webhook_events` rows where the
+  handler errored. Helps ops diagnose a down integration without
+  SSHing into logs.
 
 ### Carry-over from Phase 1
 

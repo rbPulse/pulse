@@ -11,6 +11,7 @@
 <script src="tenant.js"></script>
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
+<script src="messaging.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1416,12 +1417,20 @@ function _bootAdminWithTenant(user, profile) {
   }
   window.TenantBootstrap.init(db)
     .then(function() {
-      // Terminology and Workflow must init after Tenant so they can
-      // read window.Tenant.terminology / window.Tenant.workflow. All
-      // three helpers are no-ops if their script tags failed to load,
-      // so a missed script is logged but doesn't stop admin booting.
+      // Terminology, Workflow, and Messaging init after Tenant so they
+      // can read window.Tenant.*. Terminology + Workflow are sync (the
+      // data they need is already on window.Tenant). Messaging is async
+      // because it needs to fetch per-tenant template overrides from the
+      // communication_templates table — fire it off in parallel and
+      // don't block the admin boot; sends that happen before it resolves
+      // fall through to bundled defaults with a console warning, which
+      // is the intended failure mode.
       if (window.Terminology) window.Terminology.init();
       if (window.Workflow)    window.Workflow.init();
+      if (window.Messaging && window.Tenant)
+        window.Messaging.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[admin] messaging init failed; using defaults', e);
+        });
       applyTenantBrand();
       initAdmin(user, profile);
     })

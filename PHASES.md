@@ -333,7 +333,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 3     | **Foundations done; full refactor = carry-over** | `terminology.js` shipped with a catalog of ~30 renameable terms across 4 groups (people, clinical, workflow, commercial) and a single `Terminology.t(key)` accessor with `{ lower }` / `{ upper }` opts. Operator portal's Terminology tab renders one input per term (grouped, with live "overridden" badges) and a 4-line live preview. Save writes diff-only to `tenants.terminology` JSONB with audit log. `admin.html` and `portal.html` both load `terminology.js` + call `Terminology.init()` after tenant resolves; PoC replacement in each (role noun in document title / loading screen) proves the plumbing. See carry-over below for the per-portal string audit. |
 | 4     | **Foundations done; full CRUD + downstream refactor = carry-over** | Migration 014 extends the catalog schema: per-tenant key uniqueness on `protocol_templates` (dropped the global UNIQUE, added composite `(tenant_id, key)`), `refill_price` + `subscription_cadence` columns, new `protocol_packages` table with JSONB `items` bundle + RLS following the Phase 0 staff/platform template. Operator portal's Catalog tab fetches and displays all four catalog tables (protocols, categories, product types, packages) scoped to the selected tenant with per-section error hints (e.g. "run migration 014" when `protocol_packages` is missing). See carry-over for the editor UI and the downstream refactor. |
 | 5     | **Foundations done; execution-path refactor = carry-over** | `workflow.js` ships with a rich SCHEMA catalog (6 sections, ~15 fields: intake, consult, refill, sla_hours, assignment, follow_up) and a dot-path accessor (`Workflow.get('refill.eligibility_days_before_runout')`). Operator portal's Workflow tab auto-renders from SCHEMA with type-appropriate inputs (toggle / bounded number / enum select), live override badges, client-side validation. Save writes full shape to `tenants.workflow` JSONB with diff-only audit log. `admin.html` and `portal.html` both load `workflow.js` + call `Workflow.init()` after tenant resolves. Execution-path refactor — replacing every hardcoded SLA timer, refill window, consult policy branch, assignment rule across all three portal surfaces — is the multi-session carry-over the PHASES.md 3.5-week estimate anticipates. |
-| 6–15  | Not started   | See sections above. |
+| 6     | **Foundations done; delivery + trigger refactor = carry-over** | Migration 015 adds `communication_templates(tenant_id, key, channel, subject, body, variables, cadence)` with composite unique on `(tenant_id, key, channel)` and RLS (staff read / tenant-owner+admin write / platform read-write). `messaging.js` ships a catalog of ~7 default templates (member welcome, intake confirmation, refill approved/denied, consult scheduled/reminder, follow-up) with `Messaging.resolve(key, channel)` / `Messaging.render(key, vars, channel)` helpers. Operator Comms tab lists every template grouped by namespace; each card has subject/body editors, clickable variable chips that insert `{{tokens}}` at the cursor, per-template save + reset + preview (with hardcoded sample data). `admin.html` and `portal.html` load messaging.js and fire `Messaging.init()` in parallel with page boot. See carry-over for delivery wiring and automation-trigger refactor. |
+| 7–15  | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -481,6 +482,45 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   workflow JSONB diverges from SCHEMA (missing section, stray key,
   out-of-range value). Not urgent — the operator UI is the only
   writer today.
+
+### Carry-over from Phase 6
+
+- **Actual delivery wiring.** `Messaging.render()` returns the
+  rendered subject + body; nothing sends it yet. Delivery belongs
+  with Phase 7 integrations where per-tenant Resend / Postmark /
+  Twilio credentials land. The send function should pull
+  integrations config + rendered template, route through the
+  configured provider, and log the delivery attempt.
+- **Automation trigger refactor.** Admin.html's migration 008
+  `platform_automations` table already fires automated messages on
+  events (e.g. refill approved). Those triggers currently build
+  subject + body with hardcoded templates. Refactor each trigger
+  to look up its template via `Messaging.render('refill.approved',
+  vars)` instead — once delivery wiring lands, the trigger becomes
+  two lines: `var msg = Messaging.render(key, vars); deliver(msg);`.
+- **Cadence enforcement.** The schema supports a `cadence` JSONB on
+  each template (e.g. `consult.reminder` defaults to
+  `{ days_before: [1], hours_before: [2] }`) but nothing reads it.
+  Wire the reminder scheduler to pull cadence per-template when
+  deciding when to fire.
+- **Test-send (real delivery, not just preview).** Once Phase 7
+  delivery is in place, add a "Test send to me" button to each
+  template card that delivers the rendered template to the current
+  operator's email via the tenant's configured sender. Preview
+  stays as it is — the button should be distinct, not replace it.
+- **Plural-channel templates.** A tenant might want the same
+  semantic message (e.g. `refill.approved`) delivered as BOTH email
+  and SMS. The schema supports it (two rows with different
+  `channel`), but the Comms tab currently only renders templates
+  that are in the bundled catalog. Add an "Add SMS variant" or
+  "Add push variant" action on each template card so operators can
+  author additional channels without a code change.
+- **Variable catalog per trigger context.** Today every template
+  lists its allowed variables. As more triggers land, the variable
+  names will drift unless we check that trigger-supplied vars match
+  the template's declared allow-list. Belongs with the trigger
+  refactor above: when `Messaging.render(key, vars)` is called, warn
+  if `vars` keys don't match `CATALOG[key].variables` names.
 
 ### Carry-over from Phase 1
 

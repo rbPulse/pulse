@@ -11,6 +11,7 @@
 <script src="tenant.js"></script>
 <script src="terminology.js"></script>
 <script src="workflow.js"></script>
+<script src="messaging.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -7437,15 +7438,18 @@ function _bootPortalWithTenant(user) {
   }
   window.TenantBootstrap.init(db)
     .then(function() {
-      // Terminology + Workflow init after Tenant so they can read
-      // window.Tenant.terminology / window.Tenant.workflow.
-      // Terminology.t() and Workflow.get() are then available
-      // anywhere downstream — portal.html's full audit of hardcoded
-      // terminology strings and hardcoded workflow rules (refill
-      // windows, SLA timers, consult policies) is a multi-session
-      // carry-over.
+      // Terminology + Workflow init after Tenant (sync — data is on
+      // window.Tenant). Messaging is async because overrides live in
+      // communication_templates; fire in parallel with initPortal so
+      // we don't block the patient-visible render on a DB fetch the
+      // critical path doesn't need (member portal rarely invokes
+      // Messaging during initial paint).
       if (window.Terminology) window.Terminology.init();
       if (window.Workflow)    window.Workflow.init();
+      if (window.Messaging && window.Tenant)
+        window.Messaging.init(db, window.Tenant.id).catch(function(e) {
+          console.warn('[portal] messaging init failed; using defaults', e);
+        });
       applyTenantBrand();
       initPortal(user);
     })

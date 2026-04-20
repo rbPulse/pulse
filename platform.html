@@ -14,6 +14,7 @@
 <script src="messaging.js"></script>
 <script src="integrations.js"></script>
 <script src="compliance.js"></script>
+<script src="modules.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -151,6 +152,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-url-input:focus{border-color:var(--slate);}
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
+
+/* ── BILLING TAB (per-client) ── */
+.bill-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
+.bill-plan-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
+.bill-plan-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:14px;}
+.bill-plan-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.bill-plan-value{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text);}
+.bill-plan-value.money{font-variant-numeric:tabular-nums;}
+.bill-plan-value.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text2);}
+.bill-sub-status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
+.bill-sub-status-pill.trialing{color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);}
+.bill-sub-status-pill.active{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);}
+.bill-sub-status-pill.past_due{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.bill-sub-status-pill.canceled{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+.bill-sub-status-pill.paused{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.bill-sub-status-pill.incomplete{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+
+.bill-module-group{margin-bottom:14px;}
+.bill-module-group-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.bill-module-row{display:grid;grid-template-columns:32px 1fr auto auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:6px;}
+.bill-module-info{min-width:0;}
+.bill-module-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);}
+.bill-module-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4;}
+.bill-module-source{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);}
+.bill-module-source.plan{background:var(--card2);color:var(--text3);border:1px solid var(--border);}
+.bill-module-source.override{background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
+.bill-module-source.addon{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
+.bill-module-source.trial{background:var(--green-tint);color:var(--green);border:1px solid var(--green-border);}
+.bill-module-expires{font-family:'Inter',sans-serif;font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
 
 /* ── COMPLIANCE TAB ── */
 .comp-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
@@ -993,7 +1023,7 @@ var DETAIL_TABS = [
   { key: 'comms',        label: 'Communications', build: buildCommsTab                              },
   { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
   { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
-  { key: 'billing',      label: 'Billing',       phase: 'Phase 9', desc: 'Plan selection, module entitlement overrides, Stripe customer portal link.' },
+  { key: 'billing',      label: 'Billing',       build: buildBillingTab                            },
   { key: 'audit',        label: 'Activity',      phase: 'Phase 10', desc: 'Every config change on this tenant with before/after diff.' }
 ];
 
@@ -1073,6 +1103,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderComplianceTab === 'function' && _activeDetailTab === 'compliance') {
     afterRenderComplianceTab(t);
+  }
+  if (typeof afterRenderBillingTab === 'function' && _activeDetailTab === 'billing') {
+    afterRenderBillingTab(t);
   }
 }
 
@@ -1590,6 +1623,347 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Billing tab (per-client) ──
+// Three sections: current subscription (with plan picker when none
+// active), included modules (from the plan's included_modules array,
+// rendered as disabled toggles you can't turn off), and override
+// modules (manually granted — toggle on/off, set expiry). Stripe
+// Customer Portal link lands with Phase 7 Stripe integration; until
+// then the subscription is operator-managed via this tab.
+var _billData = {
+  plans:           [],
+  subscription:    null,
+  entitlements:    [],
+  errors: {}
+};
+
+function buildBillingTab(t) {
+  return '<div id="billBody"><div class="bill-loading">Loading billing…</div></div>';
+}
+
+function afterRenderBillingTab(t) {
+  var wrap = document.getElementById('billBody');
+  if (!wrap) return;
+
+  Promise.all([
+    db.from('plans').select('*').order('display_order'),
+    db.from('tenant_subscriptions').select('*').eq('tenant_id', t.id)
+      .in('status', ['trialing','active','past_due','paused','incomplete']).limit(1),
+    db.from('module_entitlements').select('*').eq('tenant_id', t.id)
+  ]).then(function(results) {
+    if (_activeDetailTab !== 'billing' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+
+    _billData = {
+      plans:        results[0].data || [],
+      subscription: (results[1].data || [])[0] || null,
+      entitlements: results[2].data || [],
+      errors: {
+        plans:        results[0].error || null,
+        subscription: results[1].error || null,
+        entitlements: results[2].error || null
+      }
+    };
+
+    wrap.innerHTML = renderBillingBody(t);
+  }).catch(function(err) {
+    if (_activeDetailTab !== 'billing' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
+  });
+}
+
+function renderBillingBody(t) {
+  // Any migration-not-run errors surface at the top.
+  var anyErr = _billData.errors.plans || _billData.errors.subscription || _billData.errors.entitlements;
+  var header = anyErr
+    ? '<div class="catalog-error">' +
+        '<strong>Failed to load billing</strong><br/>' + escHtml((anyErr.message || '') + '') +
+        ((migrationHint(anyErr, '018_billing_modules.sql')) ? '<br/><br/>' + escHtml(migrationHint(anyErr, '018_billing_modules.sql')) : '') +
+      '</div>'
+    : '';
+
+  return header
+       + renderSubscriptionSection(t)
+       + renderModulesSection(t);
+}
+
+function renderSubscriptionSection(t) {
+  var sub = _billData.subscription;
+  var plans = _billData.plans.filter(function(p) { return !p.is_archived; });
+
+  if (!sub) {
+    // No active subscription — show plan picker.
+    var options = plans.map(function(p) {
+      var priceTxt = p.monthly_price != null ? '$' + Number(p.monthly_price).toFixed(0) + '/mo' : 'Custom pricing';
+      return '<option value="' + escAttr(p.id) + '">' + escHtml(p.name) + ' — ' + escHtml(priceTxt) + '</option>';
+    }).join('');
+    return sectionWrapCompliance('Subscription',
+      'No active subscription. Assign a plan to enable modules and start billing.',
+      '<div class="brand-form-grid" style="max-width:500px;">' +
+        '<div class="brand-form-field full">' +
+          '<label>Plan</label>' +
+          '<select id="newSubPlan" class="filter-select" style="width:100%;">' + options + '</select>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label>Cycle</label>' +
+          '<select id="newSubCycle" class="filter-select">' +
+            '<option value="monthly">Monthly</option><option value="annual">Annual</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="brand-form-field">' +
+          '<label>Status</label>' +
+          '<select id="newSubStatus" class="filter-select">' +
+            '<option value="trialing">Trialing</option>' +
+            '<option value="active">Active</option>' +
+            '<option value="incomplete">Incomplete</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="brand-actions" style="margin-top:14px;">' +
+        '<button class="form-btn primary" onclick="assignSubscription()">Assign plan</button>' +
+      '</div>');
+  }
+
+  var plan = plans.find(function(p) { return p.id === sub.plan_id; });
+  var priceTxt = plan && plan.monthly_price != null
+    ? (sub.billing_cycle === 'annual' && plan.annual_price != null
+        ? '$' + Number(plan.annual_price).toFixed(2) + '/yr'
+        : '$' + Number(plan.monthly_price).toFixed(2) + '/mo')
+    : 'Custom';
+
+  var planPicker = '<select id="changeSubPlan" class="filter-select" style="width:100%;">' +
+    plans.map(function(p) {
+      return '<option value="' + escAttr(p.id) + '"' + (p.id === sub.plan_id ? ' selected' : '') + '>' + escHtml(p.name) + '</option>';
+    }).join('') +
+  '</select>';
+
+  var cyclePicker = '<select id="changeSubCycle" class="filter-select">' +
+    ['monthly','annual'].map(function(c) {
+      return '<option value="' + c + '"' + (c === sub.billing_cycle ? ' selected' : '') + '>' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>';
+    }).join('') +
+  '</select>';
+
+  var statusPicker = '<select id="changeSubStatus" class="filter-select">' +
+    ['trialing','active','past_due','paused','incomplete','canceled'].map(function(s) {
+      return '<option value="' + s + '"' + (s === sub.status ? ' selected' : '') + '>' + s + '</option>';
+    }).join('') +
+  '</select>';
+
+  var body = '<div class="bill-plan-card">' +
+    '<div class="bill-plan-row">' +
+      '<div><div class="bill-plan-label">Plan</div><div>' + planPicker + '</div></div>' +
+      '<div><div class="bill-plan-label">Cycle</div>' + cyclePicker + '</div>' +
+      '<div><div class="bill-plan-label">Status</div>' + statusPicker + '</div>' +
+      '<div><div class="bill-plan-label">Price</div><div class="bill-plan-value money">' + escHtml(priceTxt) + '</div></div>' +
+    '</div>' +
+    '<div class="bill-plan-row">' +
+      '<div><div class="bill-plan-label">Period start</div><div class="bill-plan-value">' + (sub.current_period_start ? formatDate(sub.current_period_start) : '—') + '</div></div>' +
+      '<div><div class="bill-plan-label">Period end</div><div class="bill-plan-value">' + (sub.current_period_end ? formatDate(sub.current_period_end) : '—') + '</div></div>' +
+      '<div><div class="bill-plan-label">Trial end</div><div class="bill-plan-value">' + (sub.trial_end ? formatDate(sub.trial_end) : '—') + '</div></div>' +
+      '<div><div class="bill-plan-label">Cancel at period end</div><div class="bill-plan-value">' + (sub.cancel_at_period_end ? 'Yes' : 'No') + '</div></div>' +
+    '</div>' +
+    '<div class="bill-plan-row">' +
+      '<div><div class="bill-plan-label">Stripe customer</div><div class="bill-plan-value mono">' + escHtml(sub.stripe_customer_id || '—') + '</div></div>' +
+      '<div><div class="bill-plan-label">Stripe subscription</div><div class="bill-plan-value mono">' + escHtml(sub.stripe_subscription_id || '—') + '</div></div>' +
+      '<div><div class="bill-plan-label">&nbsp;</div><div>&nbsp;</div></div>' +
+      '<div><div class="bill-plan-label">&nbsp;</div><div>&nbsp;</div></div>' +
+    '</div>' +
+    '<div class="brand-actions" style="margin-top:6px;">' +
+      '<button class="form-btn secondary" onclick="cancelSubscription(\'' + escAttr(sub.id) + '\')">Cancel subscription</button>' +
+      '<button class="form-btn primary" onclick="updateSubscription(\'' + escAttr(sub.id) + '\')">Save changes</button>' +
+    '</div>' +
+  '</div>';
+
+  return sectionWrapCompliance('Subscription',
+    'Current plan, cycle, and status. Stripe IDs are manual text fields today — auto-sync lands with the Phase 7 Stripe delivery path.',
+    body);
+}
+
+function assignSubscription() {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  var planId = document.getElementById('newSubPlan').value;
+  var cycle  = document.getElementById('newSubCycle').value;
+  var status = document.getElementById('newSubStatus').value;
+  if (!planId) { showToast('Select a plan.', 'warn'); return; }
+
+  db.from('tenant_subscriptions').insert({
+    tenant_id:     t.id,
+    plan_id:       planId,
+    billing_cycle: cycle,
+    status:        status,
+    created_by:    currentUserId
+  }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _billData.subscription = r.data;
+      // Auto-seed entitlements from the plan's included_modules.
+      var plan = _billData.plans.find(function(p) { return p.id === planId; });
+      var modules = (plan && plan.included_modules) || [];
+      if (modules.length === 0) return r;
+      return db.from('module_entitlements').upsert(
+        modules.map(function(k) {
+          return { tenant_id: t.id, module_key: k, enabled: true, source: 'plan' };
+        }),
+        { onConflict: 'tenant_id,module_key' }
+      ).select();
+    })
+    .then(function(mr) {
+      if (mr && mr.data) _billData.entitlements = mr.data.concat(_billData.entitlements.filter(function(e) {
+        return !mr.data.some(function(n) { return n.module_key === e.module_key; });
+      }));
+      var wrap = document.getElementById('billBody');
+      if (wrap) wrap.innerHTML = renderBillingBody(t);
+      showToast('Plan assigned.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.subscription_assigned',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ plan_id: _billData.subscription.plan_id, cycle: _billData.subscription.billing_cycle, status: _billData.subscription.status })
+      }).catch(function(e){ console.warn('[platform] subscription audit write failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[platform] assign subscription failed', err);
+      showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
+}
+
+function updateSubscription(subId) {
+  var t = _activeDetailTenant;
+  var planId = document.getElementById('changeSubPlan').value;
+  var cycle  = document.getElementById('changeSubCycle').value;
+  var status = document.getElementById('changeSubStatus').value;
+  if (!t) return;
+
+  db.from('tenant_subscriptions').update({
+    plan_id: planId, billing_cycle: cycle, status: status
+  }).eq('id', subId).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _billData.subscription = r.data;
+      var wrap = document.getElementById('billBody');
+      if (wrap) wrap.innerHTML = renderBillingBody(t);
+      showToast('Subscription updated.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.subscription_updated',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ plan_id: planId, cycle: cycle, status: status })
+      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+    })
+    .catch(function(err) { showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error'); });
+}
+
+function cancelSubscription(subId) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+  if (!window.confirm('Cancel this subscription? The row stays as history; a new subscription can be assigned after.')) return;
+
+  db.from('tenant_subscriptions').update({
+    status: 'canceled', canceled_at: new Date().toISOString(), cancel_at_period_end: false
+  }).eq('id', subId).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _billData.subscription = null; // No longer active
+      var wrap = document.getElementById('billBody');
+      if (wrap) wrap.innerHTML = renderBillingBody(t);
+      showToast('Subscription canceled.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.subscription_canceled',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ subscription_id: subId })
+      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+    })
+    .catch(function(err) { showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error'); });
+}
+
+function renderModulesSection(t) {
+  var catalog = (window.Modules && window.Modules.CATALOG) || [];
+  var categories = (window.Modules && window.Modules.CATEGORIES) || [];
+  var entitlements = {};
+  _billData.entitlements.forEach(function(e) { entitlements[e.module_key] = e; });
+
+  var body = '';
+  categories.forEach(function(cat) {
+    var catMods = catalog.filter(function(m) { return m.category === cat.key; });
+    if (catMods.length === 0) return;
+    body += '<div class="bill-module-group">' +
+      '<div class="bill-module-group-title">' + escHtml(cat.label) + '</div>' +
+      catMods.map(function(mod) {
+        var ent = entitlements[mod.key];
+        var isEnabled = ent ? !!ent.enabled : false;
+        var source = ent ? ent.source : null;
+        var expires = ent && ent.expires_at ? ' · expires ' + formatDate(ent.expires_at) : '';
+        return '<div class="bill-module-row">' +
+          '<label class="workflow-toggle" style="gap:0;">' +
+            '<input type="checkbox"' + (isEnabled ? ' checked' : '') +
+              ' onchange="toggleModuleEntitlement(\'' + escAttr(mod.key) + '\', this.checked)"/>' +
+            '<span class="workflow-toggle-slider"></span>' +
+          '</label>' +
+          '<div class="bill-module-info">' +
+            '<div class="bill-module-name">' + escHtml(mod.label) + '</div>' +
+            '<div class="bill-module-desc">' + escHtml(mod.description) + '</div>' +
+          '</div>' +
+          (source ? '<span class="bill-module-source ' + source + '">' + source + '</span>' : '<span>&nbsp;</span>') +
+          '<span class="bill-module-expires">' + expires + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  });
+
+  return sectionWrapCompliance('Modules',
+    'Features entitled for this tenant. Toggling on/off records an override entry; plan-sourced rows show the "plan" badge. Turning off a plan-sourced module creates an override that wins.',
+    body);
+}
+
+function toggleModuleEntitlement(moduleKey, enabled) {
+  var t = _activeDetailTenant;
+  if (!t) return;
+
+  // Determine source: if the module was included in the plan, toggling
+  // off stays as source='override' (the plan still includes it, but
+  // the tenant has an explicit disable). Toggling on a non-plan module
+  // is an addon/override too — either way, a manual toggle writes
+  // source='override' so provenance is traceable.
+  var plan = _billData.subscription
+    ? _billData.plans.find(function(p) { return p.id === _billData.subscription.plan_id; })
+    : null;
+  var fromPlan = plan && plan.included_modules && plan.included_modules.indexOf(moduleKey) !== -1;
+  var source = fromPlan ? 'override' : 'override';
+
+  db.from('module_entitlements').upsert({
+    tenant_id:  t.id,
+    module_key: moduleKey,
+    enabled:    enabled,
+    source:     source,
+    granted_by: currentUserId
+  }, { onConflict: 'tenant_id,module_key' }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      var i = _billData.entitlements.findIndex(function(e) { return e.module_key === moduleKey; });
+      if (i >= 0) _billData.entitlements[i] = r.data;
+      else _billData.entitlements.push(r.data);
+      showToast(mod_labelFor(moduleKey) + ' ' + (enabled ? 'enabled' : 'disabled') + '.', 'success');
+
+      return db.from('audit_logs').insert({
+        action: 'tenant.module_entitlement_changed',
+        actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
+        details: JSON.stringify({ module_key: moduleKey, enabled: enabled, source: source })
+      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+    })
+    .catch(function(err) {
+      showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error');
+      // Revert the toggle visually on failure.
+      var wrap = document.getElementById('billBody');
+      if (wrap) wrap.innerHTML = renderBillingBody(t);
+    });
+}
+
+function mod_labelFor(key) {
+  var m = window.Modules && window.Modules.forKey(key);
+  return m ? m.label : key;
 }
 
 // ── Compliance tab ──

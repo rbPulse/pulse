@@ -43,10 +43,9 @@
 
 DO $$
 DECLARE
-  tbl            text;
-  pulse_uuid     uuid := '00000000-0000-0000-0000-000000000001';
-  has_nulls      boolean;
-  has_fk         boolean;
+  tbl              text;
+  pulse_uuid       uuid := '00000000-0000-0000-0000-000000000001';
+  audit_trigger_on boolean;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     -- Clinical + patient data
@@ -82,37 +81,49 @@ BEGIN
       tbl, pulse_uuid
     );
 
-    -- 3. Backfill any NULL rows. audit_logs needs its tamper trigger
-    --    temporarily disabled because it blocks all UPDATEs.
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I WHERE tenant_id IS NULL)', tbl)
-      INTO has_nulls;
-    IF has_nulls THEN
-      IF tbl = 'audit_logs' THEN
+    -- 3. Backfill any NULL rows. Always run the UPDATE — it's a no-op
+    --    when nothing is null. audit_logs has a BEFORE UPDATE trigger
+    --    (migration 009) that blocks every UPDATE; disable it around
+    --    the backfill only if it actually exists.
+    IF tbl = 'audit_logs' THEN
+      SELECT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.audit_logs'::regclass
+          AND tgname = 'audit_logs_no_update'
+      ) INTO audit_trigger_on;
+
+      IF audit_trigger_on THEN
         EXECUTE 'ALTER TABLE public.audit_logs DISABLE TRIGGER audit_logs_no_update';
-        EXECUTE format('UPDATE public.%I SET tenant_id = %L WHERE tenant_id IS NULL', tbl, pulse_uuid);
-        EXECUTE 'ALTER TABLE public.audit_logs ENABLE TRIGGER audit_logs_no_update';
-      ELSE
-        EXECUTE format('UPDATE public.%I SET tenant_id = %L WHERE tenant_id IS NULL', tbl, pulse_uuid);
       END IF;
+
+      EXECUTE format(
+        'UPDATE public.%I SET tenant_id = %L WHERE tenant_id IS NULL',
+        tbl, pulse_uuid
+      );
+
+      IF audit_trigger_on THEN
+        EXECUTE 'ALTER TABLE public.audit_logs ENABLE TRIGGER audit_logs_no_update';
+      END IF;
+    ELSE
+      EXECUTE format(
+        'UPDATE public.%I SET tenant_id = %L WHERE tenant_id IS NULL',
+        tbl, pulse_uuid
+      );
     END IF;
 
     -- 4. NOT NULL (safe now that all rows have a value)
     EXECUTE format('ALTER TABLE public.%I ALTER COLUMN tenant_id SET NOT NULL', tbl);
 
-    -- 5. FK to tenants(id). information_schema lacks IF NOT EXISTS for
-    --    constraints, so check manually.
-    SELECT EXISTS (
-      SELECT 1 FROM information_schema.table_constraints
-      WHERE table_schema = 'public'
-        AND table_name = tbl
-        AND constraint_name = tbl || '_tenant_id_fkey'
-    ) INTO has_fk;
-    IF NOT has_fk THEN
-      EXECUTE format(
-        'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (tenant_id) REFERENCES public.tenants(id)',
-        tbl, tbl || '_tenant_id_fkey'
-      );
-    END IF;
+    -- 5. FK to tenants(id). Drop-then-add for idempotency (Postgres has
+    --    no ADD CONSTRAINT IF NOT EXISTS).
+    EXECUTE format(
+      'ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I',
+      tbl, tbl || '_tenant_id_fkey'
+    );
+    EXECUTE format(
+      'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (tenant_id) REFERENCES public.tenants(id)',
+      tbl, tbl || '_tenant_id_fkey'
+    );
 
     -- 6. Index for tenant-scoped queries
     EXECUTE format(

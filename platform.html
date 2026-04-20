@@ -1087,10 +1087,20 @@ function renderClientsTable() {
     return;
   }
   tbody.innerHTML = rows.map(function(t) {
+    // Sandbox tenants get an inline "Onboard" shortcut that opens the
+    // detail modal directly in wizard mode. Regular row click still
+    // opens in full-view mode. stopPropagation prevents the row's
+    // onclick from firing when the button itself is clicked.
+    var onboardBtn = t.lifecycle_state === 'sandbox'
+      ? '<button class="toolbar-btn secondary" style="padding:4px 10px;font-size:10px;" onclick="event.stopPropagation(); openClientDetail(\'' + escAttr(t.id) + '\', true)">Onboard</button>'
+      : '';
     return '<tr onclick="openClientDetail(\'' + escAttr(t.id) + '\')">' +
       '<td>' + escHtml(t.name || '--') + '</td>' +
       '<td class="mono">' + escHtml(t.slug || '--') + '</td>' +
-      '<td><span class="status-pill ' + escHtml(t.lifecycle_state) + '">' + escHtml(t.lifecycle_state) + '</span></td>' +
+      '<td>' +
+        '<span class="status-pill ' + escHtml(t.lifecycle_state) + '">' + escHtml(t.lifecycle_state) + '</span>' +
+        (onboardBtn ? ' ' + onboardBtn : '') +
+      '</td>' +
       '<td class="num">' + t.staff_count + '</td>' +
       '<td class="num">' + t.patient_count + '</td>' +
       '<td>' + formatDate(t.created_at) + '</td>' +
@@ -5251,7 +5261,14 @@ function submitCreateClient() {
       } else {
         showToast('Client created.', 'success');
       }
-      loadClients();
+      // Auto-open the new tenant in onboarding wizard mode. Most-natural
+      // next action after creation: walk the 10-step config flow.
+      // loadClients fires first so the cached _clients array has the
+      // new row before openClientDetail looks it up.
+      var newTenantId = result.tenant && result.tenant.id;
+      loadClients().then(function() {
+        if (newTenantId) openClientDetail(newTenantId, /* startInWizard */ true);
+      });
     })
     .catch(function(err) {
       btn.disabled = false;

@@ -338,7 +338,8 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
 | 8     | **Foundations done; data-export + alerts + read-site gating = carry-over** | Migration 017 creates four compliance tables in one migration: `tenant_locations` (addresses, hours, primary-flag with partial unique index), `tenant_regions` (operating states with allowed/blocked/unset tri-state), `tenant_consents` (versioned — editing creates a new version so prior signatures stay traceable), `clinician_state_licenses` (per-user, cross-tenant). `compliance.js` ships the US states catalog + `tenantOperatesIn` / `cliniciansLicensedIn` / `licensesExpiringWithin` / `primaryLocation` helpers. Operator Compliance tab has four sections: clickable states grid with cycle-semantics (unset → allowed → blocked → unset), locations CRUD with primary management, consent templates with versioned edit flow, read-only licenses summary with expiry stat cards (expired / ≤30d / ≤60d). `admin.html` + `portal.html` load compliance.js and fire `Compliance.init()` in parallel. See carry-over for data-export, license-expiry notifications, and the read-site gates that actually enforce state restrictions. |
 | 9     | **Foundations done; Stripe sync + feature-gate refactor = carry-over** | Migration 018 creates `plans` (seeded with Starter / Pro / Enterprise), `tenant_subscriptions` (partial unique index — one active sub per tenant; canceled rows stay as history), `module_entitlements` (sourced from plan or manually granted, with expiry for trials). `modules.js` ships a catalog of 16 modules across 5 categories (core, clinical, commercial, analytics, enterprise) and a `Modules.isEnabled(key)` feature-gate accessor. Per-client Billing tab manages subscription + per-module entitlements. Two top-level fleet tabs: **Modules** (catalog with adoption counts + plan-membership chips) and **Billing** (MRR, ARR, plan mix, churn flags). `admin.html` + `portal.html` load modules.js and fire `Modules.init()` in parallel. See carry-over for Stripe sync, Customer Portal embed, and the downstream feature-gate refactor. |
 | 10    | **Done (with carry-overs)** | Migration 019 extends `audit_logs` with `change_type` (stable classifier), `before_snapshot` (jsonb, pre-change state), `after_snapshot` (jsonb, post-change state). Append-only trigger from migration 009 preserved. Backfill classifies every existing audit action via a CASE mapping so historical rows get `change_type` populated without losing the legacy `details` string. Per-client Activity tab renders a timeline filtered by tenant with change-type filter, click-to-expand diff view (before/after side-by-side for new rows, raw `details` JSON for legacy rows). Top-level Audit tab has cross-tenant filter on top of the same renderer. Change-type colour mapping: brand/comms = slate, terminology/billing = green, workflow/compliance = amber, integration = blue, lifecycle = red. See carry-over for write-site structured snapshots + export. |
-| 11–15 | Not started   | See sections above. |
+| 11    | **Done (with carry-overs)** | No schema. Onboarding wizard layers over the existing detail modal as a view mode toggle: wizard button hides the tab strip and renders a 10-step sidebar (Basics, Brand, Terminology, Catalog, Workflow, Comms, Integrations, Compliance, Billing, Launch). Each step reuses its existing build function (zero duplicate form code); completion is derived dynamically from tenant row + async probes of related tables. Launch step aggregates a pre-flight checklist with Jump buttons for remaining work; Activate button (role-gated) moves sandbox → live with a structured Phase-10-shaped audit entry. Sandbox tenants get an inline "Onboard" button in the Clients table; newly created tenants auto-open in wizard mode post-save. See carry-over for QA-preview iframes and required-field validation. |
+| 12–15 | Not started   | See sections above. |
 
 ### Carry-over from Phase 2
 
@@ -786,6 +787,51 @@ one on infra/config, one on UI), this compresses to ~6–7 months.
   tenant in the last 90 days." That works today by scrolling, but a
   date filter saves time. Add to the audit toolbar when the next
   regulator request comes in; defer until there's a real use case.
+
+### Carry-over from Phase 11
+
+- **QA preview iframes.** PHASES.md calls for "Final step: QA preview
+  embeds the 3 downstream portals in iframes for visual review."
+  Today the Launch step shows a checklist + Activate button; iframes
+  are not rendered. Same blocker as the Phase 2 brand-preview iframe
+  carry-over: downstream portals need to accept an operator preview
+  session (auth bypass + brand injected via query string or
+  postMessage) before an iframe of them is useful. Resolve together
+  with Phase 13's view-as console, which needs the same primitive.
+- **Step-level required-field validation.** Each step's `completed`
+  predicate today checks a single minimum signal (brand has wordmark
+  OR logo; compliance has operating-state + primary-location). Richer
+  validation — "catalog has at least one active protocol priced above
+  $0", "billing subscription has current_period_end in the future" —
+  lands as the real tenants come online and reveal what actually
+  matters to activate safely. Extend the predicates as you learn;
+  don't pre-empt.
+- **Resume affordance beyond the "Onboard" button.** Sandbox tenants
+  surface an inline Onboard button in the Clients table. A tenant
+  mid-onboarding who gets switched to suspended (e.g. failed payment
+  during trial-conversion) loses the button but keeps the incomplete
+  state. Add "Resume onboarding" to the client detail header when
+  any step incomplete, regardless of lifecycle.
+- **Step-skip audit trail.** Jumping to the Launch step with
+  incomplete items then activating anyway (if platform_super_admin
+  overrides) should be an explicitly flagged audit event —
+  `tenant.activated_with_incomplete_onboarding` with the list of
+  unchecked steps. Not implemented today; current Activate button
+  is disabled when checks fail rather than overrideable. If ops asks
+  for the override path, add it with the loud audit entry.
+- **Save-between-steps semantics.** The Next button doesn't save
+  the current step's form automatically — that was a deliberate
+  choice so operators can browse without accidentally persisting
+  half-typed state, but it means jumping between steps without
+  pressing the tab's own Save loses anything entered. Consider a
+  "Save draft" vs "Save + continue" split on each step's form, or an
+  unsaved-changes warning on Next. Defer until a user actually
+  complains about losing work.
+- **Wizard state link.** No deep-link to a specific step today
+  (`platform.html#wizard/<tenant>/step-4`). Low priority — wizards
+  are typically opened from the Clients table, worked through, and
+  closed. Add if the onboarding flow grows long enough that
+  operators want to resume at the specific step they left off.
 
 ### Carry-over from Phase 1
 

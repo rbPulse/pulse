@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="tenant.js"></script>
+<script src="terminology.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -1413,7 +1414,15 @@ function _bootAdminWithTenant(user, profile) {
     return;
   }
   window.TenantBootstrap.init(db)
-    .then(function() { applyTenantBrand(); initAdmin(user, profile); })
+    .then(function() {
+      // Terminology must init after Tenant so it can read
+      // window.Tenant.terminology. Both helpers are no-ops if their
+      // script tags failed to load, so a missed script is logged but
+      // doesn't stop admin from booting.
+      if (window.Terminology) window.Terminology.init();
+      applyTenantBrand();
+      initAdmin(user, profile);
+    })
     .catch(function(err) {
       console.warn('[admin] tenant load failed, booting without tenant context', err);
       initAdmin(user, profile);
@@ -1442,12 +1451,19 @@ function _bootAdminWithTenant(user, profile) {
 function applyTenantBrand() {
   var brand = (window.Tenant && window.Tenant.brand) || {};
 
+  // Role noun ("Admin" by default) is overridable via terminology —
+  // tenants that call their admin portal something else ("Operator",
+  // "Staff") see it reflected in the loading wordmark and tab title.
+  // Falls through to "Admin" if terminology.js didn't load, so the
+  // page still renders correctly in a partial-boot scenario.
+  var roleNoun = (window.Terminology ? window.Terminology.t('admin') : 'Admin');
+
   var wordmark = (brand.wordmark || '').trim() || 'PULSE';
   var navName = document.querySelector('.nav-name');
   if (navName) navName.textContent = wordmark;
   var loadingEl = document.getElementById('loadingWordmark');
-  if (loadingEl) loadingEl.textContent = wordmark + ' Admin';
-  document.title = 'Admin | ' + wordmark;
+  if (loadingEl) loadingEl.textContent = wordmark + ' ' + roleNoun;
+  document.title = roleNoun + ' | ' + wordmark;
 
   if (brand.accent_color && /^#[0-9a-fA-F]{6}$/.test(brand.accent_color)) {
     var hex = brand.accent_color;

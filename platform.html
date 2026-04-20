@@ -139,29 +139,49 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
       <div class="sidebar-nav">
-        <div class="sidebar-section-label">Dashboard</div>
-        <div class="sidebar-item active" id="nav-overview" onclick="switchTab('overview')">
+        <div class="sidebar-section-label">Overview</div>
+        <div class="sidebar-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          <span class="sidebar-item-label">Overview</span>
+          <span class="sidebar-item-label">Dashboard</span>
         </div>
         <div class="sidebar-section-label">Tenants</div>
-        <div class="sidebar-item" id="nav-tenants" onclick="switchTab('tenants')">
+        <div class="sidebar-item" id="nav-clients" onclick="switchTab('clients')">
           <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg>
-          <span class="sidebar-item-label">Tenants</span>
+          <span class="sidebar-item-label">Clients</span>
+        </div>
+        <div class="sidebar-item" id="nav-templates" onclick="switchTab('templates')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span class="sidebar-item-label">Templates</span>
+        </div>
+        <div class="sidebar-section-label">Platform</div>
+        <div class="sidebar-item" id="nav-modules" onclick="switchTab('modules')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="sidebar-item-label">Modules</span>
+        </div>
+        <div class="sidebar-item" id="nav-integrations" onclick="switchTab('integrations')">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span class="sidebar-item-label">Integrations</span>
+        </div>
+        <div class="sidebar-item" id="nav-billing" onclick="switchTab('billing')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span class="sidebar-item-label">Billing</span>
+        </div>
+        <div class="sidebar-item" id="nav-analytics" onclick="switchTab('analytics')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="sidebar-item-label">Analytics</span>
         </div>
         <div class="sidebar-section-label">Operations</div>
-        <div class="sidebar-item" id="nav-users" onclick="switchTab('users')">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span class="sidebar-item-label">Platform Users</span>
-        </div>
         <div class="sidebar-item" id="nav-support" onclick="switchTab('support')">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="sidebar-item-label">Support</span>
         </div>
-        <div class="sidebar-section-label">System</div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span class="sidebar-item-label">Audit Log</span>
+        </div>
+        <div class="sidebar-item" id="nav-settings" onclick="switchTab('settings')">
+          <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
+          <span class="sidebar-item-label">Settings</span>
         </div>
       </div>
     </aside>
@@ -169,42 +189,94 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <!-- MAIN -->
     <main class="platform-main">
 
-      <!-- OVERVIEW -->
-      <div class="platform-tab active" id="tab-overview">
+      <!-- DASHBOARD -->
+      <div class="platform-tab active" id="tab-dashboard">
         <div class="tab-header">
-          <div class="tab-title">Platform Overview</div>
+          <div class="tab-title">Platform Dashboard</div>
           <div class="tab-subtitle" id="welcomeMsg">Welcome.</div>
         </div>
         <div class="placeholder-card">
-          <div class="placeholder-title">Cross-tenant dashboard coming soon</div>
-          <div class="placeholder-body">Fleet-wide stats: active tenants, total staff, active patients, revenue, support queue depth. Populated once Phase 2 wires tenant telemetry.</div>
-          <div class="placeholder-phase">Phase 2</div>
+          <div class="placeholder-title">Fleet-wide overview</div>
+          <div class="placeholder-body">Active clients, total staff, active patients, consult volume, GMV, churn risk, integration failures, module adoption. Agents ("3 tenants need attention") surface here too.</div>
+          <div class="placeholder-phase">Phase 14</div>
         </div>
       </div>
 
-      <!-- TENANTS -->
-      <div class="platform-tab" id="tab-tenants">
+      <!-- CLIENTS -->
+      <div class="platform-tab" id="tab-clients">
         <div class="tab-header">
-          <div class="tab-title">Tenants</div>
+          <div class="tab-title">Clients</div>
           <div class="tab-subtitle">Provision, configure, and manage clinic tenants.</div>
         </div>
         <div class="placeholder-card">
-          <div class="placeholder-title">Tenant registry</div>
-          <div class="placeholder-body">List every tenant with slug, lifecycle state, membership counts. Create new tenants, move lifecycle states, view config snapshots. Gated by platform_admin and above.</div>
-          <div class="placeholder-phase">Phase 2</div>
+          <div class="placeholder-title">Client directory</div>
+          <div class="placeholder-body">List every tenant with slug, lifecycle state, plan, active users, created date. Create new tenants, move lifecycle states, drill into the tenant detail page for brand, terminology, catalog, workflow, comms, integrations, compliance, billing.</div>
+          <div class="placeholder-phase">Phase 1 (next)</div>
         </div>
       </div>
 
-      <!-- PLATFORM USERS -->
-      <div class="platform-tab" id="tab-users">
+      <!-- TEMPLATES -->
+      <div class="platform-tab" id="tab-templates">
         <div class="tab-header">
-          <div class="tab-title">Platform Users</div>
-          <div class="tab-subtitle">Pulse internal operators with platform_role access.</div>
+          <div class="tab-title">Templates</div>
+          <div class="tab-subtitle">Starter packs that seed new tenants.</div>
         </div>
         <div class="placeholder-card">
-          <div class="placeholder-title">Operator directory</div>
-          <div class="placeholder-body">List and manage users whose profile carries a platform_role. Assign roles (super admin, admin, ops, support, billing, readonly). Revoke access.</div>
-          <div class="placeholder-phase">Phase 2</div>
+          <div class="placeholder-title">Template library</div>
+          <div class="placeholder-body">Save a tenant's full config (brand, terminology, workflow, catalog, comms) as a reusable starter. Apply during onboarding. Seeded from Pulse + fictional verticals as worked examples.</div>
+          <div class="placeholder-phase">Phase 12</div>
+        </div>
+      </div>
+
+      <!-- MODULES -->
+      <div class="platform-tab" id="tab-modules">
+        <div class="tab-header">
+          <div class="tab-title">Modules</div>
+          <div class="tab-subtitle">Feature modules entitled per tenant.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Module catalog</div>
+          <div class="placeholder-body">Define the module catalog (live video, ePrescribing, labs, messaging, analytics add-ons). Per-tenant entitlement comes from the plan they're on, with manual overrides allowed. Feature flags in downstream portals read from this table.</div>
+          <div class="placeholder-phase">Phase 9</div>
+        </div>
+      </div>
+
+      <!-- INTEGRATIONS -->
+      <div class="platform-tab" id="tab-integrations">
+        <div class="tab-header">
+          <div class="tab-title">Integrations</div>
+          <div class="tab-subtitle">Provider catalog and credential management.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Integration providers</div>
+          <div class="placeholder-body">Catalog of available providers (Stripe, Daily.co, Resend, Twilio, EHR, shipping, ID verification). Per-tenant credentials stored encrypted (Supabase Vault / pgcrypto). Webhook routing resolves incoming events back to the owning tenant.</div>
+          <div class="placeholder-phase">Phase 7</div>
+        </div>
+      </div>
+
+      <!-- BILLING -->
+      <div class="platform-tab" id="tab-billing">
+        <div class="tab-header">
+          <div class="tab-title">Billing</div>
+          <div class="tab-subtitle">Plans, subscriptions, MRR.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Pulse internal billing</div>
+          <div class="placeholder-body">Per-tenant subscription status, plan line items, monthly cost. Platform-level MRR, by-plan breakdown, churn flags. Stripe is the source of truth; operator portal embeds the Customer Portal link rather than rebuilding invoicing.</div>
+          <div class="placeholder-phase">Phase 9</div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="platform-tab" id="tab-analytics">
+        <div class="tab-header">
+          <div class="tab-title">Analytics</div>
+          <div class="tab-subtitle">Cross-tenant funnels, SLAs, capacity.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Platform analytics</div>
+          <div class="placeholder-body">Fleet dashboards plus per-tenant drill-downs (funnel drop-off, refill conversion, SLA performance, clinician load, payment failures, no-shows, inactivity). Daily snapshot job aggregates into analytics_snapshots.</div>
+          <div class="placeholder-phase">Phase 14</div>
         </div>
       </div>
 
@@ -212,12 +284,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-support">
         <div class="tab-header">
           <div class="tab-title">Support</div>
-          <div class="tab-subtitle">Cross-tenant support request queue.</div>
+          <div class="tab-subtitle">Cross-tenant support queue and implementation console.</div>
         </div>
         <div class="placeholder-card">
-          <div class="placeholder-title">Support queue</div>
-          <div class="placeholder-body">Reads from support_requests across all tenants. Filter by tenant, status, priority. Assign to operators. Phase 0 migration (012) added the table; UI lands in Phase 2.</div>
-          <div class="placeholder-phase">Phase 2</div>
+          <div class="placeholder-title">Support queue + view-as</div>
+          <div class="placeholder-body">Unified support_requests queue across tenants (table shipped in migration 012). "View as tenant role" drops an operator into a tenant portal read-only with a persistent banner. Diagnostic checks per tenant (integration health, queue depth, stale workflows, expired licenses).</div>
+          <div class="placeholder-phase">Phase 13</div>
         </div>
       </div>
 
@@ -225,12 +297,25 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-audit">
         <div class="tab-header">
           <div class="tab-title">Audit Log</div>
-          <div class="tab-subtitle">Cross-tenant actions by platform operators.</div>
+          <div class="tab-subtitle">Config changes and platform-originated actions.</div>
         </div>
         <div class="placeholder-card">
-          <div class="placeholder-title">Platform audit trail</div>
-          <div class="placeholder-body">Lifecycle transitions, role assignments, view-as sessions, impersonation events. Tenant-scoped audit logs remain with each tenant; this view unions only platform-originated actions.</div>
+          <div class="placeholder-title">Change management</div>
+          <div class="placeholder-body">Every config change logged with before/after snapshot. Cross-tenant filter for "what did Pulse internal change." Per-tenant timeline lives on the tenant detail page.</div>
           <div class="placeholder-phase">Phase 10</div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="platform-tab" id="tab-settings">
+        <div class="tab-header">
+          <div class="tab-title">Settings</div>
+          <div class="tab-subtitle">Platform-level configuration and operator roster.</div>
+        </div>
+        <div class="placeholder-card">
+          <div class="placeholder-title">Platform settings</div>
+          <div class="placeholder-body">Operator directory (users carrying a platform_role, with role assignment and revocation). Platform-level defaults. Global feature flags. Reserved for anything that isn't tenant-scoped.</div>
+          <div class="placeholder-phase">Phase 1 (next)</div>
         </div>
       </div>
 

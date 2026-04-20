@@ -110,6 +110,49 @@
   function id() { return window.Tenant ? window.Tenant.id : PULSE_TENANT_ID; }
   function slug() { return window.Tenant ? window.Tenant.slug : resolveSlug(); }
 
+  // Tenant URL builder. Single source of truth for the /t/{slug}/...
+  // path shape. Use this instead of hand-building URL strings in every
+  // place that links to another tenant surface — prevents the class of
+  // drift that R2a's manifest flagged (~8 new URL(...) sites with the
+  // same pattern, plus anchor hrefs scattered across 7 files).
+  //
+  // Known kinds map to the downstream portal paths documented in
+  // ARCHITECTURE.md's URL structure section:
+  //   home          → /t/{slug}/
+  //   admin         → /t/{slug}/admin/
+  //   portal        → /t/{slug}/portal/
+  //   consultation  → /t/{slug}/consultation/
+  //   checkout      → /t/{slug}/checkout/
+  //   quiz          → /t/{slug}/quiz/
+  //
+  // Unknown kinds fall through to `/t/{slug}/{kind}/` so future
+  // surfaces work without a code change. Optional `query` arg accepts
+  // a string like "new=1" or "session_expired=1".
+  var KIND_PATHS = {
+    home:         '',
+    admin:        'admin/',
+    portal:       'portal/',
+    consultation: 'consultation/',
+    checkout:     'checkout/',
+    quiz:         'quiz/'
+  };
+
+  function url(kind, query) {
+    var s = (window.Tenant && window.Tenant.slug) || resolveSlug();
+    var tail = Object.prototype.hasOwnProperty.call(KIND_PATHS, kind)
+      ? KIND_PATHS[kind]
+      : String(kind || '') + '/';
+    var path = '/t/' + encodeURIComponent(s) + '/' + tail;
+    return query ? path + '?' + query : path;
+  }
+
+  // Absolute URL form for computed references that need an origin
+  // (email bodies, Supabase redirectTo configs). Prepends
+  // window.location.origin to what url() returns.
+  function absoluteUrl(kind, query) {
+    return window.location.origin + url(kind, query);
+  }
+
   // Test hook: clear the cache so init() re-fetches. Intended for the
   // operator portal's "view as tenant" switcher, which needs to swap
   // tenant context without a full page reload.
@@ -122,6 +165,8 @@
     init: init,
     id: id,
     slug: slug,
+    url: url,
+    absoluteUrl: absoluteUrl,
     resolveSlug: resolveSlug,
     reset: reset,
     PULSE_TENANT_ID: PULSE_TENANT_ID

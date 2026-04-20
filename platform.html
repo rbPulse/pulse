@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="tokens.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <script src="terminology.js"></script>
+<script src="workflow.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -147,6 +148,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .asset-url-input:focus{border-color:var(--slate);}
 .asset-status{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
 .asset-status.err{color:var(--red);}
+
+/* ── WORKFLOW TAB ── */
+.workflow-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
+.workflow-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.workflow-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.workflow-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+.workflow-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.workflow-field.full{grid-column:1 / -1;}
+.workflow-field-row{display:flex;align-items:center;gap:10px;min-height:36px;}
+.workflow-field label{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--text);letter-spacing:0;}
+.workflow-field-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.5;}
+.workflow-field-default{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
+.workflow-field-default.overridden{color:var(--slate);font-style:normal;font-weight:600;}
+.workflow-field input[type="number"]{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:120px;font-variant-numeric:tabular-nums;}
+.workflow-field input[type="number"]:focus{border-color:var(--slate);}
+.workflow-field input[type="number"].err{border-color:var(--red);}
+.workflow-field select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 32px 8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:border-color .15s;width:100%;max-width:360px;}
+.workflow-field select:focus{border-color:var(--slate);}
+.workflow-field-unit{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
+.workflow-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;user-select:none;gap:10px;}
+.workflow-toggle input{position:absolute;opacity:0;pointer-events:none;}
+.workflow-toggle-slider{width:36px;height:20px;background:var(--card);border:1px solid var(--border-strong);border-radius:var(--radius-pill);position:relative;transition:background .15s,border-color .15s;flex-shrink:0;}
+.workflow-toggle-slider::after{content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:transform .15s,background .15s;}
+.workflow-toggle input:checked + .workflow-toggle-slider{background:var(--slate);border-color:var(--slate);}
+.workflow-toggle input:checked + .workflow-toggle-slider::after{transform:translateX(16px);background:#fff;}
+.workflow-toggle-label{font-family:'Inter',sans-serif;font-size:13px;color:var(--text2);}
+@media(max-width:800px){ .workflow-grid{grid-template-columns:1fr;} }
 
 /* ── CATALOG TAB ── */
 .catalog-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
@@ -837,7 +865,7 @@ var DETAIL_TABS = [
   { key: 'brand',        label: 'Brand',         build: buildBrandTab                              },
   { key: 'terminology',  label: 'Terminology',   build: buildTerminologyTab                        },
   { key: 'catalog',      label: 'Catalog',       build: buildCatalogTab                            },
-  { key: 'workflow',     label: 'Workflow',      phase: 'Phase 5', desc: 'Intake rules, refill SLAs, escalation rules, consult policies, auto-assign strategy.' },
+  { key: 'workflow',     label: 'Workflow',      build: buildWorkflowTab                           },
   { key: 'comms',        label: 'Communications', phase: 'Phase 6', desc: 'Email/SMS/push templates, sender identity, reminder cadence.' },
   { key: 'integrations', label: 'Integrations',  phase: 'Phase 7', desc: 'Stripe, Daily.co, Resend, EHR, shipping, ID verification credentials and webhook routing.' },
   { key: 'compliance',   label: 'Compliance',    phase: 'Phase 8', desc: 'Operating states, consent templates, disclaimer sets, license tracking, region restrictions.' },
@@ -909,6 +937,9 @@ function renderDetailTabPanels() {
   }
   if (typeof afterRenderCatalogTab === 'function' && _activeDetailTab === 'catalog') {
     afterRenderCatalogTab(t);
+  }
+  if (typeof afterRenderWorkflowTab === 'function' && _activeDetailTab === 'workflow') {
+    afterRenderWorkflowTab(t);
   }
 }
 
@@ -1426,6 +1457,312 @@ function saveBrand() {
       console.error('[platform] brand save failed', err);
       setBrandError((err && err.message) || 'Save failed.');
     });
+}
+
+// ── Workflow tab ──
+// Auto-renders from Workflow.SCHEMA. Every field type (bool, number,
+// enum) maps to a matching input variant; the section layout comes
+// straight from the catalog. Adding a new rule is a one-place edit
+// in workflow.js — this tab picks it up without changes.
+//
+// Storage: all fields are written on save (not just overrides),
+// because workflow values aren't as obviously "default vs override"
+// as terminology strings — an operator explicitly choosing the
+// default intake-required=true is a deliberate config act, not a
+// noop. Easier to reason about the persisted JSONB if it always
+// reflects the full shape.
+function buildWorkflowTab(t) {
+  if (!window.Workflow) {
+    return '<div class="detail-tab-placeholder">' +
+      '<div class="detail-tab-placeholder-title">workflow.js not loaded</div>' +
+      '<div class="detail-tab-placeholder-body">Reload the page — the workflow helper is missing from this session.</div>' +
+    '</div>';
+  }
+
+  var schema   = window.Workflow.SCHEMA;
+  var defaults = window.Workflow.DEFAULTS;
+  var current  = t.workflow || {};
+
+  var out = '<div class="brand-form">';
+
+  schema.forEach(function(section) {
+    out += '<div class="workflow-section">' +
+      '<div class="workflow-section-title">' + escHtml(section.label) + '</div>' +
+      '<div class="workflow-section-sub">' + escHtml(section.description) + '</div>' +
+      '<div class="workflow-grid">' +
+        section.fields.map(function(field) {
+          var sectionCurrent = current[section.section] || {};
+          var val = Object.prototype.hasOwnProperty.call(sectionCurrent, field.key)
+            ? sectionCurrent[field.key]
+            : defaults[section.section][field.key];
+          return renderWorkflowField(section.section, field, val, defaults[section.section][field.key]);
+        }).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  out += '<div id="workflowError" class="form-err" style="display:none;"></div>' +
+    '<div class="brand-actions">' +
+      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
+      '<button class="form-btn primary" id="workflowSaveBtn" onclick="saveWorkflow()">Save Workflow</button>' +
+    '</div>';
+
+  out += '</div>';
+  return out;
+}
+
+function renderWorkflowField(sectionKey, field, val, defaultVal) {
+  var id = 'wf-' + sectionKey + '-' + field.key;
+  var isOverridden = !workflowEqual(val, defaultVal);
+  var fieldClass = (field.type === 'enum') ? 'workflow-field full' : 'workflow-field';
+
+  var inputHtml;
+  if (field.type === 'bool') {
+    inputHtml = '<label class="workflow-toggle">' +
+      '<input type="checkbox" id="' + escAttr(id) + '"' +
+        ' data-wf-section="' + escAttr(sectionKey) + '"' +
+        ' data-wf-key="' + escAttr(field.key) + '"' +
+        ' data-wf-type="bool"' +
+        (val ? ' checked' : '') + '/>' +
+      '<span class="workflow-toggle-slider"></span>' +
+      '<span class="workflow-toggle-label">' + escHtml(val ? 'On' : 'Off') + '</span>' +
+    '</label>';
+  } else if (field.type === 'number') {
+    inputHtml = '<div class="workflow-field-row">' +
+      '<input type="number" id="' + escAttr(id) + '"' +
+        ' value="' + escAttr(String(val)) + '"' +
+        ' min="' + escAttr(String(field.min != null ? field.min : '')) + '"' +
+        ' max="' + escAttr(String(field.max != null ? field.max : '')) + '"' +
+        ' data-wf-section="' + escAttr(sectionKey) + '"' +
+        ' data-wf-key="' + escAttr(field.key) + '"' +
+        ' data-wf-type="number"' +
+        ' data-wf-min="' + escAttr(String(field.min != null ? field.min : '')) + '"' +
+        ' data-wf-max="' + escAttr(String(field.max != null ? field.max : '')) + '"/>' +
+      (field.unit ? '<span class="workflow-field-unit">' + escHtml(field.unit) + '</span>' : '') +
+    '</div>';
+  } else if (field.type === 'enum') {
+    inputHtml = '<select id="' + escAttr(id) + '"' +
+      ' data-wf-section="' + escAttr(sectionKey) + '"' +
+      ' data-wf-key="' + escAttr(field.key) + '"' +
+      ' data-wf-type="enum">' +
+      field.options.map(function(opt) {
+        return '<option value="' + escAttr(opt.value) + '"' +
+          (opt.value === val ? ' selected' : '') + '>' + escHtml(opt.label) + '</option>';
+      }).join('') +
+    '</select>';
+  } else {
+    inputHtml = '<span class="muted">unsupported field type: ' + escHtml(field.type) + '</span>';
+  }
+
+  var defaultBadge = isOverridden
+    ? '<span class="workflow-field-default overridden" id="' + escAttr(id) + '-badge">Overridden</span>'
+    : '<span class="workflow-field-default" id="' + escAttr(id) + '-badge">Default: ' + escHtml(formatWorkflowValue(defaultVal, field)) + '</span>';
+
+  return '<div class="' + fieldClass + '">' +
+    '<div class="workflow-field-row" style="justify-content:space-between;">' +
+      '<label for="' + escAttr(id) + '">' + escHtml(field.label) + '</label>' +
+      defaultBadge +
+    '</div>' +
+    inputHtml +
+    '<div class="workflow-field-help">' + escHtml(field.description) + '</div>' +
+  '</div>';
+}
+
+function formatWorkflowValue(v, field) {
+  if (v == null) return '—';
+  if (field.type === 'bool') return v ? 'On' : 'Off';
+  if (field.type === 'enum') {
+    var hit = (field.options || []).find(function(o) { return o.value === v; });
+    return hit ? hit.label : String(v);
+  }
+  return String(v);
+}
+
+function workflowEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a === 'number' && typeof b === 'number') return a === b;
+  return String(a) === String(b);
+}
+
+function afterRenderWorkflowTab(t) {
+  if (!window.Workflow) return;
+  var panel = document.getElementById('detailPanel-workflow');
+  if (!panel) return;
+
+  // Delegated listener updates the overridden badge + validates numbers
+  // on every change. Lives on the panel so we don't wire N individual
+  // listeners when the tab re-renders.
+  panel.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el || !el.getAttribute) return;
+    var section = el.getAttribute('data-wf-section');
+    var key     = el.getAttribute('data-wf-key');
+    var type    = el.getAttribute('data-wf-type');
+    if (!section || !key || !type) return;
+
+    var current = readWorkflowFieldValue(el, type);
+    var def = window.Workflow.DEFAULTS[section] ? window.Workflow.DEFAULTS[section][key] : null;
+    var id = 'wf-' + section + '-' + key;
+    var badge = document.getElementById(id + '-badge');
+
+    if (type === 'bool') {
+      // Flip the visible On/Off label next to the toggle.
+      var toggleLabel = el.parentElement && el.parentElement.querySelector('.workflow-toggle-label');
+      if (toggleLabel) toggleLabel.textContent = current ? 'On' : 'Off';
+    }
+
+    if (type === 'number') {
+      var min = parseFloat(el.getAttribute('data-wf-min'));
+      var max = parseFloat(el.getAttribute('data-wf-max'));
+      var valid = !isNaN(current) && (isNaN(min) || current >= min) && (isNaN(max) || current <= max);
+      el.classList.toggle('err', !valid);
+    }
+
+    if (badge) {
+      if (!workflowEqual(current, def)) {
+        badge.className = 'workflow-field-default overridden';
+        badge.textContent = 'Overridden';
+      } else {
+        var field = null;
+        window.Workflow.SCHEMA.forEach(function(s) {
+          if (s.section !== section) return;
+          s.fields.forEach(function(f) { if (f.key === key) field = f; });
+        });
+        badge.className = 'workflow-field-default';
+        badge.textContent = 'Default: ' + (field ? formatWorkflowValue(def, field) : String(def));
+      }
+    }
+  });
+  // Also listen for change on selects (input fires too on most browsers,
+  // but be defensive — some older engines only fire change on <select>).
+  panel.addEventListener('change', function(e) {
+    var el = e.target;
+    if (el && el.tagName === 'SELECT' && el.getAttribute('data-wf-section')) {
+      panel.dispatchEvent(new Event('input', { bubbles: false }));
+      // Re-fire input handler on the actual element so badge updates.
+      var evt = document.createEvent('Event');
+      evt.initEvent('input', true, true);
+      el.dispatchEvent(evt);
+    }
+  });
+}
+
+function readWorkflowFieldValue(el, type) {
+  if (type === 'bool')   return !!el.checked;
+  if (type === 'number') return parseFloat(el.value);
+  if (type === 'enum')   return el.value;
+  return el.value;
+}
+
+function setWorkflowError(msg) {
+  var el = document.getElementById('workflowError');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveWorkflow() {
+  var t = _activeDetailTenant;
+  if (!t || !window.Workflow) return;
+
+  setWorkflowError('');
+
+  var schema = window.Workflow.SCHEMA;
+  var next = {};
+  var firstError = null;
+
+  schema.forEach(function(section) {
+    next[section.section] = {};
+    section.fields.forEach(function(field) {
+      var el = document.getElementById('wf-' + section.section + '-' + field.key);
+      if (!el) return;
+      var v = readWorkflowFieldValue(el, field.type);
+
+      if (field.type === 'number') {
+        if (isNaN(v)) {
+          firstError = firstError || (field.label + ' must be a number.');
+          return;
+        }
+        if (field.min != null && v < field.min) {
+          firstError = firstError || (field.label + ' must be at least ' + field.min + '.');
+          return;
+        }
+        if (field.max != null && v > field.max) {
+          firstError = firstError || (field.label + ' must be at most ' + field.max + '.');
+          return;
+        }
+      }
+      if (field.type === 'enum') {
+        var valid = (field.options || []).some(function(o) { return o.value === v; });
+        if (!valid) {
+          firstError = firstError || (field.label + ' has an invalid value.');
+          return;
+        }
+      }
+      next[section.section][field.key] = v;
+    });
+  });
+
+  if (firstError) { setWorkflowError(firstError); return; }
+
+  var prev = t.workflow || {};
+  var diff = workflowDiff(prev, next);
+  var btn = document.getElementById('workflowSaveBtn');
+  btn.disabled = true;
+
+  db.from('tenants').update({ workflow: next }).eq('id', t.id)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      if (Object.keys(diff).length === 0) return;
+      return db.from('audit_logs').insert({
+        action: 'tenant.workflow_updated',
+        actor_id: currentUserId,
+        actor_email: currentUserEmail,
+        target_id: t.id,
+        details: JSON.stringify(diff)
+      }).then(function(ar) {
+        if (ar.error) console.warn('[platform] workflow audit write failed', ar.error);
+      });
+    })
+    .then(function() {
+      btn.disabled = false;
+      t.workflow = next;
+      showToast('Workflow saved.', 'success');
+      if (window.Workflow && window.Tenant) {
+        window.Tenant.workflow = next;
+        window.Workflow.reset();
+        window.Workflow.init();
+      }
+      loadClients();
+      renderDetailTabPanels();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      console.error('[platform] workflow save failed', err);
+      setWorkflowError((err && err.message) || 'Save failed.');
+    });
+}
+
+// Shallow-in-each-section diff producing { "section.key": { from, to } }
+// for every field whose value changed. Skips unchanged fields so noop
+// saves don't clutter the audit log.
+function workflowDiff(prev, next) {
+  var diff = {};
+  var sections = {};
+  Object.keys(prev || {}).forEach(function(s) { sections[s] = true; });
+  Object.keys(next || {}).forEach(function(s) { sections[s] = true; });
+  Object.keys(sections).forEach(function(s) {
+    var a = (prev && prev[s]) || {};
+    var b = (next && next[s]) || {};
+    var keys = {};
+    Object.keys(a).forEach(function(k) { keys[k] = true; });
+    Object.keys(b).forEach(function(k) { keys[k] = true; });
+    Object.keys(keys).forEach(function(k) {
+      if (!workflowEqual(a[k], b[k])) diff[s + '.' + k] = { from: a[k], to: b[k] };
+    });
+  });
+  return diff;
 }
 
 // ── Catalog tab ──

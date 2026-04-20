@@ -83,6 +83,45 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .placeholder-body{font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);line-height:1.6;max-width:480px;margin:0 auto;}
 .placeholder-phase{display:inline-block;margin-top:16px;font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--slate);background:var(--slate-tint);border:1px solid var(--slate-border);padding:4px 10px;border-radius:var(--radius-pill);}
 
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;box-shadow:var(--shadow);}
+.stat-card-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.stat-card-value{font-family:'Inter',sans-serif;font-size:28px;font-weight:600;letter-spacing:-0.02em;color:var(--text);}
+.stat-card-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.search-input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-pill);padding:10px 18px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;width:280px;transition:border-color .15s;box-shadow:var(--shadow);}
+.search-input::placeholder{color:var(--text4);}
+.search-input:focus{border-color:var(--slate);}
+.filter-select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-pill);padding:10px 16px;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;color:var(--text2);outline:none;cursor:pointer;text-transform:uppercase;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(20,20,20,0.4)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px;box-shadow:var(--shadow);transition:border-color .15s;}
+.filter-select:focus{border-color:var(--slate);}
+.filter-select option{background:var(--card);color:var(--text);}
+.toolbar-count{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);letter-spacing:0.02em;margin-left:auto;}
+.toolbar-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 18px;border-radius:var(--radius-pill);border:none;cursor:pointer;background:var(--slate);color:#fff;transition:opacity .15s;white-space:nowrap;}
+.toolbar-btn:hover{opacity:0.88;}
+.toolbar-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
+.toolbar-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);border-color:var(--text3);}
+
+/* ── TABLES ── */
+.platform-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.platform-table{width:100%;border-collapse:collapse;}
+.platform-table th{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);text-align:left;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--card2);}
+.platform-table td{font-family:'Inter',sans-serif;font-size:13px;padding:14px 20px;border-bottom:1px solid var(--border);color:var(--text);}
+.platform-table tr:last-child td{border-bottom:none;}
+.platform-table tr:hover td{background:rgba(20,20,20,0.02);}
+.platform-table td.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text2);}
+.platform-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.table-empty{padding:40px 20px;text-align:center;font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);}
+
+/* ── STATUS PILLS ── */
+.status-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-pill);display:inline-block;}
+.status-pill.sandbox{color:var(--text3);background:rgba(20,20,20,0.04);border:1px solid var(--border);}
+.status-pill.live{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);}
+.status-pill.suspended{color:var(--amber);background:var(--amber-tint);border:1px solid var(--amber-border);}
+.status-pill.archived{color:var(--red);background:var(--red-tint);border:1px solid var(--red-border);}
+
 /* ── DENIED ── */
 #platform-denied{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;padding:40px;}
 #platform-denied.show{display:flex;}
@@ -206,12 +245,44 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-clients">
         <div class="tab-header">
           <div class="tab-title">Clients</div>
-          <div class="tab-subtitle">Provision, configure, and manage clinic tenants.</div>
+          <div class="tab-subtitle">Every clinic tenant running on Pulse.</div>
         </div>
-        <div class="placeholder-card">
-          <div class="placeholder-title">Client directory</div>
-          <div class="placeholder-body">List every tenant with slug, lifecycle state, plan, active users, created date. Create new tenants, move lifecycle states, drill into the tenant detail page for brand, terminology, catalog, workflow, comms, integrations, compliance, billing.</div>
-          <div class="placeholder-phase">Phase 1 (next)</div>
+
+        <div class="stat-grid" id="clientsStats">
+          <div class="stat-card"><div class="stat-card-label">Total</div><div class="stat-card-value" id="statTotal">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Live</div><div class="stat-card-value" id="statLive">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Sandbox</div><div class="stat-card-value" id="statSandbox">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Suspended</div><div class="stat-card-value" id="statSuspended">--</div></div>
+        </div>
+
+        <div class="toolbar">
+          <input type="text" class="search-input" id="clientsSearch" placeholder="Search by name or slug"/>
+          <select class="filter-select" id="clientsLifecycleFilter">
+            <option value="">All lifecycles</option>
+            <option value="sandbox">Sandbox</option>
+            <option value="live">Live</option>
+            <option value="suspended">Suspended</option>
+            <option value="archived">Archived</option>
+          </select>
+          <span class="toolbar-count" id="clientsCount"></span>
+        </div>
+
+        <div class="platform-table-wrap">
+          <table class="platform-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Lifecycle</th>
+                <th class="num">Staff</th>
+                <th class="num">Patients</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTbody">
+              <tr><td colspan="6" class="table-empty">Loading clients…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -401,6 +472,13 @@ function initPlatform(user, profile) {
   document.getElementById('sidebarName').textContent = displayName;
   document.getElementById('sidebarRolePill').textContent = roleLabel(currentPlatformRole);
   document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + displayName + '.';
+
+  // Wire client directory filter listeners before kicking off the load
+  // so the Clients tab is responsive the instant data arrives.
+  document.getElementById('clientsSearch').addEventListener('input', renderClientsTable);
+  document.getElementById('clientsLifecycleFilter').addEventListener('change', renderClientsTable);
+
+  loadClients();
 }
 
 function roleLabel(role) {
@@ -431,6 +509,102 @@ function doSignOut() {
   db.auth.signOut().then(function() {
     window.location.href = 'index.html';
   });
+}
+
+// ── Clients directory ──
+// Loaded once on boot. Search + lifecycle filter are applied client-side
+// over the cached array so there's no round-trip per keystroke. Fleet
+// size stays small enough (<50 tenants per ARCHITECTURE.md) that paging
+// isn't needed yet — revisit when the list grows past ~100 rows.
+var _clients = [];
+
+function loadClients() {
+  return db.from('tenants')
+    .select('id, slug, name, lifecycle_state, created_at')
+    .order('created_at', { ascending: false })
+    .then(function(r) {
+      if (r.error) { console.error('[platform] load tenants failed', r.error); return; }
+      var tenants = r.data || [];
+
+      // Fetch membership + enrollment counts in parallel. Each row stays
+      // intact if a count query fails — partial data is better than a
+      // blank table when one aggregate call hiccups.
+      return Promise.all([
+        db.from('tenant_memberships').select('tenant_id'),
+        db.from('patient_enrollments').select('tenant_id').eq('status', 'active')
+      ]).then(function(results) {
+        var staffByTenant = {}, patientsByTenant = {};
+        (results[0].data || []).forEach(function(m) {
+          staffByTenant[m.tenant_id] = (staffByTenant[m.tenant_id] || 0) + 1;
+        });
+        (results[1].data || []).forEach(function(e) {
+          patientsByTenant[e.tenant_id] = (patientsByTenant[e.tenant_id] || 0) + 1;
+        });
+        tenants.forEach(function(t) {
+          t.staff_count   = staffByTenant[t.id]    || 0;
+          t.patient_count = patientsByTenant[t.id] || 0;
+        });
+        _clients = tenants;
+        renderClientsStats();
+        renderClientsTable();
+      });
+    });
+}
+
+function renderClientsStats() {
+  var counts = { total: _clients.length, sandbox: 0, live: 0, suspended: 0, archived: 0 };
+  _clients.forEach(function(t) { counts[t.lifecycle_state] = (counts[t.lifecycle_state] || 0) + 1; });
+  document.getElementById('statTotal').textContent     = counts.total;
+  document.getElementById('statLive').textContent      = counts.live;
+  document.getElementById('statSandbox').textContent   = counts.sandbox;
+  document.getElementById('statSuspended').textContent = counts.suspended;
+}
+
+function renderClientsTable() {
+  var q      = (document.getElementById('clientsSearch').value || '').trim().toLowerCase();
+  var lcFilt = document.getElementById('clientsLifecycleFilter').value;
+  var rows = _clients.filter(function(t) {
+    if (lcFilt && t.lifecycle_state !== lcFilt) return false;
+    if (!q) return true;
+    return (t.name || '').toLowerCase().indexOf(q) !== -1
+        || (t.slug || '').toLowerCase().indexOf(q) !== -1;
+  });
+
+  document.getElementById('clientsCount').textContent =
+    rows.length === _clients.length
+      ? _clients.length + ' client' + (_clients.length === 1 ? '' : 's')
+      : rows.length + ' of ' + _clients.length;
+
+  var tbody = document.getElementById('clientsTbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No clients match.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(t) {
+    return '<tr>' +
+      '<td>' + escHtml(t.name || '--') + '</td>' +
+      '<td class="mono">' + escHtml(t.slug || '--') + '</td>' +
+      '<td><span class="status-pill ' + escHtml(t.lifecycle_state) + '">' + escHtml(t.lifecycle_state) + '</span></td>' +
+      '<td class="num">' + t.staff_count + '</td>' +
+      '<td class="num">' + t.patient_count + '</td>' +
+      '<td>' + formatDate(t.created_at) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Helpers ──
+function escHtml(s) {
+  if (s == null) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function formatDate(iso) {
+  if (!iso) return '--';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '--';
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 </script>
 </body>

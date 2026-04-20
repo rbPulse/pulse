@@ -671,6 +671,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .toast.error{border-color:var(--red-border);color:var(--red);}
 .toast.warn{border-color:var(--amber-border);color:var(--amber);}
 
+/* ── TAB REFRESH BUTTON ── */
+.tab-header{position:relative;}
+.tab-refresh-btn{position:absolute;top:0;right:0;background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:6px 14px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;}
+.tab-refresh-btn:hover{background:rgba(20,20,20,0.04);color:var(--text);}
+
+/* Unsaved-changes indicator in the detail modal title */
+.detail-dirty-dot{display:inline-block;width:8px;height:8px;background:var(--amber);border-radius:50%;margin-left:8px;vertical-align:middle;animation:dirtyPulse 1.4s ease-in-out infinite;}
+@keyframes dirtyPulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
+
 /* ── PILL PRIMITIVES ──
    Shared base class used by every status/state pill in the portal.
    Add alongside a semantic modifier:
@@ -1287,6 +1296,10 @@ function switchTab(tabId) {
   var nav = document.getElementById('nav-' + tabId);
   if (tab) tab.classList.add('active');
   if (nav) nav.classList.add('active');
+  // Inject the refresh button into lazy-loaded tab headers if not
+  // already present. Dashboard has its own contextual refresh in the
+  // recent-activity panel; others get a standard top-right button.
+  ensureTabRefreshButton(tabId);
 
   // Lazy-load top-level tabs that pull fleet-wide data. Each has its
   // own body container; loaders mark body as loaded so switching back
@@ -1436,6 +1449,56 @@ var _activeDetailTenant = null;
 var _activeDetailTab    = 'overview';
 var _wizardMode         = false;
 var _wizardStepIdx      = 0;
+
+// Unsaved-changes tracker. Form-heavy tabs (Brand / Terminology /
+// Workflow) mark themselves dirty on input and clear on save. The
+// tracker also guards tab switches + modal close + page unload.
+var _dirtyTabs = {}; // tabKey -> true
+
+function markDirty(tabKey) {
+  _dirtyTabs[tabKey || _activeDetailTab] = true;
+  refreshDirtyIndicator();
+}
+function clearDirty(tabKey) {
+  delete _dirtyTabs[tabKey || _activeDetailTab];
+  refreshDirtyIndicator();
+}
+function isDirty(tabKey) { return !!_dirtyTabs[tabKey || _activeDetailTab]; }
+function anyDirty()      { return Object.keys(_dirtyTabs).length > 0; }
+
+function refreshDirtyIndicator() {
+  var title = document.getElementById('clientDetailTitle');
+  if (!title || !_activeDetailTenant) return;
+  var hasDirty = anyDirty();
+  var existing = title.querySelector('.detail-dirty-dot');
+  if (hasDirty && !existing) {
+    var dot = document.createElement('span');
+    dot.className = 'detail-dirty-dot';
+    dot.title = 'Unsaved changes on ' + Object.keys(_dirtyTabs).join(', ');
+    title.appendChild(dot);
+  } else if (!hasDirty && existing) {
+    existing.remove();
+  } else if (existing) {
+    existing.title = 'Unsaved changes on ' + Object.keys(_dirtyTabs).join(', ');
+  }
+}
+
+// Guard tab/group/modal transitions. Returns true if it's safe to
+// proceed, false if the user cancelled the transition.
+function confirmDiscardDirty(destination) {
+  if (!anyDirty()) return true;
+  var keys = Object.keys(_dirtyTabs).join(', ');
+  return window.confirm('Discard unsaved changes on ' + keys + '?\n\nThey will be lost if you continue to ' + destination + '.');
+}
+
+// Before the browser unloads / reloads, warn if there's dirty state.
+// Modern browsers show their own generic prompt — the returnValue
+// assignment is the opt-in.
+window.addEventListener('beforeunload', function(e) {
+  if (!anyDirty()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 // ── Onboarding wizard steps ──
 // Nine configuration steps matching PHASES.md's Phase 11 spec, plus a
@@ -1882,6 +1945,44 @@ function renderDetailTabs() {
   wrap.innerHTML = outer + inner;
 }
 
+// Inject a refresh button into a lazy-loaded top-level tab's header.
+// Idempotent — won't duplicate if the button already exists.
+// Dashboard has its own refresh inside the recent-activity panel
+// header, so we skip it here.
+var _REFRESHABLE_TABS = {
+  modules:      refreshModulesTab,
+  billing:      refreshBillingTab,
+  audit:        refreshAuditTab,
+  templates:    refreshTemplatesTab,
+  support:      refreshSupportTab,
+  analytics:    refreshAnalyticsTab,
+  integrations: refreshIntegrationsTab,
+  settings:     refreshSettingsTab
+};
+
+function ensureTabRefreshButton(tabId) {
+  if (!_REFRESHABLE_TABS[tabId]) return;
+  var tabEl = document.getElementById('tab-' + tabId);
+  if (!tabEl) return;
+  var header = tabEl.querySelector('.tab-header');
+  if (!header) return;
+  if (header.querySelector('.tab-refresh-btn')) return;
+  var btn = document.createElement('button');
+  btn.className = 'tab-refresh-btn';
+  btn.textContent = 'Refresh';
+  btn.onclick = function() { _REFRESHABLE_TABS[tabId](); };
+  header.appendChild(btn);
+}
+
+function refreshModulesTab()      { _modulesTabLoaded      = false; loadModulesTab();      }
+function refreshBillingTab()      { _billingTabLoaded      = false; loadBillingTab();      }
+function refreshAuditTab()        { _auditTabLoaded        = false; loadAuditTab();        }
+function refreshTemplatesTab()    { _templatesTabLoaded    = false; loadTemplatesTab();    }
+function refreshSupportTab()      { _supportTabLoaded      = false; loadSupportTab();      }
+function refreshIntegrationsTab() { _integrationsTabLoaded = false; loadIntegrationsTab(); }
+function refreshSettingsTab()     { _settingsTabLoaded     = false; loadSettingsTab();     }
+// refreshAnalyticsTab + refreshDashboard already exist elsewhere.
+
 function switchDetailGroup(groupKey) {
   var group = DETAIL_GROUPS.find(function(g) { return g.key === groupKey; });
   if (!group) return;
@@ -1950,6 +2051,11 @@ function renderDetailTabPanels() {
 }
 
 function switchDetailTab(key) {
+  if (key === _activeDetailTab) return;
+  // If the current tab has unsaved changes and the user wants to
+  // navigate elsewhere, confirm before discarding.
+  if (isDirty(_activeDetailTab) && !confirmDiscardDirty('"' + key + '"')) return;
+  clearDirty(_activeDetailTab); // leaving the tab discards its dirty state
   _activeDetailTab = key;
   // Re-render both so the button highlight and panel visibility stay in
   // sync — simpler than imperatively toggling classes on individual nodes.
@@ -2257,12 +2363,18 @@ function afterRenderBrandTab(t) {
   var hex    = document.getElementById('brandAccentHex');
   if (!picker || !hex) return;
 
+  // Re-entering the tab discards its dirty flag since we're rendering
+  // from persisted state. The first input below re-marks it.
+  clearDirty('brand');
+
   picker.addEventListener('input', function() {
     hex.value = picker.value.toUpperCase();
+    markDirty('brand');
   });
   hex.addEventListener('input', function() {
     var v = hex.value.trim();
     if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v.toLowerCase();
+    markDirty('brand');
   });
 
   // Keep asset thumbnails in sync when the operator edits the URL
@@ -2275,6 +2387,7 @@ function afterRenderBrandTab(t) {
       var v = urlEl.value.trim();
       setAssetPreview(kind, v);
       removeEl.disabled = !v;
+      markDirty('brand');
     });
   });
 
@@ -2287,7 +2400,16 @@ function afterRenderBrandTab(t) {
   ];
   previewFieldIds.forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) el.addEventListener('input', updateBrandPreview);
+    if (el) el.addEventListener('input', function() {
+      updateBrandPreview();
+      markDirty('brand');
+    });
+  });
+
+  // Fields not in the preview list but still dirty-relevant:
+  ['brandLegalName', 'brandSenderEmail', 'brandSenderName'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', function() { markDirty('brand'); });
   });
   updateBrandPreview();
 }
@@ -2451,6 +2573,7 @@ function saveBrand() {
       // table reflects any downstream changes (e.g. legal name display).
       t.brand      = nextBrand;
       t.legal_name = legalName || null;
+      clearDirty('brand');
       showToast('Brand saved.', 'success');
       loadClients();
       // Re-render the current tab so the saved values are re-read from
@@ -6606,6 +6729,8 @@ function afterRenderWorkflowTab(t) {
   var panel = document.getElementById('detailPanel-workflow');
   if (!panel) return;
 
+  clearDirty('workflow');
+
   // Delegated listener updates the overridden badge + validates numbers
   // on every change. Lives on the panel so we don't wire N individual
   // listeners when the tab re-renders.
@@ -6616,6 +6741,8 @@ function afterRenderWorkflowTab(t) {
     var key     = el.getAttribute('data-wf-key');
     var type    = el.getAttribute('data-wf-type');
     if (!section || !key || !type) return;
+
+    markDirty('workflow');
 
     var current = readWorkflowFieldValue(el, type);
     var def = window.Workflow.DEFAULTS[section] ? window.Workflow.DEFAULTS[section][key] : null;
@@ -6745,6 +6872,7 @@ function saveWorkflow() {
     .then(function() {
       btn.disabled = false;
       t.workflow = next;
+      clearDirty('workflow');
       showToast('Workflow saved.', 'success');
       if (window.Workflow && window.Tenant) {
         window.Tenant.workflow = next;
@@ -7115,6 +7243,8 @@ function buildTerminologyTab(t) {
 function afterRenderTerminologyTab(t) {
   if (!window.Terminology) return;
 
+  clearDirty('terminology');
+
   // Attach a single delegated input listener on the tab panel. Each
   // input carries data-term-key so we know which entry mutated without
   // wiring N listeners individually.
@@ -7124,6 +7254,7 @@ function afterRenderTerminologyTab(t) {
   panel.addEventListener('input', function(e) {
     var el = e.target;
     if (!el || !el.getAttribute || !el.getAttribute('data-term-key')) return;
+    markDirty('terminology');
     var key    = el.getAttribute('data-term-key');
     var def    = el.getAttribute('data-term-default');
     var value  = (el.value || '').trim();
@@ -7214,6 +7345,7 @@ function saveTerminology() {
     .then(function() {
       btn.disabled = false;
       t.terminology = next;
+      clearDirty('terminology');
       showToast('Terminology saved.', 'success');
       // Re-init the shared helper so if anything else on this page
       // reads Terminology.t() (future carry-over), it sees the new
@@ -7339,6 +7471,9 @@ function applyLifecycleChange(tenantId, fromState) {
 }
 
 function closeClientDetail() {
+  if (!confirmDiscardDirty('close')) return;
+  _dirtyTabs = {};
+  refreshDirtyIndicator();
   document.getElementById('clientDetailBackdrop').classList.remove('show');
   document.getElementById('clientDetailPanel').classList.remove('show');
 }

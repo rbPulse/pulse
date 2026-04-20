@@ -720,18 +720,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 @media(max-width:700px){ .wizard-body{grid-template-columns:1fr;} .wizard-steps{position:static;} }
 
-/* ── DETAIL TABS (inside detail modal) ── */
-.detail-tabs{display:flex;gap:2px;padding:0 2px 0 2px;margin-bottom:22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
-.detail-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.04em;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;position:relative;}
-.detail-tab-btn:hover{color:var(--text);}
-.detail-tab-btn.active{color:var(--slate);border-bottom-color:var(--slate);font-weight:600;}
-.detail-tab-btn[disabled]{color:var(--text4);cursor:not-allowed;opacity:0.7;}
-.detail-tab-btn .detail-tab-phase{display:inline-block;margin-left:6px;font-size:9px;font-weight:600;letter-spacing:0.12em;color:var(--text4);text-transform:uppercase;}
+/* ── DETAIL TABS (inside detail modal) ──
+   Two-level nav: outer groups (Overview, Configure, Operations,
+   Insights) + inner sub-nav for groups with >1 tab. */
+.detail-tabs{margin-bottom:20px;}
+.detail-groups{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:0;flex-wrap:wrap;}
+.detail-group-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:12px 18px;margin-bottom:-1px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;letter-spacing:0.02em;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;}
+.detail-group-btn:hover{color:var(--text);}
+.detail-group-btn.active{color:var(--slate);border-bottom-color:var(--slate);font-weight:600;}
+.detail-subtabs{display:flex;gap:2px;padding:10px 2px 0;flex-wrap:wrap;}
+.detail-subtab-btn{background:transparent;border:1px solid transparent;border-radius:var(--radius-pill);padding:6px 14px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.04em;color:var(--text3);cursor:pointer;transition:color .15s,background .15s,border-color .15s;}
+.detail-subtab-btn:hover{color:var(--text2);background:var(--card2);}
+.detail-subtab-btn.active{color:var(--slate);background:var(--slate-tint);border-color:var(--slate-border);font-weight:600;}
+.detail-subtab-btn .detail-tab-phase{display:inline-block;margin-left:6px;font-size:9px;font-weight:600;letter-spacing:0.12em;color:var(--text4);text-transform:uppercase;}
 .detail-tab-panel{display:none;}
 .detail-tab-panel.active{display:block;}
 .detail-tab-placeholder{background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius);padding:36px 30px;text-align:center;}
 .detail-tab-placeholder-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .detail-tab-placeholder-body{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;max-width:460px;margin:0 auto;}
+/* Legacy .detail-tab-btn class kept so any stray reference still
+   renders visibly, but the new rendering path doesn't emit it. */
+.detail-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;}
+.detail-tab-btn.active{color:var(--slate);border-bottom-color:var(--slate);}
 
 /* ── LIFECYCLE CONTROL (inside detail modal) ── */
 .lifecycle-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);}
@@ -913,7 +923,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="sidebar-item" id="nav-billing" onclick="switchTab('billing')">
           <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span class="sidebar-item-label">Billing</span>
+          <span class="sidebar-item-label">Revenue</span>
         </div>
         <div class="sidebar-item" id="nav-analytics" onclick="switchTab('analytics')">
           <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -926,7 +936,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span class="sidebar-item-label">Audit Log</span>
+          <span class="sidebar-item-label">Activity Log</span>
         </div>
         <div class="sidebar-item" id="nav-settings" onclick="switchTab('settings')">
           <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
@@ -1064,13 +1074,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div id="integrationsTabBody"><div class="an-loading">Loading integrations overview…</div></div>
       </div>
 
-      <!-- BILLING -->
+      <!-- REVENUE (fleet) -->
       <div class="platform-tab" id="tab-billing">
         <div class="tab-header">
-          <div class="tab-title">Billing</div>
-          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn. Per-tenant subscription management lives inside each client\u2019s Billing tab.</div>
+          <div class="tab-title">Revenue</div>
+          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn flags. Per-tenant subscription management lives inside each client\u2019s Billing subtab under Operations.</div>
         </div>
-        <div id="billingTabBody"><div class="comp-loading">Loading billing overview…</div></div>
+        <div id="billingTabBody"><div class="comp-loading">Loading revenue overview…</div></div>
       </div>
 
       <!-- ANALYTICS -->
@@ -1091,13 +1101,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div id="supportTabBody"><div class="sup-loading">Loading support queue…</div></div>
       </div>
 
-      <!-- AUDIT -->
+      <!-- ACTIVITY LOG (fleet) -->
       <div class="platform-tab" id="tab-audit">
         <div class="tab-header">
-          <div class="tab-title">Audit Log</div>
-          <div class="tab-subtitle">Every config change across every tenant, filterable by tenant or change type. Append-only.</div>
+          <div class="tab-title">Activity Log</div>
+          <div class="tab-subtitle">Every config change across every tenant, filterable by tenant or change type. Append-only. Per-tenant activity lives inside each client\u2019s Activity subtab under Insights.</div>
         </div>
-        <div id="auditTabBody"><div class="audit-loading">Loading audit entries…</div></div>
+        <div id="auditTabBody"><div class="audit-loading">Loading activity entries…</div></div>
       </div>
 
       <!-- SETTINGS -->
@@ -1367,7 +1377,7 @@ var DETAIL_TABS = [
   { key: 'comms',        label: 'Communications', build: buildCommsTab                              },
   { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
   { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
-  { key: 'billing',      label: 'Billing',       build: buildBillingTab                            },
+  { key: 'billing',      label: 'Subscription',  build: buildBillingTab                            },
   { key: 'audit',        label: 'Activity',      build: buildActivityTab                           },
   { key: 'analytics',    label: 'Analytics',     build: buildTenantAnalyticsTab                    },
   { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab                        }
@@ -1699,15 +1709,67 @@ function activateTenant() {
     });
 }
 
+// Group the 12 tabs into 4 outer sections so the modal's tab strip
+// doesn't overwhelm. Each group declares its member tab keys in the
+// order they should appear in the inner sub-nav. Overview is a
+// singleton (no sub-nav rendered). DETAIL_TABS still owns the build
+// functions and is the source of truth for tab metadata — groups are
+// purely a display layer.
+var DETAIL_GROUPS = [
+  { key: 'overview',   label: 'Overview',   tabs: ['overview'] },
+  { key: 'configure',  label: 'Configure',  tabs: ['brand', 'terminology', 'catalog', 'workflow', 'comms'] },
+  { key: 'operations', label: 'Operations', tabs: ['integrations', 'compliance', 'billing'] },
+  { key: 'insights',   label: 'Insights',   tabs: ['audit', 'analytics', 'diagnostics'] }
+];
+
+function groupForTab(tabKey) {
+  for (var i = 0; i < DETAIL_GROUPS.length; i++) {
+    if (DETAIL_GROUPS[i].tabs.indexOf(tabKey) !== -1) return DETAIL_GROUPS[i];
+  }
+  return DETAIL_GROUPS[0];
+}
+
 function renderDetailTabs() {
   var wrap = document.getElementById('clientDetailTabs');
-  wrap.innerHTML = DETAIL_TABS.map(function(tab) {
-    var isActive = tab.key === _activeDetailTab;
-    var phaseTag = tab.phase ? '<span class="detail-tab-phase">' + escHtml(tab.phase) + '</span>' : '';
-    return '<button class="detail-tab-btn' + (isActive ? ' active' : '') +
-      '" onclick="switchDetailTab(\'' + escAttr(tab.key) + '\')">' +
-      escHtml(tab.label) + phaseTag + '</button>';
-  }).join('');
+  var activeGroup = groupForTab(_activeDetailTab);
+
+  // Outer group strip — always 4 buttons. Clicking a group whose
+  // current active tab isn't within it switches to that group's
+  // first tab.
+  var outer = '<div class="detail-groups">' + DETAIL_GROUPS.map(function(g) {
+    var isActive = g.key === activeGroup.key;
+    return '<button class="detail-group-btn' + (isActive ? ' active' : '') +
+      '" onclick="switchDetailGroup(\'' + escAttr(g.key) + '\')">' +
+      escHtml(g.label) + '</button>';
+  }).join('') + '</div>';
+
+  // Inner sub-nav — only rendered for groups with >1 tab.
+  var inner = '';
+  if (activeGroup.tabs.length > 1) {
+    inner = '<div class="detail-subtabs">' + activeGroup.tabs.map(function(key) {
+      var tab = DETAIL_TABS.find(function(t) { return t.key === key; });
+      if (!tab) return '';
+      var isActive = key === _activeDetailTab;
+      var phaseTag = tab.phase ? '<span class="detail-tab-phase">' + escHtml(tab.phase) + '</span>' : '';
+      return '<button class="detail-subtab-btn' + (isActive ? ' active' : '') +
+        '" onclick="switchDetailTab(\'' + escAttr(key) + '\')">' +
+        escHtml(tab.label) + phaseTag + '</button>';
+    }).join('') + '</div>';
+  }
+
+  wrap.innerHTML = outer + inner;
+}
+
+function switchDetailGroup(groupKey) {
+  var group = DETAIL_GROUPS.find(function(g) { return g.key === groupKey; });
+  if (!group) return;
+  // If we're already in this group, keep the current tab. Otherwise,
+  // switch to the first tab in the group.
+  if (group.tabs.indexOf(_activeDetailTab) === -1) {
+    switchDetailTab(group.tabs[0]);
+  } else {
+    renderDetailTabs();
+  }
 }
 
 function renderDetailTabPanels() {

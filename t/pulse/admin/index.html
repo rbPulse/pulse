@@ -4923,7 +4923,7 @@ function renderConsultTable(consultations) {
     { key: 'patient', label: 'Patient' },
     { key: 'email', label: 'Email' },
     { key: 'status', label: 'Status' },
-    { key: 'protocol', label: 'Protocol' },
+    { key: 'clinician', label: 'Clinician' },
     { key: 'submitted', label: 'Submitted' }
   ]);
   if (!consultations.length) {
@@ -4934,19 +4934,23 @@ function renderConsultTable(consultations) {
     patient: function(c) { return c._name || ''; },
     email: function(c) { return c._email || ''; },
     status: function(c) { return getConsultStatus(c) || ''; },
-    protocol: function(c) { return c.protocol_assigned || ''; },
+    clinician: function(c) { return c.assigned_clinician_id ? (profileName(c.assigned_clinician_id) || '') : ''; },
     submitted: function(c) { return c.created_at ? new Date(c.created_at).getTime() : 0; }
   });
   tbody.innerHTML = consultations.map(function(c) {
     var status = getConsultStatus(c);
-    var proto = c.protocol_assigned || '--';
     var date = c.created_at ? new Date(c.created_at).toLocaleDateString() : '--';
     var sel = selectedConsultId === c.id ? ' selected' : '';
+    // Clinician cell: name when assigned, amber "Unassigned" otherwise
+    // so admins can filter/spot intakes that still need routing.
+    var clinCell = c.assigned_clinician_id
+      ? '<td>' + escHtml(profileName(c.assigned_clinician_id) || 'Clinician') + '</td>'
+      : '<td style="color:var(--amber);font-weight:600;">Unassigned</td>';
     return '<tr class="clickable' + sel + '" onclick="openConsultDetail(\'' + c.id + '\')">' +
       '<td style="color:var(--text);font-weight:500;">' + escHtml(c._name) + '</td>' +
       '<td>' + escHtml(c._email) + '</td>' +
       '<td><span class="status-pill ' + getConsultStatusClass(status) + '">' + getConsultStatusLabel(status) + '</span></td>' +
-      '<td>' + escHtml(proto) + '</td>' +
+      clinCell +
       '<td>' + date + '</td>' +
       '</tr>';
   }).join('');

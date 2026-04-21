@@ -5607,268 +5607,279 @@ document.addEventListener('visibilitychange', function() {
 // ══════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════
-// SETUP WIZARD — template picker + quick start
-// Loads tenant_templates from the DB and presents them as cards so
-// a new admin can seed their tenant with a whole configuration
-// (terminology + workflow + comms + compliance + catalog) in one
-// shot. Works at any time, not just first visit, so admins can
-// experiment, reset, and iterate during the setup refinement phase.
-// Applying a template calls applyTemplateToTenant (the helper lives
-// in CommandOS — for now the wizard uses a direct-DB path so the
-// tenant admin doesn't need to reach cross-product).
+// SETUP WIZARD
+// A guided, screen-by-screen walkthrough that produces a fully-
+// configured tenant from plain answers. Seven screens, each focused
+// on one concept. Every answer maps deterministically to config
+// fields (tenants.brand / terminology / workflow JSONB, seed rows
+// in tenant_regions / communication_templates). No pre-built
+// templates — the wizard is the path.
+//
+// State lives on window._wizardState + localStorage (keyed by
+// tenant id) so a refresh or closed tab doesn't lose progress.
+// Re-running the wizard after initial setup pre-fills from current
+// config — same flow serves initial setup AND iteration.
+//
+// Phase W1 ships the shell: stepper, navigation, state persistence,
+// placeholder screens. W2 fills each screen with real questions,
+// W3 lands the apply RPC (migration 026), W4 adds edit-mode pre-
+// fill, W5 adds the success state.
 // ══════════════════════════════════════════════════════════════════
+
+var _WIZARD_STEPS = [
+  { key: 'language',    label: 'Language',    title: 'Your language',     subtitle: 'The words your members and clinicians will see across every portal.' },
+  { key: 'clinicType',  label: 'Clinic type', title: 'What kind of clinic?', subtitle: 'Picks smart defaults for the next screens. You can still tune every answer.' },
+  { key: 'workflow',    label: 'Workflow',    title: 'How members move through your clinic', subtitle: 'Intake → consult → prescription → refill. Defaults work for most; review what matters.' },
+  { key: 'comms',       label: 'Messages',    title: 'Automated messages',  subtitle: 'Which messages fire automatically, and how they sound.' },
+  { key: 'territory',   label: 'Territory',   title: 'Where do you operate?', subtitle: 'States where your clinicians are licensed and can serve members.' },
+  { key: 'brand',       label: 'Brand',       title: 'Your brand',          subtitle: 'The name, color, and contact info that appears across every surface.' },
+  { key: 'review',      label: 'Review',      title: 'Review & apply',      subtitle: 'Every answer mapped to every change. Edit any step, then apply.' }
+];
+
+function _wizardStateKey() {
+  return 'pulse_wizard_' + ((window.Tenant && window.Tenant.id) || 'anon');
+}
+
+// Default state — W4 will overlay from current tenant config here.
+function _wizardDefaultState() {
+  return {
+    step: 0,
+    answers: {
+      language:   { memberTerm: '', clinicianTerm: '', protocolTerm: '' },
+      clinicType: '',
+      workflow:   { consultPolicy: '', refillDays: null, intakeRequired: null, followUpDays: null },
+      comms:      { enabled: {}, tone: '', inactivityDays: null, checkInCadence: '' },
+      territory:  { states: [] },
+      brand:      { wordmark: '', accentColor: '', supportEmail: '', supportPhone: '' }
+    },
+    skipped: {} // keyed by step key so Review can show "skipped" explicitly
+  };
+}
+
+function _loadWizardState() {
+  try {
+    var raw = localStorage.getItem(_wizardStateKey());
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      // Migrate older state gracefully: fill any missing defaults so
+      // schema drift doesn't blow up re-renders.
+      var fresh = _wizardDefaultState();
+      fresh.step = Math.max(0, Math.min(parsed.step || 0, _WIZARD_STEPS.length - 1));
+      Object.keys(fresh.answers).forEach(function(k) {
+        if (parsed.answers && parsed.answers[k] && typeof parsed.answers[k] === 'object') {
+          fresh.answers[k] = Object.assign({}, fresh.answers[k], parsed.answers[k]);
+        } else if (parsed.answers && k in parsed.answers) {
+          fresh.answers[k] = parsed.answers[k];
+        }
+      });
+      fresh.skipped = Object.assign({}, parsed.skipped || {});
+      return fresh;
+    }
+  } catch (_) { /* fall through to defaults */ }
+  return _wizardDefaultState();
+}
+
+function _saveWizardState() {
+  if (!window._wizardState) return;
+  try { localStorage.setItem(_wizardStateKey(), JSON.stringify(window._wizardState)); }
+  catch (_) { /* quota or privacy mode — ignore */ }
+}
+
 function renderSetupWizard() {
-  var body = document.getElementById('setup-wizard-body');
-  if (!body || !window.Tenant) return;
-  body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Loading templates…</div>';
-  db.from('tenant_templates').select('id, key, name, description, vertical, config_snapshot').order('name')
-    .then(function(r) {
-      if (r.error) {
-        body.innerHTML = _wizardErrorHtml(r.error.message || 'Failed to load templates. Run migration 020_tenant_templates.sql.');
-        return;
-      }
-      var templates = r.data || [];
-      body.innerHTML = _buildSetupWizardBody(templates, window.Tenant);
-    })
-    .catch(function(err) {
-      body.innerHTML = _wizardErrorHtml((err && err.message) || 'Load failed.');
-    });
+  var host = document.getElementById('setup-wizard-body');
+  if (!host || !window.Tenant) return;
+  if (!window._wizardState) window._wizardState = _loadWizardState();
+  host.innerHTML = _wizardChromeHtml() + '<div id="wizardScreen">' + _renderWizardScreen() + '</div>';
+  _wireWizardShell();
 }
 
-function _wizardErrorHtml(msg) {
-  return '<div style="padding:18px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.25);border-radius:10px;color:var(--red);font-family:\'Inter\',sans-serif;font-size:12px;">' + _brandEscHtml(msg) + '</div>';
+function _wizardChromeHtml() {
+  var state = window._wizardState;
+  var current = state.step;
+  // Dot track — one marker per step, filled when reached.
+  var dots = _WIZARD_STEPS.map(function(s, i) {
+    var status = i < current ? 'done' : (i === current ? 'current' : 'future');
+    return '<button type="button" class="wiz-dot wiz-dot-' + status + '" data-step="' + i + '" onclick="_wizardGoTo(' + i + ')" title="' + _brandEscAttr(s.label) + '"><span class="wiz-dot-n">' + (i + 1) + '</span><span class="wiz-dot-label">' + _brandEscHtml(s.label) + '</span></button>';
+  }).join('<div class="wiz-dot-line"></div>');
+  return '<style>' + _WIZARD_CSS + '</style>' +
+    '<div class="wiz-shell">' +
+      '<div class="wiz-progress">' + dots + '</div>' +
+    '</div>';
 }
 
-function _buildSetupWizardBody(templates, t) {
-  var brand = t.brand || {};
-  var hasConfig = !!(brand.wordmark || brand.accent_color ||
-    (t.terminology && Object.keys(t.terminology).length) ||
-    (t.workflow && Object.keys(t.workflow).length));
-  var header = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;">' +
-    '<div style="font-family:\'Inter\',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + (hasConfig ? 'Current state' : 'Start here') + '</div>' +
-    '<div style="font-family:\'Inter\',sans-serif;font-size:14px;color:var(--text);line-height:1.6;">' +
-      (hasConfig
-        ? 'Your tenant already has configuration in place. Applying a template from below will overlay new defaults on top of what’s there — fields already set may be overwritten. Use this to iterate on setup or reset to a known-good starting point.'
-        : 'Welcome. Pick a template below to seed your tenant’s setup — terminology, workflow, comms templates, compliance defaults, and catalog all come pre-configured for the vertical you choose. You can edit anything after.') +
+var _WIZARD_CSS = [
+  '#setup-wizard-body{max-width:860px;margin:0 auto;}',
+  '.wiz-shell{margin-bottom:24px;}',
+  '.wiz-progress{display:flex;align-items:center;gap:0;justify-content:space-between;padding:0 6px;}',
+  '.wiz-dot{background:transparent;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;flex-shrink:0;}',
+  '.wiz-dot-n{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0;border:1.5px solid var(--border);background:var(--card);color:var(--text3);transition:all .2s;}',
+  '.wiz-dot-label{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);transition:color .2s;}',
+  '.wiz-dot-current .wiz-dot-n{border-color:var(--amber);color:var(--amber);background:var(--amber-tint);}',
+  '.wiz-dot-current .wiz-dot-label{color:var(--text);}',
+  '.wiz-dot-done .wiz-dot-n{border-color:var(--amber);background:var(--amber);color:#fff;}',
+  '.wiz-dot-done .wiz-dot-label{color:var(--text2);}',
+  '.wiz-dot-future{cursor:not-allowed;opacity:0.6;}',
+  '.wiz-dot-line{flex:1;height:1.5px;background:var(--border);margin:0 -4px 16px -4px;align-self:flex-start;margin-top:14px;}',
+  '.wiz-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 44px;box-shadow:0 1px 2px rgba(0,0,0,0.04);animation:wizFade .25s ease;}',
+  '@keyframes wizFade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}',
+  '.wiz-title{font-family:\'Inter\',sans-serif;font-size:24px;font-weight:600;letter-spacing:-0.01em;color:var(--text);margin-bottom:8px;}',
+  '.wiz-subtitle{font-family:\'Inter\',sans-serif;font-size:14px;color:var(--text2);line-height:1.55;margin-bottom:28px;}',
+  '.wiz-q{margin-bottom:28px;}',
+  '.wiz-q:last-child{margin-bottom:0;}',
+  '.wiz-q-label{font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}',
+  '.wiz-q-help{font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5;}',
+  '.wiz-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}',
+  '.wiz-choice{background:var(--card2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left;transition:all .15s;}',
+  '.wiz-choice:hover{border-color:var(--amber-border);background:var(--amber-tint);}',
+  '.wiz-choice.selected{border-color:var(--amber);background:var(--amber-tint);}',
+  '.wiz-choice-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}',
+  '.wiz-choice-sub{font-size:11px;color:var(--text3);line-height:1.4;}',
+  '.wiz-input{width:100%;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-family:\'Inter\',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s;box-sizing:border-box;}',
+  '.wiz-input:focus{outline:none;border-color:var(--amber);}',
+  '.wiz-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}',
+  '.wiz-slider-wrap{display:flex;align-items:center;gap:14px;}',
+  '.wiz-slider{flex:1;accent-color:var(--amber);}',
+  '.wiz-slider-val{font-family:\'Inter\',sans-serif;font-size:18px;font-weight:600;color:var(--text);min-width:60px;text-align:right;}',
+  '.wiz-toggle-list{display:flex;flex-direction:column;gap:8px;}',
+  '.wiz-toggle-row{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:10px;}',
+  '.wiz-toggle-row-text{flex:1;}',
+  '.wiz-toggle-row-title{font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);}',
+  '.wiz-toggle-row-sub{font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-top:2px;}',
+  '.wiz-switch{position:relative;width:40px;height:22px;background:var(--card);border:1px solid var(--border);border-radius:999px;cursor:pointer;transition:all .15s;flex-shrink:0;}',
+  '.wiz-switch.on{background:var(--amber);border-color:var(--amber);}',
+  '.wiz-switch::after{content:"";position:absolute;top:1.5px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,0.15);}',
+  '.wiz-switch.on::after{transform:translateX(18px);}',
+  '.wiz-footer{display:flex;align-items:center;justify-content:space-between;margin-top:24px;gap:12px;}',
+  '.wiz-footer-left{display:flex;gap:8px;}',
+  '.wiz-footer-right{display:flex;gap:8px;}',
+  '.wiz-btn{font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;padding:10px 22px;border-radius:999px;border:1.5px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;transition:all .15s;}',
+  '.wiz-btn:hover{border-color:var(--text3);color:var(--text);}',
+  '.wiz-btn-primary{background:var(--amber);color:#fff;border-color:var(--amber);}',
+  '.wiz-btn-primary:hover{opacity:0.9;border-color:var(--amber);color:#fff;}',
+  '.wiz-btn:disabled{opacity:0.4;cursor:not-allowed;}',
+  '.wiz-chip{display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text2);margin-right:4px;margin-bottom:4px;cursor:pointer;transition:all .15s;}',
+  '.wiz-chip.selected{background:var(--amber-tint);border-color:var(--amber);color:var(--text);}',
+  '.wiz-chip:hover{border-color:var(--amber-border);}',
+  '.wiz-preset-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}',
+  '.wiz-preset{font-family:\'Inter\',sans-serif;font-size:11px;padding:6px 14px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s;}',
+  '.wiz-preset:hover{border-color:var(--amber-border);}',
+  '.wiz-review-section{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;}',
+  '.wiz-review-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}',
+  '.wiz-review-title{font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);}',
+  '.wiz-review-edit{font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--amber);background:none;border:0;cursor:pointer;padding:4px 8px;}',
+  '.wiz-review-body{font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.6;}',
+  '.wiz-review-skipped{color:var(--text4);font-style:italic;}',
+  '.wiz-preview{background:var(--amber-tint);border:1px solid var(--amber-border);border-radius:10px;padding:14px 16px;margin-top:14px;}',
+  '.wiz-preview-label{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}',
+  '.wiz-preview-body{font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);line-height:1.6;}'
+].join('');
+
+function _renderWizardScreen() {
+  var state = window._wizardState;
+  var step = _WIZARD_STEPS[state.step] || _WIZARD_STEPS[0];
+  var body;
+  switch (step.key) {
+    case 'language':   body = _wizScreenLanguageStub();   break;
+    case 'clinicType': body = _wizScreenClinicTypeStub(); break;
+    case 'workflow':   body = _wizScreenWorkflowStub();   break;
+    case 'comms':      body = _wizScreenCommsStub();      break;
+    case 'territory':  body = _wizScreenTerritoryStub();  break;
+    case 'brand':      body = _wizScreenBrandStub();      break;
+    case 'review':     body = _wizScreenReviewStub();     break;
+    default:           body = '<div>?</div>';
+  }
+  var isLast  = state.step === _WIZARD_STEPS.length - 1;
+  var isFirst = state.step === 0;
+  return '<div class="wiz-card">' +
+    '<div class="wiz-title">' + _brandEscHtml(step.title) + '</div>' +
+    '<div class="wiz-subtitle">' + _brandEscHtml(step.subtitle) + '</div>' +
+    body +
+    '<div class="wiz-footer">' +
+      '<div class="wiz-footer-left">' +
+        (isFirst ? '' : '<button type="button" class="wiz-btn" onclick="_wizardBack()">&larr; Back</button>') +
+      '</div>' +
+      '<div class="wiz-footer-right">' +
+        (isLast ? '' : '<button type="button" class="wiz-btn" onclick="_wizardSkip()">Skip</button>') +
+        (isLast
+          ? '<button type="button" class="wiz-btn wiz-btn-primary" onclick="_wizardApplyAll()">Apply all changes &rarr;</button>'
+          : '<button type="button" class="wiz-btn wiz-btn-primary" onclick="_wizardNext()">Next &rarr;</button>') +
+      '</div>' +
     '</div>' +
   '</div>';
+}
 
-  if (!templates.length) {
-    return header + '<div style="padding:20px;background:var(--card2);border:1px solid var(--border);border-radius:10px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);">No templates have been published yet. Platform operators publish templates from CommandOS (or via migration seed). Once at least one is live, it’ll appear here.</div>';
+// ── Shell placeholders for W1. W2 replaces each with real question UI.
+function _wizScreenLanguageStub()   { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Language questions land in W2.</div>'; }
+function _wizScreenClinicTypeStub() { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Clinic type selector lands in W2.</div>'; }
+function _wizScreenWorkflowStub()   { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Workflow questions land in W2.</div>'; }
+function _wizScreenCommsStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Comms questions land in W2.</div>'; }
+function _wizScreenTerritoryStub()  { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Territory selector lands in W2.</div>'; }
+function _wizScreenBrandStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Brand basics land in W2.</div>'; }
+function _wizScreenReviewStub()     { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Review summary lands in W3 once answers are captured.</div>'; }
+
+// ── Navigation ─────────────────────────────────────────────────────────
+function _wizardNext() {
+  if (!window._wizardState) return;
+  if (window._wizardState.step < _WIZARD_STEPS.length - 1) {
+    window._wizardState.step += 1;
+    _saveWizardState();
+    _repaintWizardScreen();
   }
-
-  var cards = templates.map(function(tpl) {
-    var snap = tpl.config_snapshot || {};
-    var layers = snap.layers || {};
-    var seeds  = snap.seeds  || {};
-    var badges = [];
-    if (layers.brand)        badges.push('Brand');
-    if (layers.terminology)  badges.push('Terminology');
-    if (layers.workflow)     badges.push('Workflow');
-    if (layers.compliance)   badges.push('Compliance');
-    if (layers.features)     badges.push('Features');
-    if (seeds.protocols)     badges.push((seeds.protocols.length || 0) + ' protocols');
-    if (seeds.categories)    badges.push((seeds.categories.length || 0) + ' categories');
-    if (seeds.comms_templates) badges.push((seeds.comms_templates.length || 0) + ' comms templates');
-    if (seeds.regions)       badges.push((seeds.regions.length || 0) + ' regions');
-    if (seeds.consents)      badges.push((seeds.consents.length || 0) + ' consents');
-    var badgeHtml = badges.map(function(b) {
-      return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:10px;padding:3px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text3);margin-right:4px;margin-bottom:4px;">' + _brandEscHtml(b) + '</span>';
-    }).join('');
-    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;">' +
-      '<div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;">' +
-          '<div style="font-family:\'Inter\',sans-serif;font-size:15px;font-weight:600;color:var(--text);">' + _brandEscHtml(tpl.name) + '</div>' +
-          (tpl.vertical ? '<span style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">' + _brandEscHtml(tpl.vertical) + '</span>' : '') +
-        '</div>' +
-        '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' + _brandEscHtml(tpl.description || 'No description provided.') + '</div>' +
-      '</div>' +
-      (badgeHtml ? '<div>' + badgeHtml + '</div>' : '') +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button class="form-btn secondary" style="font-size:11px;padding:6px 14px;" onclick="_wizardPreview(\'' + _brandEscAttr(tpl.id) + '\')">Preview changes</button>' +
-        '<button class="form-btn primary" style="font-size:11px;padding:6px 14px;" onclick="_wizardApply(\'' + _brandEscAttr(tpl.id) + '\', \'' + _brandEscAttr(tpl.name) + '\')">Apply template</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  return header +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:18px;">' + cards + '</div>' +
-    '<div id="wizard-result-area"></div>';
+}
+function _wizardBack() {
+  if (!window._wizardState) return;
+  if (window._wizardState.step > 0) {
+    window._wizardState.step -= 1;
+    _saveWizardState();
+    _repaintWizardScreen();
+  }
+}
+function _wizardSkip() {
+  if (!window._wizardState) return;
+  var key = _WIZARD_STEPS[window._wizardState.step].key;
+  window._wizardState.skipped[key] = true;
+  _wizardNext();
+}
+function _wizardGoTo(idx) {
+  if (!window._wizardState) return;
+  // Only allow jumping backward to already-seen steps. Forward jumps
+  // would skip unanswered questions silently.
+  if (idx < 0 || idx > window._wizardState.step) return;
+  window._wizardState.step = idx;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+function _repaintWizardScreen() {
+  var host = document.getElementById('setup-wizard-body');
+  if (!host) return;
+  host.innerHTML = _wizardChromeHtml() + '<div id="wizardScreen">' + _renderWizardScreen() + '</div>';
+  _wireWizardShell();
 }
 
-function _wizardPreview(templateId) {
-  var area = document.getElementById('wizard-result-area');
-  if (!area) return;
-  area.innerHTML = '<div style="padding:18px;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:12px;">Building preview…</div>';
-  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  db.from('tenant_templates').select('name, config_snapshot').eq('id', templateId).limit(1)
-    .then(function(r) {
-      if (r.error || !r.data || !r.data.length) {
-        area.innerHTML = _wizardErrorHtml('Template not found.');
-        return;
-      }
-      var tpl = r.data[0];
-      var snap = tpl.config_snapshot || {};
-      var layers = snap.layers || {};
-      var seeds  = snap.seeds  || {};
-      var t = window.Tenant || {};
-      area.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
-          '<div>' +
-            '<div style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);">Preview · ' + _brandEscHtml(tpl.name) + '</div>' +
-            '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">What will change if you apply this template.</div>' +
-          '</div>' +
-          '<div style="display:flex;gap:6px;">' +
-            '<button class="form-btn primary" style="font-size:11px;padding:6px 14px;" onclick="_wizardApply(\'' + _brandEscAttr(templateId) + '\', \'' + _brandEscAttr(tpl.name) + '\')">Apply</button>' +
-            '<button class="form-btn secondary" style="font-size:10px;padding:4px 10px;" onclick="document.getElementById(\'wizard-result-area\').innerHTML=\'\'">Close</button>' +
-          '</div>' +
-        '</div>' +
-        _renderLayerDiffs(t, layers) +
-        _renderSeedBreakdown(seeds) +
-      '</div>';
-    })
-    .catch(function(err) { area.innerHTML = _wizardErrorHtml((err && err.message) || 'Preview failed.'); });
+function _wizardApplyAll() {
+  // Stub for W3 — the real implementation calls the apply_wizard_answers
+  // RPC from migration 026. For now, dump state so the wiring is
+  // provably end-to-end during W1 development.
+  alert('Apply lands in W3 (migration 026). State:\n\n' + JSON.stringify(window._wizardState.answers, null, 2));
 }
 
-// Render a before/after diff for each JSONB layer. For each key in
-// the template overlay, show the current tenant value (or "—") and
-// the incoming value. Existing keys the template doesn't touch
-// stay collapsed under a "will remain unchanged" count.
-function _renderLayerDiffs(tenant, layers) {
-  var sections = [];
-  var fieldMap = { brand: 'brand', terminology: 'terminology', workflow: 'workflow', compliance: 'compliance', features: 'features' };
-  Object.keys(fieldMap).forEach(function(k) {
-    var overlay = layers[k] || {};
-    var keys = Object.keys(overlay);
-    if (!keys.length) return;
-    var current = tenant[fieldMap[k]] || {};
-    var rows = keys.map(function(kk) {
-      var before = current[kk];
-      var after  = overlay[kk];
-      var changed = JSON.stringify(before) !== JSON.stringify(after);
-      var wasUnset = before === undefined;
-      return '<tr>' +
-        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text);vertical-align:top;white-space:nowrap;">' + _brandEscHtml(kk) + '</td>' +
-        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);vertical-align:top;max-width:220px;word-break:break-word;">' + (wasUnset ? '<span style="color:var(--text4);">(unset)</span>' : _brandEscHtml(_shortJson(before))) + '</td>' +
-        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:' + (changed ? 'var(--green, #3a7a5c)' : 'var(--text3)') + ';vertical-align:top;max-width:220px;word-break:break-word;font-weight:' + (changed ? '600' : '400') + ';">' + _brandEscHtml(_shortJson(after)) + '</td>' +
-      '</tr>';
-    }).join('');
-    sections.push('<div style="margin-bottom:14px;">' +
-      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + k + ' · ' + keys.length + ' field' + (keys.length === 1 ? '' : 's') + '</div>' +
-      '<table style="width:100%;border-collapse:collapse;background:var(--card2);border-radius:8px;overflow:hidden;">' +
-        '<thead><tr style="background:rgba(0,0,0,0.05);">' +
-          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">Key</th>' +
-          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">Current</th>' +
-          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">After apply</th>' +
-        '</tr></thead>' +
-        '<tbody>' + rows + '</tbody>' +
-      '</table>' +
-    '</div>');
-  });
-  if (!sections.length) sections.push('<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;">No layer overlays — this template only seeds catalog / region / consent rows.</div>');
-  return sections.join('');
+function _wireWizardShell() {
+  // Keyboard: Enter advances when no input is focused.
+  document.addEventListener('keydown', _wizardKeyHandler);
 }
+var _wizardKeyHandler = function(e) {
+  if (e.key !== 'Enter') return;
+  var active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+  var nextBtn = document.querySelector('#setup-wizard-body .wiz-btn-primary');
+  if (nextBtn) nextBtn.click();
+};
 
-function _renderSeedBreakdown(seeds) {
-  var keys = ['categories','product_types','protocols','regions','consents','comms_templates'];
-  var cards = keys
-    .filter(function(k) { return Array.isArray(seeds[k]) && seeds[k].length > 0; })
-    .map(function(k) {
-      var items = seeds[k];
-      var label = k.replace(/_/g, ' ');
-      return '<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;">' +
-        '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + label + ' · ' + items.length + '</div>' +
-        '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
-          items.map(function(it) {
-            if (typeof it === 'string') return _brandEscHtml(it);
-            return _brandEscHtml(it.name || it.title || it.key || JSON.stringify(it));
-          }).join(', ') +
-        '</div>' +
-      '</div>';
-    });
-  if (!cards.length) return '';
-  return '<div style="margin-top:6px;"><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Seed rows</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">' + cards.join('') + '</div>' +
-    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text4);margin-top:6px;">Existing rows matching any of these keys are left in place (re-apply is safe).</div>' +
-  '</div>';
-}
-
-function _shortJson(v) {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  try {
-    var s = JSON.stringify(v);
-    return s.length > 80 ? s.slice(0, 80) + '…' : s;
-  } catch (e) { return String(v); }
-}
-
-function _wizardApply(templateId, templateName) {
-  if (!confirm('Apply "' + templateName + '"? Fields already set on this tenant may be overwritten.')) return;
-  var area = document.getElementById('wizard-result-area');
-  if (area) area.innerHTML = '<div style="padding:18px;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:12px;">Applying template…</div>';
-
-  db.rpc('apply_tenant_template', { p_template_id: templateId, p_tenant_id: window.Tenant.id })
-    .then(function(r) {
-      if (r.error) throw r.error;
-      // The RPC returns { ok, template, before, after, seed_counts }.
-      // Supabase wraps it as { data: <payload> }.
-      var payload = (r && r.data) || {};
-      if (!area) return;
-      var counts = payload.seed_counts || {};
-      var totalSeeded = Object.keys(counts).reduce(function(a, k) { return a + (counts[k] || 0); }, 0);
-      var countRows = Object.keys(counts)
-        .filter(function(k) { return counts[k] > 0; })
-        .map(function(k) { return '<li style="margin-bottom:2px;"><strong>' + counts[k] + '</strong> ' + _brandEscHtml(k.replace(/_/g, ' ')) + ' inserted</li>'; })
-        .join('');
-      var layerRows = _renderAppliedLayerSummary(payload.before || {}, payload.after || {});
-      area.innerHTML = '<div style="background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.35);border-radius:12px;padding:20px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">' +
-          '<div>' +
-            '<div style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);">✓ Template applied · ' + _brandEscHtml(templateName) + '</div>' +
-            '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);margin-top:4px;">Review what changed below. You can tweak anything in the individual Setup tabs, or re-apply a different template to reset.</div>' +
-          '</div>' +
-          '<button class="form-btn secondary" style="font-size:11px;padding:6px 14px;" onclick="location.reload()">Reload &amp; continue</button>' +
-        '</div>' +
-        (layerRows || '') +
-        (countRows
-          ? '<div style="margin-top:14px;"><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Seed rows · ' + totalSeeded + ' new</div>' +
-            '<ul style="margin:0;padding-left:18px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);">' + countRows + '</ul></div>'
-          : '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-top:12px;">No new seed rows inserted — everything the template offered was already present.</div>') +
-      '</div>';
-      area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    })
-    .catch(function(err) {
-      if (area) area.innerHTML = _wizardErrorHtml((err && err.message) || 'Apply failed. Make sure migration 025_tenant_template_apply_rpc.sql has been run.');
-    });
-}
-
-// After-apply: summarize which layer fields flipped, using the before /
-// after snapshots the RPC returns. Keeps the admin oriented about what
-// actually changed vs what was already in place.
-function _renderAppliedLayerSummary(before, after) {
-  var layers = ['brand','terminology','workflow','compliance','features'];
-  var rows = layers.map(function(k) {
-    var b = before[k] || {};
-    var a = after[k]  || {};
-    var changedKeys = Object.keys(a).filter(function(kk) {
-      return JSON.stringify(b[kk]) !== JSON.stringify(a[kk]);
-    });
-    if (!changedKeys.length) return '';
-    return '<div style="margin-bottom:6px;">' +
-      '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);min-width:100px;">' + k + '</span>' +
-      '<span style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);">' + changedKeys.length + ' field' + (changedKeys.length === 1 ? '' : 's') + ' updated</span>' +
-    '</div>';
-  }).filter(Boolean).join('');
-  if (!rows) return '';
-  return '<div><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Layer changes</div>' + rows + '</div>';
-}
-
-// Auto-switch to the wizard on first Setup entry when the tenant's
-// config is still empty. Detected by checking whether brand or
-// terminology JSONB blobs have any keys set. Admins can still click
-// through to Brand / Terminology / etc. manually; the switch only
-// fires when the tenant looks unconfigured.
+// Legacy shim: the auto-route helper used to check a config-empty
+// signal to redirect new admins to the wizard. Keeping the behavior
+// so clicks into Setup → Brand on an empty tenant still hit the
+// wizard first. Re-runners always reach Brand directly because
+// their config is non-empty.
 function _autoRouteSetupIfEmpty(requestedTab) {
   if (requestedTab !== 'setup-brand' || !window.Tenant) return requestedTab;
   var t = window.Tenant;

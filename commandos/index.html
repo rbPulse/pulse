@@ -262,8 +262,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .audit-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .audit-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
 .audit-toolbar .filter-select{min-width:160px;}
-.audit-showall{display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);cursor:pointer;user-select:none;}
-.audit-showall input{margin:0;cursor:pointer;}
 .audit-count{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-left:auto;}
 .audit-list{display:flex;flex-direction:column;gap:6px;}
 .audit-entry{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:start;}
@@ -845,10 +843,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <span class="sidebar-item-label">Plans &amp; Modules</span>
         </div>
         <div class="sidebar-section-label">Operations</div>
-        <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span class="sidebar-item-label">Activity Log</span>
-        </div>
         <div class="sidebar-item" id="nav-settings" onclick="switchTab('settings')">
           <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
           <span class="sidebar-item-label">Settings</span>
@@ -976,17 +970,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle">What the platform sells and how it\u2019s adopted: MRR, plan mix, churn, and the module catalog with fleet adoption counts.</div>
         </div>
         <div id="billingTabBody"><div class="comp-loading">Loading overview…</div></div>
-      </div>
-
-      </div>
-
-      <!-- ACTIVITY LOG (fleet) -->
-      <div class="platform-tab" id="tab-audit">
-        <div class="tab-header">
-          <div class="tab-title">Activity Log</div>
-          <div class="tab-subtitle">Every config change across every tenant, filterable. Append-only. Per-tenant activity lives on the tenant\u2019s Activity tab.</div>
-        </div>
-        <div id="auditTabBody"><div class="audit-loading">Loading activity entries…</div></div>
       </div>
 
       <!-- SETTINGS -->
@@ -1127,7 +1110,6 @@ function switchTab(tabId) {
   // doesn't re-fetch. Operators refreshing the data = reload the page.
   if (tabId === 'dashboard'    && !_dashboardLoaded)       loadDashboard();
   if (tabId === 'billing'      && !_billingTabLoaded)      loadBillingTab();
-  if (tabId === 'audit'        && !_auditTabLoaded)        loadAuditTab();
   if (tabId === 'integrations' && !_integrationsTabLoaded) loadIntegrationsTab();
   if (tabId === 'settings'     && !_settingsTabLoaded)     loadSettingsTab();
 }
@@ -1689,7 +1671,6 @@ function renderDetailTabs() {
 // header, so we skip it here.
 var _REFRESHABLE_TABS = {
   billing:      refreshBillingTab,
-  audit:        refreshAuditTab,
   integrations: refreshIntegrationsTab,
   settings:     refreshSettingsTab
 };
@@ -1709,7 +1690,6 @@ function ensureTabRefreshButton(tabId) {
 }
 
 function refreshBillingTab()      { _billingTabLoaded      = false; loadBillingTab();      }
-function refreshAuditTab()        { _auditTabLoaded        = false; loadAuditTab();        }
 function refreshIntegrationsTab() { _integrationsTabLoaded = false; loadIntegrationsTab(); }
 function refreshSettingsTab()     { _settingsTabLoaded     = false; loadSettingsTab();     }
 // refreshDashboard already exists elsewhere.
@@ -2120,14 +2100,7 @@ var AUDIT_TYPES = [
   { key: 'access',        label: 'Access'        }
 ];
 
-// Events that matter to a CommandOS operator: lifecycle, billing, access,
-// integration health, compliance, comms changes, workflow state changes.
-// Brand + terminology are tenant-side chrome — noisy at the fleet level,
-// so the Activity Log hides them by default and exposes them via the
-// "Show all types" toggle.
-var PLATFORM_AUDIT_TYPES = ['lifecycle', 'billing', 'access', 'integration', 'compliance', 'comms', 'workflow'];
-
-function renderAuditToolbar(includeTenantFilter, currentType, currentTenantId, tenantOptions, showAll, showPlatformToggle) {
+function renderAuditToolbar(includeTenantFilter, currentType, currentTenantId, tenantOptions) {
   var typeOpts = '<option value="">All types</option>' +
     AUDIT_TYPES.map(function(ty) {
       return '<option value="' + escAttr(ty.key) + '"' + (ty.key === currentType ? ' selected' : '') + '>' + escHtml(ty.label) + '</option>';
@@ -2142,18 +2115,9 @@ function renderAuditToolbar(includeTenantFilter, currentType, currentTenantId, t
     tenantSelect = '<select class="filter-select" id="auditTenantFilter">' + opts + '</select>';
   }
 
-  var platformToggle = '';
-  if (showPlatformToggle) {
-    platformToggle = '<label class="audit-showall">' +
-      '<input type="checkbox" id="auditShowAll"' + (showAll ? ' checked' : '') + '/>' +
-      ' Show all types' +
-    '</label>';
-  }
-
   return '<div class="audit-toolbar">' +
     '<select class="filter-select" id="auditTypeFilter">' + typeOpts + '</select>' +
     tenantSelect +
-    platformToggle +
     '<span class="audit-count" id="auditCount"></span>' +
   '</div>';
 }
@@ -3231,100 +3195,6 @@ function renderAttentionRow(item) {
 function refreshDashboard() {
   _dashboardLoaded = false;
   loadDashboard();
-}
-
-// ── Top-level Audit tab (fleet-wide) ──
-// Cross-tenant. Fetches recent entries across every tenant the
-// operator can read (RLS gates by is_platform_user; non-platform
-// callers see nothing here). Filters: change type, tenant. Same
-// diff-view UI as the per-client Activity tab — these share the
-// render helpers above.
-var _auditTabLoaded = false;
-var _auditTabData = {
-  entries:     [],
-  tenants:     [],
-  tenantsById: {},
-  type:        '',
-  tenantId:    '',
-  showAll:     false
-};
-
-function loadAuditTab() {
-  var wrap = document.getElementById('auditTabBody');
-  if (!wrap) return;
-  _auditTabLoaded = true;
-
-  Promise.all([
-    db.from('audit_logs')
-      .select('id, action, change_type, actor_id, actor_email, target_id, tenant_id, details, before_snapshot, after_snapshot, created_at')
-      .order('created_at', { ascending: false })
-      .limit(500),
-    db.from('tenants').select('id, name, slug').order('name')
-  ]).then(function(results) {
-    if (results[0].error) {
-      var hint = migrationHint(results[0].error, '019_audit_change_management.sql');
-      wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load audit log</strong><br/>' +
-        escHtml(results[0].error.message || '') +
-        (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
-      return;
-    }
-    _auditTabData.entries = results[0].data || [];
-    _auditTabData.tenants = results[1].data || [];
-    _auditTabData.tenantsById = {};
-    _auditTabData.tenants.forEach(function(t) { _auditTabData.tenantsById[t.id] = t; });
-
-    wrap.innerHTML = renderAuditTabBody();
-    wireAuditTabListeners();
-  }).catch(function(err) {
-    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-  });
-}
-
-function wireAuditTabListeners() {
-  document.getElementById('auditTypeFilter').addEventListener('change', function() {
-    _auditTabData.type = this.value;
-    document.getElementById('auditTabListInner').outerHTML =
-      '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
-  });
-  document.getElementById('auditTenantFilter').addEventListener('change', function() {
-    _auditTabData.tenantId = this.value;
-    document.getElementById('auditTabListInner').outerHTML =
-      '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
-  });
-  var showAllCb = document.getElementById('auditShowAll');
-  if (showAllCb) showAllCb.addEventListener('change', function() {
-    _auditTabData.showAll = this.checked;
-    document.getElementById('auditTabListInner').outerHTML =
-      '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
-  });
-}
-
-function renderAuditTabBody() {
-  return renderAuditToolbar(true, _auditTabData.type, _auditTabData.tenantId, _auditTabData.tenants, _auditTabData.showAll, true) +
-    '<div id="auditTabListInner">' + renderAuditTabList() + '</div>';
-}
-
-function renderAuditTabList() {
-  var platformSet = {};
-  PLATFORM_AUDIT_TYPES.forEach(function(k) { platformSet[k] = true; });
-  var filtered = _auditTabData.entries.filter(function(e) {
-    if (_auditTabData.type) {
-      if (e.change_type !== _auditTabData.type) return false;
-    } else if (!_auditTabData.showAll) {
-      // Default view: platform-relevant events only. Rows with no change_type
-      // (legacy) are hidden until the operator flips "Show all types".
-      if (!e.change_type || !platformSet[e.change_type]) return false;
-    }
-    if (_auditTabData.tenantId && e.tenant_id !== _auditTabData.tenantId && e.target_id !== _auditTabData.tenantId) return false;
-    return true;
-  });
-  var count = filtered.length;
-  var total = _auditTabData.entries.length;
-  setTimeout(function() {
-    var c = document.getElementById('auditCount');
-    if (c) c.textContent = (count === total ? total + ' entries' : count + ' of ' + total);
-  }, 0);
-  return renderAuditList(filtered, _auditTabData.tenantsById);
 }
 
 // ── Top-level Plans & Modules tab (fleet-wide) ──

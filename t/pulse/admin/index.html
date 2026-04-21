@@ -647,6 +647,39 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .workflow-toggle input:checked + .workflow-toggle-slider::after{transform:translateX(16px);background:#fff;}
 .workflow-toggle-label{font-family:'Inter',sans-serif;font-size:13px;color:var(--text2);}
 @media(max-width:800px){ .workflow-grid{grid-template-columns:1fr;} }
+
+/* ══════════════════════════════════════════════════════════════════
+   R8: COMMS — full template editor, ported from CommandOS
+   ══════════════════════════════════════════════════════════════════ */
+.comms-group{margin-bottom:22px;}
+.comms-group-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.comms-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow);overflow:hidden;}
+.comms-card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;cursor:pointer;transition:background .15s;user-select:none;}
+.comms-card-header:hover{background:rgba(20,20,20,0.02);}
+.comms-card-toggle{font-family:'Inter',sans-serif;font-size:14px;color:var(--text3);transition:transform .2s;}
+.comms-card.expanded .comms-card-toggle{transform:rotate(180deg);}
+.comms-card-body{padding:0 18px 16px;display:none;}
+.comms-card.expanded .comms-card-body{display:block;}
+.comms-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.comms-card-desc{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;}
+.comms-channel-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
+.comms-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);font-weight:400;}
+.comms-badge{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text4);font-style:italic;}
+.comms-badge.overridden{color:var(--amber);font-style:normal;}
+.comms-field{margin-bottom:10px;display:flex;flex-direction:column;gap:5px;}
+.comms-field label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
+.comms-field input[type="text"]{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.comms-field textarea{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);outline:none;transition:border-color .15s;width:100%;min-height:96px;resize:vertical;line-height:1.5;}
+.comms-field input:focus,.comms-field textarea:focus{border-color:var(--amber);}
+.comms-vars{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.comms-var-chip{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;padding:3px 8px;border-radius:var(--radius-pill);background:var(--card2);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:background .15s;}
+.comms-var-chip:hover{background:var(--amber-tint);color:var(--amber);border-color:var(--amber-border);}
+.comms-var-chip.required::after{content:'*';color:var(--red);margin-left:2px;}
+.comms-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.comms-actions .form-btn{padding:7px 14px;font-size:11px;}
+.comms-preview-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);line-height:1.5;white-space:pre-wrap;display:none;}
+.comms-preview-box.show{display:block;}
+.comms-preview-subject{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:12px;}
 </style>
 </head>
 <body>
@@ -6274,25 +6307,201 @@ function _summarySection(body, title, sub, actions) {
   '</div>';
 }
 
-// ── R8: Comms ──
+// ── R8: Comms — full editor port ──
+// Lists templates from messaging.js CATALOG grouped by namespace.
+// Each card collapses/expands; Save/Reset/Preview per template.
+// Saves to communication_templates (migration 015 RLS already
+// allows tenant_owner + tenant_admin writes). Preview uses the
+// same sample-variable dictionary CommandOS uses.
+var _COMMS_SAMPLE_VARS = {
+  tenant_name: 'Acme Health', member_first_name: 'Alex', member_last_name: 'Morgan',
+  member_email: 'alex@example.com', clinician_name: 'Dr. Johnson', clinician_term: 'clinician',
+  protocol_name: 'Sleep Protocol', portal_url: 'https://app.acmehealth.com/portal',
+  support_email: 'support@acmehealth.com', sla_hours: '24',
+  consult_time: 'Tuesday at 2:00 PM ET', join_url: 'https://app.acmehealth.com/consult/abc123',
+  when: 'tomorrow at 2 PM ET',
+  denial_reason: 'Your clinician would like to review your recent labs before approving.'
+};
+
+var _commsSetupOverrides = {};
+
 function renderCommsSetup() {
   var body = document.getElementById('comms-setup-body');
-  if (!body || !window.Tenant) return;
-  db.from('communication_templates').select('id, key, channel, is_enabled', { count: 'exact' }).eq('tenant_id', window.Tenant.id)
+  if (!body) return;
+  if (!window.Messaging) { body.innerHTML = '<div style="padding:30px;color:var(--red);">messaging.js not loaded.</div>'; return; }
+  if (!window.Tenant) { body.innerHTML = '<div style="padding:30px;color:var(--red);">Tenant context not loaded.</div>'; return; }
+
+  db.from('communication_templates')
+    .select('id, key, channel, subject, body, is_enabled, cadence')
+    .eq('tenant_id', window.Tenant.id)
     .then(function(r) {
-      var rows = r.data || [];
-      var total = rows.length;
-      var enabled = rows.filter(function(x) { return x.is_enabled !== false; }).length;
-      var byChannel = { email: 0, sms: 0, push: 0 };
-      rows.forEach(function(x) { byChannel[x.channel] = (byChannel[x.channel] || 0) + 1; });
-      _summarySection(body, 'Communications', 'Tenant-specific overrides of the bundled template catalog (messaging.js). Full editor lands in a follow-up commit; today overrides are authored from CommandOS.', '');
-      document.getElementById('_summary-content').innerHTML =
-        _summaryCard('Template overrides', total, 'rows in communication_templates') +
-        _summaryCard('Enabled', enabled, (total - enabled) + ' disabled') +
-        _summaryCard('Email', byChannel.email || 0) +
-        _summaryCard('SMS', byChannel.sms || 0);
+      if (r.error) {
+        body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (r.error.message || 'Load failed') + '</div>';
+        return;
+      }
+      _commsSetupOverrides = {};
+      (r.data || []).forEach(function(row) { _commsSetupOverrides[row.key + '|' + row.channel] = row; });
+      body.innerHTML = _buildCommsSetupBody();
     }).catch(function(err) {
       body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+    });
+}
+
+function _buildCommsSetupBody() {
+  var groups = window.Messaging.GROUPS;
+  var catalog = window.Messaging.CATALOG;
+  var out = '';
+  groups.forEach(function(g) {
+    var groupTemplates = catalog.filter(function(c) { return c.group === g.key; });
+    if (groupTemplates.length === 0) return;
+    out += '<div class="comms-group">' +
+      '<div class="comms-group-title">' + _brandEscHtml(g.label) + '</div>' +
+      groupTemplates.map(_renderCommsSetupCard).join('') +
+    '</div>';
+  });
+  return out || '<div style="padding:20px;color:var(--text3);">No message templates in the catalog.</div>';
+}
+
+function _renderCommsSetupCard(entry) {
+  var ck = entry.key + '|' + entry.channel;
+  var over = _commsSetupOverrides[ck];
+  var subject = (over && over.subject != null) ? over.subject : (entry.subject || '');
+  var body    = (over && over.body    != null) ? over.body    : entry.body;
+  var isOverridden = !!over && (over.subject !== entry.subject || over.body !== entry.body);
+  var idBase = 'cs-' + entry.key.replace(/\./g, '_') + '-' + entry.channel;
+  var vars = (entry.variables || []).map(function(v) {
+    return '<span class="comms-var-chip' + (v.required ? ' required' : '') +
+      '" onclick="insertCommsSetupVar(\'' + _brandEscAttr(idBase) + '\',\'' + _brandEscAttr(v.name) + '\')">{{' + _brandEscHtml(v.name) + '}}</span>';
+  }).join('');
+  var subjectField = entry.channel === 'email'
+    ? '<div class="comms-field"><label>Subject</label>' +
+      '<input type="text" id="' + _brandEscAttr(idBase) + '-subject" value="' + _brandEscAttr(subject) + '"/></div>'
+    : '';
+  var expanded = isOverridden ? ' expanded' : '';
+  return '<div class="comms-card' + expanded + '" id="commsSetupCard-' + _brandEscAttr(idBase) + '">' +
+    '<div class="comms-card-header" onclick="toggleCommsSetupCard(\'' + _brandEscAttr(idBase) + '\')">' +
+      '<div class="comms-card-title">' + _brandEscHtml(entry.label) +
+        '<span class="comms-channel-pill">' + _brandEscHtml(entry.channel) + '</span>' +
+        '<span class="comms-key">' + _brandEscHtml(entry.key) + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span class="comms-badge' + (isOverridden ? ' overridden' : '') + '" id="' + _brandEscAttr(idBase) + '-badge">' +
+          (isOverridden ? 'Overridden' : 'Using default') + '</span>' +
+        '<span class="comms-card-toggle">▾</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="comms-card-body">' +
+      '<div class="comms-card-desc">' + _brandEscHtml(entry.description || '') + '</div>' +
+      (vars ? '<div class="comms-vars">' + vars + '</div>' : '') +
+      subjectField +
+      '<div class="comms-field"><label>Body</label>' +
+        '<textarea id="' + _brandEscAttr(idBase) + '-body">' + _brandEscHtml(body) + '</textarea></div>' +
+      '<div class="comms-actions">' +
+        '<button class="form-btn secondary" onclick="previewCommsSetupTemplate(\'' + _brandEscAttr(idBase) + '\',\'' + _brandEscAttr(entry.channel) + '\')">Preview</button>' +
+        '<button class="form-btn secondary" onclick="resetCommsSetupTemplate(\'' + _brandEscAttr(entry.key) + '\',\'' + _brandEscAttr(entry.channel) + '\')">Reset to default</button>' +
+        '<button class="form-btn primary" onclick="saveCommsSetupTemplate(\'' + _brandEscAttr(entry.key) + '\',\'' + _brandEscAttr(entry.channel) + '\')">Save</button>' +
+      '</div>' +
+      '<div class="comms-preview-box" id="' + _brandEscAttr(idBase) + '-preview"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function toggleCommsSetupCard(idBase) {
+  var c = document.getElementById('commsSetupCard-' + idBase);
+  if (c) c.classList.toggle('expanded');
+}
+
+function insertCommsSetupVar(idBase, varName) {
+  var token = '{{' + varName + '}}';
+  var active = document.activeElement;
+  var card = document.getElementById('commsSetupCard-' + idBase);
+  var target = (active && card && card.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA'))
+    ? active : document.getElementById(idBase + '-body');
+  if (!target) return;
+  var s = target.selectionStart, e = target.selectionEnd;
+  if (s == null) target.value += token;
+  else { target.value = target.value.slice(0, s) + token + target.value.slice(e); target.selectionStart = target.selectionEnd = s + token.length; }
+  target.focus();
+}
+
+function _commsInterp(tpl, vars) {
+  return String(tpl).replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, function(m, n) {
+    return Object.prototype.hasOwnProperty.call(vars, n) ? String(vars[n]) : m;
+  });
+}
+
+function previewCommsSetupTemplate(idBase, channel) {
+  var s = document.getElementById(idBase + '-subject');
+  var b = document.getElementById(idBase + '-body');
+  var p = document.getElementById(idBase + '-preview');
+  if (!b || !p) return;
+  var rendered = _commsInterp(b.value || '', _COMMS_SAMPLE_VARS);
+  var subjectRendered = s ? _commsInterp(s.value || '', _COMMS_SAMPLE_VARS) : '';
+  p.innerHTML = (channel === 'email' && subjectRendered
+    ? '<div class="comms-preview-subject">Subject: ' + _brandEscHtml(subjectRendered) + '</div>'
+    : '') + _brandEscHtml(rendered);
+  p.classList.add('show');
+}
+
+function saveCommsSetupTemplate(key, channel) {
+  if (!window.Tenant) return;
+  var idBase = 'cs-' + key.replace(/\./g, '_') + '-' + channel;
+  var s = document.getElementById(idBase + '-subject');
+  var b = document.getElementById(idBase + '-body');
+  if (!b) return;
+  var subject = s ? s.value : null, body = b.value || '';
+  var before = _commsSetupOverrides[key + '|' + channel] || null;
+
+  db.from('communication_templates').upsert({
+    tenant_id: window.Tenant.id, key: key, channel: channel,
+    subject: channel === 'email' ? subject : null, body: body
+  }, { onConflict: 'tenant_id,key,channel' }).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _commsSetupOverrides[key + '|' + channel] = r.data;
+      var badge = document.getElementById(idBase + '-badge');
+      if (badge) { badge.className = 'comms-badge overridden'; badge.textContent = 'Overridden'; }
+      showToast && showToast('Template saved.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'tenant.comms_template_updated',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: window.Tenant.id, tenant_id: window.Tenant.id,
+        change_type: 'comms',
+        before_snapshot: before ? { subject: before.subject, body: before.body } : null,
+        after_snapshot:  { subject: r.data.subject, body: r.data.body },
+        details: JSON.stringify({ source: 'tenant-admin', key: key, channel: channel })
+      }).catch(function(e){ console.warn('[admin] comms audit failed', e); });
+    })
+    .catch(function(err) {
+      console.error('[admin] comms save failed', err);
+      showToast && showToast('Save failed: ' + ((err && err.message) || 'unknown'), 'error');
+    });
+}
+
+function resetCommsSetupTemplate(key, channel) {
+  if (!window.Tenant) return;
+  if (!window.confirm('Reset this template to the bundled default? The tenant override will be deleted.')) return;
+  var before = _commsSetupOverrides[key + '|' + channel];
+  db.from('communication_templates')
+    .delete().eq('tenant_id', window.Tenant.id).eq('key', key).eq('channel', channel)
+    .then(function(r) {
+      if (r.error) throw r.error;
+      delete _commsSetupOverrides[key + '|' + channel];
+      var body = document.getElementById('comms-setup-body');
+      if (body) body.innerHTML = _buildCommsSetupBody();
+      showToast && showToast('Reset to default.', 'success');
+      return db.from('audit_logs').insert({
+        action: 'tenant.comms_template_reset',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: window.Tenant.id, tenant_id: window.Tenant.id,
+        change_type: 'comms',
+        before_snapshot: before ? { subject: before.subject, body: before.body } : null,
+        after_snapshot: null,
+        details: JSON.stringify({ source: 'tenant-admin', key: key, channel: channel })
+      }).catch(function(e){ console.warn('[admin] comms audit failed', e); });
+    })
+    .catch(function(err) {
+      showToast && showToast('Reset failed: ' + ((err && err.message) || 'unknown'), 'error');
     });
 }
 

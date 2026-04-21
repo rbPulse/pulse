@@ -6399,6 +6399,23 @@ var COMMS_SAMPLE_VARS = {
 var _commsOverrides = {}; // "key|channel" → DB row
 
 function buildCommsTab(t) {
+  // R8: full editor moved to tenant admin. CommandOS keeps a summary
+  // only. Legacy below preserved for potential operator-override use.
+  var READ_ONLY_PLACEHOLDER = true;
+  if (READ_ONLY_PLACEHOLDER) {
+    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-comms';
+    return '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Communications</div>' +
+        '<div class="brand-form-section-sub">Message templates are authored by this tenant’s admin. Click through to the tenant admin’s Setup → Communications tab when operators need to assist.</div>' +
+        '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:20px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Editor moved to tenant admin in R8.</div>' +
+      '</div>' +
+      '<div class="brand-actions">' +
+        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin →</a>' +
+      '</div>' +
+    '</div>';
+  }
+
   if (!window.Messaging) {
     return '<div class="detail-tab-placeholder">' +
       '<div class="detail-tab-placeholder-title">messaging.js not loaded</div>' +

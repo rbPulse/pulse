@@ -6878,9 +6878,9 @@ function handleSupabaseError(error, context) {
   if (isAuthError) {
     console.warn('[Pulse] Auth error in', context || 'unknown', '— signing out:', error.message);
     db.auth.signOut().then(function() {
-      window.location.href = '/?session_expired=1';
+      window.location.href = '../?session_expired=1';
     }).catch(function() {
-      window.location.href = '/?session_expired=1';
+      window.location.href = '../?session_expired=1';
     });
   } else {
     console.warn('[Pulse] Supabase error in', context || 'unknown', ':', error.message);
@@ -7547,13 +7547,13 @@ if (PREVIEW_MODE) {
 } else {
   db.auth.getSession().then(function(r) {
     if (!r.data || !r.data.session) {
-      window.location.href = '/';
+      window.location.href = '../';
       return;
     }
     _bootPortalWithTenant(r.data.session.user);
   }).catch(function(err) {
     console.warn('[Pulse] getSession failed:', err);
-    window.location.href = '/';
+    window.location.href = '../';
   });
 }
 
@@ -20297,7 +20297,7 @@ function showSkeleton(containerId, type) {
 // ── Sign out ──
 async function doSignOut() {
   await db.auth.signOut();
-  window.location.href = '/';
+  window.location.href = '../';
 }
 
 // ── Phase 9B / Phase 34: render a compact inline empty state with icon ──
@@ -20340,7 +20340,7 @@ db.auth.onAuthStateChange(function(event, session) {
   if (event === 'SIGNED_OUT') {
     var app = document.getElementById('portal-app');
     if (app && app.style.display !== 'none') {
-      window.location.href = '/?session_expired=1';
+      window.location.href = '../?session_expired=1';
     }
   }
 });

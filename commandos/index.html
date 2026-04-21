@@ -1464,13 +1464,15 @@ var CONFIG_LAYERS = [
 // admins now own in their own portal. Integrations stays because
 // credentials are platform-owned (Phase 7 security posture).
 // Diagnostics + Analytics fold into Overview in P4.
+// Final 4-tab shape post-P4. Analytics + Diagnostics folded into
+// Overview — all three were observability for the same tenant and
+// splitting them made operators hunt. Overview now renders the
+// snapshot + 30d metrics + health signals as a single stack.
 var DETAIL_TABS = [
   { key: 'overview',     label: 'Overview',      build: buildOverviewTab       },
   { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab   },
   { key: 'billing',      label: 'Subscription',  build: buildBillingTab        },
-  { key: 'audit',        label: 'Activity',      build: buildActivityTab       },
-  { key: 'analytics',    label: 'Analytics',     build: buildTenantAnalyticsTab },
-  { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab    }
+  { key: 'audit',        label: 'Activity',      build: buildActivityTab       }
 ];
 
 var _activeDetailTenant = null;
@@ -2037,9 +2039,11 @@ function renderDetailTabPanels() {
       '" id="detailPanel-' + escAttr(tab.key) + '">' + inner + '</div>';
   }).join('');
 
-  // Post-render hooks for platform-owned tabs only. Brand /
-  // Terminology / Catalog / Workflow / Comms / Compliance hooks
-  // were retired with their tabs in P2.
+  // Post-render hooks for platform-owned tabs. Overview folds in
+  // Analytics + Diagnostics (P4).
+  if (typeof afterRenderOverviewTab === 'function' && _activeDetailTab === 'overview') {
+    afterRenderOverviewTab(t);
+  }
   if (typeof afterRenderIntegrationsTab === 'function' && _activeDetailTab === 'integrations') {
     afterRenderIntegrationsTab(t);
   }
@@ -2049,11 +2053,8 @@ function renderDetailTabPanels() {
   if (typeof afterRenderActivityTab === 'function' && _activeDetailTab === 'audit') {
     afterRenderActivityTab(t);
   }
-  if (typeof afterRenderTenantAnalyticsTab === 'function' && _activeDetailTab === 'analytics') {
-    afterRenderTenantAnalyticsTab(t);
-  }
-  if (typeof afterRenderDiagnosticsTab === 'function' && _activeDetailTab === 'diagnostics') {
-    afterRenderDiagnosticsTab(t);
+  if (typeof afterRenderOverviewTab === 'function' && _activeDetailTab === 'overview') {
+    afterRenderOverviewTab(t);
   }
 }
 
@@ -2106,7 +2107,23 @@ function buildOverviewTab(t) {
           '<div class="' + stateClass + '">' + escHtml(stateTxt) + '</div>' +
         '</div>';
       }).join('') +
-    '</div>';
+    '</div>' +
+    // Folded-in Analytics + Diagnostics sections (P4). Their
+    // afterRender hooks target these container ids.
+    '<div class="detail-divider"></div>' +
+    '<div class="detail-section-title">30-day activity</div>' +
+    '<div id="tenantAnBody"><div class="an-loading">Loading analytics\u2026</div></div>' +
+    '<div class="detail-divider"></div>' +
+    '<div class="detail-section-title">Diagnostics</div>' +
+    '<div id="diagBody"><div class="comp-loading">Loading diagnostics\u2026</div></div>';
+}
+
+// Overview's afterRender dispatches to the folded-in Analytics +
+// Diagnostics renderers. Their activeDetailTab guards inside the
+// hooks were relaxed below to accept 'overview' as well.
+function afterRenderOverviewTab(t) {
+  if (typeof afterRenderTenantAnalyticsTab === 'function') afterRenderTenantAnalyticsTab(t);
+  if (typeof afterRenderDiagnosticsTab === 'function') afterRenderDiagnosticsTab(t);
 }
 
 // ── Brand tab ──
@@ -3135,7 +3152,7 @@ function afterRenderDiagnosticsTab(t) {
     safe(db.from('patient_enrollments').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('status', 'active'), 'members'),
     safe(db.from('tenant_memberships').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).in('role', ['tenant_clinician','tenant_nurse','tenant_admin','tenant_owner']), 'clinicians')
   ]).then(function(results) {
-    if (_activeDetailTab !== 'diagnostics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+    if ((_activeDetailTab !== 'diagnostics' && _activeDetailTab !== 'overview') || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
 
     _diagData.integrations = results[0] || [];
     // support count result is { count } via head:true — the raw count is on the response.
@@ -3172,7 +3189,7 @@ function afterRenderDiagnosticsTab(t) {
     }
 
     function repaint() {
-      if (_activeDetailTab !== 'diagnostics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+      if ((_activeDetailTab !== 'diagnostics' && _activeDetailTab !== 'overview') || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
       wrap.innerHTML = renderDiagnosticsBody(t);
     }
     repaint();
@@ -3332,7 +3349,7 @@ function afterRenderTenantAnalyticsTab(t) {
     data(db.from('tenant_subscriptions').select('plan_id, status, billing_cycle, current_period_end').eq('tenant_id', t.id).in('status', ['trialing','active','past_due','paused','incomplete']).limit(1)),
     data(db.from('plans').select('id, name, monthly_price, annual_price'))
   ]).then(function(results) {
-    if (_activeDetailTab !== 'analytics' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
+    if ((_activeDetailTab !== 'analytics' && _activeDetailTab !== 'overview') || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
 
     wrap.innerHTML = renderTenantAnalyticsBody(t, {
       members:      results[0],

@@ -16,7 +16,7 @@
   --card: #141414;
   --card2: #1a1a1a;
   --border: rgba(255,255,255,0.07);
-  --green: var(--brand-accent, #3a7a5c);
+  --green: #3a7a5c;
   --green-dim: rgba(58,122,92,0.1);
   --green-glow: rgba(58,122,92,0.2);
   --white: #ffffff;
@@ -726,11 +726,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:32px 40px
 .btn-outline-ritual:hover{border-color:rgba(255,255,255,0.6);color:#fff;}
 
 /* ── STANDARDS BENTO GRID ── */
-@keyframes pulse-glow{0%,100%{opacity:0.7;}50%{opacity:1.0;}}
+@keyframes standard-icon-pulse{0%,100%{opacity:0.7;}50%{opacity:1.0;}}
 .standards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;max-width:720px;margin:0 auto;}
 .standard-card{background:rgba(255,255,255,0.03);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(0,255,106,0.18);padding:32px 28px;display:flex;flex-direction:column;gap:12px;transition:border-color .3s,background .3s;}
 .standard-card:hover{background:rgba(0,255,106,0.05);border-color:rgba(0,255,106,0.4);}
-.standard-icon svg{animation:pulse-glow 1.5s ease-in-out infinite;filter:drop-shadow(0 0 8px rgba(0,255,106,0.5));}
+.standard-icon svg{animation:standard-icon-pulse 1.5s ease-in-out infinite;filter:drop-shadow(0 0 8px rgba(0,255,106,0.5));}
 .standard-label{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fff;font-weight:500;}
 .standard-body{font-size:13px;color:var(--grey);line-height:1.6;font-weight:300;}
 /* ── KIT CAROUSEL ── */
@@ -880,7 +880,7 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="nav-icon">
       <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
     </div>
-    <span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
+    <span class="nav-name">PULSE</span>
   </a>
   <ul class="nav-links">
     <li><a href="#how">How It Works</a></li>
@@ -1407,10 +1407,10 @@ document.addEventListener('DOMContentLoaded',function(){
 <!-- FOOTER -->
 <footer>
   <div class="footer-brand" style="display:flex;align-items:center;gap:10px;">
-    <div class="nav-icon" data-brand="logo-mark"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-    <span data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+    <span>PULSE</span>
   </div>
-  <div class="footer-copy" data-brand="footer-copy">© 2026 Pulse Health Technologies. All rights reserved.</div>
+  <div class="footer-copy">© 2026 Pulse Health Technologies. All rights reserved.</div>
   <div class="footer-links">
     <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a>
   </div>
@@ -2105,7 +2105,6 @@ document.addEventListener("DOMContentLoaded",function(){
   checkScroll();
 });
 </script>
-<script src="../../brand.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
@@ -2116,16 +2115,6 @@ window._sbClient.auth.getSession().then(function(r){
 });
 window._sbClient.auth.onAuthStateChange(function(event, session){
   updateNavAuth(session ? session.user : null);
-});
-
-// Pull the Pulse tenant's brand JSONB and apply via brand.js. Public
-// path: the marketing page is visited pre-session, so tenant.js (which
-// requires auth) isn't loaded. Reads .brand without RLS friction.
-window._sbClient.from('tenants').select('id, slug, name, brand').eq('slug', 'pulse').limit(1).then(function(r){
-  if (r && r.data && r.data[0]) {
-    window.Tenant = r.data[0];
-    if (window.Brand) window.Brand.apply();
-  }
 });
 </script>
 

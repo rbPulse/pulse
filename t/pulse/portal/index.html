@@ -13416,7 +13416,7 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
 
     // Build message from admin-configurable template or fall back to default
     var cfg = _automationConfigCache['welcome_message'] || {};
-    var tmpl = cfg.template || 'Welcome to Pulse, {firstName}. I\'m glad to have you on board.';
+    var tmpl = cfg.template || 'Your order is confirmed \u2014 welcome to Pulse, {firstName}. I\'m glad to have you on board.';
     var body = tmpl
       .replace(/\{firstName\}/g, firstName || 'there')
       .replace(/\{clinicianName\}/g, clName || 'your clinician')
@@ -13440,6 +13440,16 @@ async function _ensureClinicianWelcomeMessage(consumerId, clinicianId) {
 
     // Flag the profile so we don't resend on subsequent loads
     await db.from('profiles').update({ welcome_msg_sent: true }).eq('user_id', consumerId);
+
+    // Record a purchase_confirmation patient_event so the separate
+    // purchase confirmation automation treats this as already-sent
+    // and stays quiet. One auto-message per join, not two.
+    try {
+      await db.from('patient_events').insert({
+        user_id: consumerId, event_type: 'purchase_confirmation',
+        event_data: { merged_into_welcome: true }, created_by_name: 'System'
+      });
+    } catch (_) { /* non-blocking */ }
   } catch (e) {
     console.warn('[Pulse] welcome message send failed:', e && e.message);
   }
@@ -13493,9 +13503,36 @@ async function _checkInactivityNudge(userId, clinicianId) {
   var cfg = await _getAutomationConfig('inactivity_nudge');
   if (!cfg || !cfg._enabled) return;
   var daysThreshold = (cfg.days_inactive != null) ? cfg.days_inactive : 7;
-  var cutoff = new Date(Date.now() - daysThreshold * 86400000).toISOString().slice(0, 10);
-  // Check last dose log
+  var cutoffDate = new Date(Date.now() - daysThreshold * 86400000);
+  var cutoff = cutoffDate.toISOString().slice(0, 10);
   try {
+    // Baseline gate: don't nudge a brand-new member whose protocol
+    // hasn't been active long enough to reasonably expect dose logs.
+    // Uses the earliest active Rx started_at as the "when we started
+    // expecting activity" anchor, falling back to profile.created_at.
+    // If that baseline is more recent than the cutoff, the member
+    // hasn't been around long enough to be called inactive.
+    var baseline = null;
+    try {
+      var rxRes = await db.from('prescriptions').select('started_at')
+        .eq('user_id', userId).eq('status', 'active')
+        .order('started_at', { ascending: true }).limit(1);
+      if (rxRes.data && rxRes.data[0] && rxRes.data[0].started_at) {
+        baseline = new Date(rxRes.data[0].started_at);
+      }
+    } catch (_) { /* non-blocking */ }
+    if (!baseline) {
+      try {
+        var profRes = await db.from('profiles').select('created_at')
+          .eq('user_id', userId).limit(1);
+        if (profRes.data && profRes.data[0] && profRes.data[0].created_at) {
+          baseline = new Date(profRes.data[0].created_at);
+        }
+      } catch (_) { /* non-blocking */ }
+    }
+    if (baseline && baseline > cutoffDate) return; // too new to nudge
+
+    // Check last dose log
     var logRes = await db.from('dose_logs').select('dose_date')
       .eq('user_id', userId).order('dose_date', { ascending: false }).limit(1);
     if (logRes.error) return;

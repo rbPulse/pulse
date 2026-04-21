@@ -93,7 +93,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .filter-select:focus{border-color:var(--slate);}
 .filter-select option{background:var(--card);color:var(--text);}
 .toolbar-count{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);letter-spacing:0.02em;margin-left:auto;}
-.toolbar-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 18px;border-radius:var(--radius-pill);border:none;cursor:pointer;background:var(--slate);color:#fff;transition:opacity .15s;white-space:nowrap;}
+.toolbar-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:10px 18px;border-radius:var(--radius-pill);border:none;cursor:pointer;background:var(--slate);color:#fff;transition:opacity .15s;white-space:nowrap;display:inline-block;}
+.tenant-open-admin{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;color:var(--slate);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--card);transition:all .15s;white-space:nowrap;}
+.tenant-open-admin:hover{background:var(--slate-tint);border-color:var(--slate-border);color:var(--slate);}
 .toolbar-btn:hover{opacity:0.88;}
 .toolbar-btn.secondary{background:transparent;border:1px solid var(--border-strong);color:var(--text2);}
 .toolbar-btn.secondary:hover{background:rgba(20,20,20,0.04);color:var(--text);border-color:var(--text3);}
@@ -1108,10 +1110,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
                 <th class="num">Staff</th>
                 <th class="num">Patients</th>
                 <th>Created</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="clientsTbody">
-              <tr><td colspan="6" class="table-empty">Loading clients…</td></tr>
+              <tr><td colspan="7" class="table-empty">Loading clients…</td></tr>
             </tbody>
           </table>
         </div>
@@ -1399,17 +1402,18 @@ function renderClientsTable() {
 
   var tbody = document.getElementById('clientsTbody');
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No clients match.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No clients match.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(function(t) {
-    // Sandbox tenants get an inline "Onboard" shortcut that opens the
-    // detail modal directly in wizard mode. Regular row click still
-    // opens in full-view mode. stopPropagation prevents the row's
-    // onclick from firing when the button itself is clicked.
     var onboardBtn = t.lifecycle_state === 'sandbox'
       ? '<button class="toolbar-btn" style="padding:5px 14px;font-size:11px;margin-left:8px;" onclick="event.stopPropagation(); openClientDetail(\'' + escAttr(t.id) + '\', true)">Onboard →</button>'
       : '';
+    // Inline "Open admin" link — operators frequently need to see
+    // what the tenant admin sees. Rather than duplicating those
+    // surfaces inside CommandOS, this link jumps to the tenant's
+    // own admin portal in a new tab.
+    var adminLink = '<a class="tenant-open-admin" href="' + escAttr(_tenantAdminUrl(t.slug)) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Open tenant admin in a new tab">Open admin ↗</a>';
     return '<tr onclick="openClientDetail(\'' + escAttr(t.id) + '\')">' +
       '<td>' + escHtml(t.name || '--') + '</td>' +
       '<td class="mono">' + escHtml(t.slug || '--') + '</td>' +
@@ -1420,8 +1424,21 @@ function renderClientsTable() {
       '<td class="num">' + t.staff_count + '</td>' +
       '<td class="num">' + t.patient_count + '</td>' +
       '<td>' + formatDate(t.created_at) + '</td>' +
+      '<td>' + adminLink + '</td>' +
     '</tr>';
   }).join('');
+}
+
+// Compose the absolute URL for a tenant admin. Base-path aware so
+// this resolves correctly under /pulse/ on GitHub Pages project
+// hosting as well as root/dev deploys.
+function _tenantAdminUrl(slug) {
+  var base = '';
+  if (/\.github\.io$/i.test(window.location.hostname)) {
+    var m = (window.location.pathname || '').match(/^\/([^\/]+)\//);
+    if (m) base = '/' + m[1];
+  }
+  return base + '/t/' + encodeURIComponent(slug) + '/admin/';
 }
 
 // ── Client detail modal ──
@@ -2054,7 +2071,16 @@ function switchDetailTab(key) {
 }
 
 function buildOverviewTab(t) {
-  return '<div class="detail-grid">' +
+  // Primary CTA: jump into the tenant admin portal in a new tab.
+  // This is the escape hatch when an operator needs to actually see
+  // or edit the tenant's Brand / Terminology / Catalog / Workflow /
+  // Comms / Compliance config — those surfaces live in the tenant
+  // admin, not in CommandOS.
+  var cta = '<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">' +
+    '<a class="toolbar-btn primary" href="' + escAttr(_tenantAdminUrl(t.slug)) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open tenant admin ↗</a>' +
+  '</div>';
+  return cta +
+    '<div class="detail-grid">' +
       '<div class="detail-field"><div class="detail-label">Slug</div><div class="detail-value mono">' + escHtml(t.slug) + '</div></div>' +
       '<div class="detail-field"><div class="detail-label">Legal name</div><div class="detail-value">' + escHtml(t.legal_name || '--') + '</div></div>' +
       '<div class="detail-field"><div class="detail-label">Tenant ID</div><div class="detail-value mono">' + escHtml(t.id) + '</div></div>' +

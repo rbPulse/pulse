@@ -6615,8 +6615,8 @@ function _wizScreenBrand() {
       '</div>' +
     '</div>' +
     '<div class="wiz-q">' +
-      '<div class="wiz-q-label">Logo</div>' +
-      '<div class="wiz-q-help">The circular mark next to your wordmark. Optional — leave blank to use the default heartbeat icon.</div>' +
+      '<div class="wiz-q-label">Logo (optional)</div>' +
+      '<div class="wiz-q-help">A circular mark that appears alongside your wordmark. Leave blank if your wordmark image already includes the mark, or if you want a text-only brand identity.</div>' +
       '<input type="url" class="wiz-input" placeholder="https://.../logo.svg" value="' + _brandEscAttr(b.logoUrl || '') + '" oninput="_wizBrandInput(\'logoUrl\', this.value)"/>' +
     '</div>' +
     '<div class="wiz-q">' +
@@ -6673,16 +6673,13 @@ function _wizBrandPreview() {
     wordmarkHtml = '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text);">' + _brandEscHtml(wm) + '</span>';
   }
 
-  // Logo: if URL provided, render as <img>; otherwise use the default
-  // heartbeat SVG in the accent color.
-  var logoHtml;
-  if (b.logoUrl) {
-    logoHtml = '<img src="' + _brandEscAttr(b.logoUrl) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;"/>';
-  } else {
-    logoHtml = '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid ' + accentColor + ';display:flex;align-items:center;justify-content:center;">' +
-      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="' + accentColor + '" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
-    '</div>';
-  }
+  // Logo: if a URL is provided, render as <img>; otherwise show no
+  // separate logo. The heartbeat icon is Pulse's mark and shouldn't
+  // appear as a fallback for other tenants — if no logo is configured,
+  // the wordmark (text or image) carries the brand on its own.
+  var logoHtml = b.logoUrl
+    ? '<img src="' + _brandEscAttr(b.logoUrl) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;"/>'
+    : '';
 
   var supp = [];
   if (b.supportEmail) supp.push(_brandEscHtml(b.supportEmail));

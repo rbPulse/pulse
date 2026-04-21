@@ -1301,6 +1301,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle">Platform metrics and trends</div>
         </div>
 
+        <!-- R11: per-tenant operational pulse (CommandOS parity) -->
+        <div id="tenantOpsPulse" style="margin-bottom:24px;"></div>
+
         <!-- Top KPIs -->
         <div class="stat-grid">
           <div class="stat-card">
@@ -6849,13 +6852,86 @@ function saveIntegrationSetupConfig(providerKey) {
     });
 }
 
-// ── R11: Analytics (per-tenant) ──
+// ── R11: Analytics (per-tenant operational pulse) ──
+// Injects a CommandOS-parity summary (stat cards + 30-day activity
+// bars + enabled modules) above the existing Pulse analytics KPIs.
+// The existing loadAnalytics() render continues untouched below —
+// this adds the operational layer without disrupting the rich
+// business analytics already in place.
 function renderAnalyticsView() {
-  // Admin.html already has its own Analytics tab with existing data
-  // loaders (loadAnalytics* functions). This render function is
-  // wired through switchTab for consistency, but the tab's existing
-  // rendering runs untouched because the tab already has content.
-  // No-op today; full tenant analytics port is R11 carry-over.
+  var host = document.getElementById('tenantOpsPulse');
+  if (!host || !window.Tenant) return;
+  host.innerHTML = '<div style="padding:20px;color:var(--text3);">Loading operational pulse…</div>';
+  var tid = window.Tenant.id;
+  var since30 = new Date(Date.now() - 30*86400000).toISOString();
+  function count(q) { return q.then(function(r){return r.count||0;}).catch(function(){return null;}); }
+  function data(q)  { return q.then(function(r){return r.data||[];}).catch(function(){return [];}); }
+  Promise.all([
+    count(db.from('patient_enrollments').select('id',{count:'exact',head:true}).eq('tenant_id',tid).eq('status','active')),
+    count(db.from('consultations').select('id',{count:'exact',head:true}).eq('tenant_id',tid).gte('created_at',since30)),
+    count(db.from('prescriptions').select('id',{count:'exact',head:true}).eq('tenant_id',tid).gte('created_at',since30)),
+    count(db.from('support_requests').select('id',{count:'exact',head:true}).eq('tenant_id',tid).eq('status','open')),
+    count(db.from('appointments').select('id',{count:'exact',head:true}).eq('tenant_id',tid).gte('created_at',since30)),
+    count(db.from('messages').select('id',{count:'exact',head:true}).eq('tenant_id',tid).gte('created_at',since30)),
+    data(db.from('module_entitlements').select('module_key, enabled, source').eq('tenant_id',tid).eq('enabled',true))
+  ]).then(function(r){
+    host.innerHTML = _buildOpsPulseBody({
+      members: r[0], consults30: r[1], rx30: r[2], supportOpen: r[3],
+      appts30: r[4], messages30: r[5], entitlements: r[6]
+    });
+  }).catch(function(err){
+    host.innerHTML = '<div style="padding:16px;color:var(--red);">Ops pulse failed: ' + (err.message||'unknown') + '</div>';
+  });
+}
+
+function _buildOpsPulseBody(d) {
+  var fmt = function(n){return n==null?'—':String(n);};
+  var stats = '<div style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Operational pulse · last 30 days</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;">' +
+      _summaryCard('Active members', fmt(d.members), 'enrollments active') +
+      _summaryCard('Consults, 30d', fmt(d.consults30), 'new records') +
+      _summaryCard('Rx issued, 30d', fmt(d.rx30), 'new prescriptions') +
+      _summaryCard('Appointments, 30d', fmt(d.appts30), 'scheduled') +
+      _summaryCard('Messages, 30d', fmt(d.messages30), 'async volume') +
+      _summaryCard('Open support', fmt(d.supportOpen), (d.supportOpen>0?'needs attention':'none open')) +
+    '</div>';
+  var maxAct = Math.max(d.consults30||0, d.rx30||0, d.appts30||0, d.messages30||0, 1);
+  function bar(label, n, color) {
+    var pct = Math.round(((n||0) / maxAct) * 100);
+    return '<div style="display:grid;grid-template-columns:120px 1fr 60px;gap:10px;align-items:center;padding:6px 0;">' +
+      '<span style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);">' + _brandEscHtml(label) + '</span>' +
+      '<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;"></div></div>' +
+      '<span style="font-family:\'Inter\',sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:var(--text);text-align:right;">' + fmt(n) + '</span>' +
+    '</div>';
+  }
+  var activity = '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px;">' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">30-day activity</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Relative volume across core clinical + comms paths.</div>' +
+    bar('Consultations', d.consults30, 'var(--green)') +
+    bar('Prescriptions', d.rx30, 'var(--green)') +
+    bar('Appointments', d.appts30, 'var(--blue, #3b82f6)') +
+    bar('Messages', d.messages30, 'var(--blue, #3b82f6)') +
+  '</div>';
+  var bySource = { plan: [], override: [], addon: [], trial: [] };
+  (d.entitlements || []).forEach(function(e){ (bySource[e.source] || (bySource[e.source] = [])).push(e); });
+  var moduleGroups = ['plan','override','addon','trial']
+    .filter(function(s){ return bySource[s] && bySource[s].length > 0; })
+    .map(function(s){
+      return '<div style="margin-bottom:8px;">' +
+        '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-right:10px;min-width:70px;">' + _brandEscHtml(s) + '</span>' +
+        bySource[s].map(function(e){
+          var m = window.Modules && window.Modules.forKey ? window.Modules.forKey(e.module_key) : null;
+          return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text2);margin-right:4px;margin-bottom:4px;">' + _brandEscHtml(m ? m.label : e.module_key) + '</span>';
+        }).join('') +
+      '</div>';
+    }).join('');
+  if (!moduleGroups) moduleGroups = '<div style="font-size:12px;color:var(--text3);">No modules enabled for this tenant yet.</div>';
+  var modules = '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">Enabled modules</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Grouped by source — plan / addon / override / trial.</div>' +
+    moduleGroups +
+  '</div>';
+  return stats + activity + modules;
 }
 
 // ── R12: Activity (per-tenant audit timeline) ──

@@ -6724,31 +6724,108 @@ function _compLicensesSection() {
   '</div>';
 }
 
-// ── R10: Integrations ──
-// Reads the tenant_integrations_public view via the SECURITY DEFINER
-// RPC from migration 016 so tenant admins see status + config but
-// never the credentials.
+// ── R10: Integrations — config editor (non-secret only) ──
+// Reads status + config via the non-secret RPC. Tenant admins can
+// edit config fields (mode, webhook paths, toggles) per provider
+// via migration 023's RLS + column guard. Credentials stay
+// platform-only — contact operator to add or rotate.
+
+var _intSetupRows = {};
+
 function renderIntegrationsSetup() {
   var body = document.getElementById('integrations-setup-body');
-  if (!body || !window.Tenant) return;
-  db.rpc('tenant_integrations_for_my_tenants')
+  if (!body || !window.Tenant || !window.Integrations) return;
+  db.rpc('tenant_integrations_for_my_tenants').then(function(r) {
+    var rows = (r.data || []).filter(function(x){return x.tenant_id === window.Tenant.id;});
+    _intSetupRows = {};
+    rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+    body.innerHTML = _buildIntegrationsSetupBody();
+  }).catch(function(err) {
+    body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+  });
+}
+
+function _buildIntegrationsSetupBody() {
+  var providers = window.Integrations.PROVIDERS || [];
+  var categories = window.Integrations.CATEGORIES || [];
+  var out = '';
+  categories.forEach(function(cat) {
+    var catProviders = providers.filter(function(p){return p.category === cat.key;});
+    var rendered = catProviders.filter(function(p){return _intSetupRows[p.key];});
+    if (rendered.length === 0) return;
+    out += '<div class="comms-group">' +
+      '<div class="comms-group-title">' + _brandEscHtml(cat.label) + '</div>' +
+      rendered.map(_renderIntegrationSetupCard).join('') +
+    '</div>';
+  });
+  if (!out) out = '<div style="padding:20px;color:var(--text3);font-size:12px;">No integrations provisioned yet. Contact your CommandOS operator to enable a provider.</div>';
+  return out;
+}
+
+function _renderIntegrationSetupCard(provider) {
+  var row = _intSetupRows[provider.key];
+  var status = row.status;
+  var config = row.config || {};
+  var statusColor = status === 'connected' ? 'var(--green)' : (status === 'error' ? 'var(--red)' : 'var(--text3)');
+  var configFields = (provider.config || []).map(function(f) {
+    var val = config[f.name] != null ? config[f.name] : f.default;
+    var input;
+    if (f.type === 'bool') {
+      input = '<label class="workflow-toggle"><input type="checkbox" id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '"' + (val ? ' checked' : '') + '/><span class="workflow-toggle-slider"></span><span class="workflow-toggle-label">' + (val ? 'On' : 'Off') + '</span></label>';
+    } else if (f.type === 'enum') {
+      input = '<select id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '">' +
+        (f.options || []).map(function(o) { return '<option value="' + _brandEscAttr(o.value) + '"' + (o.value === val ? ' selected' : '') + '>' + _brandEscHtml(o.label) + '</option>'; }).join('') +
+      '</select>';
+    } else {
+      input = '<input type="text" id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '" value="' + _brandEscAttr(val != null ? String(val) : '') + '" placeholder="' + _brandEscAttr(f.placeholder || '') + '"/>';
+    }
+    return '<div class="brand-form-field"><label>' + _brandEscHtml(f.label) + '</label>' + input +
+      (f.description ? '<div class="brand-help">' + _brandEscHtml(f.description) + '</div>' : '') + '</div>';
+  }).join('');
+  return '<div class="comms-card expanded">' +
+    '<div class="comms-card-header">' +
+      '<div class="comms-card-title">' + _brandEscHtml(provider.label) +
+        '<span style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:' + statusColor + ';">' + _brandEscHtml(status) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="comms-card-body" style="display:block;">' +
+      '<div class="comms-card-desc">' + _brandEscHtml(provider.description || '') + '</div>' +
+      (configFields
+        ? '<div class="brand-form-grid" data-provider-key="' + provider.key + '">' + configFields + '</div>' +
+          '<div class="comms-actions"><button class="form-btn primary" onclick="saveIntegrationSetupConfig(\'' + provider.key + '\')">Save config</button></div>'
+        : '<div style="font-size:11px;color:var(--text3);">No configurable options.</div>') +
+    '</div>' +
+  '</div>';
+}
+
+function saveIntegrationSetupConfig(providerKey) {
+  if (!window.Tenant) return;
+  var row = _intSetupRows[providerKey];
+  if (!row) return;
+  var provider = window.Integrations.forKey(providerKey);
+  if (!provider) return;
+  var nextConfig = {};
+  provider.config.forEach(function(f) {
+    var el = document.getElementById('_intCfg-' + providerKey + '-' + f.name);
+    if (!el) return;
+    nextConfig[f.name] = f.type === 'bool' ? !!el.checked : el.value;
+  });
+  db.from('tenant_integrations').update({ config: nextConfig }).eq('id', row.id).select().single()
     .then(function(r) {
-      var rows = (r.data || []).filter(function(x) { return x.tenant_id === window.Tenant.id; });
-      var connected = rows.filter(function(x) { return x.status === 'connected'; }).length;
-      var errored = rows.filter(function(x) { return x.status === 'error'; }).length;
-      _summarySection(body, 'Integrations', 'Status + non-secret config of external providers connected to this tenant. Credentials remain in CommandOS; contact your operator to connect a new provider.', '');
-      var rowsHtml = rows.length === 0
-        ? '<div style="padding:16px;background:var(--card);border:1px dashed var(--border-strong);border-radius:10px;color:var(--text3);font-size:12px;">No integrations provisioned yet.</div>'
-        : rows.map(function(x) {
-            var color = x.status === 'connected' ? 'var(--green)' : (x.status === 'error' ? 'var(--red)' : 'var(--text3)');
-            return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;"><span style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:var(--text);">' + _brandEscHtml(x.provider) + '</span><span style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:' + color + ';">' + _brandEscHtml(x.status) + '</span></div>';
-          }).join('');
-      document.getElementById('_summary-content').style.display = 'flex';
-      document.getElementById('_summary-content').style.flexDirection = 'column';
-      document.getElementById('_summary-content').style.gap = '6px';
-      document.getElementById('_summary-content').innerHTML = rowsHtml;
+      if (r.error) throw r.error;
+      _intSetupRows[providerKey] = r.data;
+      showToast && showToast('Config saved.', 'success');
+      db.from('audit_logs').insert({
+        action: 'tenant.integration_config_updated',
+        actor_id: currentUserId, actor_email: currentUserEmail,
+        target_id: window.Tenant.id, tenant_id: window.Tenant.id,
+        change_type: 'integration',
+        before_snapshot: { provider: providerKey, config: row.config },
+        after_snapshot:  { provider: providerKey, config: nextConfig },
+        details: JSON.stringify({ source: 'tenant-admin' })
+      }).catch(function(){});
     }).catch(function(err) {
-      body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
+      showToast && showToast('Save failed: ' + (err.message || 'unknown'), 'error');
     });
 }
 

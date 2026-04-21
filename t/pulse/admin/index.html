@@ -754,25 +754,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <svg viewBox="0 0 24 24"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z"/></svg>
           <span class="sidebar-item-label">Getting Started</span>
         </div>
-        <div class="sidebar-item" id="nav-setup-brand" onclick="switchTab('setup-brand')">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>
-          <span class="sidebar-item-label">Brand</span>
-        </div>
-        <div class="sidebar-item" id="nav-setup-terminology" onclick="switchTab('setup-terminology')">
-          <svg viewBox="0 0 24 24"><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><path d="M9 21h6"/><path d="M12 3v18"/></svg>
-          <span class="sidebar-item-label">Terminology</span>
-        </div>
         <div class="sidebar-item" id="nav-setup-catalog" onclick="switchTab('setup-catalog')">
           <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
           <span class="sidebar-item-label">Catalog</span>
-        </div>
-        <div class="sidebar-item" id="nav-setup-workflow" onclick="switchTab('setup-workflow')">
-          <svg viewBox="0 0 24 24"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 5h10"/><path d="M19 7v10"/><path d="M5 7v10a2 2 0 0 0 2 2h10"/></svg>
-          <span class="sidebar-item-label">Workflow</span>
-        </div>
-        <div class="sidebar-item" id="nav-setup-comms" onclick="switchTab('setup-comms')">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span class="sidebar-item-label">Communications</span>
         </div>
         <div class="sidebar-item" id="nav-setup-compliance" onclick="switchTab('setup-compliance')">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -845,22 +829,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle">Pick a starting template tailored to your clinic type. Applying one seeds terminology, workflow, comms, compliance, and catalog in a single shot. You can always reapply or switch to reset from here.</div>
         </div>
         <div id="setup-wizard-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading wizard…</div></div>
-      </div>
-
-      <div class="admin-tab" id="tab-setup-brand">
-        <div class="tab-header">
-          <div class="tab-title">Brand</div>
-          <div class="tab-subtitle">Wordmark, logo, favicon, accent colour, sender identity, support contacts, footer copy. Changes persist to this tenant&rsquo;s brand config and flow into the downstream portals.</div>
-        </div>
-        <div id="brand-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading brand…</div></div>
-      </div>
-
-      <div class="admin-tab" id="tab-setup-terminology">
-        <div class="tab-header">
-          <div class="tab-title">Terminology</div>
-          <div class="tab-subtitle">Rename the nouns your tenant uses. Overrides flow into the downstream portals via the shared terminology helper.</div>
-        </div>
-        <div id="terminology-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading terminology…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-catalog">
@@ -938,22 +906,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="cat-mgr-list" id="catMgrList"></div>
           <button type="button" class="cfg-cat-manage-btn" id="catMgrArchiveToggle" onclick="toggleCatMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
         </div>
-      </div>
-
-      <div class="admin-tab" id="tab-setup-workflow">
-        <div class="tab-header">
-          <div class="tab-title">Workflow</div>
-          <div class="tab-subtitle">Intake, consult, refill, SLA, assignment, follow-up. Auto-rendered from <code>workflow.js</code> — editing a rule here changes how the downstream portals behave.</div>
-        </div>
-        <div id="workflow-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading workflow…</div></div>
-      </div>
-
-      <div class="admin-tab" id="tab-setup-comms">
-        <div class="tab-header">
-          <div class="tab-title">Communications</div>
-          <div class="tab-subtitle">Email / SMS / push templates. Overrides flow through <code>messaging.js</code> at send time.</div>
-        </div>
-        <div id="comms-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading communications…</div></div>
       </div>
 
       <div class="admin-tab" id="tab-setup-compliance">
@@ -1899,10 +1851,22 @@ function initAdmin(user, profile) {
 
 // ── Tab switching ──
 function switchTab(tabId) {
-  // Auto-route clicks into Setup → Brand through the wizard when the
-  // tenant has no configuration yet, so new admins hit the template
-  // picker instead of an empty Brand form. Admins can still navigate
-  // to Getting Started manually any time to re-seed / experiment.
+  // Legacy redirects: Brand / Terminology / Workflow / Communications
+  // were retired as standalone sidebar items in V3. Everything they
+  // used to surface now lives in Setup → Getting Started (the wizard
+  // dashboard). Any lingering deep links or JS calls route through.
+  var legacyToFocus = {
+    'setup-brand':       'brand',
+    'setup-terminology': 'language',
+    'setup-workflow':    'workflow',
+    'setup-comms':       'comms'
+  };
+  if (legacyToFocus[tabId]) {
+    window._wizardMode = 'focus';
+    window._wizardFocusStep = legacyToFocus[tabId];
+    tabId = 'setup-wizard';
+  }
+  // Auto-route empty-config tenants into the wizard too.
   if (typeof _autoRouteSetupIfEmpty === 'function') {
     tabId = _autoRouteSetupIfEmpty(tabId);
   }
@@ -1917,11 +1881,7 @@ function switchTab(tabId) {
 
   // Setup-tab lazy-loaders. Each Setup pane renders on first entry.
   if (tabId === 'setup-wizard'      && typeof renderSetupWizard      === 'function') renderSetupWizard();
-  if (tabId === 'setup-brand'       && typeof renderBrandSetup       === 'function') renderBrandSetup();
-  if (tabId === 'setup-terminology' && typeof renderTerminologySetup === 'function') renderTerminologySetup();
   if (tabId === 'setup-catalog'     && typeof renderCatalogSetup     === 'function') renderCatalogSetup();
-  if (tabId === 'setup-workflow'    && typeof renderWorkflowSetup    === 'function') renderWorkflowSetup();
-  if (tabId === 'setup-comms'       && typeof renderCommsSetup       === 'function') renderCommsSetup();
   if (tabId === 'setup-compliance'  && typeof renderComplianceSetup  === 'function') renderComplianceSetup();
   if (tabId === 'setup-integrations'&& typeof renderIntegrationsSetup=== 'function') renderIntegrationsSetup();
   if (tabId === 'subscription'      && typeof renderSubscriptionView === 'function') renderSubscriptionView();
@@ -7071,7 +7031,8 @@ var _DASHBOARD_CARDS = [
   { key:'workflow',   title:'Workflow',     icon:'M4 6h16 M4 12h10 M4 18h16', summary:function(t){ return _summarizeWorkflow(t); } },
   { key:'comms',      title:'Messages',     icon:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', summary:function(t){ return _summarizeComms(t); } },
   { key:'territory',  title:'Territory',    icon:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M2 12h20 M12 2c3 3 5 7 5 10s-2 7-5 10c-3-3-5-7-5-10s2-7 5-10', summary:function(t){ return _summarizeTerritory(t); } },
-  { key:'brand',      title:'Brand',        icon:'M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z', summary:function(t){ return _summarizeBrand(t); } }
+  { key:'brand',      title:'Brand',        icon:'M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z', summary:function(t){ return _summarizeBrand(t); } },
+  { key:'advanced',   title:'Advanced settings', icon:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z', summary:function(t){ return _summarizeAdvanced(t); } }
 ];
 
 function _renderDashboardMode() {
@@ -7205,6 +7166,30 @@ function _summarizeBrand(t) {
   return parts.length ? parts.join(' · ') : '<span class="wiz-tile-muted">Using default brand.</span>';
 }
 
+function _summarizeAdvanced(t) {
+  // Highlight any advanced customizations so the admin knows when
+  // there's something worth opening. Advanced = anything the main
+  // wizard doesn't surface (terminology keys beyond the 3 core,
+  // full workflow schema overrides, full per-template comms).
+  var term = t.terminology || {};
+  var core = { member:1, members:1, clinician:1, clinicians:1, protocol:1, protocols:1 };
+  var extraTerm = Object.keys(term).filter(function(k){ return !core[k]; }).length;
+  var wf = t.workflow || {};
+  var wfKeys = 0;
+  Object.keys(wf).forEach(function(section) {
+    if (wf[section] && typeof wf[section] === 'object') wfKeys += Object.keys(wf[section]).length;
+  });
+  // Subtract the 4 wizard-covered workflow keys (consult.policy,
+  // refill.eligibility_days_before_runout, intake.required,
+  // follow_up.cadence_days) as a best-effort "how much beyond core".
+  var extraWf = Math.max(0, wfKeys - 4);
+  var parts = [];
+  if (extraTerm > 0) parts.push('<strong>' + extraTerm + '</strong> advanced terminology');
+  if (extraWf   > 0) parts.push('<strong>' + extraWf + '</strong> advanced workflow');
+  if (parts.length === 0) return '<span class="wiz-tile-muted">Full terminology, full workflow schema, per-template comms.</span>';
+  return parts.join(' · ');
+}
+
 // ══════════════════════════════════════════════════════════════════
 // Focus mode — edit a single section without the stepper chrome.
 // Save commits ONLY that section's slice via apply_wizard_answers
@@ -7217,13 +7202,16 @@ var _FOCUS_STEP_LABEL = {
   workflow:   'Workflow',
   comms:      'Messages',
   territory:  'Territory',
-  brand:      'Brand'
+  brand:      'Brand',
+  advanced:   'Advanced settings'
 };
 
 function _renderFocusMode(stepKey) {
-  // Pull fresh state for this step from the current tenant so the
-  // focus editor shows what's actually in effect, not stale wizard
-  // answers from a prior session.
+  // Advanced renders its own layout (embeds deep editors that aren't
+  // wizard screens). Everything else uses the normal single-section
+  // focus view.
+  if (stepKey === 'advanced') return _renderAdvancedFocus();
+
   _wizardSyncAnswersForFocus(stepKey);
 
   var body = '';
@@ -7255,6 +7243,54 @@ function _renderFocusMode(stepKey) {
       '</div>' +
     '</div>';
 }
+
+// Advanced focus view — embeds the deep (pre-wizard) editors inline
+// so admins can reach the full terminology schema, full workflow
+// schema, and per-template communications editor without the
+// sidebar shortcuts that V3 retired. Each embed calls the same
+// render function the standalone Setup pages used to call; the
+// host containers are the same DOM IDs those functions target,
+// so no changes are needed in the underlying forms.
+function _renderAdvancedFocus() {
+  // Queue each deep editor to run after the DOM mounts.
+  setTimeout(function() {
+    if (typeof renderTerminologySetup === 'function') renderTerminologySetup();
+    if (typeof renderWorkflowSetup    === 'function') renderWorkflowSetup();
+    if (typeof renderCommsSetup       === 'function') renderCommsSetup();
+  }, 0);
+
+  return '<style>' + _WIZARD_CSS + _DASHBOARD_CSS + _ADVANCED_CSS + '</style>' +
+    '<div class="wiz-focus-head">' +
+      '<button type="button" class="wiz-focus-back" onclick="_wizardReturnToDashboard()">&larr; Back to dashboard</button>' +
+      '<div class="wiz-focus-crumb">Editing <strong>Advanced settings</strong></div>' +
+    '</div>' +
+    '<div class="wiz-adv-intro">' +
+      'Full editors for everything the wizard dashboard trims for clarity — the 20+ remaining terminology nouns, the complete workflow schema, and per-template communications editing. Each section saves independently via its own form.' +
+    '</div>' +
+    '<details class="wiz-adv-section" open>' +
+      '<summary><span>Terminology (all nouns)</span><span class="wiz-adv-chev">&or;</span></summary>' +
+      '<div id="terminology-setup-body" class="wiz-adv-body"></div>' +
+    '</details>' +
+    '<details class="wiz-adv-section">' +
+      '<summary><span>Workflow (full schema)</span><span class="wiz-adv-chev">&or;</span></summary>' +
+      '<div id="workflow-setup-body" class="wiz-adv-body"></div>' +
+    '</details>' +
+    '<details class="wiz-adv-section">' +
+      '<summary><span>Communications (per-template)</span><span class="wiz-adv-chev">&or;</span></summary>' +
+      '<div id="comms-setup-body" class="wiz-adv-body"></div>' +
+    '</details>';
+}
+
+var _ADVANCED_CSS = [
+  '.wiz-adv-intro{font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);line-height:1.55;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;}',
+  '.wiz-adv-section{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}',
+  '.wiz-adv-section summary{cursor:pointer;padding:16px 20px;font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;justify-content:space-between;align-items:center;list-style:none;user-select:none;}',
+  '.wiz-adv-section summary::-webkit-details-marker{display:none;}',
+  '.wiz-adv-section summary:hover{background:var(--card2);}',
+  '.wiz-adv-chev{font-family:\'Inter\',sans-serif;font-size:16px;color:var(--text3);transition:transform .15s;}',
+  '.wiz-adv-section[open] .wiz-adv-chev{transform:rotate(180deg);}',
+  '.wiz-adv-body{padding:6px 20px 20px;border-top:1px solid var(--border);}'
+].join('');
 
 // Populate wizard answer state for the section about to be edited
 // from the current tenant's live config. Prevents editors from

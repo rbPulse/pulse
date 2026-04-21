@@ -28,7 +28,11 @@
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
-  --border:rgba(255,255,255,0.06);--green:#3a7a5c;--green-dim:rgba(58,122,92,0.1);
+  --border:rgba(255,255,255,0.06);
+  /* Primary accent falls back to Pulse green; brand.js sets
+     --brand-accent at <html> when the tenant has a custom accent. */
+  --green: var(--brand-accent, #3a7a5c);
+  --green-dim:rgba(58,122,92,0.1);
   --green-glow:rgba(58,122,92,0.2);--white:#ffffff;
   --grey:rgba(255,255,255,0.65);--grey2:rgba(255,255,255,0.42);
 }
@@ -2153,7 +2157,7 @@ body.member-mode{
   --m-bg:#F7F5EF;--m-bg2:#F3F0E8;--m-card:#FBFAF6;
   --m-border:rgba(20,20,20,0.06);
   --m-text:#111111;--m-text2:#6B6F6B;--m-text3:#8A8F8A;
-  --m-green:#2F6F55;--m-green-tint:rgba(47,111,85,0.10);--m-green-border:rgba(47,111,85,0.25);
+  --m-green: var(--brand-accent, #2F6F55);--m-green-tint:rgba(47,111,85,0.10);--m-green-border:rgba(47,111,85,0.25);
   --m-shadow:0 2px 8px rgba(20,20,20,0.04),0 1px 2px rgba(20,20,20,0.02);
   --m-shadow-lg:0 4px 20px rgba(20,20,20,0.06),0 1px 3px rgba(20,20,20,0.03);
   --m-radius:20px;--m-radius-sm:14px;--m-radius-btn:12px;
@@ -3281,7 +3285,7 @@ body.member-mode [style*="color-scheme:dark"]{color-scheme:light !important;}
 body.clinician-mode{
   --cl-bg:#EFF1EE;--cl-high:#ECEEE9;--cl-mid:#E4E7E3;--cl-low:#DBE0DA;--cl-inner:#DBE0DA;--cl-sidebar:#E2E6E0;
   --cl-border:rgba(0,0,0,0.12);--cl-text:#111111;--cl-text2:rgba(0,0,0,0.65);--cl-text3:rgba(0,0,0,0.5);
-  --cl-green:#1DB954;
+  --cl-green: var(--brand-accent, #1DB954);
   --cl-shadow-high:0 12px 32px rgba(0,0,0,0.08);
   --cl-shadow-mid:0 4px 14px rgba(0,0,0,0.04);
   background:var(--cl-bg);color:var(--cl-text);font-family:'Inter',sans-serif;font-weight:400;

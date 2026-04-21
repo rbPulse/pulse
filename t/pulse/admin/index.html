@@ -24,7 +24,7 @@
   --border:rgba(20,20,20,0.08);--border-strong:rgba(20,20,20,0.14);
   --text:#111111;--text2:#4a4e4a;--text3:#6B6F6B;--text4:#8A8F8A;
   --green:#2F6F55;--green-tint:rgba(47,111,85,0.10);--green-border:rgba(47,111,85,0.25);
-  --amber:#92710a;--amber-tint:rgba(234,179,8,0.10);--amber-border:rgba(234,179,8,0.30);
+  --amber: var(--brand-accent, #92710a);--amber-tint:rgba(234,179,8,0.10);--amber-border:rgba(234,179,8,0.30);
   --blue:#3b6fc8;--blue-tint:rgba(59,111,200,0.10);--blue-border:rgba(59,111,200,0.25);
   --red:#c14a4a;--red-tint:rgba(193,74,74,0.08);--red-border:rgba(193,74,74,0.25);
   --shadow:0 2px 8px rgba(20,20,20,0.04),0 1px 2px rgba(20,20,20,0.02);
@@ -1784,16 +1784,6 @@ function applyTenantBrand() {
   document.title = roleNoun + ' | ' + wordmark;
 
   if (window.Brand) window.Brand.apply();
-
-  // Back-compat amber slot: shared applier sets --brand-accent-*; the
-  // admin stylesheet still references --amber-*. Keep both in sync
-  // until the CSS sweep (step 4) migrates admin off the amber names.
-  if (brand.accent_color && /^#[0-9a-fA-F]{6}$/.test(brand.accent_color) && window.Brand) {
-    var hex = brand.accent_color;
-    document.documentElement.style.setProperty('--amber',        hex);
-    document.documentElement.style.setProperty('--amber-tint',   window.Brand._hexToRgba(hex, 0.10));
-    document.documentElement.style.setProperty('--amber-border', window.Brand._hexToRgba(hex, 0.30));
-  }
 }
 
 function _adminHexToRgba(hex, alpha) {

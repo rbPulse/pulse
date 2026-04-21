@@ -80,16 +80,11 @@
     root.style.setProperty('--brand-accent-tint',   hexToRgba(hex, 0.10));
     root.style.setProperty('--brand-accent-border', hexToRgba(hex, 0.30));
     root.style.setProperty('--brand-accent-glow',   hexToRgba(hex, 0.35));
-    // Back-compat: admin portal's amber slot and member portal's
-    // green slot both honor the tenant accent when it's set, so the
-    // accent takes effect without a CSS rewrite on every downstream
-    // page. Portals that want to keep their native color override
-    // --brand-accent in their own CSS.
-    if (document.body && document.body.classList.contains('admin-mode')) {
-      root.style.setProperty('--amber',        hex);
-      root.style.setProperty('--amber-tint',   hexToRgba(hex, 0.10));
-      root.style.setProperty('--amber-border', hexToRgba(hex, 0.30));
-    }
+    // Each portal's CSS declares its native primary color as
+    //   --green: var(--brand-accent, <hardcoded>);
+    // so the accent cascades automatically. No per-portal shim
+    // needed here — if an accent is set it replaces the primary;
+    // otherwise the fallback keeps the default look.
   }
 
   function applyWordmark(el, brand) {

@@ -107,41 +107,63 @@
   }
 
   // data-brand="logo-mark" lives on the circular brand-mark container
-  // in each portal's nav. Rendering rules:
-  //   1. tenant has logo_url       → replace innerHTML with <img>
-  //   2. tenant.slug === 'pulse'   → no-op (keep the default heartbeat
-  //                                  SVG the page baked in — it's Pulse's own mark)
-  //   3. otherwise                 → render initials from the wordmark
-  //                                  (e.g. "Acme Health" → "AH"). If there's
-  //                                  no wordmark either, hide the container
-  //                                  so we don't flash Pulse's icon for a
-  //                                  tenant that hasn't set up a mark.
-  function applyLogoMark(el, brand) {
-    if (brand.logo_url) {
-      el.innerHTML = '<img src="' + escHtml(brand.logo_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-      el.removeAttribute('data-brand-empty');
-      return;
-    }
+  // in each portal's nav (and the loading screens). Rendering rules
+  // use the RAW tenant brand (not the CommandOS-augmented version)
+  // to decide what to paint:
+  //
+  //   1. tenant configured logo_url → replace innerHTML with <img>
+  //   2. tenant.slug === 'pulse' OR no tenant customization at all
+  //      → no-op (keep the baked-in heartbeat SVG). Pulse is its own
+  //        brand; non-Pulse tenants that haven't customized fall
+  //        back to CommandOS, which uses the same heartbeat mark
+  //        today — so no-op is the right call for both.
+  //   3. non-Pulse tenant WITH a custom wordmark but no logo_url
+  //      → render initials ("Acme Health" → "AH") in the brand
+  //        accent color
+  function applyLogoMark(el) {
+    var rawBrand = (window.Tenant && window.Tenant.brand) || {};
     var slug = (window.Tenant && window.Tenant.slug) || '';
-    if (slug === 'pulse') {
-      // Pulse tenant keeps its native heartbeat. No-op.
+    if (rawBrand.logo_url) {
+      el.innerHTML = '<img src="' + escHtml(rawBrand.logo_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
       return;
     }
-    var wm = (brand.wordmark || '').trim();
-    if (wm) {
-      var initials = wm.split(/\s+/).map(function(w){ return w.charAt(0).toUpperCase(); }).slice(0, 2).join('');
-      el.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0;color:var(--brand-accent, currentColor);">' + escHtml(initials) + '</span>';
-      el.removeAttribute('data-brand-empty');
-    } else {
-      // No logo, no wordmark — collapse the container to avoid showing
-      // Pulse's heartbeat mark to a tenant that hasn't set anything up.
-      el.style.display = 'none';
-      el.setAttribute('data-brand-empty', 'true');
+    if (slug === 'pulse' || !rawBrand.wordmark) {
+      // Pulse keeps its heartbeat. Any other tenant without a
+      // customized wordmark gets the CommandOS fallback, which —
+      // since CommandOS currently uses the heartbeat too — is also
+      // a no-op. Once CommandOS gets its own distinct visual mark,
+      // this branch should swap in that mark.
+      return;
     }
+    var wm = rawBrand.wordmark.trim();
+    var initials = wm.split(/\s+/).map(function(w){ return w.charAt(0).toUpperCase(); }).slice(0, 2).join('');
+    el.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:1.1em;font-weight:700;letter-spacing:0;color:var(--brand-accent, currentColor);">' + escHtml(initials) + '</span>';
+  }
+
+  // CommandOS platform fallback: non-Pulse tenants with no customized
+  // brand should see CommandOS (the platform) as the visual identity,
+  // not Pulse (which is just tenant #1). Customized values always
+  // win; this only fills gaps.
+  var COMMANDOS_FALLBACK = {
+    wordmark:     'COMMANDOS',
+    accent_color: '#3A4A5C' // slate, same as commandos/index.html's tokens
+  };
+
+  function _effectiveBrand(rawBrand, slug) {
+    if (!slug || slug === 'pulse') return rawBrand;
+    // Only fill gaps — tenant customizations always win.
+    var merged = {};
+    // Start from raw so all configured values pass through.
+    for (var k in rawBrand) { if (rawBrand.hasOwnProperty(k)) merged[k] = rawBrand[k]; }
+    if (!merged.wordmark && !merged.wordmark_image_url) merged.wordmark = COMMANDOS_FALLBACK.wordmark;
+    if (!merged.accent_color) merged.accent_color = COMMANDOS_FALLBACK.accent_color;
+    return merged;
   }
 
   function applyTo(root) {
-    var brand = (window.Tenant && window.Tenant.brand) || {};
+    var rawBrand = (window.Tenant && window.Tenant.brand) || {};
+    var slug = (window.Tenant && window.Tenant.slug) || '';
+    var brand = _effectiveBrand(rawBrand, slug);
     var scope = root || document;
 
     applyAccent(brand.accent_color);
@@ -158,7 +180,7 @@
           applyLogo(el, brand);
           break;
         case 'logo-mark':
-          applyLogoMark(el, brand);
+          applyLogoMark(el);
           break;
         case 'legal-name':
           el.textContent = brand.legal_name || el.getAttribute('data-brand-default') || '';

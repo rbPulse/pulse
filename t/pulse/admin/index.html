@@ -5594,15 +5594,16 @@ document.addEventListener('visibilitychange', function() {
 // uploader code too.
 // ══════════════════════════════════════════════════════════════════
 var BRAND_FIELDS_DEFAULT = {
-  wordmark:      '',
-  accent_color:  '',
-  sender_email:  '',
-  sender_name:   '',
-  support_email: '',
-  support_phone: '',
-  footer_copy:   '',
-  logo_url:      '',
-  favicon_url:   ''
+  wordmark:           '',
+  wordmark_image_url: '',
+  accent_color:       '',
+  sender_email:       '',
+  sender_name:        '',
+  support_email:      '',
+  support_phone:      '',
+  footer_copy:        '',
+  logo_url:           '',
+  favicon_url:        ''
 };
 
 function renderBrandSetup() {
@@ -5645,22 +5646,33 @@ function buildBrandSetupForm(t) {
     '</div>' +
 
     // Identity
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Identity</div>' +
-      '<div class="brand-form-section-sub">Shown in nav headers and across the downstream portals. Wordmark replaces the default name; legal name appears in footers and compliance surfaces.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field">' +
-          '<label for="brandWordmark">Wordmark</label>' +
-          '<input type="text" id="brandWordmark" value="' + _brandEscAttr(b.wordmark) + '" placeholder="ACME" maxlength="32"/>' +
-          '<div class="brand-help">Kept in caps and letter-spaced in the nav.</div>' +
+    (function() {
+      var mode = b.wordmark_image_url ? 'image' : 'text';
+      return '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Identity</div>' +
+        '<div class="brand-form-section-sub">Shown in nav headers and across the downstream portals. Wordmark replaces the default name; legal name appears in footers and compliance surfaces.</div>' +
+        '<div class="brand-form-field full" style="margin-bottom:14px;">' +
+          '<label>Wordmark</label>' +
+          '<div role="tablist" style="display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;">' +
+            '<button type="button" role="tab" class="brand-wm-tab' + (mode==='text'?' active':'') + '" data-mode="text"  onclick="_brandSwitchWordmarkMode(\'text\')"  style="padding:6px 14px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;border:0;background:' + (mode==='text'?'var(--amber-tint, rgba(146,113,10,0.1))':'transparent') + ';color:var(--text);cursor:pointer;">Text</button>' +
+            '<button type="button" role="tab" class="brand-wm-tab' + (mode==='image'?' active':'') + '" data-mode="image" onclick="_brandSwitchWordmarkMode(\'image\')" style="padding:6px 14px;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;border:0;background:' + (mode==='image'?'var(--amber-tint, rgba(146,113,10,0.1))':'transparent') + ';color:var(--text);cursor:pointer;border-left:1px solid var(--border);">Image</button>' +
+          '</div>' +
+          '<div id="brandWordmarkTextPane" style="' + (mode==='image'?'display:none;':'') + '">' +
+            '<input type="text" id="brandWordmark" value="' + _brandEscAttr(b.wordmark) + '" placeholder="ACME" maxlength="32"/>' +
+            '<div class="brand-help">Kept in caps and letter-spaced in the nav.</div>' +
+          '</div>' +
+          '<div id="brandWordmarkImagePane" style="' + (mode==='text'?'display:none;':'') + '">' +
+            '<input type="text" id="brandWordmarkImageUrl" value="' + _brandEscAttr(b.wordmark_image_url) + '" placeholder="https://…/wordmark.svg"/>' +
+            '<div class="brand-help">Paste a URL to a horizontal wordmark graphic (SVG/PNG). Transparent background recommended; will be sized to ~1.4em tall in nav.</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="brand-form-field">' +
+        '<div class="brand-form-field full">' +
           '<label for="brandLegalName">Legal name</label>' +
           '<input type="text" id="brandLegalName" value="' + _brandEscAttr(t.legal_name || '') + '" placeholder="Acme Health, Inc."/>' +
-          '<div class="brand-help">Full legal entity name.</div>' +
+          '<div class="brand-help">Full legal entity name — shown in footers and compliance surfaces.</div>' +
         '</div>' +
-      '</div>' +
-    '</div>' +
+      '</div>';
+    })() +
 
     // Accent
     '<div class="brand-form-section">' +
@@ -5757,25 +5769,51 @@ function wireBrandSetupForm() {
     });
   }
   // Live preview: every displayable field repaints on input
-  ['brandWordmark','brandSupportEmail','brandSupportPhone','brandFooterCopy','brandLogoUrl','brandFaviconUrl']
+  ['brandWordmark','brandWordmarkImageUrl','brandSupportEmail','brandSupportPhone','brandFooterCopy','brandLogoUrl','brandFaviconUrl']
     .forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('input', updateBrandPreview);
     });
 }
 
+// Toggle text vs image mode for the wordmark field. Flips visibility
+// on the two panes + updates pill styles. When the user switches to
+// text mode, clear the image URL and vice versa so whichever mode is
+// active is the only one that persists on Save.
+function _brandSwitchWordmarkMode(mode) {
+  var textPane  = document.getElementById('brandWordmarkTextPane');
+  var imagePane = document.getElementById('brandWordmarkImagePane');
+  if (!textPane || !imagePane) return;
+  textPane.style.display  = mode === 'image' ? 'none' : '';
+  imagePane.style.display = mode === 'text'  ? 'none' : '';
+  var tabs = document.querySelectorAll('.brand-wm-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    var active = tabs[i].getAttribute('data-mode') === mode;
+    tabs[i].classList.toggle('active', active);
+    tabs[i].style.background = active ? 'var(--amber-tint, rgba(146,113,10,0.1))' : 'transparent';
+  }
+  updateBrandPreview();
+}
+
 function updateBrandPreview() {
   var preview = document.getElementById('brandPreview');
   if (!preview) return;
 
-  var wordmark = (document.getElementById('brandWordmark').value || '').trim() || 'PULSE';
+  var wordmark   = (document.getElementById('brandWordmark').value || '').trim() || 'PULSE';
+  var wordmarkImg = (document.getElementById('brandWordmarkImageUrl') || {}).value || '';
+  var imagePaneVisible = document.getElementById('brandWordmarkImagePane') && document.getElementById('brandWordmarkImagePane').style.display !== 'none';
   var hex      = (document.getElementById('brandAccentHex').value || '').trim();
   var logoUrl  = (document.getElementById('brandLogoUrl').value || '').trim();
   var supEmail = (document.getElementById('brandSupportEmail').value || '').trim();
   var supPhone = (document.getElementById('brandSupportPhone').value || '').trim();
   var footer   = (document.getElementById('brandFooterCopy').value || '').trim();
 
-  document.getElementById('brandPreviewWordmark').textContent = wordmark;
+  var wmEl = document.getElementById('brandPreviewWordmark');
+  if (imagePaneVisible && wordmarkImg.trim()) {
+    wmEl.innerHTML = '<img src="' + _brandEscAttr(wordmarkImg.trim()) + '" alt="' + _brandEscAttr(wordmark) + '" style="max-height:18px;width:auto;vertical-align:middle;"/>';
+  } else {
+    wmEl.textContent = wordmark;
+  }
 
   if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
     preview.style.setProperty('--brand-preview-accent',        hex);
@@ -5810,7 +5848,9 @@ function saveBrandSetup() {
   if (!window.Tenant) return;
   var t = window.Tenant;
 
-  var wordmark      = document.getElementById('brandWordmark').value.trim();
+  var wordmark          = document.getElementById('brandWordmark').value.trim();
+  var wordmarkImageUrl  = (document.getElementById('brandWordmarkImageUrl') || {}).value || '';
+  var imagePaneVisible  = document.getElementById('brandWordmarkImagePane') && document.getElementById('brandWordmarkImagePane').style.display !== 'none';
   var legalName     = document.getElementById('brandLegalName').value.trim();
   var accentHex     = document.getElementById('brandAccentHex').value.trim();
   var senderEmail   = document.getElementById('brandSenderEmail').value.trim();
@@ -5821,15 +5861,21 @@ function saveBrandSetup() {
   var faviconUrl    = document.getElementById('brandFaviconUrl').value.trim();
   var footerCopy    = document.getElementById('brandFooterCopy').value;
 
+  // Only persist whichever wordmark mode is active, so saving under
+  // image mode doesn't leave a stale text value (and vice versa).
+  var wordmarkImg = imagePaneVisible ? wordmarkImageUrl.trim() : '';
+
   _brandErr('');
   if (accentHex && !/^#[0-9a-fA-F]{6}$/.test(accentHex))                     { _brandErr('Accent color must be a 6-digit hex like #92710A.'); return; }
   if (senderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail))        { _brandErr('Sender email looks malformed.'); return; }
   if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail))      { _brandErr('Support email looks malformed.'); return; }
   if (logoUrl && !/^https?:\/\//i.test(logoUrl))                             { _brandErr('Logo URL must start with http:// or https://.'); return; }
   if (faviconUrl && !/^https?:\/\//i.test(faviconUrl))                       { _brandErr('Favicon URL must start with http:// or https://.'); return; }
+  if (wordmarkImg && !/^https?:\/\//i.test(wordmarkImg))                     { _brandErr('Wordmark image URL must start with http:// or https://.'); return; }
 
   var nextBrand = Object.assign({}, t.brand || {}, {
     wordmark: wordmark,
+    wordmark_image_url: wordmarkImg,
     accent_color: accentHex ? accentHex.toUpperCase() : '',
     sender_email: senderEmail,
     sender_name:  senderName,

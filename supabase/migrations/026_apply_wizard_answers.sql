@@ -123,6 +123,7 @@ DECLARE
   v_auto            record;
   v_n_regions       int := 0;
   v_n_comms         int := 0;
+  v_rows            int := 0;
 BEGIN
   IF v_caller IS NULL THEN
     RAISE EXCEPTION 'authentication required';
@@ -274,7 +275,8 @@ BEGIN
           FROM comms_tone_templates
          WHERE automation_key = v_auto.auto_key AND tone = v_tone
          LIMIT 1;
-        GET DIAGNOSTICS v_n_comms = v_n_comms + ROW_COUNT;
+        GET DIAGNOSTICS v_rows = ROW_COUNT;
+        v_n_comms := v_n_comms + v_rows;
       ELSE
         UPDATE communication_templates SET
           body = (SELECT template FROM comms_tone_templates WHERE automation_key = v_auto.auto_key AND tone = v_tone LIMIT 1),

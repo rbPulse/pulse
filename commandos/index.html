@@ -1539,37 +1539,21 @@ window.addEventListener('beforeunload', function(e) {
 // dynamically rather than tracking state in a separate column — a
 // tenant config that's been filled in IS the completion state; no
 // risk of the flag drifting from the data.
+// Onboarding wizard: 3 operator steps. Everything a tenant admin
+// owns — Brand, Terminology, Catalog, Workflow, Comms, Integrations
+// (config), Compliance — lives in their Getting Started wizard at
+// /t/{slug}/admin/. CommandOS only handles the platform-level
+// setup: identity, plan + subscription, and the Live handoff.
 var WIZARD_STEPS = [
-  { key: 'basics',       label: 'Basics',        tab: 'overview',
+  { key: 'basics',  label: 'Basics',  tab: 'overview',
     completed: function(t) { return !!(t.name && t.slug && t.legal_name); },
-    hint: 'Legal name set + slug confirmed + lifecycle chosen.' },
-  { key: 'brand',        label: 'Brand',         tab: 'brand',
-    completed: function(t) { return !!(t.brand && (t.brand.wordmark || t.brand.logo_url)); },
-    hint: 'Wordmark or logo configured.' },
-  { key: 'terminology',  label: 'Terminology',   tab: 'terminology',
-    completed: function(t) { return !!(t.terminology && Object.keys(t.terminology).length > 0); },
-    hint: 'At least one term overridden from the defaults.' },
-  { key: 'catalog',      label: 'Catalog',       tab: 'catalog',
-    completed: function(t) { return t._catalogOk === true; /* filled by loadClients extension */ },
-    hint: 'At least one active protocol scoped to this tenant.' },
-  { key: 'workflow',     label: 'Workflow',      tab: 'workflow',
-    completed: function(t) { return !!(t.workflow && Object.keys(t.workflow).length > 0); },
-    hint: 'Workflow rules saved at least once.' },
-  { key: 'comms',        label: 'Communications', tab: 'comms',
-    completed: function(t) { return t._commsOk === true; },
-    hint: 'At least one template override persisted OR defaults reviewed.' },
-  { key: 'integrations', label: 'Integrations',  tab: 'integrations',
-    completed: function(t) { return t._integrationsOk === true; },
-    hint: 'At least one provider connected (typically Stripe for billable tenants).' },
-  { key: 'compliance',   label: 'Compliance',    tab: 'compliance',
-    completed: function(t) { return t._complianceOk === true; },
-    hint: 'At least one operating state + primary location set.' },
-  { key: 'billing',      label: 'Billing',       tab: 'billing',
+    hint: 'Legal name + slug + lifecycle.' },
+  { key: 'billing', label: 'Plan',    tab: 'billing',
     completed: function(t) { return t._billingOk === true; },
-    hint: 'A plan assigned with an active subscription.' },
-  { key: 'launch',       label: 'Launch',        tab: null,
+    hint: 'Plan assigned with an active subscription.' },
+  { key: 'launch',  label: 'Launch',  tab: null,
     completed: function(t) { return t.lifecycle_state === 'live'; },
-    hint: 'All pre-flight checks pass; lifecycle moved to Live.' }
+    hint: 'Promote to Live — tenant admin takes over from here.' }
 ];
 
 function openClientDetail(tenantId, startInWizard) {
@@ -1703,11 +1687,11 @@ function applyWizardModeUI() {
   }
 }
 
-// Pull async completion signals for steps whose completeness can't be
-// read off the tenant row alone. Writes the result back to the cached
-// tenant object as `_catalogOk` / `_commsOk` / `_integrationsOk` /
-// `_complianceOk` / `_billingOk` booleans — the wizard step predicates
-// read these flags.
+// Probes the only async completion signal the trimmed wizard cares
+// about: whether the tenant has an active subscription. Catalog /
+// comms / integrations / compliance checks retired with the
+// step-by-step wizard — those now belong to tenant admin's own
+// Getting Started flow.
 function probeWizardCompletion(t) {
   function flag(key, value) {
     t[key] = value;
@@ -1715,29 +1699,6 @@ function probeWizardCompletion(t) {
       renderWizard();
     }
   }
-
-  db.from('protocol_templates').select('id', { count: 'exact', head: true })
-    .eq('tenant_id', t.id).eq('is_archived', false)
-    .then(function(r) { flag('_catalogOk', (r.count || 0) > 0); })
-    .catch(function() {});
-
-  db.from('communication_templates').select('id', { count: 'exact', head: true })
-    .eq('tenant_id', t.id)
-    .then(function(r) { flag('_commsOk', (r.count || 0) > 0); })
-    .catch(function() {});
-
-  db.from('tenant_integrations').select('id', { count: 'exact', head: true })
-    .eq('tenant_id', t.id).eq('status', 'connected')
-    .then(function(r) { flag('_integrationsOk', (r.count || 0) > 0); })
-    .catch(function() {});
-
-  Promise.all([
-    db.from('tenant_regions').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('is_allowed', true),
-    db.from('tenant_locations').select('id', { count: 'exact', head: true }).eq('tenant_id', t.id).eq('is_primary', true).eq('is_archived', false)
-  ]).then(function(r) {
-    flag('_complianceOk', (r[0].count || 0) > 0 && (r[1].count || 0) > 0);
-  }).catch(function() {});
-
   db.from('tenant_subscriptions').select('id', { count: 'exact', head: true })
     .eq('tenant_id', t.id).in('status', ['active','trialing'])
     .then(function(r) { flag('_billingOk', (r.count || 0) > 0); })
@@ -1852,14 +1813,14 @@ function renderLaunchStep(t) {
     cta = '<div class="launch-ready-card">' +
       '<div>' +
         '<div class="launch-ready-title">Tenant is Live</div>' +
-        '<div class="launch-ready-sub">Onboarding complete. Future changes are safe to make from the regular tabbed view.</div>' +
+        '<div class="launch-ready-sub">Onboarding complete. The tenant admin owns configuration from here — Brand, Terminology, Catalog, Workflow, Comms, Compliance all live in their Getting Started wizard at /t/' + escHtml(t.slug) + '/admin/.</div>' +
       '</div>' +
     '</div>';
   } else if (ready) {
     cta = '<div class="launch-ready-card">' +
       '<div>' +
         '<div class="launch-ready-title">Ready to launch</div>' +
-        '<div class="launch-ready-sub">All ' + checks.length + ' pre-flight checks pass. Activating moves this tenant from sandbox to Live and makes it billable and user-facing.</div>' +
+        '<div class="launch-ready-sub">Basics + plan are set. Activating moves this tenant from Sandbox to Live, makes it billable, and opens the tenant admin portal so the tenant’s team can finish configuration (brand, catalog, workflow, etc.) themselves.</div>' +
       '</div>' +
       '<button class="launch-activate-btn" onclick="activateTenant()">Activate</button>' +
     '</div>';
@@ -1867,7 +1828,7 @@ function renderLaunchStep(t) {
     cta = '<div class="launch-ready-card notready">' +
       '<div>' +
         '<div class="launch-ready-title">' + incomplete + ' step' + (incomplete === 1 ? '' : 's') + ' remaining</div>' +
-        '<div class="launch-ready-sub">Resolve the items flagged above before activating. Each step links back to the relevant form.</div>' +
+        '<div class="launch-ready-sub">Finish the items flagged above before activating.</div>' +
       '</div>' +
       '<button class="launch-activate-btn" disabled>Activate</button>' +
     '</div>';
@@ -1875,7 +1836,7 @@ function renderLaunchStep(t) {
 
   return '<div class="tab-header">' +
       '<div class="tab-title">Launch</div>' +
-      '<div class="tab-subtitle">Pre-flight checklist. Every item must pass before the tenant can move from Sandbox to Live.</div>' +
+      '<div class="tab-subtitle">Two platform-level steps before Live: basics + plan. Everything else the tenant configures themselves.</div>' +
     '</div>' +
     list +
     cta;

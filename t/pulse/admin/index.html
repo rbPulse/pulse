@@ -7373,7 +7373,7 @@ function saveBrandSetup() {
         before_snapshot: { brand: t._brandBefore || null, legal_name: t._legalNameBefore || null },
         after_snapshot:  { brand: nextBrand, legal_name: legalName || null },
         details: JSON.stringify({ source: 'tenant-admin' })
-      }).catch(function(e){ console.warn('[admin] brand audit failed', e); });
+      }).then(function(){}, function(e){ console.warn('[admin] brand audit failed', e); });
     })
     .catch(function(err) {
       btn.disabled = false;
@@ -8156,7 +8156,7 @@ function toggleRegionSetup(state) {
       action: 'tenant.region_toggled', actor_id: currentUserId, actor_email: currentUserEmail,
       target_id: tid, tenant_id: tid, change_type: 'compliance',
       details: JSON.stringify({ source: 'tenant-admin', state: state, action: next.action, is_allowed: next.is_allowed })
-    }).catch(function(){});
+    }).then(function(){}, function(){});
   }).catch(function(err) {
     showToast && showToast('Region change failed: ' + (err.message || 'unknown'), 'error');
   });
@@ -8221,7 +8221,7 @@ function _compSaveLoc() {
       action: 'tenant.location_added', actor_id: currentUserId, actor_email: currentUserEmail,
       target_id: tid, tenant_id: tid, change_type: 'compliance',
       details: JSON.stringify({ source: 'tenant-admin', location_id: r.data.id })
-    }).catch(function(){});
+    }).then(function(){}, function(){});
   }).catch(function(err) {
     showToast && showToast('Save failed: ' + (err.message || 'unknown'), 'error');
   });

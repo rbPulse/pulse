@@ -3490,7 +3490,7 @@ function diagResendInvite() {
     target_id: t.id, tenant_id: t.id,
     change_type: 'lifecycle',
     details: JSON.stringify({ note: 'stub; actual send lands with Phase 6' })
-  }).catch(function(e){ console.warn(e); });
+  }).then(function(){}, function(e){ console.warn(e); });
 }
 
 function diagResetWorkflow() {
@@ -5109,7 +5109,7 @@ function updateSubscription(subId) {
         action: 'tenant.subscription_updated',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ plan_id: planId, cycle: cycle, status: status })
-      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] audit write failed', e); });
     })
     .catch(function(err) { showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error'); });
 }
@@ -5133,7 +5133,7 @@ function cancelSubscription(subId) {
         action: 'tenant.subscription_canceled',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ subscription_id: subId })
-      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] audit write failed', e); });
     })
     .catch(function(err) { showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error'); });
 }
@@ -5210,7 +5210,7 @@ function toggleModuleEntitlement(moduleKey, enabled) {
         action: 'tenant.module_entitlement_changed',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ module_key: moduleKey, enabled: enabled, source: source })
-      }).catch(function(e){ console.warn('[platform] audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] audit write failed', e); });
     })
     .catch(function(err) {
       showToast('Failed: ' + ((err && err.message) || 'unknown'), 'error');
@@ -5409,7 +5409,7 @@ function toggleRegionState(state) {
       actor_email: currentUserEmail,
       target_id: t.id,
       details: JSON.stringify({ state: state, action: next.action, is_allowed: next.is_allowed == null ? null : next.is_allowed })
-    }).catch(function(e){ console.warn('[platform] region audit write failed', e); });
+    }).then(function(){}, function(e){ console.warn('[platform] region audit write failed', e); });
   }).catch(function(err) {
     console.error('[platform] region toggle failed', err);
     showToast('Region change failed: ' + ((err && err.message) || 'unknown'), 'error');
@@ -5625,8 +5625,8 @@ function saveLocation() {
     return db.from('audit_logs').insert({
       action: action, actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
       details: JSON.stringify({ location_id: r.data.id, name: name, is_primary: isPrimary })
-    }).catch(function(e){ console.warn('[platform] location audit write failed', e); });
-  }).catch(function(err) {
+    }).then(function(){}, function(e){ console.warn('[platform] location audit write failed', e); });
+  }).then(function(){}, function(err) {
     console.error('[platform] location save failed', err);
     setLocationError((err && err.message) || 'Save failed.');
   });
@@ -5673,7 +5673,7 @@ function archiveLocation(locId) {
         action: 'tenant.location_archived',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ location_id: locId })
-      }).catch(function(e){ console.warn('[platform] location audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] location audit write failed', e); });
     })
     .catch(function(err) {
       console.error('[platform] location archive failed', err);
@@ -5894,7 +5894,7 @@ function saveConsent() {
         action: 'tenant.consent_version_added',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ consent_id: r.data.id, key: key, version: nextVersion })
-      }).catch(function(e){ console.warn('[platform] consent audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] consent audit write failed', e); });
     })
     .catch(function(err) {
       console.error('[platform] consent save failed', err);
@@ -5927,7 +5927,7 @@ function flipConsentArchive(id, archive) {
         action: archive ? 'tenant.consent_archived' : 'tenant.consent_unarchived',
         actor_id: currentUserId, actor_email: currentUserEmail, target_id: t.id,
         details: JSON.stringify({ consent_id: id })
-      }).catch(function(e){ console.warn('[platform] consent audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] consent audit write failed', e); });
     })
     .catch(function(err) {
       console.error('[platform] consent archive failed', err);
@@ -6344,7 +6344,7 @@ function disconnectIntegration(providerKey) {
         actor_email: currentUserEmail,
         target_id: t.id,
         details: JSON.stringify({ provider: providerKey })
-      }).catch(function(e){ console.warn('[platform] integration audit write failed', e); });
+      }).then(function(){}, function(e){ console.warn('[platform] integration audit write failed', e); });
     })
     .catch(function(err) {
       console.error('[platform] integration disconnect failed', err);

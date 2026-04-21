@@ -287,16 +287,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cc-count-pill.good{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
 .cc-count-pill.warn{background:var(--amber-tint);border-color:var(--amber-border);color:var(--amber);}
 .cc-count-pill.bad{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
-/* Per-column filter inputs live below the header label in every
-   sortable table. Shared across the workload + needs-attention
-   tables; add .admin-th-filter for the input, .admin-th-label for
-   the non-sortable label variant, .admin-th-filter-spacer for
-   columns that opt out (keeps row height consistent). */
-.admin-th-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);display:block;}
-.admin-th-filter{display:block;width:100%;margin-top:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:'Inter',sans-serif;font-size:11px;color:var(--text);box-sizing:border-box;transition:border-color .15s;font-weight:400;letter-spacing:0;text-transform:none;}
-.admin-th-filter:focus{outline:none;border-color:var(--amber);}
-.admin-th-filter::placeholder{color:var(--text4);}
-.admin-th-filter-spacer{visibility:hidden;height:26px;padding:0;border:0;}
+/* Per-column filter (Option B): small magnifier icon beside each
+   sortable header. Click opens a body-level popover with the filter
+   input. Shared across every table using _adminSortThead. */
+.admin-th-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);}
+.admin-th-inner{display:inline-flex;align-items:center;gap:6px;}
+.admin-th-filter-btn{background:none;border:0;padding:2px 4px;cursor:pointer;color:var(--text4);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s, background .15s;position:relative;}
+.admin-th-filter-btn:hover{color:var(--text2);background:var(--card2);}
+.admin-th-filter-btn.active{color:var(--amber);}
+.admin-th-filter-btn.active::after{content:"";position:absolute;top:0;right:0;width:5px;height:5px;border-radius:50%;background:var(--amber);}
+
+.admin-filter-popover{position:absolute;z-index:9000;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:8px;display:flex;align-items:center;gap:6px;min-width:220px;}
+.admin-filter-popover-input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);box-sizing:border-box;}
+.admin-filter-popover-input:focus{outline:none;border-color:var(--amber);}
+.admin-filter-popover-clear{background:none;border:0;padding:4px 8px;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);cursor:pointer;border-radius:6px;}
+.admin-filter-popover-clear:hover{color:var(--text);background:var(--card2);}
 .cc-row-pinned{box-shadow:inset 3px 0 0 var(--red);}
 .cc-row-sub{font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:0.04em;margin-top:2px;}
 .cc-capacity-bar{margin-top:6px;width:100%;max-width:120px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden;}
@@ -1650,18 +1655,20 @@ function _adminSortThead(tableId, cols) {
         '" onclick="_adminSortToggle(\'' + tableId + '\',\'' + c.key + '\')">' +
         _adminSortEsc(c.label) + '<span class="admin-sort-ind">' + arrow + '</span></button>';
     }
-    // Per-column filter input: rendered for every filterable
-    // column (default true). On each keystroke it updates state and
-    // triggers a full rerender; focus is restored by the renderer
-    // via data-filter-table / data-filter-col attrs.
+    // Per-column filter: small magnifier icon beside the sort
+    // arrow. Click opens a popover with the filter input. Icon
+    // renders with an active dot when a filter is applied.
     var filterBlock = '';
-    if (anyFilterable && c.filterable !== false) {
-      var val = filters[c.key] || '';
-      filterBlock = '<input type="text" class="admin-th-filter" placeholder="Filter" value="' + _adminSortEsc(val) + '" data-filter-table="' + _adminSortEsc(tableId) + '" data-filter-col="' + _adminSortEsc(c.key) + '" oninput="_adminSetColFilter(\'' + tableId + '\',\'' + c.key + '\', this.value)"/>';
-    } else if (anyFilterable) {
-      filterBlock = '<div class="admin-th-filter admin-th-filter-spacer"></div>';
+    if (c.filterable !== false) {
+      var hasFilter = (filters[c.key] && filters[c.key].length > 0);
+      filterBlock = '<button type="button" class="admin-th-filter-btn' + (hasFilter ? ' active' : '') +
+        '" data-filter-table="' + _adminSortEsc(tableId) + '" data-filter-col="' + _adminSortEsc(c.key) + '"' +
+        ' onclick="event.stopPropagation();_adminOpenFilterMenu(this,\'' + tableId + '\',\'' + c.key + '\')"' +
+        ' title="Filter this column">' +
+        '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>' +
+      '</button>';
     }
-    return '<th' + style + '>' + labelBlock + filterBlock + '</th>';
+    return '<th' + style + '><div class="admin-th-inner">' + labelBlock + filterBlock + '</div></th>';
   }).join('');
 }
 
@@ -1713,6 +1720,84 @@ function _adminRestoreFilterFocus(captured) {
   try {
     if (captured.start !== null) el.setSelectionRange(captured.start, captured.end);
   } catch (_) {}
+}
+
+// ── Column filter popover (Option B) ───────────────────────────────
+// Single body-level popover reused across every table. Positioned
+// under the icon button that opens it. Closes on click-outside, on
+// Escape, and on scroll/resize (simpler than repositioning).
+
+var _adminFilterPopoverInit = false;
+var _adminFilterPopoverTable = null;
+var _adminFilterPopoverCol = null;
+
+function _adminEnsureFilterPopover() {
+  if (_adminFilterPopoverInit) return;
+  _adminFilterPopoverInit = true;
+  var el = document.createElement('div');
+  el.id = 'adminFilterPopover';
+  el.className = 'admin-filter-popover';
+  el.style.display = 'none';
+  el.innerHTML =
+    '<input type="text" class="admin-filter-popover-input" placeholder="Filter..." ' +
+      'oninput="_adminFilterPopoverInput(this.value)" ' +
+      'onkeydown="if(event.key===\'Escape\'){_adminCloseFilterMenu();}"/>' +
+    '<button type="button" class="admin-filter-popover-clear" onclick="_adminFilterPopoverClear()">Clear</button>';
+  document.body.appendChild(el);
+  document.addEventListener('click', function(e) {
+    var pop = document.getElementById('adminFilterPopover');
+    if (!pop || pop.style.display === 'none') return;
+    if (pop.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.admin-th-filter-btn')) return;
+    _adminCloseFilterMenu();
+  });
+  window.addEventListener('scroll', _adminCloseFilterMenu, true);
+  window.addEventListener('resize', _adminCloseFilterMenu);
+}
+
+function _adminOpenFilterMenu(btn, tableId, colKey) {
+  _adminEnsureFilterPopover();
+  var pop = document.getElementById('adminFilterPopover');
+  if (!pop) return;
+  // Toggle off if re-opening the same column.
+  if (pop.style.display === 'block' && _adminFilterPopoverTable === tableId && _adminFilterPopoverCol === colKey) {
+    _adminCloseFilterMenu();
+    return;
+  }
+  _adminFilterPopoverTable = tableId;
+  _adminFilterPopoverCol   = colKey;
+  var filters = _adminTableFilters[tableId] || {};
+  var input = pop.querySelector('input');
+  input.value = filters[colKey] || '';
+
+  var rect = btn.getBoundingClientRect();
+  pop.style.display = 'block';
+  pop.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+  pop.style.left = (rect.left + window.scrollX - 6) + 'px';
+
+  setTimeout(function(){ input.focus(); input.select(); }, 0);
+}
+
+function _adminCloseFilterMenu() {
+  var pop = document.getElementById('adminFilterPopover');
+  if (pop) pop.style.display = 'none';
+  _adminFilterPopoverTable = null;
+  _adminFilterPopoverCol   = null;
+}
+
+function _adminFilterPopoverInput(val) {
+  if (!_adminFilterPopoverTable || !_adminFilterPopoverCol) return;
+  _adminSetColFilter(_adminFilterPopoverTable, _adminFilterPopoverCol, val);
+}
+
+function _adminFilterPopoverClear() {
+  if (!_adminFilterPopoverTable || !_adminFilterPopoverCol) return;
+  var table = _adminFilterPopoverTable;
+  var col = _adminFilterPopoverCol;
+  _adminSetColFilter(table, col, '');
+  var pop = document.getElementById('adminFilterPopover');
+  if (pop) pop.querySelector('input').value = '';
+  // Keep popover open so admin can type a new value if they want.
 }
 
 // Load the active tenant's config before booting the admin UI so page

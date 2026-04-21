@@ -293,6 +293,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cc-row-sub{font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:0.04em;margin-top:2px;}
 .cc-capacity-bar{margin-top:6px;width:100%;max-width:120px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden;}
 .cc-capacity-fill{height:100%;border-radius:2px;transition:width .25s;}
+.cw-row-clickable{cursor:pointer;transition:background .15s;}
+.cw-row-clickable:hover{background:var(--amber-tint);}
 .cc-status-pill{display:inline-block;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:var(--radius-pill);border:1px solid transparent;white-space:nowrap;}
 .cc-status-pill.available{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
 .cc-status-pill.active{background:rgba(20,20,20,0.04);border-color:var(--border-strong);color:var(--text2);}
@@ -1013,6 +1015,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </table>
           </div>
         </div>
+
+        <!-- Clinician Workload: detail drawer -->
+        <div id="cwDetailBackdrop" class="detail-panel-backdrop" onclick="_cwCloseDetail()"></div>
+        <div id="cwDetailPanel" class="detail-panel" style="max-width:680px;"></div>
 
         <!-- Phase D: Pipeline with time range toggle -->
         <div class="cc-section">
@@ -3951,8 +3957,8 @@ function renderClinicianQueues(errorMsg) {
       nameSubtitle = '<div class="cc-row-sub" style="color:var(--text4);">No open work</div>';
     }
 
-    var rowClass = (r.status === 'overloaded') ? 'cc-row-pinned' : '';
-    return '<tr class="' + rowClass + '">' +
+    var rowClass = (r.status === 'overloaded') ? 'cc-row-pinned cw-row-clickable' : 'cw-row-clickable';
+    return '<tr class="' + rowClass + '" onclick="_cwOpenDetail(\'' + r.userId + '\')">' +
       '<td style="font-weight:600;">' + escHtml(r.name) + nameSubtitle + '</td>' +
       '<td>' + caseStr + bullet + '</td>' +
       '<td><span class="' + openClass + '">' + r.open + '</span></td>' +
@@ -3960,6 +3966,135 @@ function renderClinicianQueues(errorMsg) {
       '<td>' + slaStr + '</td>' +
     '</tr>';
   }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Clinician detail drawer (C3). Opens when an admin clicks a row
+// in the workload table. Shows the row's high-level stats, an
+// open-queue breakdown by type, recent decisions (last 10 from
+// audit_logs), and state licensure when available.
+// ══════════════════════════════════════════════════════════════════
+
+function _cwFindRow(userId) {
+  for (var i = 0; i < _clinicianQueueRows.length; i++) {
+    if (_clinicianQueueRows[i].userId === userId) return _clinicianQueueRows[i];
+  }
+  return null;
+}
+
+function _cwOpenDetail(userId) {
+  var row = _cwFindRow(userId);
+  var panel = document.getElementById('cwDetailPanel');
+  var backdrop = document.getElementById('cwDetailBackdrop');
+  if (!row || !panel || !backdrop) return;
+
+  // Show with a loading skeleton so the panel appears immediately.
+  panel.innerHTML = _cwDetailShell(row, '<div style="padding:28px;text-align:center;color:var(--text3);font-size:12px;">Loading details…</div>');
+  panel.classList.add('show');
+  backdrop.classList.add('show');
+  document.addEventListener('keydown', _cwEscListener);
+
+  var since30d = new Date(Date.now() - 30 * 86400000).toISOString();
+  Promise.all([
+    db.from('consultations').select('id, user_id, consultation_type, review_status, created_at, data').eq('assigned_clinician_id', userId).eq('review_status', 'pending_review').order('created_at', { ascending: true }),
+    db.from('consultations').select('id, user_id, review_status, created_at, updated_at').eq('assigned_clinician_id', userId).in('review_status', ['prescribed','not_prescribed']).gte('updated_at', since30d).order('updated_at', { ascending: false }).limit(10),
+    db.from('clinician_state_licenses').select('state, expires_date, is_active').eq('user_id', userId).eq('is_active', true).then(function(r){return r;}).catch(function(){return { data: [] };})
+  ]).then(function(results) {
+    var open = results[0].data || [];
+    var recent = results[1].data || [];
+    var licenses = (results[2] && results[2].data) || [];
+    panel.innerHTML = _cwDetailShell(row, _cwDetailBody(row, open, recent, licenses));
+  }).catch(function(err) {
+    panel.innerHTML = _cwDetailShell(row, '<div style="padding:28px;color:var(--red);font-size:12px;">Detail load failed: ' + escHtml((err && err.message) || 'unknown') + '</div>');
+  });
+}
+
+function _cwCloseDetail() {
+  var panel = document.getElementById('cwDetailPanel');
+  var backdrop = document.getElementById('cwDetailBackdrop');
+  if (panel) panel.classList.remove('show');
+  if (backdrop) backdrop.classList.remove('show');
+  document.removeEventListener('keydown', _cwEscListener);
+}
+
+var _cwEscListener = function(e) { if (e.key === 'Escape') _cwCloseDetail(); };
+
+function _cwDetailShell(r, bodyHtml) {
+  var statusLabel = { overloaded:'Overloaded', active:'Active', away:'Away', off:'Off', idle:'Idle' }[r.status] || r.status;
+  var statusColor = { overloaded:'var(--red)', active:'var(--text2)', away:'var(--amber)', off:'var(--text3)', idle:'var(--text3)' }[r.status] || 'var(--text2)';
+  return '<div class="detail-panel-header">' +
+    '<div>' +
+      '<div class="detail-panel-title">' + escHtml(r.name) + '</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:' + statusColor + ';margin-top:2px;">' + escHtml(statusLabel) + '</div>' +
+    '</div>' +
+    '<button class="detail-close" onclick="_cwCloseDetail()">Close</button>' +
+  '</div>' +
+  bodyHtml;
+}
+
+function _cwDetailBody(r, open, recent, licenses) {
+  var slaColor = r.slaPct == null ? 'var(--text3)' : r.slaPct >= 95 ? 'var(--green)' : r.slaPct >= 80 ? 'var(--amber)' : 'var(--red)';
+  var statGrid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px;">' +
+    _cwStat('Active caseload', r.caseload + (r.maxCap ? ' / ' + r.maxCap : ''), null) +
+    _cwStat('Open queue', String(r.open), r.hasPending ? 'var(--text)' : 'var(--text3)') +
+    _cwStat('Oldest pending', r.hasPending ? (r.ageH < 24 ? r.ageH + 'h' : Math.floor(r.ageH/24) + 'd') : '—', r.hasPending && r.ageH >= r.slaHours ? 'var(--red)' : null) +
+    _cwStat('SLA 30d', r.slaPct == null ? '—' : r.slaPct + '%', slaColor) +
+  '</div>';
+
+  var byType = {};
+  open.forEach(function(c) {
+    var t = c.consultation_type || 'intake';
+    if ((c.data && c.data.refill_protocol) || t === 'refill_request') t = 'Refill request';
+    else if (t === 'protocol_request' || (c.data && c.data.request_category)) t = 'Protocol request';
+    else t = 'Intake';
+    byType[t] = (byType[t] || 0) + 1;
+  });
+  var typeBreakdown = Object.keys(byType).length
+    ? Object.keys(byType).map(function(k) {
+        return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-family:\'Inter\',sans-serif;font-size:12px;">' +
+               '<span>' + escHtml(k) + '</span>' +
+               '<strong>' + byType[k] + '</strong>' +
+               '</div>';
+      }).join('')
+    : '<div style="padding:12px;color:var(--text4);font-size:12px;font-style:italic;">Nothing pending.</div>';
+
+  var recentList = recent.length
+    ? recent.map(function(c) {
+        var ageH = c.updated_at ? Math.floor((Date.now() - new Date(c.updated_at).getTime()) / 3600000) : 0;
+        var ageStr = ageH < 1 ? 'just now' : ageH < 24 ? ageH + 'h ago' : Math.floor(ageH/24) + 'd ago';
+        var label = c.review_status === 'prescribed' ? 'Prescribed' : 'Declined';
+        var color = c.review_status === 'prescribed' ? 'var(--green)' : 'var(--text3)';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-family:\'Inter\',sans-serif;font-size:12px;">' +
+               '<span style="color:' + color + ';font-weight:500;">' + label + '</span>' +
+               '<span style="color:var(--text3);font-size:11px;">' + ageStr + '</span>' +
+               '</div>';
+      }).join('')
+    : '<div style="padding:12px;color:var(--text4);font-size:12px;font-style:italic;">No decisions in the last 30 days.</div>';
+
+  var licList = licenses.length
+    ? licenses.map(function(l) {
+        var expH = l.expires_date ? Math.floor((new Date(l.expires_date).getTime() - Date.now()) / 86400000) : null;
+        var warn = expH !== null && expH < 60;
+        return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:4px 10px;border-radius:999px;background:' + (warn ? 'var(--amber-tint)' : 'var(--card2)') + ';border:1px solid ' + (warn ? 'var(--amber-border)' : 'var(--border)') + ';color:' + (warn ? 'var(--amber)' : 'var(--text2)') + ';margin-right:4px;margin-bottom:4px;" title="' + (expH !== null ? 'Expires in ' + expH + ' days' : 'No expiration set') + '">' + escHtml(l.state) + '</span>';
+      }).join('')
+    : '<div style="color:var(--text4);font-size:12px;font-style:italic;">No state licenses recorded.</div>';
+
+  return '<div style="padding:4px 0;">' +
+    statGrid +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Open queue breakdown</div>' +
+    typeBreakdown +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin:16px 0 6px;">Recent decisions (last 30d)</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card);">' + recentList + '</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin:16px 0 6px;">Licensed states</div>' +
+    licList +
+  '</div>';
+}
+
+function _cwStat(label, value, color) {
+  return '<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">' + escHtml(label) + '</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:18px;font-weight:600;color:' + (color || 'var(--text)') + ';">' + value + '</div>' +
+  '</div>';
 }
 
 // ── Flagged items ──

@@ -5701,9 +5701,6 @@ function _wizardPreview(templateId) {
   if (!area) return;
   area.innerHTML = '<div style="padding:18px;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:12px;">Building preview…</div>';
   area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  // Preview flow + apply flow both land in phase D. Stub for now so
-  // the button isn't dead — prints the raw config_snapshot so admins
-  // can at least inspect what a template carries.
   db.from('tenant_templates').select('name, config_snapshot').eq('id', templateId).limit(1)
     .then(function(r) {
       if (r.error || !r.data || !r.data.length) {
@@ -5711,16 +5708,99 @@ function _wizardPreview(templateId) {
         return;
       }
       var tpl = r.data[0];
+      var snap = tpl.config_snapshot || {};
+      var layers = snap.layers || {};
+      var seeds  = snap.seeds  || {};
+      var t = window.Tenant || {};
       area.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-          '<div style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);">Preview · ' + _brandEscHtml(tpl.name) + '</div>' +
-          '<button class="form-btn secondary" style="font-size:10px;padding:4px 10px;" onclick="document.getElementById(\'wizard-result-area\').innerHTML=\'\'">Close</button>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+          '<div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);">Preview · ' + _brandEscHtml(tpl.name) + '</div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">What will change if you apply this template.</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<button class="form-btn primary" style="font-size:11px;padding:6px 14px;" onclick="_wizardApply(\'' + _brandEscAttr(templateId) + '\', \'' + _brandEscAttr(tpl.name) + '\')">Apply</button>' +
+            '<button class="form-btn secondary" style="font-size:10px;padding:4px 10px;" onclick="document.getElementById(\'wizard-result-area\').innerHTML=\'\'">Close</button>' +
+          '</div>' +
         '</div>' +
-        '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Phase D adds a proper diff view. For now, here’s the raw snapshot that would be applied.</div>' +
-        '<pre style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:400px;overflow:auto;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:10px;color:var(--text2);margin:0;white-space:pre-wrap;word-break:break-word;">' + _brandEscHtml(JSON.stringify(tpl.config_snapshot || {}, null, 2)) + '</pre>' +
+        _renderLayerDiffs(t, layers) +
+        _renderSeedBreakdown(seeds) +
       '</div>';
     })
     .catch(function(err) { area.innerHTML = _wizardErrorHtml((err && err.message) || 'Preview failed.'); });
+}
+
+// Render a before/after diff for each JSONB layer. For each key in
+// the template overlay, show the current tenant value (or "—") and
+// the incoming value. Existing keys the template doesn't touch
+// stay collapsed under a "will remain unchanged" count.
+function _renderLayerDiffs(tenant, layers) {
+  var sections = [];
+  var fieldMap = { brand: 'brand', terminology: 'terminology', workflow: 'workflow', compliance: 'compliance', features: 'features' };
+  Object.keys(fieldMap).forEach(function(k) {
+    var overlay = layers[k] || {};
+    var keys = Object.keys(overlay);
+    if (!keys.length) return;
+    var current = tenant[fieldMap[k]] || {};
+    var rows = keys.map(function(kk) {
+      var before = current[kk];
+      var after  = overlay[kk];
+      var changed = JSON.stringify(before) !== JSON.stringify(after);
+      var wasUnset = before === undefined;
+      return '<tr>' +
+        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text);vertical-align:top;white-space:nowrap;">' + _brandEscHtml(kk) + '</td>' +
+        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);vertical-align:top;max-width:220px;word-break:break-word;">' + (wasUnset ? '<span style="color:var(--text4);">(unset)</span>' : _brandEscHtml(_shortJson(before))) + '</td>' +
+        '<td style="padding:6px 10px;font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:' + (changed ? 'var(--green, #3a7a5c)' : 'var(--text3)') + ';vertical-align:top;max-width:220px;word-break:break-word;font-weight:' + (changed ? '600' : '400') + ';">' + _brandEscHtml(_shortJson(after)) + '</td>' +
+      '</tr>';
+    }).join('');
+    sections.push('<div style="margin-bottom:14px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + k + ' · ' + keys.length + ' field' + (keys.length === 1 ? '' : 's') + '</div>' +
+      '<table style="width:100%;border-collapse:collapse;background:var(--card2);border-radius:8px;overflow:hidden;">' +
+        '<thead><tr style="background:rgba(0,0,0,0.05);">' +
+          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">Key</th>' +
+          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">Current</th>' +
+          '<th style="padding:6px 10px;text-align:left;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);">After apply</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>');
+  });
+  if (!sections.length) sections.push('<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;">No layer overlays — this template only seeds catalog / region / consent rows.</div>');
+  return sections.join('');
+}
+
+function _renderSeedBreakdown(seeds) {
+  var keys = ['categories','product_types','protocols','regions','consents','comms_templates'];
+  var cards = keys
+    .filter(function(k) { return Array.isArray(seeds[k]) && seeds[k].length > 0; })
+    .map(function(k) {
+      var items = seeds[k];
+      var label = k.replace(/_/g, ' ');
+      return '<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;">' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + label + ' · ' + items.length + '</div>' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+          items.map(function(it) {
+            if (typeof it === 'string') return _brandEscHtml(it);
+            return _brandEscHtml(it.name || it.title || it.key || JSON.stringify(it));
+          }).join(', ') +
+        '</div>' +
+      '</div>';
+    });
+  if (!cards.length) return '';
+  return '<div style="margin-top:6px;"><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Seed rows</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">' + cards.join('') + '</div>' +
+    '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text4);margin-top:6px;">Existing rows matching any of these keys are left in place (re-apply is safe).</div>' +
+  '</div>';
+}
+
+function _shortJson(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try {
+    var s = JSON.stringify(v);
+    return s.length > 80 ? s.slice(0, 80) + '…' : s;
+  } catch (e) { return String(v); }
 }
 
 function _wizardApply(templateId, templateName) {
@@ -5728,22 +5808,60 @@ function _wizardApply(templateId, templateName) {
   var area = document.getElementById('wizard-result-area');
   if (area) area.innerHTML = '<div style="padding:18px;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:12px;">Applying template…</div>';
 
-  // Phase D will implement the full applyTemplateToTenant flow with
-  // a proper review summary. Stub here calls a placeholder RPC that
-  // lands in phase B's migration so the wiring exists end-to-end
-  // even while the template seeds are still being curated.
   db.rpc('apply_tenant_template', { p_template_id: templateId, p_tenant_id: window.Tenant.id })
     .then(function(r) {
       if (r.error) throw r.error;
-      if (area) {
-        area.innerHTML = '<div style="background:var(--green, #3a7a5c);color:#fff;border-radius:10px;padding:16px 18px;font-family:\'Inter\',sans-serif;font-size:13px;">' +
-          '<strong>Applied.</strong> Reload the page to see your tenant update. A post-apply review summary lands in phase D.' +
-        '</div>';
-      }
+      // The RPC returns { ok, template, before, after, seed_counts }.
+      // Supabase wraps it as { data: <payload> }.
+      var payload = (r && r.data) || {};
+      if (!area) return;
+      var counts = payload.seed_counts || {};
+      var totalSeeded = Object.keys(counts).reduce(function(a, k) { return a + (counts[k] || 0); }, 0);
+      var countRows = Object.keys(counts)
+        .filter(function(k) { return counts[k] > 0; })
+        .map(function(k) { return '<li style="margin-bottom:2px;"><strong>' + counts[k] + '</strong> ' + _brandEscHtml(k.replace(/_/g, ' ')) + ' inserted</li>'; })
+        .join('');
+      var layerRows = _renderAppliedLayerSummary(payload.before || {}, payload.after || {});
+      area.innerHTML = '<div style="background:rgba(58,122,92,0.08);border:1px solid rgba(58,122,92,0.35);border-radius:12px;padding:20px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">' +
+          '<div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);">✓ Template applied · ' + _brandEscHtml(templateName) + '</div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);margin-top:4px;">Review what changed below. You can tweak anything in the individual Setup tabs, or re-apply a different template to reset.</div>' +
+          '</div>' +
+          '<button class="form-btn secondary" style="font-size:11px;padding:6px 14px;" onclick="location.reload()">Reload &amp; continue</button>' +
+        '</div>' +
+        (layerRows || '') +
+        (countRows
+          ? '<div style="margin-top:14px;"><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Seed rows · ' + totalSeeded + ' new</div>' +
+            '<ul style="margin:0;padding-left:18px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);">' + countRows + '</ul></div>'
+          : '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-top:12px;">No new seed rows inserted — everything the template offered was already present.</div>') +
+      '</div>';
+      area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     })
     .catch(function(err) {
-      if (area) area.innerHTML = _wizardErrorHtml((err && err.message) || 'Apply failed. The apply_tenant_template RPC may not be installed yet (phase B migration).');
+      if (area) area.innerHTML = _wizardErrorHtml((err && err.message) || 'Apply failed. Make sure migration 025_tenant_template_apply_rpc.sql has been run.');
     });
+}
+
+// After-apply: summarize which layer fields flipped, using the before /
+// after snapshots the RPC returns. Keeps the admin oriented about what
+// actually changed vs what was already in place.
+function _renderAppliedLayerSummary(before, after) {
+  var layers = ['brand','terminology','workflow','compliance','features'];
+  var rows = layers.map(function(k) {
+    var b = before[k] || {};
+    var a = after[k]  || {};
+    var changedKeys = Object.keys(a).filter(function(kk) {
+      return JSON.stringify(b[kk]) !== JSON.stringify(a[kk]);
+    });
+    if (!changedKeys.length) return '';
+    return '<div style="margin-bottom:6px;">' +
+      '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);min-width:100px;">' + k + '</span>' +
+      '<span style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);">' + changedKeys.length + ' field' + (changedKeys.length === 1 ? '' : 's') + ' updated</span>' +
+    '</div>';
+  }).filter(Boolean).join('');
+  if (!rows) return '';
+  return '<div><div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Layer changes</div>' + rows + '</div>';
 }
 
 // Auto-switch to the wizard on first Setup entry when the tenant's

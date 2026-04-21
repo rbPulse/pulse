@@ -287,8 +287,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cc-count-pill.good{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
 .cc-count-pill.warn{background:var(--amber-tint);border-color:var(--amber-border);color:var(--amber);}
 .cc-count-pill.bad{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
-.cc-workload-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:0 0 10px;padding:4px 2px;}
-.cc-workload-filter-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);}
+/* Per-column filter inputs live below the header label in every
+   sortable table. Shared across the workload + needs-attention
+   tables; add .admin-th-filter for the input, .admin-th-label for
+   the non-sortable label variant, .admin-th-filter-spacer for
+   columns that opt out (keeps row height consistent). */
+.admin-th-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);display:block;}
+.admin-th-filter{display:block;width:100%;margin-top:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:'Inter',sans-serif;font-size:11px;color:var(--text);box-sizing:border-box;transition:border-color .15s;font-weight:400;letter-spacing:0;text-transform:none;}
+.admin-th-filter:focus{outline:none;border-color:var(--amber);}
+.admin-th-filter::placeholder{color:var(--text4);}
+.admin-th-filter-spacer{visibility:hidden;height:26px;padding:0;border:0;}
 .cc-row-pinned{box-shadow:inset 3px 0 0 var(--red);}
 .cc-row-sub{font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:0.04em;margin-top:2px;}
 .cc-capacity-bar{margin-top:6px;width:100%;max-width:120px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden;}
@@ -991,17 +999,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             <span>Clinician Workload</span>
             <span class="cc-overview-count" id="workloadCount"></span>
           </div>
-          <div class="cc-workload-toolbar">
-            <span class="cc-workload-filter-label">Show</span>
-            <select id="workloadStatusFilter" class="filter-select" onchange="renderClinicianQueues()">
-              <option value="all">All clinicians</option>
-              <option value="active">Active (has open work)</option>
-              <option value="overloaded">Overloaded (SLA breached or at capacity)</option>
-              <option value="away">Away (inactive 2-7 days)</option>
-              <option value="off">Off (inactive 7+ days)</option>
-              <option value="idle">Idle (no open work)</option>
-            </select>
-          </div>
           <div class="admin-table-wrap">
             <table class="admin-table admin-table-uniform">
               <thead><tr id="clinicianQueuesHead"></tr></thead>
@@ -1635,19 +1632,87 @@ function _adminSortEsc(s) {
 }
 function _adminSortThead(tableId, cols) {
   var state = _adminTableSort[tableId] || {};
+  var filters = _adminTableFilters[tableId] || {};
+  var anyFilterable = cols.some(function(c){ return c.filterable !== false; });
   return cols.map(function(c) {
     var styleParts = [];
     if (c.align === 'right') styleParts.push('text-align:right');
     else if (c.align === 'center') styleParts.push('text-align:center');
     if (c.width) styleParts.push('width:' + c.width);
     var style = styleParts.length ? ' style="' + styleParts.join(';') + ';"' : '';
-    if (c.sortable === false) return '<th' + style + '>' + _adminSortEsc(c.label) + '</th>';
-    var active = state.key === c.key;
-    var arrow = active ? (state.dir === 'asc' ? '\u25B4' : '\u25BE') : '';
-    return '<th' + style + '><button type="button" class="admin-sort-th' + (active ? ' active' : '') +
-      '" onclick="_adminSortToggle(\'' + tableId + '\',\'' + c.key + '\')">' +
-      _adminSortEsc(c.label) + '<span class="admin-sort-ind">' + arrow + '</span></button></th>';
+    var labelBlock;
+    if (c.sortable === false) {
+      labelBlock = '<div class="admin-th-label">' + _adminSortEsc(c.label) + '</div>';
+    } else {
+      var active = state.key === c.key;
+      var arrow = active ? (state.dir === 'asc' ? '\u25B4' : '\u25BE') : '';
+      labelBlock = '<button type="button" class="admin-sort-th' + (active ? ' active' : '') +
+        '" onclick="_adminSortToggle(\'' + tableId + '\',\'' + c.key + '\')">' +
+        _adminSortEsc(c.label) + '<span class="admin-sort-ind">' + arrow + '</span></button>';
+    }
+    // Per-column filter input: rendered for every filterable
+    // column (default true). On each keystroke it updates state and
+    // triggers a full rerender; focus is restored by the renderer
+    // via data-filter-table / data-filter-col attrs.
+    var filterBlock = '';
+    if (anyFilterable && c.filterable !== false) {
+      var val = filters[c.key] || '';
+      filterBlock = '<input type="text" class="admin-th-filter" placeholder="Filter" value="' + _adminSortEsc(val) + '" data-filter-table="' + _adminSortEsc(tableId) + '" data-filter-col="' + _adminSortEsc(c.key) + '" oninput="_adminSetColFilter(\'' + tableId + '\',\'' + c.key + '\', this.value)"/>';
+    } else if (anyFilterable) {
+      filterBlock = '<div class="admin-th-filter admin-th-filter-spacer"></div>';
+    }
+    return '<th' + style + '>' + labelBlock + filterBlock + '</th>';
   }).join('');
+}
+
+// Per-column filtering — keyed the same way as _adminTableSort.
+// Substring match, case-insensitive, across the getter's string
+// representation. Callers pass the same getters they use for sort.
+var _adminTableFilters = {};
+
+function _adminSetColFilter(tableId, key, val) {
+  if (!_adminTableFilters[tableId]) _adminTableFilters[tableId] = {};
+  _adminTableFilters[tableId][key] = val || '';
+  var fn = _adminTableRerender[tableId];
+  if (typeof fn === 'function') fn();
+}
+
+function _adminFilterRows(tableId, rows, getters) {
+  var filters = _adminTableFilters[tableId] || {};
+  var activeKeys = Object.keys(filters).filter(function(k){ return filters[k] && filters[k].length > 0; });
+  if (!activeKeys.length) return rows;
+  return rows.filter(function(row) {
+    for (var i = 0; i < activeKeys.length; i++) {
+      var k = activeKeys[i];
+      var getter = getters[k];
+      var val = getter ? getter(row) : null;
+      if (val == null) return false;
+      if (String(val).toLowerCase().indexOf(filters[k].toLowerCase()) === -1) return false;
+    }
+    return true;
+  });
+}
+
+// Preserve focus on the column-filter input across a re-render.
+function _adminCaptureFilterFocus() {
+  var a = document.activeElement;
+  if (!a || !a.dataset || !a.dataset.filterTable) return null;
+  return {
+    table: a.dataset.filterTable,
+    col:   a.dataset.filterCol,
+    start: typeof a.selectionStart === 'number' ? a.selectionStart : null,
+    end:   typeof a.selectionEnd   === 'number' ? a.selectionEnd   : null
+  };
+}
+function _adminRestoreFilterFocus(captured) {
+  if (!captured) return;
+  var sel = '[data-filter-table="' + captured.table + '"][data-filter-col="' + captured.col + '"]';
+  var el = document.querySelector(sel);
+  if (!el) return;
+  el.focus();
+  try {
+    if (captured.start !== null) el.setSelectionRange(captured.start, captured.end);
+  } catch (_) {}
 }
 
 // Load the active tenant's config before booting the admin UI so page
@@ -1980,16 +2045,25 @@ function renderNeedsAttention() {
   var list = document.getElementById('needsAttentionList');
   var head = document.getElementById('needsAttentionHead');
   if (!section || !list || !head) return;
+  var _focus = _adminCaptureFilterFocus();
   if (!_attentionItems.length) { section.style.display = 'none'; return; }
   section.style.display = '';
-  document.getElementById('attentionCount').textContent = _attentionItems.length + ' item' + (_attentionItems.length !== 1 ? 's' : '');
   head.innerHTML = _adminSortThead('attention', [
     { key: 'patient',   label: 'Patient',   width: '28%' },
     { key: 'issue',     label: 'Issue',     width: '28%' },
     { key: 'clinician', label: 'Clinician', width: '22%' },
     { key: 'submitted', label: 'Submitted', width: '22%' }
   ]);
-  var sorted = _adminSortRows('attention', _attentionItems, {
+  var filterGetters = {
+    patient:   function(it) { return profileName(it.user) || ''; },
+    issue:     function(it) { return it.issue; },
+    clinician: function(it) { return it.clinician ? (profileName(it.clinician) || '') : 'Unassigned'; },
+    submitted: function(it) { return it.submittedTs ? new Date(it.submittedTs).toLocaleDateString() : ''; }
+  };
+  var filteredItems = _adminFilterRows('attention', _attentionItems, filterGetters);
+  document.getElementById('attentionCount').textContent = filteredItems.length + ' item' + (filteredItems.length !== 1 ? 's' : '') +
+    (filteredItems.length !== _attentionItems.length ? ' of ' + _attentionItems.length : '');
+  var sorted = _adminSortRows('attention', filteredItems, {
     patient:   function(it) { return profileName(it.user) || ''; },
     issue:     function(it) { return it.issue; },
     clinician: function(it) { return it.clinician ? (profileName(it.clinician) || '') : '~'; },
@@ -2015,6 +2089,7 @@ function renderNeedsAttention() {
       '<td style="color:var(--text3);">' + submittedStr + '</td>' +
     '</tr>';
   }).join('');
+  _adminRestoreFilterFocus(_focus);
 }
 
 // Phase D: Pipeline time range
@@ -3837,6 +3912,7 @@ function renderClinicianQueues(errorMsg) {
   var head = document.getElementById('clinicianQueuesHead');
   var count = document.getElementById('workloadCount');
   if (!container || !head) return;
+  var _focus = _adminCaptureFilterFocus();
   head.innerHTML = _adminSortThead('queues', [
     { key: 'clinician', label: 'Clinician',       width: '26%' },
     { key: 'caseload',  label: 'Active caseload', width: '18%' },
@@ -3850,9 +3926,17 @@ function renderClinicianQueues(errorMsg) {
   if (errorMsg) { container.innerHTML = emptyRow(errorMsg); if (count) count.textContent = ''; return; }
   if (!_clinicianQueueRows.length) { container.innerHTML = emptyRow('No clinicians yet.'); if (count) count.textContent = ''; return; }
 
-  var filterEl = document.getElementById('workloadStatusFilter');
-  var filter = filterEl ? filterEl.value : 'all';
-  var filtered = _clinicianQueueRows.filter(function(r) { return filter === 'all' || r.status === filter; });
+  // Filter getters — string representations for case-insensitive
+  // substring match. Values match what's rendered so typing in the
+  // column's filter box produces intuitive results.
+  var filterGetters = {
+    clinician: function(r) { return r.name; },
+    caseload:  function(r) { return r.maxCap ? (r.caseload + ' / ' + r.maxCap) : String(r.caseload); },
+    open:      function(r) { return String(r.open); },
+    oldest:    function(r) { return r.hasPending ? (r.ageH < 1 ? '<1h' : r.ageH < 24 ? r.ageH + 'h' : Math.floor(r.ageH/24) + 'd') : ''; },
+    sla:       function(r) { return r.slaPct == null ? 'No decisions yet' : (r.slaPct + '%'); }
+  };
+  var filtered = _adminFilterRows('queues', _clinicianQueueRows, filterGetters);
 
   if (count) {
     var total = _clinicianQueueRows.length;
@@ -3953,6 +4037,7 @@ function renderClinicianQueues(errorMsg) {
       '<td>' + slaStr + '</td>' +
     '</tr>';
   }).join('');
+  _adminRestoreFilterFocus(_focus);
 }
 
 // ══════════════════════════════════════════════════════════════════

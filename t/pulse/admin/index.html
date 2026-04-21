@@ -1873,6 +1873,16 @@ function initAdmin(user, profile) {
   document.getElementById('sidebarRolePill').textContent = currentAdminRole === 'super_admin' ? 'Super Admin' : 'Admin';
   document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + displayName + '.';
 
+  // Post-wizard jump: if the success screen stashed a target tab, land
+  // on it after the admin boot completes.
+  try {
+    var tgt = localStorage.getItem('pulse_post_wizard_target');
+    if (tgt) {
+      localStorage.removeItem('pulse_post_wizard_target');
+      setTimeout(function(){ if (typeof switchTab === 'function') switchTab(tgt); }, 0);
+    }
+  } catch (_) {}
+
   loadOverviewStats();
   loadIntakeFunnel();
   loadClinicianQueues();
@@ -6594,30 +6604,88 @@ function _wizardApplyAll() {
   });
 }
 
-// W3 ships a light success state so end-to-end flow is testable.
-// W5 enriches this with next-action chips and a deeper summary.
+// Success state: celebrates the completed setup and gives the
+// admin a clear next-action menu. Each chip is a real tab link —
+// clicking Reload picks up the updated config and switches to
+// the target tab so the admin doesn't have to find it.
+var _WIZ_NEXT_ACTIONS = [
+  { k:'catalog',    t:'Add your first protocol',    s:'Define a product your members can get prescribed.',       tab:'setup-catalog',      icon:'M3 5h18l-2 14H5L3 5zm5 4v6m4-6v6m4-6v6' },
+  { k:'brand',      t:'Fine-tune your brand',       s:'Upload a logo, add a wordmark image, tweak copy.',         tab:'setup-brand',        icon:'M12 2L2 7v10l10 5 10-5V7L12 2z M2 7l10 5 10-5' },
+  { k:'workflow',   t:'Review workflow details',    s:'Adjust SLA hours and per-section rules beyond the basics.', tab:'setup-workflow',     icon:'M4 6h16M4 12h16M4 18h10' },
+  { k:'comms',      t:'Edit message templates',     s:'Customize any of the automated messages we just wrote.',   tab:'setup-comms',        icon:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  { k:'compliance', t:'Add a consent document',     s:'Publish a consent form members sign during intake.',       tab:'setup-compliance',   icon:'M9 12l2 2 4-4m5 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
+  { k:'users',      t:'Invite a clinician',         s:'Add your first staff member so they can start reviewing.',   tab:'users',             icon:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75' }
+];
+
 function _wizardRenderSuccess(payload) {
   var host = document.getElementById('setup-wizard-body');
   if (!host) return;
   var counts = (payload && payload.counts) || {};
-  host.innerHTML = '<style>' + _WIZARD_CSS + '</style>' +
-    '<div class="wiz-card" style="text-align:center;padding:60px 44px;">' +
-      '<div style="width:60px;height:60px;margin:0 auto 18px;border-radius:50%;background:var(--amber-tint);border:1.5px solid var(--amber);display:flex;align-items:center;justify-content:center;">' +
-        '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>' +
+  var summaryBits = [];
+  if (counts.regions_inserted > 0)         summaryBits.push(counts.regions_inserted + ' state' + (counts.regions_inserted === 1 ? '' : 's') + ' added');
+  if (counts.comms_templates_inserted > 0) summaryBits.push(counts.comms_templates_inserted + ' message template' + (counts.comms_templates_inserted === 1 ? '' : 's') + ' written');
+  summaryBits.push('Brand, terminology, and workflow updated');
+  var summaryLine = summaryBits.join(' · ');
+
+  var chips = _WIZ_NEXT_ACTIONS.map(function(a) {
+    return '<button type="button" class="wiz-next-chip" onclick="_wizardJumpTo(\'' + a.tab + '\')">' +
+      '<div class="wiz-next-chip-icon">' +
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="' + a.icon + '"/>' +
+        '</svg>' +
       '</div>' +
-      '<div class="wiz-title">You\'re set up</div>' +
-      '<div class="wiz-subtitle">' +
-        (counts.regions_inserted > 0 ? counts.regions_inserted + ' states added. ' : '') +
-        (counts.comms_templates_inserted > 0 ? counts.comms_templates_inserted + ' message templates saved. ' : '') +
-        'Brand, terminology, and workflow have been updated.' +
+      '<div class="wiz-next-chip-text">' +
+        '<div class="wiz-next-chip-title">' + _brandEscHtml(a.t) + '</div>' +
+        '<div class="wiz-next-chip-sub">' + _brandEscHtml(a.s) + '</div>' +
       '</div>' +
-      '<div class="wiz-footer" style="justify-content:center;">' +
+      '<div class="wiz-next-chip-arrow">&rarr;</div>' +
+    '</button>';
+  }).join('');
+
+  host.innerHTML = '<style>' + _WIZARD_CSS + _WIZARD_SUCCESS_CSS + '</style>' +
+    '<div class="wiz-card wiz-success-card">' +
+      '<div class="wiz-success-check">' +
+        '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>' +
+      '</div>' +
+      '<div class="wiz-title" style="text-align:center;margin-bottom:6px;">You\'re set up</div>' +
+      '<div class="wiz-subtitle" style="text-align:center;margin-bottom:8px;">' + _brandEscHtml(summaryLine) + '</div>' +
+      '<div class="wiz-success-tip">' +
+        'Every answer lives on your tenant row now. You can come back here to re-run the wizard any time — it\'ll remember what you already set.' +
+      '</div>' +
+      '<div class="wiz-next-label">What next?</div>' +
+      '<div class="wiz-next-grid">' + chips + '</div>' +
+      '<div class="wiz-footer" style="justify-content:center;margin-top:28px;">' +
         '<div class="wiz-footer-right">' +
-          '<button type="button" class="wiz-btn" onclick="renderSetupWizard()">Run it again</button>' +
-          '<button type="button" class="wiz-btn wiz-btn-primary" onclick="location.reload()">Reload &amp; continue</button>' +
+          '<button type="button" class="wiz-btn" onclick="renderSetupWizard()">&larr; Back to the wizard</button>' +
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+var _WIZARD_SUCCESS_CSS = [
+  '.wiz-success-card{padding:50px 44px 36px;}',
+  '.wiz-success-check{width:64px;height:64px;margin:0 auto 20px;border-radius:50%;background:var(--amber-tint);border:1.5px solid var(--amber);display:flex;align-items:center;justify-content:center;animation:wizPop .4s cubic-bezier(.2,1.3,.4,1);}',
+  '@keyframes wizPop{from{opacity:0;transform:scale(.6);}to{opacity:1;transform:scale(1);}}',
+  '.wiz-success-tip{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);line-height:1.5;margin:0 0 28px;text-align:center;}',
+  '.wiz-next-label{font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;}',
+  '.wiz-next-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;}',
+  '.wiz-next-chip{display:flex;align-items:center;gap:14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;font-family:\'Inter\',sans-serif;transition:all .15s;}',
+  '.wiz-next-chip:hover{border-color:var(--amber-border);background:var(--amber-tint);}',
+  '.wiz-next-chip-icon{flex-shrink:0;width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;}',
+  '.wiz-next-chip-text{flex:1;min-width:0;}',
+  '.wiz-next-chip-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}',
+  '.wiz-next-chip-sub{font-size:11px;color:var(--text3);line-height:1.4;}',
+  '.wiz-next-chip-arrow{font-family:\'Inter\',sans-serif;font-size:18px;color:var(--text4);transition:transform .15s, color .15s;}',
+  '.wiz-next-chip:hover .wiz-next-chip-arrow{color:var(--amber);transform:translateX(3px);}'
+].join('');
+
+// Jump to a Setup tab from the success screen. Reloads the page first
+// so the admin lands on a freshly-rendered tab with the newly-applied
+// tenant config — brand.js picks up the new accent + wordmark on
+// boot, terminology.js re-initializes with the new overrides, etc.
+function _wizardJumpTo(tab) {
+  try { localStorage.setItem('pulse_post_wizard_target', tab); } catch (_) {}
+  location.reload();
 }
 
 function _wireWizardShell() {

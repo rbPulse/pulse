@@ -951,31 +951,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle" id="welcomeMsg">Welcome back.</div>
         </div>
 
-        <!-- Phase A: Stat strip — the numbers that matter right now -->
-        <div class="stat-grid" id="overviewStats">
-          <div class="stat-card">
-            <div class="stat-card-label">Active Patients</div>
-            <div class="stat-card-value" id="statActivePatients">--</div>
-            <div class="stat-card-sub">on a plan</div>
+        <!-- Pipeline — moved to the top for at-a-glance funnel health -->
+        <div class="cc-section">
+          <div class="cc-section-hdr">
+            <div class="cc-section-title">Pipeline</div>
+            <div style="display:flex;gap:4px;">
+              <button class="cfg-util-btn" data-range="7" onclick="_setFunnelRange(7)">This Week</button>
+              <button class="cfg-util-btn" data-range="30" onclick="_setFunnelRange(30)" style="font-weight:600;color:var(--text);">This Month</button>
+              <button class="cfg-util-btn" data-range="90" onclick="_setFunnelRange(90)">Quarter</button>
+              <button class="cfg-util-btn" data-range="all" onclick="_setFunnelRange('all')">All Time</button>
+            </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-label">New This Month</div>
-            <div class="stat-card-value" id="statNewMonth">--</div>
-            <div class="stat-card-sub">intakes submitted</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Open Reviews</div>
-            <div class="stat-card-value" id="statOpenReviews">--</div>
-            <div class="stat-card-sub">awaiting decision</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Appointments Today</div>
-            <div class="stat-card-value" id="statApptToday">--</div>
-            <div class="stat-card-sub">scheduled</div>
+          <div class="cc-funnel" id="intakeFunnel">
+            <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="under_review"><div class="cc-funnel-step-label">Under Review</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="prescribed"><div class="cc-funnel-step-label">Approved</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="purchased"><div class="cc-funnel-step-label">Purchased</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
+            <div class="cc-funnel-step" data-step="declined"><div class="cc-funnel-step-label">Declined</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
           </div>
         </div>
 
-        <!-- Phase B: Needs Attention — only shows when items exist -->
+        <!-- Needs Attention — only shows when items exist -->
         <div class="cc-overview-block" id="needsAttentionSection" style="display:none;">
           <div class="cc-overview-label danger">
             <span>Needs Attention</span>
@@ -989,7 +985,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
 
-        <!-- Phase C: Clinician Workload — full-width -->
+        <!-- Clinician Workload — full-width -->
         <div class="cc-overview-block">
           <div class="cc-overview-label">
             <span>Clinician Workload</span>
@@ -1019,37 +1015,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <!-- Clinician Workload: detail drawer -->
         <div id="cwDetailBackdrop" class="detail-panel-backdrop" onclick="_cwCloseDetail()"></div>
         <div id="cwDetailPanel" class="detail-panel" style="max-width:680px;"></div>
-
-        <!-- Phase D: Pipeline with time range toggle -->
-        <div class="cc-section">
-          <div class="cc-section-hdr">
-            <div class="cc-section-title">Pipeline</div>
-            <div style="display:flex;gap:4px;">
-              <button class="cfg-util-btn" data-range="7" onclick="_setFunnelRange(7)">This Week</button>
-              <button class="cfg-util-btn" data-range="30" onclick="_setFunnelRange(30)" style="font-weight:600;color:var(--text);">This Month</button>
-              <button class="cfg-util-btn" data-range="90" onclick="_setFunnelRange(90)">Quarter</button>
-              <button class="cfg-util-btn" data-range="all" onclick="_setFunnelRange('all')">All Time</button>
-            </div>
-          </div>
-          <div class="cc-funnel" id="intakeFunnel">
-            <div class="cc-funnel-step active" data-step="submitted"><div class="cc-funnel-step-label">Submitted</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="under_review"><div class="cc-funnel-step-label">Under Review</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="prescribed"><div class="cc-funnel-step-label">Approved</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="purchased"><div class="cc-funnel-step-label">Purchased</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-            <div class="cc-funnel-step" data-step="declined"><div class="cc-funnel-step-label">Declined</div><div class="cc-funnel-step-val">--</div><div class="cc-funnel-step-sub">&nbsp;</div><div class="cc-funnel-step-bar"></div></div>
-          </div>
-        </div>
-
-        <!-- Phase E: Recent Activity — capped at 10, scrollable -->
-        <div class="cc-section">
-          <div class="cc-section-hdr">
-            <div class="cc-section-title">Recent Activity</div>
-            <button class="cfg-util-btn" onclick="switchTab('audit')" style="font-weight:500;">View all &#8250;</button>
-          </div>
-          <div id="activityStream" style="max-height:440px;overflow-y:auto;">
-            <div class="cc-empty">Loading...</div>
-          </div>
-        </div>
       </div>
 
       <!-- USERS TAB -->
@@ -1918,6 +1883,12 @@ function switchTab(tabId) {
 
 // ── Load overview stats ──
 function loadOverviewStats() {
+  // Early-return when the stat strip isn't in the DOM — the overview
+  // page used to host it but it was removed as redundant (active
+  // patients already sum via the workload table, open reviews is
+  // surfaced in Needs Attention). Other call-sites that kick this
+  // off during user/Rx events no-op safely here.
+  if (!document.getElementById('statActivePatients')) return;
   // Active Patients: users with at least 1 active prescription
   db.from('prescriptions').select('user_id').eq('status', 'active')
     .then(function(r) {
@@ -1973,7 +1944,7 @@ function loadNeedsAttention() {
   var section = document.getElementById('needsAttentionSection');
   var list = document.getElementById('needsAttentionList');
   if (!section || !list) return;
-  db.from('consultations').select('id, user_id, review_status, risk_status, consultation_type, data, created_at')
+  db.from('consultations').select('id, user_id, assigned_clinician_id, review_status, risk_status, consultation_type, data, created_at')
     .eq('review_status', 'pending_review')
     .order('created_at', { ascending: true }).limit(50)
     .then(function(r) {
@@ -1984,19 +1955,25 @@ function loadNeedsAttention() {
         var submittedTs = c.created_at ? new Date(c.created_at).getTime() : 0;
         var ageH = submittedTs ? Math.floor((Date.now() - submittedTs) / 3600000) : 0;
         var isRequest = c.consultation_type === 'protocol_request' || c.consultation_type === 'refill_request' || d.request_category || d.refill_protocol;
+        var base = {
+          user: c.user_id,
+          clinician: c.assigned_clinician_id || null,
+          submittedTs: submittedTs,
+          ageH: ageH
+        };
         if (ageH >= 24) {
-          items.push({ sev: 0, issue: (isRequest ? 'Request' : 'Intake') + ' overdue', submittedTs: submittedTs, user: c.user_id, cls: 'high', label: 'Overdue' });
+          items.push(Object.assign({ sev: 0, issue: (isRequest ? 'Request' : 'Intake') + ' overdue' }, base));
         } else if (c.risk_status === 'high_risk') {
-          items.push({ sev: 1, issue: 'High-risk intake', submittedTs: submittedTs, user: c.user_id, cls: 'high', label: 'High' });
+          items.push(Object.assign({ sev: 1, issue: 'High-risk intake' }, base));
         } else if (c.risk_status === 'moderate_risk' && ageH >= 12) {
-          items.push({ sev: 2, issue: 'Moderate-risk intake', submittedTs: submittedTs, user: c.user_id, cls: 'mod', label: 'Moderate' });
+          items.push(Object.assign({ sev: 2, issue: 'Moderate-risk intake' }, base));
         }
       });
       _attentionItems = items;
       renderNeedsAttention();
     }).catch(function() { section.style.display = 'none'; });
 }
-_adminSetDefaultSort('attention', 'status', 'asc');
+_adminSetDefaultSort('attention', 'submitted', 'desc');
 _adminTableRerender['attention'] = function() { renderNeedsAttention(); };
 function renderNeedsAttention() {
   var section = document.getElementById('needsAttentionSection');
@@ -2007,24 +1984,34 @@ function renderNeedsAttention() {
   section.style.display = '';
   document.getElementById('attentionCount').textContent = _attentionItems.length + ' item' + (_attentionItems.length !== 1 ? 's' : '');
   head.innerHTML = _adminSortThead('attention', [
-    { key: 'patient', label: 'Patient', width: '25%' },
-    { key: 'issue', label: 'Issue', width: '25%' },
-    { key: 'status', label: 'Status', width: '25%' },
-    { key: 'submitted', label: 'Submitted', width: '25%' }
+    { key: 'patient',   label: 'Patient',   width: '28%' },
+    { key: 'issue',     label: 'Issue',     width: '28%' },
+    { key: 'clinician', label: 'Clinician', width: '22%' },
+    { key: 'submitted', label: 'Submitted', width: '22%' }
   ]);
   var sorted = _adminSortRows('attention', _attentionItems, {
-    patient: function(it) { return profileName(it.user) || ''; },
-    issue: function(it) { return it.issue; },
-    status: function(it) { return it.sev; },
+    patient:   function(it) { return profileName(it.user) || ''; },
+    issue:     function(it) { return it.issue; },
+    clinician: function(it) { return it.clinician ? (profileName(it.clinician) || '') : '~'; },
     submitted: function(it) { return it.submittedTs; }
   });
+  // Pin high-severity items (overdue + high-risk) to the top
+  // regardless of current sort so the most urgent rows stay visible.
+  var pinned = [], rest = [];
+  sorted.forEach(function(it) { (it.sev <= 1 ? pinned : rest).push(it); });
+  sorted = pinned.concat(rest);
+
   list.innerHTML = sorted.slice(0, 8).map(function(it) {
     var name = profileName(it.user) || 'Patient';
-    var submittedStr = it.submittedTs ? new Date(it.submittedTs).toLocaleDateString() : '\u2014';
-    return '<tr>' +
+    var submittedStr = it.submittedTs ? new Date(it.submittedTs).toLocaleDateString() : '—';
+    var clinicianCell = it.clinician
+      ? '<td style="color:var(--text2);">' + escHtml(profileName(it.clinician) || 'Clinician') + '</td>'
+      : '<td style="color:var(--amber);font-weight:600;">Unassigned</td>';
+    var rowClass = (it.sev <= 1) ? 'cw-row-clickable cc-row-pinned' : 'cw-row-clickable';
+    return '<tr class="' + rowClass + '" onclick="openUserDetail(\'' + escHtml(it.user) + '\')">' +
       '<td style="font-weight:600;">' + escHtml(name) + '</td>' +
       '<td>' + escHtml(it.issue) + '</td>' +
-      '<td><span class="cc-sev-pill ' + it.cls + '">' + escHtml(it.label) + '</span></td>' +
+      clinicianCell +
       '<td style="color:var(--text3);">' + submittedStr + '</td>' +
     '</tr>';
   }).join('');

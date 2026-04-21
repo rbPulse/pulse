@@ -6266,10 +6266,19 @@ function renderTerminologySetup() {
   updateTerminologySetupPreview();
 }
 
+// Curated subset surfaced by default — just the nouns that visibly
+// change what members + clinicians see across every portal surface.
+// Everything else hides behind "Show all" so a new admin doesn't
+// drown in 30+ fields of mostly-plurals on first open.
+var _TERM_CORE_KEYS = {
+  member: 1, clinician: 1, protocol: 1, prescription: 1, refill: 1, consultation: 1
+};
+
 function buildTerminologySetupForm(t) {
   var overrides = t.terminology || {};
   var groups    = window.Terminology.GROUPS;
   var keys      = window.Terminology.KEYS;
+  var showAll   = window._termShowAll === true;
   var out = '<div class="brand-form">' +
     '<div class="term-preview" id="termPreview">' +
       '<div class="term-preview-label">' +
@@ -6281,16 +6290,27 @@ function buildTerminologySetupForm(t) {
           return '<div class="term-preview-line" id="termPreviewLine-' + idx + '"></div>';
         }).join('') +
       '</div>' +
+    '</div>' +
+    '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+      '<strong>What to do here:</strong> rename the nouns your clinic uses. Most admins only need to tweak a handful — the six core nouns below are shown by default. Plurals auto-align with their singular when you override them; flip <em>Show all</em> for dose / note / message / appointment / intake / package / plan / etc.' +
+    '</div>' +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">' +
+      '<label style="display:inline-flex;align-items:center;gap:6px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text2);cursor:pointer;">' +
+        '<input type="checkbox" id="termShowAllToggle" ' + (showAll ? 'checked' : '') + ' onchange="_termToggleShowAll(this.checked)"/> Show all fields' +
+      '</label>' +
     '</div>';
 
   groups.forEach(function(group) {
     var groupKeys = keys.filter(function(k) { return k.group === group.key; });
     if (groupKeys.length === 0) return;
+    var visibleKeys = showAll ? groupKeys : groupKeys.filter(function(k) { return _TERM_CORE_KEYS[k.key]; });
+    if (visibleKeys.length === 0) return;
+    var hiddenCount = groupKeys.length - visibleKeys.length;
     out += '<div class="term-group">' +
-      '<div class="term-group-title">' + _brandEscHtml(group.label) + '</div>' +
+      '<div class="term-group-title">' + _brandEscHtml(group.label) + (hiddenCount > 0 ? ' <span style="font-size:10px;font-weight:400;color:var(--text4);text-transform:none;letter-spacing:0;">(' + hiddenCount + ' more in Show all)</span>' : '') + '</div>' +
       '<div class="term-group-sub">' + _brandEscHtml(group.description) + '</div>' +
       '<div class="term-grid">' +
-        groupKeys.map(function(entry) {
+        visibleKeys.map(function(entry) {
           var val = typeof overrides[entry.key] === 'string' ? overrides[entry.key] : '';
           var isOverridden = val && val !== entry.default;
           return '<div class="term-field">' +
@@ -6318,6 +6338,25 @@ function buildTerminologySetupForm(t) {
     '</div>' +
   '</div>';
   return out;
+}
+
+function _termToggleShowAll(show) {
+  window._termShowAll = !!show;
+  // Preserve anything the admin has typed so toggling doesn't lose
+  // unsaved edits — write every current input value back into the
+  // overrides snapshot, then re-render.
+  if (window.Tenant && window.Terminology) {
+    var overrides = Object.assign({}, window.Tenant.terminology || {});
+    window.Terminology.KEYS.forEach(function(entry) {
+      var el = document.getElementById('term-' + entry.key);
+      if (!el) return; // hidden in current view — leave existing override untouched
+      var v = (el.value || '').trim();
+      if (v && v !== entry.default) overrides[entry.key] = v;
+      else delete overrides[entry.key];
+    });
+    window.Tenant.terminology = overrides;
+  }
+  renderTerminologySetup();
 }
 
 function wireTerminologySetupForm() {
@@ -6463,7 +6502,10 @@ function buildWorkflowSetupForm(t) {
   var schema = window.Workflow.SCHEMA;
   var defaults = window.Workflow.DEFAULTS;
   var current = t.workflow || {};
-  var out = '<div class="brand-form">';
+  var out = '<div class="brand-form">' +
+    '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+      '<strong>What to do here:</strong> set how members move through intake → consult → prescription → refill in your clinic. Every section below has sensible defaults; the ones most worth reviewing are <em>Consult policy</em> (sync vs async) and <em>Refill window</em> (days before run-out). Click any section header to expand it. You can always re-apply a template from Getting Started to reset.' +
+    '</div>';
   schema.forEach(function(section, idx) {
     var collapsed = idx > 0 ? ' collapsed' : '';
     out += '<div class="workflow-section' + collapsed + '" id="wfSection-' + _brandEscAttr(section.section) + '">' +
@@ -6697,7 +6739,9 @@ function renderCommsSetup() {
 function _buildCommsSetupBody() {
   var groups = window.Messaging.GROUPS;
   var catalog = window.Messaging.CATALOG;
-  var out = '';
+  var out = '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+    '<strong>What to do here:</strong> these are the automated messages your clinic sends (welcome, refill reminder, inactivity nudge, etc.). Each has a sensible default template; click one to edit its subject + body. Variables like <code>{firstName}</code> and <code>{clinicianName}</code> interpolate at send time. Disable a template with its toggle if you don’t want it firing.' +
+  '</div>';
   groups.forEach(function(g) {
     var groupTemplates = catalog.filter(function(c) { return c.group === g.key; });
     if (groupTemplates.length === 0) return;
@@ -6890,7 +6934,10 @@ function renderComplianceSetup() {
 var _STATES = (window.Compliance && window.Compliance.STATES) || [];
 
 function _buildComplianceBody() {
-  return _compRegionsSection() + _compLocationsSection() + _compConsentsSection() + _compLicensesSection();
+  var banner = '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+    '<strong>What to do here:</strong> configure which US states your clinic operates in, list physical locations (if any), publish consent documents members sign at intake, and track clinician license expirations. The starting template seeds a baseline — add states as you expand, upload new consent versions when legal counsel updates them. Locations and licenses are optional.' +
+  '</div>';
+  return banner + _compRegionsSection() + _compLocationsSection() + _compConsentsSection() + _compLicensesSection();
 }
 
 function _compRegionsSection() {
@@ -7077,7 +7124,9 @@ function renderIntegrationsSetup() {
 function _buildIntegrationsSetupBody() {
   var providers = window.Integrations.PROVIDERS || [];
   var categories = window.Integrations.CATEGORIES || [];
-  var out = '';
+  var out = '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
+    '<strong>What to do here:</strong> this is where you turn provisioned integrations (email, SMS, e-signature, EHR, etc.) on or off and toggle per-provider features. Credentials are platform-owned for security — to add a new provider, contact your account manager. You can adjust mode / webhook paths / feature flags yourself.' +
+  '</div>';
   categories.forEach(function(cat) {
     var catProviders = providers.filter(function(p){return p.category === cat.key;});
     var rendered = catProviders.filter(function(p){return _intSetupRows[p.key];});

@@ -232,10 +232,12 @@ BEGIN
 
   -- ── Brand layer ────────────────────────────────────────────────────
   IF p_answers ? 'brand' THEN
-    IF (p_answers->'brand'->>'wordmark')      IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('wordmark',      p_answers->'brand'->>'wordmark');      END IF;
-    IF (p_answers->'brand'->>'accentColor')   IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('accent_color',  upper(p_answers->'brand'->>'accentColor')); END IF;
-    IF (p_answers->'brand'->>'supportEmail')  IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('support_email', p_answers->'brand'->>'supportEmail'); END IF;
-    IF (p_answers->'brand'->>'supportPhone')  IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('support_phone', p_answers->'brand'->>'supportPhone'); END IF;
+    IF (p_answers->'brand'->>'wordmark')           IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('wordmark',           p_answers->'brand'->>'wordmark');           END IF;
+    IF (p_answers->'brand'->>'wordmarkImageUrl')   IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('wordmark_image_url', p_answers->'brand'->>'wordmarkImageUrl'); END IF;
+    IF (p_answers->'brand'->>'logoUrl')            IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('logo_url',           p_answers->'brand'->>'logoUrl');            END IF;
+    IF (p_answers->'brand'->>'accentColor')        IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('accent_color',       upper(p_answers->'brand'->>'accentColor')); END IF;
+    IF (p_answers->'brand'->>'supportEmail')       IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('support_email',      p_answers->'brand'->>'supportEmail');       END IF;
+    IF (p_answers->'brand'->>'supportPhone')       IS NOT NULL THEN v_brand := v_brand || jsonb_build_object('support_phone',      p_answers->'brand'->>'supportPhone');       END IF;
   END IF;
 
   -- ── Features layer ─────────────────────────────────────────────────

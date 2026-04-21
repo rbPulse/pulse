@@ -5660,7 +5660,7 @@ function _wizardDefaultState() {
       workflow:   { consultPolicy: '', refillDays: null, intakeRequired: null, followUpDays: null },
       comms:      { enabled: {}, tone: '', customTemplates: {}, perMessage: {} },
       territory:  { states: [] },
-      brand:      { wordmark: '', accentColor: '', supportEmail: '', supportPhone: '' }
+      brand:      { wordmark: '', wordmarkImageUrl: '', logoUrl: '', accentColor: '', supportEmail: '', supportPhone: '' }
     },
     skipped: {} // keyed by step key so Review can show "skipped" explicitly
   };
@@ -5730,10 +5730,12 @@ function _wizardPrefillFromTenant() {
   }
 
   // Brand: direct mapping.
-  s.answers.brand.wordmark     = b.wordmark      || '';
-  s.answers.brand.accentColor  = b.accent_color  || '';
-  s.answers.brand.supportEmail = b.support_email || '';
-  s.answers.brand.supportPhone = b.support_phone || '';
+  s.answers.brand.wordmark         = b.wordmark           || '';
+  s.answers.brand.wordmarkImageUrl = b.wordmark_image_url || '';
+  s.answers.brand.logoUrl          = b.logo_url           || '';
+  s.answers.brand.accentColor      = b.accent_color       || '';
+  s.answers.brand.supportEmail     = b.support_email      || '';
+  s.answers.brand.supportPhone     = b.support_phone      || '';
 
   // Clinic type isn't stored — can't be inferred from current config.
   // Leave blank; admin re-picks if they want smart defaults to drive
@@ -5868,6 +5870,11 @@ var _WIZARD_CSS = [
   '.wiz-auto-setting{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}',
   '.wiz-auto-setting-label{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}',
   '.wiz-auto-setting .wiz-slider-val{font-size:14px;}',
+  '.wiz-mode-tabs{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}',
+  '.wiz-mode-tab{font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);background:transparent;border:0;padding:6px 14px;cursor:pointer;transition:background .15s;}',
+  '.wiz-mode-tab:first-child{border-right:1px solid var(--border);}',
+  '.wiz-mode-tab.active{background:var(--wiz-accent-tint);color:var(--text);}',
+  '.wiz-hint{font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;}',
   '.wiz-footer{display:flex;align-items:center;justify-content:space-between;margin-top:24px;gap:12px;}',
   '.wiz-footer-left{display:flex;gap:8px;}',
   '.wiz-footer-right{display:flex;gap:8px;}',
@@ -6591,10 +6598,26 @@ function _wizUpdateTerritoryCount() {
 // shows the chosen brand values composing a mini-nav mock.
 function _wizScreenBrand() {
   var b = window._wizardState.answers.brand;
+  var wordmarkMode = b.wordmarkImageUrl ? 'image' : 'text';
   return '<div class="wiz-q">' +
       '<div class="wiz-q-label">Clinic name (wordmark)</div>' +
-      '<div class="wiz-q-help">What members see at the top of every portal. Keep it short — fits in nav.</div>' +
-      '<input type="text" class="wiz-input" placeholder="ACME Health" value="' + _brandEscAttr(b.wordmark || '') + '" oninput="_wizBrandInput(\'wordmark\', this.value)" maxlength="32"/>' +
+      '<div class="wiz-q-help">The name that appears at the top of every portal. Use text or upload a wordmark graphic.</div>' +
+      '<div role="tablist" class="wiz-mode-tabs" style="margin-bottom:10px;">' +
+        '<button type="button" role="tab" class="wiz-mode-tab' + (wordmarkMode === "text" ? " active" : "") + '" data-mode="text" onclick="_wizBrandSetWordmarkMode(\'text\')">Text</button>' +
+        '<button type="button" role="tab" class="wiz-mode-tab' + (wordmarkMode === "image" ? " active" : "") + '" data-mode="image" onclick="_wizBrandSetWordmarkMode(\'image\')">Image</button>' +
+      '</div>' +
+      '<div id="wizBrandWordmarkText" style="' + (wordmarkMode === "image" ? "display:none;" : "") + '">' +
+        '<input type="text" class="wiz-input" placeholder="ACME Health" value="' + _brandEscAttr(b.wordmark || '') + '" oninput="_wizBrandInput(\'wordmark\', this.value)" maxlength="32"/>' +
+      '</div>' +
+      '<div id="wizBrandWordmarkImage" style="' + (wordmarkMode === "text" ? "display:none;" : "") + '">' +
+        '<input type="url" class="wiz-input" placeholder="https://.../wordmark.svg" value="' + _brandEscAttr(b.wordmarkImageUrl || '') + '" oninput="_wizBrandInput(\'wordmarkImageUrl\', this.value)"/>' +
+        '<div class="wiz-hint">Paste a horizontal wordmark graphic URL (SVG or PNG with transparent background recommended). Sized to ~1.4em tall in nav.</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Logo</div>' +
+      '<div class="wiz-q-help">The circular mark next to your wordmark. Optional — leave blank to use the default heartbeat icon.</div>' +
+      '<input type="url" class="wiz-input" placeholder="https://.../logo.svg" value="' + _brandEscAttr(b.logoUrl || '') + '" oninput="_wizBrandInput(\'logoUrl\', this.value)"/>' +
     '</div>' +
     '<div class="wiz-q">' +
       '<div class="wiz-q-label">Accent color</div>' +
@@ -6615,6 +6638,22 @@ function _wizScreenBrand() {
     _wizBrandPreview();
 }
 
+function _wizBrandSetWordmarkMode(mode) {
+  // Flip which sub-input is visible. We don't clear the other field's
+  // state so toggling back and forth preserves whatever the admin
+  // had typed — only whichever side is active at Apply time wins.
+  var textPane  = document.getElementById('wizBrandWordmarkText');
+  var imagePane = document.getElementById('wizBrandWordmarkImage');
+  if (textPane)  textPane.style.display  = mode === 'image' ? 'none' : '';
+  if (imagePane) imagePane.style.display = mode === 'text'  ? 'none' : '';
+  var tabs = document.querySelectorAll('#setup-wizard-body .wiz-mode-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].getAttribute('data-mode') === mode);
+  }
+  // Rebuild preview so the chosen surface reflects the active mode.
+  _wizRebuildBrandPreview();
+}
+
 function _wizBrandPreview() {
   var b = window._wizardState.answers.brand;
   var wm = (b.wordmark || '').trim() || 'PULSE';
@@ -6622,17 +6661,39 @@ function _wizBrandPreview() {
   var validHex = /^#[0-9a-fA-F]{6}$/.test(hex);
   var accentStyle = validHex ? 'style="--brand-accent:' + hex + ';"' : '';
   var btnStyle = validHex ? 'background:' + hex + ';' : 'background:var(--wiz-accent);';
+  var accentColor = validHex ? hex : 'var(--wiz-accent)';
+
+  // Wordmark: if an image URL is set, use <img>; otherwise render text.
+  // Whichever pane the admin was last viewing wins when both fields
+  // have content (image takes precedence only when actually set).
+  var wordmarkHtml;
+  if (b.wordmarkImageUrl) {
+    wordmarkHtml = '<img src="' + _brandEscAttr(b.wordmarkImageUrl) + '" alt="' + _brandEscAttr(wm) + '" style="max-height:20px;width:auto;display:block;"/>';
+  } else {
+    wordmarkHtml = '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text);">' + _brandEscHtml(wm) + '</span>';
+  }
+
+  // Logo: if URL provided, render as <img>; otherwise use the default
+  // heartbeat SVG in the accent color.
+  var logoHtml;
+  if (b.logoUrl) {
+    logoHtml = '<img src="' + _brandEscAttr(b.logoUrl) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;"/>';
+  } else {
+    logoHtml = '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid ' + accentColor + ';display:flex;align-items:center;justify-content:center;">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="' + accentColor + '" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
+    '</div>';
+  }
+
   var supp = [];
   if (b.supportEmail) supp.push(_brandEscHtml(b.supportEmail));
   if (b.supportPhone) supp.push(_brandEscHtml(b.supportPhone));
+
   return '<div class="wiz-preview" ' + accentStyle + '>' +
     '<div class="wiz-preview-label">Preview</div>' +
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
       '<div style="display:flex;align-items:center;gap:10px;">' +
-        '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid ' + (validHex ? hex : 'var(--wiz-accent)') + ';display:flex;align-items:center;justify-content:center;">' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="' + (validHex ? hex : 'var(--wiz-accent)') + '" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
-        '</div>' +
-        '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text);">' + _brandEscHtml(wm) + '</span>' +
+        logoHtml +
+        wordmarkHtml +
       '</div>' +
       '<button type="button" style="' + btnStyle + 'color:#fff;border:0;padding:8px 18px;border-radius:999px;font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;cursor:default;">Primary action</button>' +
     '</div>' +
@@ -6640,12 +6701,15 @@ function _wizBrandPreview() {
   '</div>';
 }
 
+function _wizRebuildBrandPreview() {
+  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
+  if (preview) preview.outerHTML = _wizBrandPreview();
+}
+
 function _wizBrandInput(key, val) {
   window._wizardState.answers.brand[key] = val;
   _saveWizardState();
-  // Partial repaint: preview only. Keeps input focus.
-  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
-  if (preview) preview.outerHTML = _wizBrandPreview();
+  _wizRebuildBrandPreview();
 }
 
 function _wizBrandAccentPicker(hex) {
@@ -6653,14 +6717,12 @@ function _wizBrandAccentPicker(hex) {
   _saveWizardState();
   var textInput = document.getElementById('wizBrandAccentHexInput');
   if (textInput) textInput.value = hex.toUpperCase();
-  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
-  if (preview) preview.outerHTML = _wizBrandPreview();
+  _wizRebuildBrandPreview();
 }
 function _wizBrandAccentHex(hex) {
   window._wizardState.answers.brand.accentColor = hex;
   _saveWizardState();
-  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
-  if (preview) preview.outerHTML = _wizBrandPreview();
+  _wizRebuildBrandPreview();
 }
 // ── Screen 7: Review ───────────────────────────────────────────────
 // Summarises every answer as a card with an Edit button that jumps
@@ -6788,10 +6850,12 @@ function _wizReviewTerritory(a, skipped) {
 function _wizReviewBrand(a, skipped) {
   if (skipped.brand) return { skipped:true };
   var b = a.brand || {};
-  var hasAny = (b.wordmark || b.accentColor || b.supportEmail || b.supportPhone);
+  var hasAny = (b.wordmark || b.wordmarkImageUrl || b.logoUrl || b.accentColor || b.supportEmail || b.supportPhone);
   if (!hasAny) return { html:null };
   var parts = [];
-  if (b.wordmark)    parts.push('Wordmark <strong>' + _brandEscHtml(b.wordmark) + '</strong>');
+  if (b.wordmarkImageUrl)  parts.push('Wordmark <strong>image</strong>');
+  else if (b.wordmark)     parts.push('Wordmark <strong>' + _brandEscHtml(b.wordmark) + '</strong>');
+  if (b.logoUrl)           parts.push('Logo <strong>uploaded</strong>');
   if (b.accentColor) parts.push('Accent <strong style="font-family:\'SF Mono\',monospace;">' + _brandEscHtml(b.accentColor) + '</strong> <span style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;background:' + _brandEscAttr(b.accentColor) + ';"></span>');
   if (b.supportEmail) parts.push('Support email <strong>' + _brandEscHtml(b.supportEmail) + '</strong>');
   if (b.supportPhone) parts.push('Phone <strong>' + _brandEscHtml(b.supportPhone) + '</strong>');

@@ -3809,7 +3809,7 @@ function loadClinicianQueues() {
   Promise.all([
     db.from('profiles').select('*').eq('role', 'clinician'),
     db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review'),
-    db.from('prescriptions').select('assigned_clinician_id, user_id, status').eq('status', 'active'),
+    db.from('prescriptions').select('clinician_id, user_id, status').eq('status', 'active'),
     db.from('consultations').select('assigned_clinician_id, created_at, updated_at, review_status').in('review_status', ['prescribed','not_prescribed']).gte('updated_at', since30d),
     // Last clinical activity per clinician — from audit_logs within
     // 7d. Used to derive Away / Off status for the filter. Falls
@@ -3843,8 +3843,8 @@ function loadClinicianQueues() {
 
     var caseByClin = {};
     active.forEach(function(rx) {
-      if (!rx.assigned_clinician_id) return;
-      var set = caseByClin[rx.assigned_clinician_id] || (caseByClin[rx.assigned_clinician_id] = {});
+      if (!rx.clinician_id) return;
+      var set = caseByClin[rx.clinician_id] || (caseByClin[rx.clinician_id] = {});
       if (rx.user_id) set[rx.user_id] = true;
     });
 
@@ -3853,8 +3853,9 @@ function loadClinicianQueues() {
       if (!c.assigned_clinician_id || !c.created_at || !c.updated_at) return;
       var dur = new Date(c.updated_at).getTime() - new Date(c.created_at).getTime();
       if (dur < 0) return;
-      var b = slaByClin[c.assigned_clinician_id] || (slaByClin[c.assigned_clinician_id] = { total: 0, ontime: 0 });
+      var b = slaByClin[c.assigned_clinician_id] || (slaByClin[c.assigned_clinician_id] = { total: 0, ontime: 0, sumMs: 0 });
       b.total++;
+      b.sumMs += dur;
       if (dur <= slaMs) b.ontime++;
     });
 
@@ -3863,7 +3864,7 @@ function loadClinicianQueues() {
       var open = openByClin[c.user_id] || { open: 0, oldest: null };
       var caseset = caseByClin[c.user_id] || {};
       var caseload = Object.keys(caseset).length;
-      var sla = slaByClin[c.user_id] || { total: 0, ontime: 0 };
+      var sla = slaByClin[c.user_id] || { total: 0, ontime: 0, sumMs: 0 };
       var ageH = open.oldest ? Math.floor((Date.now() - open.oldest) / 3600000) : 0;
       var maxCap = (typeof c.max_concurrent_patients === 'number' && c.max_concurrent_patients > 0) ? c.max_concurrent_patients : null;
       var slaBreached = open.open > 0 && ageH >= slaHours;
@@ -3891,6 +3892,7 @@ function loadClinicianQueues() {
         slaPct:        sla.total > 0 ? Math.round((sla.ontime / sla.total) * 100) : null,
         slaOntime:     sla.ontime,
         slaTotal:      sla.total,
+        avgRespH:      sla.total > 0 ? Math.round((sla.sumMs / sla.total) / 3600000) : null,
         status:        status,
         hoursSinceAct: hoursSinceAct,
         slaBreached:   slaBreached,
@@ -3916,8 +3918,8 @@ function renderClinicianQueues(errorMsg) {
   head.innerHTML = _adminSortThead('queues', [
     { key: 'clinician', label: 'Clinician',       width: '26%' },
     { key: 'caseload',  label: 'Active caseload', width: '18%' },
-    { key: 'open',      label: 'Open',            width: '18%' },
-    { key: 'oldest',    label: 'Oldest',          width: '18%' },
+    { key: 'open',      label: 'Open reviews',    width: '18%' },
+    { key: 'avg',       label: 'Avg response 30d',width: '18%' },
     { key: 'sla',       label: 'SLA 30d',         width: '20%' }
   ]);
   var emptyRow = function(msg) {
@@ -3933,7 +3935,7 @@ function renderClinicianQueues(errorMsg) {
     clinician: function(r) { return r.name; },
     caseload:  function(r) { return r.maxCap ? (r.caseload + ' / ' + r.maxCap) : String(r.caseload); },
     open:      function(r) { return String(r.open); },
-    oldest:    function(r) { return r.hasPending ? (r.ageH < 1 ? '<1h' : r.ageH < 24 ? r.ageH + 'h' : Math.floor(r.ageH/24) + 'd') : ''; },
+    avg:       function(r) { return r.avgRespH == null ? 'No decisions yet' : (r.avgRespH + 'h avg'); },
     sla:       function(r) { return r.slaPct == null ? 'No decisions yet' : (r.slaPct + '%'); }
   };
   var filtered = _adminFilterRows('queues', _clinicianQueueRows, filterGetters);
@@ -3950,7 +3952,7 @@ function renderClinicianQueues(errorMsg) {
     clinician: function(r) { return r.name; },
     caseload:  function(r) { return r.caseload; },
     open:      function(r) { return r.open; },
-    oldest:    function(r) { return r.hasPending ? r.ageH : -1; },
+    avg:       function(r) { return r.avgRespH == null ? -1 : r.avgRespH; },
     sla:       function(r) { return r.slaPct == null ? -1 : r.slaPct; }
   });
   // Float overloaded rows to the top regardless of current sort so
@@ -3961,28 +3963,32 @@ function renderClinicianQueues(errorMsg) {
   sorted = pinned.concat(rest);
 
   container.innerHTML = sorted.map(function(r) {
-    var oldestColor = 'color:var(--text3);';
-    var oldestStr = '—';
-    if (r.hasPending) {
-      oldestStr = r.ageH < 1 ? '<1h' : r.ageH < 24 ? r.ageH + 'h' : Math.floor(r.ageH / 24) + 'd';
-      if (r.ageH >= r.slaHours)          oldestColor = 'color:var(--red);font-weight:600;';
-      else if (r.ageH >= r.slaHours / 2) oldestColor = 'color:var(--amber);font-weight:600;';
-      else                               oldestColor = 'color:var(--green);font-weight:600;';
+    // Avg response 30d: color-coded like Oldest was. Green <
+    // SLA/2, amber < SLA, red >= SLA. Same semantics as SLA pct.
+    var avgColor = 'color:var(--text3);';
+    var avgStr   = '—';
+    if (r.avgRespH != null) {
+      avgStr = r.avgRespH < 1 ? '<1h avg' : r.avgRespH < 24 ? r.avgRespH + 'h avg' : Math.round(r.avgRespH / 24 * 10) / 10 + 'd avg';
+      if (r.avgRespH >= r.slaHours)          avgColor = 'color:var(--red);font-weight:600;';
+      else if (r.avgRespH >= r.slaHours / 2) avgColor = 'color:var(--amber);font-weight:600;';
+      else                                   avgColor = 'color:var(--green);font-weight:600;';
     }
 
-    var openClass = 'cc-count-pill';
-    if (r.open === 0)       openClass += ' muted';
+    // Open reviews: plain text, color-coded for urgency. No pill.
+    var openColor = 'color:var(--text);';
+    if (r.open === 0)       openColor = 'color:var(--text4);';
     else if (r.maxCap) {
       var pct = r.open / r.maxCap;
-      if      (pct < 0.5) openClass += ' good';
-      else if (pct < 0.8) openClass += ' warn';
-      else                openClass += ' bad';
+      if      (pct < 0.5) openColor = 'color:var(--green);font-weight:600;';
+      else if (pct < 0.8) openColor = 'color:var(--amber);font-weight:600;';
+      else                openColor = 'color:var(--red);font-weight:600;';
     } else {
-      if      (r.open <= 3) openClass += ' good';
-      else if (r.open <= 8) openClass += ' warn';
-      else                  openClass += ' bad';
+      if      (r.open <= 3) openColor = 'color:var(--green);font-weight:600;';
+      else if (r.open <= 8) openColor = 'color:var(--amber);font-weight:600;';
+      else                  openColor = 'color:var(--red);font-weight:600;';
     }
 
+    // Caseload: show as '12 / 25' when capacity is set, else '12'.
     var caseStr = r.maxCap
       ? '<strong>' + r.caseload + '</strong> <span style="color:var(--text3);font-size:11px;">/ ' + r.maxCap + '</span>'
       : '<strong>' + r.caseload + '</strong>';
@@ -3996,7 +4002,8 @@ function renderClinicianQueues(errorMsg) {
                '<span style="color:var(--text3);font-size:11px;">(' + r.slaOntime + ' of ' + r.slaTotal + ')</span>';
     }
 
-    // Capacity utilization bullet — only render when max is set.
+    // Capacity utilization bullet stays under caseload when a
+    // max is configured; name row is just the name now.
     var bullet = '';
     if (r.maxCap) {
       var ratio = Math.min(1, r.caseload / r.maxCap);
@@ -4006,34 +4013,12 @@ function renderClinicianQueues(errorMsg) {
                '</div>';
     }
 
-    // Small status badge beside the clinician's name — lets admins
-    // scan who's overloaded / away / off without checking the filter.
-    var statusLabel = {
-      overloaded: 'Overloaded',
-      active:     'Active',
-      away:       'Away',
-      off:        'Off',
-      idle:       'Idle'
-    }[r.status] || r.status;
-    var nameSubtitle = '';
-    if (r.status === 'overloaded') {
-      var why = r.slaBreached ? 'SLA breached' : 'At capacity';
-      nameSubtitle = '<div class="cc-row-sub" style="color:var(--red);">' + why + '</div>';
-    } else if (r.status === 'away' && r.hoursSinceAct != null) {
-      var dayAgo = Math.floor(r.hoursSinceAct / 24);
-      nameSubtitle = '<div class="cc-row-sub" style="color:var(--amber);">Inactive ' + (dayAgo >= 1 ? dayAgo + 'd' : r.hoursSinceAct + 'h') + '</div>';
-    } else if (r.status === 'off') {
-      nameSubtitle = '<div class="cc-row-sub" style="color:var(--text3);">Inactive 7+ days</div>';
-    } else if (r.status === 'idle') {
-      nameSubtitle = '<div class="cc-row-sub" style="color:var(--text4);">No open work</div>';
-    }
-
     var rowClass = (r.status === 'overloaded') ? 'cc-row-pinned cw-row-clickable' : 'cw-row-clickable';
     return '<tr class="' + rowClass + '" onclick="_cwOpenDetail(\'' + r.userId + '\')">' +
-      '<td style="font-weight:600;">' + escHtml(r.name) + nameSubtitle + '</td>' +
+      '<td style="font-weight:600;">' + escHtml(r.name) + '</td>' +
       '<td>' + caseStr + bullet + '</td>' +
-      '<td><span class="' + openClass + '">' + r.open + '</span></td>' +
-      '<td style="' + oldestColor + '">' + oldestStr + '</td>' +
+      '<td style="' + openColor + '"><strong>' + r.open + '</strong></td>' +
+      '<td style="' + avgColor + '">' + avgStr + '</td>' +
       '<td>' + slaStr + '</td>' +
     '</tr>';
   }).join('');

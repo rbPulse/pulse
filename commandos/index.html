@@ -836,17 +836,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <span class="sidebar-item-label">Clients</span>
         </div>
         <div class="sidebar-section-label">Platform</div>
-        <div class="sidebar-item" id="nav-modules" onclick="switchTab('modules')">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span class="sidebar-item-label">Modules</span>
-        </div>
         <div class="sidebar-item" id="nav-integrations" onclick="switchTab('integrations')">
           <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           <span class="sidebar-item-label">Integrations</span>
         </div>
         <div class="sidebar-item" id="nav-billing" onclick="switchTab('billing')">
           <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span class="sidebar-item-label">Revenue</span>
+          <span class="sidebar-item-label">Plans &amp; Modules</span>
         </div>
         <div class="sidebar-section-label">Operations</div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
@@ -964,15 +960,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         </div>
       </div>
 
-      <!-- MODULES -->
-      <div class="platform-tab" id="tab-modules">
-        <div class="tab-header">
-          <div class="tab-title">Modules</div>
-          <div class="tab-subtitle">Feature-gate catalog with fleet-wide adoption. Toggle per-tenant entitlements from a tenant’s Subscription tab.</div>
-        </div>
-        <div id="modulesTabBody"><div class="comp-loading">Loading module catalog…</div></div>
-      </div>
-
       <!-- INTEGRATIONS -->
       <div class="platform-tab" id="tab-integrations">
         <div class="tab-header">
@@ -982,13 +969,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div id="integrationsTabBody"><div class="an-loading">Loading integrations overview…</div></div>
       </div>
 
-      <!-- REVENUE (fleet) -->
+      <!-- PLANS & MODULES (fleet) -->
       <div class="platform-tab" id="tab-billing">
         <div class="tab-header">
-          <div class="tab-title">Revenue</div>
-          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn flags. Per-tenant subscriptions live on the tenant\u2019s Subscription tab.</div>
+          <div class="tab-title">Plans &amp; Modules</div>
+          <div class="tab-subtitle">What the platform sells and how it\u2019s adopted: MRR, plan mix, churn, and the module catalog with fleet adoption counts.</div>
         </div>
-        <div id="billingTabBody"><div class="comp-loading">Loading revenue overview…</div></div>
+        <div id="billingTabBody"><div class="comp-loading">Loading overview…</div></div>
       </div>
 
       </div>
@@ -1139,7 +1126,6 @@ function switchTab(tabId) {
   // own body container; loaders mark body as loaded so switching back
   // doesn't re-fetch. Operators refreshing the data = reload the page.
   if (tabId === 'dashboard'    && !_dashboardLoaded)       loadDashboard();
-  if (tabId === 'modules'      && !_modulesTabLoaded)      loadModulesTab();
   if (tabId === 'billing'      && !_billingTabLoaded)      loadBillingTab();
   if (tabId === 'audit'        && !_auditTabLoaded)        loadAuditTab();
   if (tabId === 'integrations' && !_integrationsTabLoaded) loadIntegrationsTab();
@@ -1702,7 +1688,6 @@ function renderDetailTabs() {
 // Dashboard has its own refresh inside the recent-activity panel
 // header, so we skip it here.
 var _REFRESHABLE_TABS = {
-  modules:      refreshModulesTab,
   billing:      refreshBillingTab,
   audit:        refreshAuditTab,
   integrations: refreshIntegrationsTab,
@@ -1723,7 +1708,6 @@ function ensureTabRefreshButton(tabId) {
   header.appendChild(btn);
 }
 
-function refreshModulesTab()      { _modulesTabLoaded      = false; loadModulesTab();      }
 function refreshBillingTab()      { _billingTabLoaded      = false; loadBillingTab();      }
 function refreshAuditTab()        { _auditTabLoaded        = false; loadAuditTab();        }
 function refreshIntegrationsTab() { _integrationsTabLoaded = false; loadIntegrationsTab(); }
@@ -3343,53 +3327,61 @@ function renderAuditTabList() {
   return renderAuditList(filtered, _auditTabData.tenantsById);
 }
 
-// ── Top-level Modules tab (fleet-wide) ──
-// Lists every module in the catalog with adoption counts (how many
-// tenants have it enabled) and plan membership chips (which plans
-// include it). Fleet-wide read = single aggregate over
-// module_entitlements + plans; operators see at a glance which modules
-// are broadly adopted vs niche.
-var _modulesTabLoaded = false;
+// ── Top-level Plans & Modules tab (fleet-wide) ──
+// Unified monetization view: what the platform sells (plans + their
+// pricing), how it performs (MRR / ARR / churn), and what's in the
+// catalog (module adoption + plan membership).
+var _billingTabLoaded = false;
 
-function loadModulesTab() {
-  var wrap = document.getElementById('modulesTabBody');
+function loadBillingTab() {
+  var wrap = document.getElementById('billingTabBody');
   if (!wrap) return;
-  _modulesTabLoaded = true;
+  _billingTabLoaded = true;
 
   Promise.all([
-    db.from('module_entitlements').select('module_key, enabled').eq('enabled', true),
-    db.from('plans').select('key, name, included_modules').eq('is_archived', false)
+    db.from('plans').select('*').order('display_order'),
+    db.from('tenant_subscriptions').select('*'),
+    db.from('tenants').select('id, name, slug, lifecycle_state'),
+    db.from('module_entitlements').select('module_key, enabled').eq('enabled', true)
   ]).then(function(results) {
-    if (results[0].error || results[1].error) {
-      var err = results[0].error || results[1].error;
+    if (results[0].error || results[1].error || results[2].error || results[3].error) {
+      var err = results[0].error || results[1].error || results[2].error || results[3].error;
       wrap.innerHTML = '<div class="catalog-error">' + escHtml((err.message || 'Load failed')) +
         ((migrationHint(err, '018_billing_modules.sql')) ? '<br/><br/>' + escHtml(migrationHint(err, '018_billing_modules.sql')) : '') + '</div>';
       return;
     }
+
+    var plans         = results[0].data || [];
+    var subscriptions = results[1].data || [];
+    var tenants       = results[2].data || [];
+    var entitlements  = results[3].data || [];
+
     var adoption = {};
-    (results[0].data || []).forEach(function(r) { adoption[r.module_key] = (adoption[r.module_key] || 0) + 1; });
+    entitlements.forEach(function(r) { adoption[r.module_key] = (adoption[r.module_key] || 0) + 1; });
     var plansByModule = {};
-    (results[1].data || []).forEach(function(p) {
+    plans.forEach(function(p) {
       (p.included_modules || []).forEach(function(mk) {
         if (!plansByModule[mk]) plansByModule[mk] = [];
         plansByModule[mk].push(p);
       });
     });
-    wrap.innerHTML = renderModulesTabBody(adoption, plansByModule);
+
+    wrap.innerHTML = renderBillingTabBody(plans, subscriptions, tenants) +
+      renderModulesSection(adoption, plansByModule);
   }).catch(function(err) {
     wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
   });
 }
 
-function renderModulesTabBody(adoption, plansByModule) {
+function renderModulesSection(adoption, plansByModule) {
   var catalog = (window.Modules && window.Modules.CATALOG) || [];
   var categories = (window.Modules && window.Modules.CATEGORIES) || [];
 
-  var out = '';
+  var body = '';
   categories.forEach(function(cat) {
     var catMods = catalog.filter(function(m) { return m.category === cat.key; });
     if (catMods.length === 0) return;
-    out += '<div class="mod-category">' +
+    body += '<div class="mod-category">' +
       '<div class="mod-category-title">' + escHtml(cat.label) + '</div>' +
       catMods.map(function(mod) {
         var count  = adoption[mod.key] || 0;
@@ -3411,36 +3403,13 @@ function renderModulesTabBody(adoption, plansByModule) {
       }).join('') +
     '</div>';
   });
-  return out;
-}
 
-// ── Top-level Billing tab (fleet-wide MRR) ──
-var _billingTabLoaded = false;
+  if (!body) return '';
 
-function loadBillingTab() {
-  var wrap = document.getElementById('billingTabBody');
-  if (!wrap) return;
-  _billingTabLoaded = true;
-
-  Promise.all([
-    db.from('plans').select('*').order('display_order'),
-    db.from('tenant_subscriptions').select('*'),
-    db.from('tenants').select('id, name, slug, lifecycle_state')
-  ]).then(function(results) {
-    if (results[0].error || results[1].error || results[2].error) {
-      var err = results[0].error || results[1].error || results[2].error;
-      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err.message || 'Load failed')) +
-        ((migrationHint(err, '018_billing_modules.sql')) ? '<br/><br/>' + escHtml(migrationHint(err, '018_billing_modules.sql')) : '') + '</div>';
-      return;
-    }
-    wrap.innerHTML = renderBillingTabBody(
-      results[0].data || [],
-      results[1].data || [],
-      results[2].data || []
-    );
-  }).catch(function(err) {
-    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-  });
+  return '<div class="detail-divider" style="margin:28px 0 18px;"></div>' +
+    '<div class="comp-section-head"><div class="comp-section-title">Module catalog</div></div>' +
+    '<div class="comp-section-sub" style="margin-bottom:14px;">Every module in the catalog with fleet adoption + plan membership. Toggle per-tenant entitlements from a tenant\u2019s Subscription tab.</div>' +
+    body;
 }
 
 function renderBillingTabBody(plans, subscriptions, tenants) {

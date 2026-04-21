@@ -3810,7 +3810,7 @@ function loadClinicianQueues() {
     db.from('profiles').select('*').eq('role', 'clinician'),
     db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review'),
     db.from('prescriptions').select('clinician_id, user_id, status').eq('status', 'active'),
-    db.from('consultations').select('assigned_clinician_id, created_at, updated_at, review_status').in('review_status', ['prescribed','not_prescribed']).gte('updated_at', since30d),
+    db.from('prescriptions').select('clinician_id, started_at, consultations!inner(created_at)').gte('started_at', since30d).not('clinician_id', 'is', null),
     // Last clinical activity per clinician — from audit_logs within
     // 7d. Used to derive Away / Off status for the filter. Falls
     // back silently if audit_logs is unavailable (RLS or migration).
@@ -3848,12 +3848,19 @@ function loadClinicianQueues() {
       if (rx.user_id) set[rx.user_id] = true;
     });
 
+    // Map each prescription to (clinician_id, duration from intake
+    // submit to started_at). Only counts 'prescribed' outcomes —
+    // declined consultations don't produce a prescription row.
+    // Adding declined decisions is a follow-up if they become
+    // material to the SLA picture for a given tenant.
     var slaByClin = {};
-    decided30.forEach(function(c) {
-      if (!c.assigned_clinician_id || !c.created_at || !c.updated_at) return;
-      var dur = new Date(c.updated_at).getTime() - new Date(c.created_at).getTime();
+    decided30.forEach(function(rx) {
+      if (!rx.clinician_id || !rx.started_at) return;
+      var cs = rx.consultations;
+      if (!cs || !cs.created_at) return;
+      var dur = new Date(rx.started_at).getTime() - new Date(cs.created_at).getTime();
       if (dur < 0) return;
-      var b = slaByClin[c.assigned_clinician_id] || (slaByClin[c.assigned_clinician_id] = { total: 0, ontime: 0, sumMs: 0 });
+      var b = slaByClin[rx.clinician_id] || (slaByClin[rx.clinician_id] = { total: 0, ontime: 0, sumMs: 0 });
       b.total++;
       b.sumMs += dur;
       if (dur <= slaMs) b.ontime++;

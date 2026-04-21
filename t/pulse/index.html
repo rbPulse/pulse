@@ -880,7 +880,7 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="nav-icon">
       <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
     </div>
-    <span class="nav-name">PULSE</span>
+    <span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
   </a>
   <ul class="nav-links">
     <li><a href="#how">How It Works</a></li>
@@ -1408,9 +1408,9 @@ document.addEventListener('DOMContentLoaded',function(){
 <footer>
   <div class="footer-brand" style="display:flex;align-items:center;gap:10px;">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-    <span>PULSE</span>
+    <span data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
   </div>
-  <div class="footer-copy">© 2026 Pulse Health Technologies. All rights reserved.</div>
+  <div class="footer-copy" data-brand="footer-copy">© 2026 Pulse Health Technologies. All rights reserved.</div>
   <div class="footer-links">
     <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a>
   </div>
@@ -2105,6 +2105,7 @@ document.addEventListener("DOMContentLoaded",function(){
   checkScroll();
 });
 </script>
+<script src="../../brand.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
@@ -2115,6 +2116,16 @@ window._sbClient.auth.getSession().then(function(r){
 });
 window._sbClient.auth.onAuthStateChange(function(event, session){
   updateNavAuth(session ? session.user : null);
+});
+
+// Pull the Pulse tenant's brand JSONB and apply via brand.js. Public
+// path: the marketing page is visited pre-session, so tenant.js (which
+// requires auth) isn't loaded. Reads .brand without RLS friction.
+window._sbClient.from('tenants').select('id, slug, name, brand').eq('slug', 'pulse').limit(1).then(function(r){
+  if (r && r.data && r.data[0]) {
+    window.Tenant = r.data[0];
+    if (window.Brand) window.Brand.apply();
+  }
 });
 </script>
 

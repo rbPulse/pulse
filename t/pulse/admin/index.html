@@ -15,6 +15,7 @@
 <script src="../../../integrations.js"></script>
 <script src="../../../compliance.js"></script>
 <script src="../../../modules.js"></script>
+<script src="../../../brand.js"></script>
 <style>
 :root{
   /* Portal-aligned palette. Admin gets amber as its accent to
@@ -714,7 +715,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <nav id="admin-nav" style="display:none;">
   <a href="../" class="nav-brand">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-    <span class="nav-name">PULSE</span>
+    <span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
   </a>
   <div class="nav-right">
     <span class="nav-user-email" id="navEmail"></span>
@@ -1767,37 +1768,31 @@ function _bootAdminWithTenant(user, profile) {
 // icon color. Admin's accent is amber-by-default; tenant config
 // replaces the amber slot. Other portals handle their own accents.
 function applyTenantBrand() {
+  // Delegate the generic stuff (wordmark / logo / favicon / accent /
+  // support / legal / footer) to the shared brand.js applier which
+  // reads data-brand="..." annotations. This function keeps only
+  // admin-specific logic: the <title> pattern and loading wordmark
+  // composition that concatenate brand.wordmark with the role noun.
+  if (document.body && !document.body.classList.contains('admin-mode')) {
+    document.body.classList.add('admin-mode');
+  }
   var brand = (window.Tenant && window.Tenant.brand) || {};
-
-  // Role noun ("Admin" by default) is overridable via terminology —
-  // tenants that call their admin portal something else ("Operator",
-  // "Staff") see it reflected in the loading wordmark and tab title.
-  // Falls through to "Admin" if terminology.js didn't load, so the
-  // page still renders correctly in a partial-boot scenario.
   var roleNoun = (window.Terminology ? window.Terminology.t('admin') : 'Admin');
-
   var wordmark = (brand.wordmark || '').trim() || 'PULSE';
-  var navName = document.querySelector('.nav-name');
-  if (navName) navName.textContent = wordmark;
   var loadingEl = document.getElementById('loadingWordmark');
   if (loadingEl) loadingEl.textContent = wordmark + ' ' + roleNoun;
   document.title = roleNoun + ' | ' + wordmark;
 
-  if (brand.accent_color && /^#[0-9a-fA-F]{6}$/.test(brand.accent_color)) {
+  if (window.Brand) window.Brand.apply();
+
+  // Back-compat amber slot: shared applier sets --brand-accent-*; the
+  // admin stylesheet still references --amber-*. Keep both in sync
+  // until the CSS sweep (step 4) migrates admin off the amber names.
+  if (brand.accent_color && /^#[0-9a-fA-F]{6}$/.test(brand.accent_color) && window.Brand) {
     var hex = brand.accent_color;
     document.documentElement.style.setProperty('--amber',        hex);
-    document.documentElement.style.setProperty('--amber-tint',   _adminHexToRgba(hex, 0.10));
-    document.documentElement.style.setProperty('--amber-border', _adminHexToRgba(hex, 0.30));
-  }
-
-  if (brand.favicon_url) {
-    var link = document.querySelector('link[rel="icon"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = brand.favicon_url;
+    document.documentElement.style.setProperty('--amber-tint',   window.Brand._hexToRgba(hex, 0.10));
+    document.documentElement.style.setProperty('--amber-border', window.Brand._hexToRgba(hex, 0.30));
   }
 }
 

@@ -15,6 +15,7 @@
 <script src="../../../integrations.js"></script>
 <script src="../../../compliance.js"></script>
 <script src="../../../modules.js"></script>
+<script src="../../../brand.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
@@ -5125,7 +5126,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
 <nav id="portal-nav" style="display:none;">
   <a class="nav-brand" role="button" tabindex="0" style="cursor:pointer;" onclick="_portalGoHome();return false;">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-    <span class="nav-name">PULSE</span>
+    <span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
   </a>
   <div class="nav-right">
     <span class="nav-user-email" id="navEmail"></span>
@@ -6388,7 +6389,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
   <div class="setup-wrap">
     <div class="setup-brand">
       <div class="setup-brand-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-      <span class="setup-brand-name">PULSE</span>
+      <span class="setup-brand-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
     </div>
     <div class="setup-step">Clinician Setup</div>
     <div class="setup-title">Set up your profile.</div>
@@ -7512,32 +7513,15 @@ function _bootPortalWithTenant(user) {
 // querySelectorAll can't reach them. They need to read from
 // window.Tenant.brand.wordmark when the template is built. Follow-up.
 function applyTenantBrand() {
+  // Delegates the generic fields to the shared brand.js applier
+  // which reads every data-brand="..." annotation on the page.
+  // This function keeps only the member-portal-specific title
+  // composition (wordmark + role noun → tab title).
   var brand = (window.Tenant && window.Tenant.brand) || {};
-
   var wordmark = (brand.wordmark || '').trim() || 'PULSE';
-  var wordmarkSelectors = ['.nav-name', '.loading-wordmark', '.setup-brand-name'];
-  wordmarkSelectors.forEach(function(sel) {
-    var els = document.querySelectorAll(sel);
-    for (var i = 0; i < els.length; i++) els[i].textContent = wordmark;
-  });
-
-  // Role noun ("Member" by default, "Patient" / "Client" at other
-  // tenants) composes with the wordmark for the document title so the
-  // browser tab reflects both the tenant brand and the end-user
-  // vocabulary. Falls through to "Member" if terminology.js didn't
-  // load — matches the bundled catalog default.
   var roleNoun = (window.Terminology ? window.Terminology.t('member') : 'Member');
   document.title = roleNoun + ' Portal | ' + wordmark;
-
-  if (brand.favicon_url) {
-    var link = document.querySelector('link[rel="icon"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = brand.favicon_url;
-  }
+  if (window.Brand) window.Brand.apply();
 }
 
 // PREVIEW_MODE: skip Supabase entirely — no auth, no network calls.
@@ -14815,7 +14799,7 @@ function _maybeShowMemberWelcome(firstName, userId) {
         // Reuse the portal's real .nav-brand component (circled heart
         // SVG + PULSE wordmark) so the brand mark matches every other
         // surface on the site.
-        '<div class="nav-brand m-welcome-brand"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><span class="nav-name">PULSE</span></div>' +
+        '<div class="nav-brand m-welcome-brand"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span></div>' +
         '<div class="m-welcome-title">'+escapeHtml(titleTxt)+'</div>' +
         '<div class="m-welcome-sub">Your guide to your protocol.</div>' +
         '<div class="m-welcome-divider"></div>' +
@@ -14829,6 +14813,7 @@ function _maybeShowMemberWelcome(firstName, userId) {
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
+  if (window.Brand) window.Brand.applyTo(overlay);
   // Dismiss on backdrop click
   overlay.addEventListener('click', function(e) { if (e.target === overlay) _dismissMemberWelcome(); });
   // Dismiss on Esc
@@ -21185,7 +21170,7 @@ function _joinClinicianSession(apptId) {
       '<div class="cl-session-header">' +
         '<a class="nav-brand cl-session-brand" role="button" tabindex="0" style="cursor:default;">' +
           '<div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>' +
-          '<span class="nav-name">PULSE</span>' +
+          '<span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>' +
         '</a>' +
         '<div class="cl-session-actions">' +
           '<button id="sessionTogglePanel" class="cl-session-btn cl-session-btn-ghost" onclick="_toggleSessionPanel()">Patient Info</button>' +
@@ -21212,6 +21197,7 @@ function _joinClinicianSession(apptId) {
       '</div>' +
       '<div id="dailySessionStatus" class="cl-session-status">Connecting…</div>';
     document.body.appendChild(overlay);
+    if (window.Brand) window.Brand.applyTo(overlay);
   } else {
     overlay.style.display = 'flex';
     var c = document.getElementById('dailySessionContainer'); if (c) c.innerHTML = '';

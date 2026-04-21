@@ -772,7 +772,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
 <nav>
   <a href="../" class="nav-brand">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-    <span class="nav-name">PULSE</span>
+    <span class="nav-name" data-brand="wordmark" data-brand-default="PULSE">PULSE</span>
   </a>
   <a href="../" class="nav-back">← Back to home</a>
 </nav>
@@ -1278,7 +1278,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
     </div>
 
     <div class="disclaimer-footer" style="margin-top:40px;">
-      If you experience technical issues, contact support at support@pulsepeptides.com. Do not refresh this page.
+      If you experience technical issues, contact support at <a data-brand="support-email" href="mailto:support@pulsepeptides.com" style="color:inherit;">support@pulsepeptides.com</a>. Do not refresh this page.
     </div>
   </div>
 
@@ -1408,7 +1408,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
       </div>
 
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;text-align:center;">
-        <div style="font-size:14px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto;">If you have questions about this decision, please contact <a href="mailto:support@pulsepeptides.com" style="color:var(--green);text-decoration:none;">support@pulsepeptides.com</a>.</div>
+        <div style="font-size:14px;color:var(--grey);line-height:1.7;max-width:420px;margin:0 auto;">If you have questions about this decision, please contact <a data-brand="support-email" href="mailto:support@pulsepeptides.com" style="color:var(--green);text-decoration:none;">support@pulsepeptides.com</a>.</div>
       </div>
 
       <div class="step-eyebrow" style="margin-bottom:16px;">What happens next</div>
@@ -4094,12 +4094,31 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+<script src="../../../brand.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 window._sbClient = createClient(
   'https://zvfqukbbglxongvuymzt.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw'
 );
+
+// Public-path brand boot: consultation is visited by prospective
+// members before they have a session, so tenant.js (which requires
+// an authenticated user) isn't loaded. Instead, pull the tenant's
+// brand JSONB directly by URL slug and feed it to window.Brand.apply().
+// Reads are RLS-open on tenants for the SELECT brand case.
+(async function _loadTenantBrandPublic() {
+  try {
+    var m = window.location.pathname.match(/\/t\/([^\/]+)\//);
+    var slug = m ? m[1] : 'pulse';
+    var r = await window._sbClient.from('tenants')
+      .select('id, slug, name, brand').eq('slug', slug).limit(1);
+    if (r && r.data && r.data[0]) {
+      window.Tenant = r.data[0];
+      if (window.Brand) window.Brand.apply();
+    }
+  } catch (e) { /* non-blocking: fall back to hardcoded defaults */ }
+})();
 
 (async function() {
   // Safety net: if the router doesn't call showStep() within 3s (network

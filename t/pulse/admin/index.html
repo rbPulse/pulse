@@ -5779,8 +5779,8 @@ function _renderWizardScreen() {
   var step = _WIZARD_STEPS[state.step] || _WIZARD_STEPS[0];
   var body;
   switch (step.key) {
-    case 'language':   body = _wizScreenLanguageStub();   break;
-    case 'clinicType': body = _wizScreenClinicTypeStub(); break;
+    case 'language':   body = _wizScreenLanguage();       break;
+    case 'clinicType': body = _wizScreenClinicType();     break;
     case 'workflow':   body = _wizScreenWorkflowStub();   break;
     case 'comms':      body = _wizScreenCommsStub();      break;
     case 'territory':  body = _wizScreenTerritoryStub();  break;
@@ -5809,8 +5809,125 @@ function _renderWizardScreen() {
 }
 
 // ── Shell placeholders for W1. W2 replaces each with real question UI.
-function _wizScreenLanguageStub()   { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Language questions land in W2.</div>'; }
-function _wizScreenClinicTypeStub() { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Clinic type selector lands in W2.</div>'; }
+// ── Screen 1: Language ─────────────────────────────────────────────
+// Three terminology questions stacked. Each renders as choice cards
+// plus a "Custom" text input row. Writes to state.answers.language.
+// Live preview below shows how the chosen nouns flow into a realistic
+// portal sentence so admins immediately see impact.
+var _WIZ_LANG_OPTIONS = {
+  memberTerm:    [{ v:'Member', s:'Default. Reads as community.' },
+                  { v:'Patient', s:'Traditional clinical tone.' },
+                  { v:'Client', s:'Cash-pay, concierge feel.' }],
+  clinicianTerm: [{ v:'Clinician', s:'Default. Neutral and credentialed.' },
+                  { v:'Provider', s:'Insurance-adjacent, formal.' },
+                  { v:'Doctor', s:'MD-led practice.' },
+                  { v:'Practitioner', s:'Multi-discipline clinics.' }],
+  protocolTerm:  [{ v:'Protocol', s:'Default. Clinical structure.' },
+                  { v:'Plan', s:'Lifestyle-oriented.' },
+                  { v:'Program', s:'Duration-based, cohort feel.' },
+                  { v:'Therapy', s:'Treatment-focused.' }]
+};
+
+function _wizScreenLanguage() {
+  var a = window._wizardState.answers.language;
+  function question(key, label, help) {
+    var current = (a[key] || '').trim();
+    var opts = _WIZ_LANG_OPTIONS[key];
+    var isCustom = current && !opts.some(function(o){ return o.v === current; });
+    var cards = opts.map(function(o) {
+      var sel = current === o.v ? ' selected' : '';
+      return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizLangPick(\'' + key + '\', \'' + _brandEscAttr(o.v) + '\')">' +
+        '<div class="wiz-choice-title">' + _brandEscHtml(o.v) + '</div>' +
+        '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
+      '</button>';
+    }).join('');
+    var customBtn = '<button type="button" class="wiz-choice' + (isCustom ? ' selected' : '') + '" onclick="_wizLangPickCustom(\'' + key + '\')">' +
+      '<div class="wiz-choice-title">Custom</div>' +
+      '<div class="wiz-choice-sub">' + (isCustom ? _brandEscHtml(current) : 'Something else') + '</div>' +
+    '</button>';
+    var customInput = isCustom
+      ? '<input type="text" class="wiz-input" style="margin-top:10px;" placeholder="Type your term" value="' + _brandEscAttr(current) + '" oninput="_wizLangCustomInput(\'' + key + '\', this.value)"/>'
+      : '';
+    return '<div class="wiz-q">' +
+      '<div class="wiz-q-label">' + _brandEscHtml(label) + '</div>' +
+      '<div class="wiz-q-help">' + _brandEscHtml(help) + '</div>' +
+      '<div class="wiz-choices">' + cards + customBtn + '</div>' +
+      customInput +
+    '</div>';
+  }
+  return question('memberTerm',    'What do you call the people you serve?', 'Used everywhere members see themselves referenced — nav, welcome copy, emails.') +
+    question('clinicianTerm',     'What do you call your clinical staff?',  'Used in messages, intake confirmations, and the team roster on the member portal.') +
+    question('protocolTerm',      'What do you call their care plans?',     'The unit of clinical prescribing — what members sign up for and refill.') +
+    _wizLanguagePreview();
+}
+
+function _wizLanguagePreview() {
+  var a = window._wizardState.answers.language;
+  var m = (a.memberTerm    || 'Member').toLowerCase();
+  var c = (a.clinicianTerm || 'Clinician').toLowerCase();
+  var p = (a.protocolTerm  || 'Protocol').toLowerCase();
+  return '<div class="wiz-preview">' +
+    '<div class="wiz-preview-label">Preview</div>' +
+    '<div class="wiz-preview-body">Your <strong>' + _brandEscHtml(m) + 's</strong> sign in to see their active <strong>' + _brandEscHtml(p) + 's</strong>, prescribed by your <strong>' + _brandEscHtml(c) + 's</strong>.</div>' +
+  '</div>';
+}
+
+function _wizLangPick(key, value) {
+  window._wizardState.answers.language[key] = value;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+function _wizLangPickCustom(key) {
+  // Flip to custom mode by writing a sentinel that doesn't match any
+  // preset. User then types into the input that appears.
+  var current = window._wizardState.answers.language[key];
+  var opts = _WIZ_LANG_OPTIONS[key];
+  var isAlreadyCustom = current && !opts.some(function(o){ return o.v === current; });
+  if (!isAlreadyCustom) window._wizardState.answers.language[key] = ' ';
+  _saveWizardState();
+  _repaintWizardScreen();
+  var input = document.querySelector('#setup-wizard-body input[oninput*="' + key + '"]');
+  if (input) input.focus();
+}
+function _wizLangCustomInput(key, val) {
+  window._wizardState.answers.language[key] = val;
+  _saveWizardState();
+  // Only repaint the preview + dot states — keep focus on the input.
+  var host = document.querySelector('#setup-wizard-body .wiz-preview');
+  if (host) host.outerHTML = _wizLanguagePreview();
+}
+
+// ── Screen 2: What kind of clinic? ─────────────────────────────────
+// Single-choice card grid. Picking a clinic type seeds smart defaults
+// for the workflow + comms screens (applied in W2e), but nothing is
+// locked — admins still see every downstream question and can tune.
+var _WIZ_CLINIC_TYPES = [
+  { v:'peptide_therapy', t:'Peptide Therapy', s:'Peptide protocols — GLP-1s, growth factors, recovery compounds. Async clinician review is typical.' },
+  { v:'weight_loss',     t:'Weight Loss',     s:'GLP-1-based weight management. Monthly check-ins with weight tracking.' },
+  { v:'hormone_therapy', t:'Hormone Therapy', s:'TRT, HRT, thyroid, perimenopause. Lab-review required before first prescription.' },
+  { v:'wellness',        t:'General Wellness', s:'Nutrition, longevity, performance. Flexible workflow, cash-pay.' },
+  { v:'other',           t:'Other',           s:'Start from defaults. Tune everything on the next screens.' }
+];
+
+function _wizScreenClinicType() {
+  var cur = window._wizardState.answers.clinicType;
+  var cards = _WIZ_CLINIC_TYPES.map(function(o) {
+    var sel = cur === o.v ? ' selected' : '';
+    return '<button type="button" class="wiz-choice' + sel + '" style="padding:18px 20px;" onclick="_wizClinicPick(\'' + o.v + '\')">' +
+      '<div class="wiz-choice-title" style="font-size:14px;margin-bottom:4px;">' + _brandEscHtml(o.t) + '</div>' +
+      '<div class="wiz-choice-sub" style="font-size:12px;line-height:1.5;">' + _brandEscHtml(o.s) + '</div>' +
+    '</button>';
+  }).join('');
+  return '<div class="wiz-q">' +
+    '<div class="wiz-choices" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">' + cards + '</div>' +
+  '</div>';
+}
+
+function _wizClinicPick(value) {
+  window._wizardState.answers.clinicType = value;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
 function _wizScreenWorkflowStub()   { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Workflow questions land in W2.</div>'; }
 function _wizScreenCommsStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Comms questions land in W2.</div>'; }
 function _wizScreenTerritoryStub()  { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Territory selector lands in W2.</div>'; }

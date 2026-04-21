@@ -1264,6 +1264,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Audit Log</div>
           <div class="tab-subtitle">HIPAA-ready access and modification trail</div>
         </div>
+
+        <!-- R12: tenant config-change timeline (Phase 10 structured diffs) -->
+        <div id="tenantConfigChanges" style="margin-bottom:24px;"></div>
+
         <div class="toolbar">
           <input type="text" class="search-input" id="auditSearch" placeholder="Search by action, actor, or patient..." oninput="filterAudit()"/>
           <select class="filter-select" id="auditCategoryFilter" onchange="filterAudit()">
@@ -6934,12 +6938,124 @@ function _buildOpsPulseBody(d) {
   return stats + activity + modules;
 }
 
-// ── R12: Activity (per-tenant audit timeline) ──
+// ── R12: Activity (per-tenant config-change timeline) ──
+// Ports CommandOS's Phase 10 before/after diff renderer. Runs above
+// the existing HIPAA/PHI audit table — the PHI audit is about
+// patient-data access, this panel is about config changes (brand,
+// terminology, workflow, catalog, comms, etc.). Both coexist; one
+// tab, two lenses.
 function renderActivityView() {
-  // admin.html already has tab-audit wired to loadAuditFeed or
-  // similar existing logic. Like Analytics above, R12 carry-over
-  // fully reconciles the existing admin audit surface with
-  // CommandOS's before/after-diff rendering.
+  var host = document.getElementById('tenantConfigChanges');
+  if (!host || !window.Tenant) return;
+  host.innerHTML = '<div style="padding:16px;color:var(--text3);">Loading config changes…</div>';
+  var tid = window.Tenant.id;
+  db.from('audit_logs')
+    .select('id, action, change_type, actor_id, actor_email, target_id, tenant_id, details, before_snapshot, after_snapshot, created_at')
+    .or('tenant_id.eq.' + tid + ',target_id.eq.' + tid)
+    .order('created_at', { ascending: false })
+    .limit(200)
+    .then(function(r) {
+      if (r.error) {
+        host.innerHTML = '<div style="padding:14px;color:var(--red);font-size:12px;">Config changes unavailable: ' + (r.error.message || 'query failed') + '. Migration 019_audit_change_management.sql may not be run.</div>';
+        return;
+      }
+      _configChanges = r.data || [];
+      _configChangesFilter = '';
+      host.innerHTML = _buildConfigChangesBody();
+      var sel = document.getElementById('configChangeTypeFilter');
+      if (sel) sel.addEventListener('change', function() {
+        _configChangesFilter = this.value;
+        var list = document.getElementById('configChangesList');
+        if (list) list.innerHTML = _renderConfigChangesList();
+      });
+    })
+    .catch(function(err) {
+      host.innerHTML = '<div style="padding:14px;color:var(--red);font-size:12px;">' + ((err && err.message) || 'Load failed') + '</div>';
+    });
+}
+
+var _configChanges = [];
+var _configChangesFilter = '';
+
+function _buildConfigChangesBody() {
+  var types = {};
+  _configChanges.forEach(function(e){ if (e.change_type) types[e.change_type] = true; });
+  var typeOpts = '<option value="">All change types</option>' +
+    Object.keys(types).sort().map(function(t){ return '<option value="' + _brandEscAttr(t) + '">' + _brandEscHtml(t) + '</option>'; }).join('');
+  return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">' +
+      '<div><div style="font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:var(--text);">Config change timeline</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);">Structured before/after diffs for brand / terminology / workflow / catalog / comms / compliance edits.</div></div>' +
+      '<select class="filter-select" id="configChangeTypeFilter">' + typeOpts + '</select>' +
+    '</div>' +
+    '<div id="configChangesList" style="margin-top:14px;">' + _renderConfigChangesList() + '</div>' +
+  '</div>';
+}
+
+function _renderConfigChangesList() {
+  var filtered = _configChanges.filter(function(e){
+    if (!_configChangesFilter) return true;
+    return e.change_type === _configChangesFilter;
+  });
+  if (filtered.length === 0) return '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">No config changes in the last 200 audit entries.</div>';
+  return filtered.slice(0, 50).map(function(e, idx){ return _renderConfigChangeRow(e, idx); }).join('') +
+    (filtered.length > 50 ? '<div style="padding:10px;text-align:center;color:var(--text3);font-size:11px;">Showing 50 of ' + filtered.length + ' · older entries trimmed</div>' : '');
+}
+
+function _renderConfigChangeRow(e, idx) {
+  var when = _fmtDateTime(e.created_at);
+  var actor = e.actor_email
+    ? '<span style="color:var(--text2);">' + _brandEscHtml(e.actor_email) + '</span>'
+    : (e.actor_id ? '<span style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);">' + _brandEscHtml(String(e.actor_id).slice(0,8)) + '…</span>' : '—');
+  var hasStructured = e.before_snapshot != null || e.after_snapshot != null;
+  var detailBody = '';
+  if (hasStructured) {
+    detailBody = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">' +
+      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:10px;">' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:6px;">Before</div>' +
+        '<pre style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:10px;color:var(--text2);margin:0;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;">' + _brandEscHtml(_fmtJson(e.before_snapshot)) + '</pre>' +
+      '</div>' +
+      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:10px;">' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--green);margin-bottom:6px;">After</div>' +
+        '<pre style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:10px;color:var(--text2);margin:0;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;">' + _brandEscHtml(_fmtJson(e.after_snapshot)) + '</pre>' +
+      '</div>' +
+    '</div>';
+  } else if (e.details) {
+    var pretty = e.details;
+    try { pretty = JSON.stringify(JSON.parse(e.details), null, 2); } catch (err) { /* leave */ }
+    detailBody = '<pre style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:10px;color:var(--text3);margin-top:8px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:10px;">' + _brandEscHtml(pretty) + '</pre>';
+  } else {
+    detailBody = '<div style="margin-top:6px;color:var(--text3);font-size:11px;">No detail payload.</div>';
+  }
+  return '<div id="configChange-' + idx + '" style="padding:12px 0;border-bottom:1px solid var(--border);">' +
+    '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+      '<div style="min-width:110px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);">' + _brandEscHtml(when) + '</div>' +
+      '<div style="flex:1;">' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:\'Inter\',sans-serif;font-size:12px;">' +
+          '<span style="color:var(--text);font-weight:500;">' + _brandEscHtml(e.action || '—') + '</span>' +
+          (e.change_type ? '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text3);">' + _brandEscHtml(e.change_type) + '</span>' : '') +
+        '</div>' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:2px;">' + actor + '</div>' +
+      '</div>' +
+      '<button class="form-btn secondary" style="font-size:10px;padding:4px 10px;" onclick="_toggleConfigChange(' + idx + ')">Details</button>' +
+    '</div>' +
+    '<div id="configChangeDetail-' + idx + '" style="display:none;">' + detailBody + '</div>' +
+  '</div>';
+}
+
+function _toggleConfigChange(idx) {
+  var el = document.getElementById('configChangeDetail-' + idx);
+  if (el) el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+}
+
+function _fmtJson(v) { if (v == null) return '—'; try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); } }
+function _fmtDateTime(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso); if (isNaN(d.getTime())) return '—';
+  var now = new Date();
+  var opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return d.toLocaleString(undefined, opts);
 }
 
 // ── R13: Subscription ──

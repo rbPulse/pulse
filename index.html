@@ -171,8 +171,18 @@ function dispatch(user) {
     .then(function(pr) {
       var profile = (pr.data && pr.data[0]) || {};
 
+      // Base-aware helper: the site runs at /pulse/ under GitHub Pages
+      // project hosting, so every absolute destination needs to prepend
+      // the detected base ("" elsewhere). Same logic as tenant.js.
+      var base = /\.github\.io$/i.test(window.location.hostname)
+        ? (window.location.pathname.match(/^\/([^\/]+)\//) || [])[0] || ''
+        : '';
+      // match[0] of "/pulse/" includes trailing slash; strip it so we
+      // can concat a leading-slash path without a double.
+      base = base.replace(/\/$/, '');
+
       if (profile.platform_role) {
-        window.location.replace('/commandos/');
+        window.location.replace(base + '/commandos/');
         return;
       }
 
@@ -187,11 +197,11 @@ function dispatch(user) {
         if (mem) {
           slug = (mem.tenants && mem.tenants.slug) || 'pulse';
           dest = (mem.role === 'tenant_owner' || mem.role === 'tenant_admin')
-            ? '/t/' + slug + '/admin/'
-            : '/t/' + slug + '/portal/';
+            ? base + '/t/' + slug + '/admin/'
+            : base + '/t/' + slug + '/portal/';
         } else if (enr) {
           slug = (enr.tenants && enr.tenants.slug) || 'pulse';
-          dest = '/t/' + slug + '/portal/';
+          dest = base + '/t/' + slug + '/portal/';
         } else {
           // Legacy profiles.role fallback during the multi-tenant
           // migration. Every account is assumed to belong to Pulse
@@ -199,9 +209,9 @@ function dispatch(user) {
           // backfilled. Remove this branch once Phase 0's backfill
           // runs and every existing user has explicit rows.
           if (profile.role === 'super_admin' || profile.role === 'admin') {
-            dest = '/t/pulse/admin/';
+            dest = base + '/t/pulse/admin/';
           } else {
-            dest = '/t/pulse/portal/';
+            dest = base + '/t/pulse/portal/';
           }
         }
         window.location.replace(dest);

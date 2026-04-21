@@ -137,12 +137,23 @@
     quiz:         'quiz/'
   };
 
+  // Detects the GitHub Pages project-site prefix (e.g. "/pulse" when
+  // served from rbpulse.github.io/pulse/...). Returns an empty string
+  // for root-served deployments (custom domain, local dev). Keeping
+  // every generated URL base-aware is what prevents the class of 404s
+  // where /t/pulse/... drops the project prefix.
+  function siteBase() {
+    if (!/\.github\.io$/i.test(window.location.hostname)) return '';
+    var m = window.location.pathname.match(/^\/([^\/]+)\//);
+    return m ? '/' + m[1] : '';
+  }
+
   function url(kind, query) {
     var s = (window.Tenant && window.Tenant.slug) || resolveSlug();
     var tail = Object.prototype.hasOwnProperty.call(KIND_PATHS, kind)
       ? KIND_PATHS[kind]
       : String(kind || '') + '/';
-    var path = '/t/' + encodeURIComponent(s) + '/' + tail;
+    var path = siteBase() + '/t/' + encodeURIComponent(s) + '/' + tail;
     return query ? path + '?' + query : path;
   }
 
@@ -167,6 +178,7 @@
     slug: slug,
     url: url,
     absoluteUrl: absoluteUrl,
+    siteBase: siteBase,
     resolveSlug: resolveSlug,
     reset: reset,
     PULSE_TENANT_ID: PULSE_TENANT_ID

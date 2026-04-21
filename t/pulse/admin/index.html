@@ -6472,10 +6472,63 @@ function _repaintWizardScreen() {
 }
 
 function _wizardApplyAll() {
-  // Stub for W3 — the real implementation calls the apply_wizard_answers
-  // RPC from migration 026. For now, dump state so the wiring is
-  // provably end-to-end during W1 development.
-  alert('Apply lands in W3 (migration 026). State:\n\n' + JSON.stringify(window._wizardState.answers, null, 2));
+  if (!window._wizardState || !window.Tenant) return;
+  var host = document.getElementById('setup-wizard-body');
+  if (!host) return;
+  // Replace the shell with a full-screen progress state so buttons
+  // can't be clicked twice and the user knows we're working.
+  host.innerHTML = '<style>' + _WIZARD_CSS + '</style>' +
+    '<div class="wiz-card" style="text-align:center;padding:72px 44px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Applying your answers…</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Writing brand, terminology, workflow, comms templates, and regions.</div>' +
+    '</div>';
+
+  db.rpc('apply_wizard_answers', {
+    p_tenant_id: window.Tenant.id,
+    p_answers: window._wizardState.answers
+  }).then(function(r) {
+    if (r.error) throw r.error;
+    var payload = r.data || {};
+    _wizardRenderSuccess(payload);
+    // Clear persisted wizard state so a future visit starts from
+    // (now populated) tenant config rather than stale answers.
+    try { localStorage.removeItem(_wizardStateKey()); } catch (_) {}
+  }).catch(function(err) {
+    host.innerHTML = '<style>' + _WIZARD_CSS + '</style>' +
+      '<div class="wiz-card">' +
+        '<div class="wiz-title" style="color:var(--red);">Apply failed</div>' +
+        '<div class="wiz-subtitle">' + _brandEscHtml((err && err.message) || 'Unknown error. Run migration 026_apply_wizard_answers.sql in Supabase if you haven\'t yet.') + '</div>' +
+        '<div class="wiz-footer"><div></div><div class="wiz-footer-right">' +
+          '<button type="button" class="wiz-btn" onclick="renderSetupWizard()">&larr; Back to wizard</button>' +
+        '</div></div>' +
+      '</div>';
+  });
+}
+
+// W3 ships a light success state so end-to-end flow is testable.
+// W5 enriches this with next-action chips and a deeper summary.
+function _wizardRenderSuccess(payload) {
+  var host = document.getElementById('setup-wizard-body');
+  if (!host) return;
+  var counts = (payload && payload.counts) || {};
+  host.innerHTML = '<style>' + _WIZARD_CSS + '</style>' +
+    '<div class="wiz-card" style="text-align:center;padding:60px 44px;">' +
+      '<div style="width:60px;height:60px;margin:0 auto 18px;border-radius:50%;background:var(--amber-tint);border:1.5px solid var(--amber);display:flex;align-items:center;justify-content:center;">' +
+        '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>' +
+      '</div>' +
+      '<div class="wiz-title">You\'re set up</div>' +
+      '<div class="wiz-subtitle">' +
+        (counts.regions_inserted > 0 ? counts.regions_inserted + ' states added. ' : '') +
+        (counts.comms_templates_inserted > 0 ? counts.comms_templates_inserted + ' message templates saved. ' : '') +
+        'Brand, terminology, and workflow have been updated.' +
+      '</div>' +
+      '<div class="wiz-footer" style="justify-content:center;">' +
+        '<div class="wiz-footer-right">' +
+          '<button type="button" class="wiz-btn" onclick="renderSetupWizard()">Run it again</button>' +
+          '<button type="button" class="wiz-btn wiz-btn-primary" onclick="location.reload()">Reload &amp; continue</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 }
 
 function _wireWizardShell() {

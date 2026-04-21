@@ -708,6 +708,29 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .comms-preview-subject{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:12px;}
 
 /* ══════════════════════════════════════════════════════════════════
+   Integrations — curated 4-provider card grid (Phase 1)
+   ══════════════════════════════════════════════════════════════════ */
+.int-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;}
+.int-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);}
+.int-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+.int-card-eyebrow{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.int-card-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
+.int-card-body{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.55;}
+.int-status{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+.int-status-ok{color:var(--green);background:rgba(58,122,92,0.10);border:1px solid rgba(58,122,92,0.28);}
+.int-status-err{color:var(--red);background:rgba(200,50,50,0.08);border:1px solid rgba(200,50,50,0.25);}
+.int-status-pending{color:var(--text3);background:rgba(120,120,120,0.08);border:1px solid var(--border);}
+.int-card-mode{display:flex;align-items:center;gap:10px;padding-top:4px;border-top:1px dashed var(--border);padding-top:12px;}
+.int-mode-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);}
+.int-mode-seg{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:2px;gap:2px;}
+.int-mode-btn{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:5px 14px;border-radius:999px;border:none;background:transparent;color:var(--text3);cursor:pointer;transition:background .15s,color .15s;}
+.int-mode-btn:hover{color:var(--text2);}
+.int-mode-btn.active{background:var(--text);color:var(--card);}
+.int-card-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}
+.int-card-actions .form-btn{padding:8px 18px;font-size:11px;}
+.int-phase-hint{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
+
+/* ══════════════════════════════════════════════════════════════════
    R9: COMPLIANCE — states grid + locations + consents + licenses
    ══════════════════════════════════════════════════════════════════ */
 .comp-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
@@ -944,7 +967,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="admin-tab" id="tab-setup-integrations">
         <div class="tab-header">
           <div class="tab-title">Integrations</div>
-          <div class="tab-subtitle">Connection status and non-secret configuration. Credentials remain in CommandOS (platform-only).</div>
+          <div class="tab-subtitle">Connect the services that power your portal. Payments + SMS use your own accounts (bring-your-own-keys); video + email run on CommandOS-managed accounts you just enable.</div>
         </div>
         <div id="integrations-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading integrations…</div></div>
       </div>
@@ -9117,19 +9140,65 @@ function _compLicensesSection() {
   '</div>';
 }
 
-// ── R10: Integrations — config editor (non-secret only) ──
-// Reads status + config via the non-secret RPC. Tenant admins can
-// edit config fields (mode, webhook paths, toggles) per provider
-// via migration 023's RLS + column guard. Credentials stay
-// platform-only — contact operator to add or rotate.
+// ── Integrations tab — curated 4-provider shell (Phase 1) ──
+// Reads tenant_integrations via the non-secret RPC and renders one
+// card per entitled provider. Each card shows status + mode toggle
+// + a provider-specific primary CTA. Per-provider setup wizards
+// (Connect Stripe OAuth, paste Twilio keys, Resend domain verify,
+// etc.) land in subsequent phases — Phase 1 is the UI shell.
+//
+// Entitlement: which providers appear here is driven by the
+// tenant's plan.included_integrations (migration 028). The auto-
+// provision trigger creates a tenant_integrations row per entitled
+// provider so every card this tab renders is backed by a DB row.
+// If a row is missing (tenant on a plan that doesn't include a
+// provider), that card is skipped — operators can entitle more by
+// upgrading the plan in CommandOS.
 
 var _intSetupRows = {};
+
+// Per-provider UI copy. Keeps card bodies in one place so the
+// provider catalog (integrations.js) stays a pure data contract.
+var _INT_CARD_UI = {
+  stripe: {
+    mode_label:  'Payments',
+    body:        'Card processing, subscription billing, and the Customer Portal. Pulse connects to your own Stripe account via Stripe Connect — payouts go to you directly, not through CommandOS.',
+    cta_label:   'Connect Stripe',
+    cta_pending: 'Connect Stripe',
+    cta_ready:   'Manage connection',
+    phase_hint:  'OAuth flow ships in Phase 4.'
+  },
+  twilio: {
+    mode_label:  'SMS',
+    body:        'Appointment reminders, refill pings, and auto-messages route through your own Twilio account and sender number. Bring your keys — we never share a pool.',
+    cta_label:   'Set up Twilio',
+    cta_pending: 'Set up Twilio',
+    cta_ready:   'Manage keys',
+    phase_hint:  'Paste-keys wizard ships in Phase 3.'
+  },
+  dailyco: {
+    mode_label:  'Video',
+    body:        'Live video consults between clinicians and members. Runs on a CommandOS-managed Daily.co account with per-tenant room scoping — no keys needed from you.',
+    cta_label:   'Enable video',
+    cta_pending: 'Enable video',
+    cta_ready:   'Video enabled',
+    phase_hint:  'Already live for this tenant.'
+  },
+  resend: {
+    mode_label:  'Email',
+    body:        'Transactional email from your own sender domain (e.g. mail.yourclinic.com). CommandOS owns the Resend account; you just verify DNS once and you’re done.',
+    cta_label:   'Configure email',
+    cta_pending: 'Configure email',
+    cta_ready:   'Manage sender',
+    phase_hint:  'Domain-verify flow ships in Phase 2.'
+  }
+};
 
 function renderIntegrationsSetup() {
   var body = document.getElementById('integrations-setup-body');
   if (!body || !window.Tenant || !window.Integrations) return;
   db.rpc('tenant_integrations_for_my_tenants').then(function(r) {
-    var rows = (r.data || []).filter(function(x){return x.tenant_id === window.Tenant.id;});
+    var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
     _intSetupRows = {};
     rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
     body.innerHTML = _buildIntegrationsSetupBody();
@@ -9140,88 +9209,110 @@ function renderIntegrationsSetup() {
 
 function _buildIntegrationsSetupBody() {
   var providers = window.Integrations.PROVIDERS || [];
-  var categories = window.Integrations.CATEGORIES || [];
-  var out = '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.5;">' +
-    '<strong>What to do here:</strong> this is where you turn provisioned integrations (email, SMS, e-signature, EHR, etc.) on or off and toggle per-provider features. Credentials are platform-owned for security — to add a new provider, contact your account manager. You can adjust mode / webhook paths / feature flags yourself.' +
-  '</div>';
-  categories.forEach(function(cat) {
-    var catProviders = providers.filter(function(p){return p.category === cat.key;});
-    var rendered = catProviders.filter(function(p){return _intSetupRows[p.key];});
-    if (rendered.length === 0) return;
-    out += '<div class="comms-group">' +
-      '<div class="comms-group-title">' + _brandEscHtml(cat.label) + '</div>' +
-      rendered.map(_renderIntegrationSetupCard).join('') +
+  var entitled  = providers.filter(function(p){ return !!_intSetupRows[p.key]; });
+
+  if (entitled.length === 0) {
+    return '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:20px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text3);text-align:center;">' +
+      'No integrations are entitled to your plan yet. Contact your CommandOS operator to provision them.' +
     '</div>';
-  });
-  if (!out) out = '<div style="padding:20px;color:var(--text3);font-size:12px;">No integrations provisioned yet. Contact your CommandOS operator to enable a provider.</div>';
-  return out;
+  }
+
+  var intro = '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.55;">' +
+    '<strong>What to do here:</strong> connect the services that power your portal. Payments and SMS use your own provider account (bring your own keys). Video and email run on CommandOS-managed accounts — you just enable them. Each card has a test / live mode toggle so you can demo safely before going live with real customers.' +
+  '</div>';
+
+  var cards = '<div class="int-card-grid">' +
+    entitled.map(_renderIntegrationSetupCard).join('') +
+  '</div>';
+
+  return intro + cards;
 }
 
 function _renderIntegrationSetupCard(provider) {
-  var row = _intSetupRows[provider.key];
-  var status = row.status;
-  var config = row.config || {};
-  var statusColor = status === 'connected' ? 'var(--green)' : (status === 'error' ? 'var(--red)' : 'var(--text3)');
-  var configFields = (provider.config || []).map(function(f) {
-    var val = config[f.name] != null ? config[f.name] : f.default;
-    var input;
-    if (f.type === 'bool') {
-      input = '<label class="workflow-toggle"><input type="checkbox" id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '"' + (val ? ' checked' : '') + '/><span class="workflow-toggle-slider"></span><span class="workflow-toggle-label">' + (val ? 'On' : 'Off') + '</span></label>';
-    } else if (f.type === 'enum') {
-      input = '<select id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '">' +
-        (f.options || []).map(function(o) { return '<option value="' + _brandEscAttr(o.value) + '"' + (o.value === val ? ' selected' : '') + '>' + _brandEscHtml(o.label) + '</option>'; }).join('') +
-      '</select>';
-    } else {
-      input = '<input type="text" id="_intCfg-' + provider.key + '-' + f.name + '" data-cfg-name="' + f.name + '" value="' + _brandEscAttr(val != null ? String(val) : '') + '" placeholder="' + _brandEscAttr(f.placeholder || '') + '"/>';
-    }
-    return '<div class="brand-form-field"><label>' + _brandEscHtml(f.label) + '</label>' + input +
-      (f.description ? '<div class="brand-help">' + _brandEscHtml(f.description) + '</div>' : '') + '</div>';
-  }).join('');
-  return '<div class="comms-card expanded">' +
-    '<div class="comms-card-header">' +
-      '<div class="comms-card-title">' + _brandEscHtml(provider.label) +
-        '<span style="font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:' + statusColor + ';">' + _brandEscHtml(status) + '</span>' +
+  var row  = _intSetupRows[provider.key];
+  var ui   = _INT_CARD_UI[provider.key] || { mode_label: provider.category || '', body: provider.description || '', cta_label: 'Configure', phase_hint: '' };
+  var status = (row && row.status) || 'disconnected';
+  var mode   = (row && row.mode) || 'test';
+  var isReady = status === 'connected';
+
+  var statusKind = isReady ? 'ok' : (status === 'error' ? 'err' : 'pending');
+  var statusLabel = isReady ? 'connected' : (status === 'error' ? 'error' : 'pending setup');
+
+  var ctaLabel = isReady ? (ui.cta_ready || ui.cta_label) : (ui.cta_pending || ui.cta_label);
+  var ctaClass = isReady ? 'secondary' : 'primary';
+
+  return '<div class="int-card" data-provider="' + _brandEscAttr(provider.key) + '">' +
+    '<div class="int-card-head">' +
+      '<div>' +
+        '<div class="int-card-eyebrow">' + _brandEscHtml(ui.mode_label) + '</div>' +
+        '<div class="int-card-title">' + _brandEscHtml(provider.label) + '</div>' +
+      '</div>' +
+      '<span class="int-status int-status-' + statusKind + '">' + _brandEscHtml(statusLabel) + '</span>' +
+    '</div>' +
+    '<div class="int-card-body">' + _brandEscHtml(ui.body) + '</div>' +
+    '<div class="int-card-mode">' +
+      '<span class="int-mode-label">Mode</span>' +
+      '<div class="int-mode-seg" role="tablist">' +
+        '<button type="button" class="int-mode-btn' + (mode === 'test' ? ' active' : '') + '" onclick="toggleIntegrationMode(\'' + _brandEscAttr(provider.key) + '\',\'test\')">Test</button>' +
+        '<button type="button" class="int-mode-btn' + (mode === 'live' ? ' active' : '') + '" onclick="toggleIntegrationMode(\'' + _brandEscAttr(provider.key) + '\',\'live\')">Live</button>' +
       '</div>' +
     '</div>' +
-    '<div class="comms-card-body" style="display:block;">' +
-      '<div class="comms-card-desc">' + _brandEscHtml(provider.description || '') + '</div>' +
-      (configFields
-        ? '<div class="brand-form-grid" data-provider-key="' + provider.key + '">' + configFields + '</div>' +
-          '<div class="comms-actions"><button class="form-btn primary" onclick="saveIntegrationSetupConfig(\'' + provider.key + '\')">Save config</button></div>'
-        : '<div style="font-size:11px;color:var(--text3);">No configurable options.</div>') +
+    '<div class="int-card-actions">' +
+      '<button class="form-btn ' + ctaClass + '" onclick="openIntegrationSetup(\'' + _brandEscAttr(provider.key) + '\')">' + _brandEscHtml(ctaLabel) + '</button>' +
+      (ui.phase_hint ? '<span class="int-phase-hint">' + _brandEscHtml(ui.phase_hint) + '</span>' : '') +
     '</div>' +
   '</div>';
 }
 
-function saveIntegrationSetupConfig(providerKey) {
+// Mode toggle writes immediately via the staff-config policy (migration
+// 028's guard permits tenant admins to flip test<->live). Optimistic
+// update so the seg-button feels snappy; refetch in the error path.
+function toggleIntegrationMode(providerKey, nextMode) {
   if (!window.Tenant) return;
   var row = _intSetupRows[providerKey];
   if (!row) return;
-  var provider = window.Integrations.forKey(providerKey);
-  if (!provider) return;
-  var nextConfig = {};
-  provider.config.forEach(function(f) {
-    var el = document.getElementById('_intCfg-' + providerKey + '-' + f.name);
-    if (!el) return;
-    nextConfig[f.name] = f.type === 'bool' ? !!el.checked : el.value;
-  });
-  db.from('tenant_integrations').update({ config: nextConfig }).eq('id', row.id).select().single()
+  if (row.mode === nextMode) return;
+
+  var prevMode = row.mode;
+  row.mode = nextMode;
+  var body = document.getElementById('integrations-setup-body');
+  if (body) body.innerHTML = _buildIntegrationsSetupBody();
+
+  db.from('tenant_integrations').update({ mode: nextMode }).eq('id', row.id).select().single()
     .then(function(r) {
       if (r.error) throw r.error;
       _intSetupRows[providerKey] = r.data;
-      showToast && showToast('Config saved.', 'success');
+      if (typeof showToast === 'function') showToast(provider_display_name(providerKey) + ' → ' + nextMode + ' mode.', 'success');
       db.from('audit_logs').insert({
-        action: 'tenant.integration_config_updated',
-        actor_id: currentUserId, actor_email: currentUserEmail,
-        target_id: window.Tenant.id, tenant_id: window.Tenant.id,
-        change_type: 'integration',
-        before_snapshot: { provider: providerKey, config: row.config },
-        after_snapshot:  { provider: providerKey, config: nextConfig },
-        details: JSON.stringify({ source: 'tenant-admin' })
-      }).catch(function(){});
-    }).catch(function(err) {
-      showToast && showToast('Save failed: ' + (err.message || 'unknown'), 'error');
+        action:          'tenant.integration_mode_changed',
+        actor_id:        currentUserId,
+        actor_email:     currentUserEmail,
+        target_id:       window.Tenant.id,
+        tenant_id:       window.Tenant.id,
+        change_type:     'integration',
+        before_snapshot: { provider: providerKey, mode: prevMode },
+        after_snapshot:  { provider: providerKey, mode: nextMode },
+        details:         JSON.stringify({ source: 'tenant-admin' })
+      }).then(function(){}, function(){});
+    }, function(err) {
+      row.mode = prevMode;
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Mode change failed: ' + (err.message || 'unknown'), 'error');
     });
+}
+
+function provider_display_name(providerKey) {
+  var p = window.Integrations && window.Integrations.forKey && window.Integrations.forKey(providerKey);
+  return p ? p.label : providerKey;
+}
+
+// Phase 1 stub — each provider's real setup surface lands in its own
+// phase (Resend: P2, Twilio: P3, Stripe: P4, Daily reconciliation: P5).
+// For now, clicking any setup CTA shows a toast naming the phase.
+function openIntegrationSetup(providerKey) {
+  var ui = _INT_CARD_UI[providerKey] || {};
+  var hint = ui.phase_hint || 'Setup wizard not yet wired.';
+  if (typeof showToast === 'function') showToast(hint, 'warn');
 }
 
 // ── R11: Analytics (per-tenant operational pulse) ──

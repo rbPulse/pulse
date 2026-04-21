@@ -1022,7 +1022,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- DASHBOARD -->
       <div class="platform-tab active" id="tab-dashboard">
         <div class="tab-header">
-          <div class="tab-title" id="dashboardTitle">CommandOS Dashboard</div>
+          <div class="tab-title" id="dashboardTitle">Dashboard</div>
           <div class="tab-subtitle" id="welcomeMsg">Welcome.</div>
         </div>
         <div id="dashboardBody"><div class="an-loading">Loading dashboard…</div></div>
@@ -1133,7 +1133,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-modules">
         <div class="tab-header">
           <div class="tab-title">Modules</div>
-          <div class="tab-subtitle">Module catalog with fleet-wide adoption. Each module is a feature gate downstream portals call via <code>Modules.isEnabled(key)</code>.</div>
+          <div class="tab-subtitle">Feature-gate catalog with fleet-wide adoption. Toggle per-tenant entitlements from a tenant’s Subscription tab.</div>
         </div>
         <div id="modulesTabBody"><div class="comp-loading">Loading module catalog…</div></div>
       </div>
@@ -1142,7 +1142,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-integrations">
         <div class="tab-header">
           <div class="tab-title">Integrations</div>
-          <div class="tab-subtitle">Provider adoption + reliability across the fleet. Per-tenant credentials live inside each client\u2019s detail modal.</div>
+          <div class="tab-subtitle">Provider adoption + reliability across every tenant. Per-tenant credentials live on the tenant\u2019s Integrations tab.</div>
         </div>
         <div id="integrationsTabBody"><div class="an-loading">Loading integrations overview…</div></div>
       </div>
@@ -1151,7 +1151,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-billing">
         <div class="tab-header">
           <div class="tab-title">Revenue</div>
-          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn flags. Per-tenant subscription management lives inside each client\u2019s Billing subtab under Operations.</div>
+          <div class="tab-subtitle">Fleet-wide MRR, plan mix, churn flags. Per-tenant subscriptions live on the tenant\u2019s Subscription tab.</div>
         </div>
         <div id="billingTabBody"><div class="comp-loading">Loading revenue overview…</div></div>
       </div>
@@ -1160,7 +1160,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-analytics">
         <div class="tab-header">
           <div class="tab-title">Analytics</div>
-          <div class="tab-subtitle">Fleet-wide metrics computed live against production tables. Per-tenant drill-down on each client\u2019s Analytics tab.</div>
+          <div class="tab-subtitle">Fleet-wide metrics computed live against production tables. Per-tenant metrics fold into the tenant\u2019s Overview tab.</div>
         </div>
         <div id="analyticsTabBody"><div class="comp-loading">Loading analytics…</div></div>
       </div>
@@ -1169,7 +1169,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-support">
         <div class="tab-header">
           <div class="tab-title">Support</div>
-          <div class="tab-subtitle">Cross-tenant support queue. Per-tenant diagnostics + view-as live in each client\u2019s detail modal on the Support subtab.</div>
+          <div class="tab-subtitle">Cross-tenant support queue. Per-tenant diagnostics fold into the tenant\u2019s Overview tab.</div>
         </div>
         <div id="supportTabBody"><div class="sup-loading">Loading support queue…</div></div>
       </div>
@@ -1178,7 +1178,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-audit">
         <div class="tab-header">
           <div class="tab-title">Activity Log</div>
-          <div class="tab-subtitle">Every config change across every tenant, filterable by tenant or change type. Append-only. Per-tenant activity lives inside each client\u2019s Activity subtab under Insights.</div>
+          <div class="tab-subtitle">Every config change across every tenant, filterable. Append-only. Per-tenant activity lives on the tenant\u2019s Activity tab.</div>
         </div>
         <div id="auditTabBody"><div class="audit-loading">Loading activity entries…</div></div>
       </div>
@@ -1187,7 +1187,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <div class="platform-tab" id="tab-settings">
         <div class="tab-header">
           <div class="tab-title">Settings</div>
-          <div class="tab-subtitle">CommandOS-level configuration. Operator roster today; more sections as platform-wide settings emerge.</div>
+          <div class="tab-subtitle">Platform-level configuration. Operator roster today; more sections as they emerge.</div>
         </div>
         <div id="settingsTabBody"><div class="an-loading">Loading settings…</div></div>
       </div>
@@ -3953,7 +3953,6 @@ function renderDashboardBody(d) {
   if (sub) sub.textContent = welcome;
 
   var hero = '<div class="dash-hero">' +
-    '<div></div>' +
     '<div class="dash-hero-quickactions">' +
       '<button class="toolbar-btn" onclick="switchTab(\'clients\'); setTimeout(function(){var b=document.getElementById(\'newClientBtn\'); if(b) b.click();}, 50);">+ New Client</button>' +
       '<button class="toolbar-btn secondary" onclick="switchTab(\'clients\')">All Clients</button>' +

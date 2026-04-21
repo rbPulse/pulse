@@ -289,6 +289,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .cc-count-pill.bad{background:var(--red-tint);border-color:var(--red-border);color:var(--red);}
 .cc-workload-toolbar{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:4px 2px;}
 .cc-workload-filter-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);}
+.cc-row-pinned{box-shadow:inset 3px 0 0 var(--red);}
+.cc-row-sub{font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:0.04em;margin-top:2px;}
+.cc-capacity-bar{margin-top:6px;width:100%;max-width:120px;height:4px;background:var(--card2);border-radius:2px;overflow:hidden;}
+.cc-capacity-fill{height:100%;border-radius:2px;transition:width .25s;}
 .cc-status-pill{display:inline-block;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:var(--radius-pill);border:1px solid transparent;white-space:nowrap;}
 .cc-status-pill.available{background:var(--green-tint);border-color:var(--green-border);color:var(--green);}
 .cc-status-pill.active{background:rgba(20,20,20,0.04);border-color:var(--border-strong);color:var(--text2);}
@@ -995,6 +999,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
               <option value="all">All clinicians</option>
               <option value="active">Active (has open work)</option>
               <option value="overloaded">Overloaded (SLA breached or at capacity)</option>
+              <option value="away">Away (inactive 2-7 days)</option>
+              <option value="off">Off (inactive 7+ days)</option>
               <option value="idle">Idle (no open work)</option>
             </select>
           </div>
@@ -3731,18 +3737,32 @@ function loadClinicianQueues() {
   var container = document.getElementById('clinicianQueues');
   if (!container) return;
   var since30d = new Date(Date.now() - 30 * 86400000).toISOString();
+  var since7d  = new Date(Date.now() - 7 * 86400000).toISOString();
   Promise.all([
     db.from('profiles').select('*').eq('role', 'clinician'),
     db.from('consultations').select('id, assigned_clinician_id, review_status, created_at').eq('review_status', 'pending_review'),
     db.from('prescriptions').select('assigned_clinician_id, user_id, status').eq('status', 'active'),
-    db.from('consultations').select('assigned_clinician_id, created_at, updated_at, review_status').in('review_status', ['prescribed','not_prescribed']).gte('updated_at', since30d)
+    db.from('consultations').select('assigned_clinician_id, created_at, updated_at, review_status').in('review_status', ['prescribed','not_prescribed']).gte('updated_at', since30d),
+    // Last clinical activity per clinician — from audit_logs within
+    // 7d. Used to derive Away / Off status for the filter. Falls
+    // back silently if audit_logs is unavailable (RLS or migration).
+    db.from('audit_logs').select('actor_id, created_at').gte('created_at', since7d).order('created_at', { ascending: false }).then(function(r){return r;}).catch(function(){return { data: [] };})
   ]).then(function(results) {
     var clinicians = results[0].data || [];
     var pending    = results[1].data || [];
     var active     = results[2].data || [];
     var decided30  = results[3].data || [];
+    var activity7  = (results[4] && results[4].data) || [];
     var slaHours   = _workloadSlaHours();
     var slaMs      = slaHours * 3600000;
+
+    // Last-activity timestamp per clinician (ms since epoch).
+    var lastActByClin = {};
+    activity7.forEach(function(a) {
+      if (!a.actor_id || !a.created_at) return;
+      var ts = new Date(a.created_at).getTime();
+      if (!lastActByClin[a.actor_id] || ts > lastActByClin[a.actor_id]) lastActByClin[a.actor_id] = ts;
+    });
 
     var openByClin = {};
     pending.forEach(function(c) {
@@ -3780,23 +3800,33 @@ function loadClinicianQueues() {
       var maxCap = (typeof c.max_concurrent_patients === 'number' && c.max_concurrent_patients > 0) ? c.max_concurrent_patients : null;
       var slaBreached = open.open > 0 && ageH >= slaHours;
       var atCapacity  = maxCap && caseload >= maxCap;
+      var lastAct     = lastActByClin[c.user_id] || 0;
+      var hoursSinceAct = lastAct ? Math.floor((Date.now() - lastAct) / 3600000) : null;
+      // Status priority: overloaded outranks everything, then idle,
+      // then away/off based on last-activity. Active = has open work
+      // and was around recently.
       var status;
-      if (slaBreached || atCapacity) status = 'overloaded';
-      else if (open.open > 0) status = 'active';
-      else status = 'idle';
+      if (slaBreached || atCapacity)        status = 'overloaded';
+      else if (hoursSinceAct === null || hoursSinceAct >= 7 * 24) status = 'off';
+      else if (hoursSinceAct >= 48)         status = 'away';
+      else if (open.open > 0)               status = 'active';
+      else                                  status = 'idle';
       return {
-        userId:     c.user_id,
-        name:       name,
-        caseload:   caseload,
-        maxCap:     maxCap,
-        open:       open.open,
-        ageH:       ageH,
-        hasPending: open.open > 0,
-        slaHours:   slaHours,
-        slaPct:     sla.total > 0 ? Math.round((sla.ontime / sla.total) * 100) : null,
-        slaOntime:  sla.ontime,
-        slaTotal:   sla.total,
-        status:     status
+        userId:        c.user_id,
+        name:          name,
+        caseload:      caseload,
+        maxCap:        maxCap,
+        open:          open.open,
+        ageH:          ageH,
+        hasPending:    open.open > 0,
+        slaHours:      slaHours,
+        slaPct:        sla.total > 0 ? Math.round((sla.ontime / sla.total) * 100) : null,
+        slaOntime:     sla.ontime,
+        slaTotal:      sla.total,
+        status:        status,
+        hoursSinceAct: hoursSinceAct,
+        slaBreached:   slaBreached,
+        atCapacity:    atCapacity
       };
     });
     renderClinicianQueues();
@@ -3846,6 +3876,12 @@ function renderClinicianQueues(errorMsg) {
     oldest:    function(r) { return r.hasPending ? r.ageH : -1; },
     sla:       function(r) { return r.slaPct == null ? -1 : r.slaPct; }
   });
+  // Float overloaded rows to the top regardless of current sort so
+  // SLA-risk clinicians stay in sight. Order within each group
+  // preserves the chosen sort.
+  var pinned = [], rest = [];
+  sorted.forEach(function(r) { (r.status === 'overloaded' ? pinned : rest).push(r); });
+  sorted = pinned.concat(rest);
 
   container.innerHTML = sorted.map(function(r) {
     var oldestColor = 'color:var(--text3);';
@@ -3883,9 +3919,42 @@ function renderClinicianQueues(errorMsg) {
                '<span style="color:var(--text3);font-size:11px;">(' + r.slaOntime + ' of ' + r.slaTotal + ')</span>';
     }
 
-    return '<tr>' +
-      '<td style="font-weight:600;">' + escHtml(r.name) + '</td>' +
-      '<td>' + caseStr + '</td>' +
+    // Capacity utilization bullet — only render when max is set.
+    var bullet = '';
+    if (r.maxCap) {
+      var ratio = Math.min(1, r.caseload / r.maxCap);
+      var fillColor = ratio >= 0.9 ? 'var(--red)' : ratio >= 0.7 ? 'var(--amber)' : 'var(--green)';
+      bullet = '<div class="cc-capacity-bar" title="' + r.caseload + ' of ' + r.maxCap + ' (' + Math.round(ratio*100) + '%)">' +
+                 '<div class="cc-capacity-fill" style="width:' + (ratio*100) + '%;background:' + fillColor + ';"></div>' +
+               '</div>';
+    }
+
+    // Small status badge beside the clinician's name — lets admins
+    // scan who's overloaded / away / off without checking the filter.
+    var statusLabel = {
+      overloaded: 'Overloaded',
+      active:     'Active',
+      away:       'Away',
+      off:        'Off',
+      idle:       'Idle'
+    }[r.status] || r.status;
+    var nameSubtitle = '';
+    if (r.status === 'overloaded') {
+      var why = r.slaBreached ? 'SLA breached' : 'At capacity';
+      nameSubtitle = '<div class="cc-row-sub" style="color:var(--red);">' + why + '</div>';
+    } else if (r.status === 'away' && r.hoursSinceAct != null) {
+      var dayAgo = Math.floor(r.hoursSinceAct / 24);
+      nameSubtitle = '<div class="cc-row-sub" style="color:var(--amber);">Inactive ' + (dayAgo >= 1 ? dayAgo + 'd' : r.hoursSinceAct + 'h') + '</div>';
+    } else if (r.status === 'off') {
+      nameSubtitle = '<div class="cc-row-sub" style="color:var(--text3);">Inactive 7+ days</div>';
+    } else if (r.status === 'idle') {
+      nameSubtitle = '<div class="cc-row-sub" style="color:var(--text4);">No open work</div>';
+    }
+
+    var rowClass = (r.status === 'overloaded') ? 'cc-row-pinned' : '';
+    return '<tr class="' + rowClass + '">' +
+      '<td style="font-weight:600;">' + escHtml(r.name) + nameSubtitle + '</td>' +
+      '<td>' + caseStr + bullet + '</td>' +
       '<td><span class="' + openClass + '">' + r.open + '</span></td>' +
       '<td style="' + oldestColor + '">' + oldestStr + '</td>' +
       '<td>' + slaStr + '</td>' +

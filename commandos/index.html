@@ -230,21 +230,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .an-stat-value.warn{color:var(--amber);}
 .an-stat-value.err{color:var(--red);}
 .an-stat-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;}
-.an-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
-.an-panel-title{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
-.an-panel-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
 
 /* Horizontal bar chart (SVG-free — pure div-based so it reflows
    cleanly with the grid around it). */
-.an-bars{display:flex;flex-direction:column;gap:8px;}
-.an-bar-row{display:grid;grid-template-columns:140px 1fr auto;gap:10px;align-items:center;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);}
-.an-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.an-bar-track{height:10px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-pill);overflow:hidden;position:relative;}
-.an-bar-fill{height:100%;background:var(--slate);border-radius:var(--radius-pill);transition:width .3s;}
-.an-bar-fill.green{background:var(--green);}
-.an-bar-fill.amber{background:var(--amber);}
-.an-bar-fill.red{background:var(--red);}
-.an-bar-value{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;white-space:nowrap;}
 
 /* Funnel — vertical steps with widths proportional to drop-off. */
 
@@ -261,8 +249,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .diag-card-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);}
 .diag-card-value{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
 .diag-card-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);line-height:1.4;}
-.diag-ops{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-.diag-ops .form-btn{padding:6px 14px;font-size:11px;}
 
 /* View-as launch strip */
 .viewas-strip{background:var(--slate-tint);border:1px solid var(--slate-border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
@@ -752,11 +738,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .detail-value.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text2);}
 .detail-divider{height:1px;background:var(--border);margin:18px 0;}
 .detail-section-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;}
-.detail-config-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-.detail-config-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);}
-.detail-config-name{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);}
-.detail-config-state{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
-.detail-config-state.configured{color:var(--green);}
 .platform-table tbody tr{cursor:pointer;}
 
 /* ── DENIED ── */
@@ -1280,17 +1261,6 @@ function _tenantAdminUrl(slug) {
 // Tabbed view. Overview + Brand land in Phase 1 / 2. Every other tab is
 // a typed placeholder until its phase wires the real content, so the
 // modal is the roadmap for the per-tenant config surfaces.
-var CONFIG_LAYERS = [
-  { key: 'brand',          label: 'Brand',           phase: 'Phase 2'  },
-  { key: 'terminology',    label: 'Terminology',     phase: 'Phase 3'  },
-  { key: 'catalog_config', label: 'Catalog',         phase: 'Phase 4'  },
-  { key: 'workflow',       label: 'Workflow',        phase: 'Phase 5'  },
-  { key: 'comms_config',   label: 'Communications',  phase: 'Phase 6'  },
-  { key: 'integrations',   label: 'Integrations',    phase: 'Phase 7'  },
-  { key: 'compliance',     label: 'Compliance',      phase: 'Phase 8'  },
-  { key: 'features',       label: 'Features',        phase: 'Phase 9'  }
-];
-
 // Tab registry for the detail modal. `build` returns the inner HTML for
 // that tab's panel. Tabs without a build function render a placeholder
 // card naming the phase that wires them.
@@ -1845,27 +1815,11 @@ function buildOverviewTab(t) {
     '<div class="detail-section-title">Lifecycle</div>' +
     renderLifecycleControl(t) +
     '<div class="detail-divider"></div>' +
-    '<div class="detail-section-title">Configuration layers</div>' +
-    '<div class="detail-config-grid">' +
-      CONFIG_LAYERS.map(function(layer) {
-        var val = t[layer.key];
-        var configured = val && typeof val === 'object' && Object.keys(val).length > 0;
-        var stateTxt = configured ? 'Configured' : layer.phase;
-        var stateClass = configured ? 'detail-config-state configured' : 'detail-config-state';
-        return '<div class="detail-config-row">' +
-          '<div class="detail-config-name">' + escHtml(layer.label) + '</div>' +
-          '<div class="' + stateClass + '">' + escHtml(stateTxt) + '</div>' +
-        '</div>';
-      }).join('') +
-    '</div>' +
-    // Folded-in Analytics + Diagnostics sections (P4). Their
-    // afterRender hooks target these container ids.
-    '<div class="detail-divider"></div>' +
     '<div class="detail-section-title">30-day activity</div>' +
-    '<div id="tenantAnBody"><div class="an-loading">Loading analytics\u2026</div></div>' +
+    '<div id="tenantAnBody"><div class="an-loading">Loading activity\u2026</div></div>' +
     '<div class="detail-divider"></div>' +
-    '<div class="detail-section-title">Diagnostics</div>' +
-    '<div id="diagBody"><div class="comp-loading">Loading diagnostics\u2026</div></div>';
+    '<div class="detail-section-title">Health signals</div>' +
+    '<div id="diagBody"><div class="comp-loading">Loading signals\u2026</div></div>';
 }
 
 // Overview's afterRender dispatches to the folded-in Analytics +
@@ -2659,86 +2613,15 @@ function renderDiagnosticsBody(t) {
     '</div>' +
     // Usage
     '<div class="diag-card healthy">' +
-      '<div class="diag-card-label">Members</div>' +
-      '<div class="diag-card-value">' + _diagData.membersCount + ' active</div>' +
-      '<div class="diag-card-sub">Patient enrollments in active status</div>' +
-    '</div>' +
-    '<div class="diag-card healthy">' +
       '<div class="diag-card-label">Staff</div>' +
       '<div class="diag-card-value">' + _diagData.clinicianCount + '</div>' +
       '<div class="diag-card-sub">Users in tenant_memberships at this tenant</div>' +
     '</div>' +
   '</div>';
 
-  var ops =
-    '<div class="comp-section" style="margin-bottom:0;">' +
-      '<div class="comp-section-title">Operator actions</div>' +
-      '<div class="comp-section-sub">Scripts available to platform operators. Some execute today; others are stubs until their underlying delivery path lands.</div>' +
-      '<div class="diag-ops">' +
-        '<button class="form-btn secondary" onclick="diagResendInvite()">Resend welcome (stub)</button>' +
-        '<button class="form-btn secondary" onclick="diagResetWorkflow()">Reset workflow to defaults</button>' +
-        '<button class="form-btn secondary" onclick="diagFlushCache()">Flush tenant cache (self)</button>' +
-      '</div>' +
-    '</div>';
-
-  return cards + ops;
+  return cards;
 }
 
-function diagResendInvite() {
-  var t = _activeDetailTenant;
-  if (!t) return;
-  showToast('Welcome re-send stub — Phase 6 delivery wiring ships the actual email.', 'warn');
-  db.from('audit_logs').insert({
-    action: 'support.welcome_resend_stub',
-    actor_id: currentUserId, actor_email: currentUserEmail,
-    target_id: t.id, tenant_id: t.id,
-    change_type: 'lifecycle',
-    details: JSON.stringify({ note: 'stub; actual send lands with Phase 6' })
-  }).then(function(){}, function(e){ console.warn(e); });
-}
-
-function diagResetWorkflow() {
-  var t = _activeDetailTenant;
-  if (!t) return;
-  if (!window.confirm('Reset workflow rules to Pulse defaults? This overwrites any overrides the tenant has configured. Audit entry is written.')) return;
-
-  var before = t.workflow || {};
-  db.from('tenants').update({ workflow: {} }).eq('id', t.id).select('workflow').single()
-    .then(function(r) {
-      if (r.error) throw r.error;
-      t.workflow = {};
-      showToast('Workflow reset. Tenant now uses defaults.', 'success');
-      return db.from('audit_logs').insert({
-        action: 'support.workflow_reset',
-        actor_id: currentUserId, actor_email: currentUserEmail,
-        target_id: t.id, tenant_id: t.id,
-        change_type: 'workflow',
-        before_snapshot: { workflow: before },
-        after_snapshot:  { workflow: {} },
-        details: JSON.stringify({ reset: true })
-      });
-    })
-    .then(function() { renderDetailTabPanels(); })
-    .catch(function(err) {
-      showToast('Reset failed: ' + ((err && err.message) || 'unknown'), 'error');
-    });
-}
-
-function diagFlushCache() {
-  // Operator-side only: clears the helpers' in-memory caches so the
-  // operator sees fresh data without reloading the page. Affects
-  // the current session only, not the tenant's own portals.
-  if (window.Terminology) window.Terminology.reset();
-  if (window.Workflow)    window.Workflow.reset();
-  if (window.Messaging)   window.Messaging.reset();
-  if (window.Integrations) window.Integrations.reset();
-  if (window.Compliance)  window.Compliance.reset();
-  if (window.Modules)     window.Modules.reset();
-  _auditTabLoaded     = false;
-  _modulesTabLoaded   = false;
-  _billingTabLoaded   = false;
-  showToast('Local caches flushed. Next tab load refetches from the DB.', 'success');
-}
 
 // ── Per-tenant Analytics tab ──
 // Read-time aggregation scoped to a single tenant. Parallel counts
@@ -2803,77 +2686,17 @@ function renderTenantAnalyticsBody(t, d) {
 
   var stats = '<div class="an-stats">' +
     '<div class="an-stat"><div class="an-stat-label">Active members</div>' +
-      '<div class="an-stat-value">' + fmt(d.members) + '</div>' +
-      '<div class="an-stat-sub">patient_enrollments status=active</div></div>' +
+      '<div class="an-stat-value">' + fmt(d.members) + '</div></div>' +
     '<div class="an-stat"><div class="an-stat-label">Consults, 30d</div>' +
-      '<div class="an-stat-value">' + fmt(d.consults30) + '</div>' +
-      '<div class="an-stat-sub">new consultation records</div></div>' +
-    '<div class="an-stat"><div class="an-stat-label">Rx issued, 30d</div>' +
-      '<div class="an-stat-value">' + fmt(d.rx30) + '</div>' +
-      '<div class="an-stat-sub">new prescriptions created</div></div>' +
-    '<div class="an-stat"><div class="an-stat-label">Appointments, 30d</div>' +
-      '<div class="an-stat-value">' + fmt(d.appts30) + '</div>' +
-      '<div class="an-stat-sub">scheduled appointments</div></div>' +
-    '<div class="an-stat"><div class="an-stat-label">Messages, 30d</div>' +
-      '<div class="an-stat-value">' + fmt(d.messages30) + '</div>' +
-      '<div class="an-stat-sub">async messaging volume</div></div>' +
-    '<div class="an-stat"><div class="an-stat-label">Open support</div>' +
-      '<div class="an-stat-value' + (d.supportOpen > 0 ? ' warn' : '') + '">' + fmt(d.supportOpen) + '</div>' +
-      '<div class="an-stat-sub">unresolved requests</div></div>' +
+      '<div class="an-stat-value">' + fmt(d.consults30) + '</div></div>' +
     '<div class="an-stat"><div class="an-stat-label">Subscription</div>' +
       '<div class="an-stat-value" style="font-size:14px;">' + escHtml(subStr) + '</div>' +
       '<div class="an-stat-sub">' + (d.sub && d.sub.current_period_end ? 'renews ' + formatDate(d.sub.current_period_end) : 'no active sub') + '</div></div>' +
     '<div class="an-stat"><div class="an-stat-label">Enabled modules</div>' +
-      '<div class="an-stat-value">' + d.entitlements.length + '</div>' +
-      '<div class="an-stat-sub">module_entitlements enabled=true</div></div>' +
+      '<div class="an-stat-value">' + d.entitlements.length + '</div></div>' +
   '</div>';
 
-  // Enabled module list by source.
-  var bySource = { plan: [], override: [], addon: [], trial: [] };
-  d.entitlements.forEach(function(e) { (bySource[e.source] || (bySource[e.source] = [])).push(e); });
-  var moduleGroups = ['plan','override','addon','trial']
-    .filter(function(src) { return bySource[src] && bySource[src].length > 0; })
-    .map(function(src) {
-      return '<div style="margin-bottom:8px;">' +
-        '<span class="comms-key" style="margin-right:8px;text-transform:uppercase;letter-spacing:0.1em;">' + escHtml(src) + '</span>' +
-        bySource[src].map(function(e) {
-          var mod = window.Modules && window.Modules.forKey(e.module_key);
-          return '<span class="mod-plan-chip" style="margin-right:4px;">' + escHtml(mod ? mod.label : e.module_key) + '</span>';
-        }).join('') +
-      '</div>';
-    }).join('');
-  if (!moduleGroups) moduleGroups = '<div class="catalog-empty" style="padding:12px;">No modules enabled for this tenant yet.</div>';
-
-  var modulesPanel = '<div class="an-panel">' +
-    '<div class="an-panel-title">Enabled modules</div>' +
-    '<div class="an-panel-sub">Grouped by source so it\u2019s obvious which modules come from the plan vs were manually granted.</div>' +
-    moduleGroups +
-  '</div>';
-
-  // Activity intensity "bars" — simple visual of 30d activity.
-  var maxActivity = Math.max(d.consults30 || 0, d.rx30 || 0, d.appts30 || 0, d.messages30 || 0, 1);
-  function activityBar(label, count, cls) {
-    var c = count == null ? 0 : count;
-    var pct = Math.round((c / maxActivity) * 100);
-    return '<div class="an-bar-row">' +
-      '<span class="an-bar-label">' + escHtml(label) + '</span>' +
-      '<div class="an-bar-track"><div class="an-bar-fill ' + cls + '" style="width:' + pct + '%;"></div></div>' +
-      '<span class="an-bar-value">' + fmt(count) + '</span>' +
-    '</div>';
-  }
-
-  var activityPanel = '<div class="an-panel">' +
-    '<div class="an-panel-title">30-day activity</div>' +
-    '<div class="an-panel-sub">Relative volume across core clinical + comms paths. Use as a quick "is this tenant active" check.</div>' +
-    '<div class="an-bars">' +
-      activityBar('Consultations', d.consults30, 'green') +
-      activityBar('Prescriptions', d.rx30, 'green') +
-      activityBar('Appointments', d.appts30, 'green') +
-      activityBar('Messages', d.messages30, 'green') +
-    '</div>' +
-  '</div>';
-
-  return stats + modulesPanel + activityPanel;
+  return stats;
 }
 
 // ── Top-level Integrations tab (fleet adoption + reliability) ──

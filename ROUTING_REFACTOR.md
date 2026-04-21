@@ -19,7 +19,13 @@ moved the system from "Pulse at root + CommandOS in a subtab" to
 | R5 | `80cb99b` | Terminology editor migrated; CommandOS summary |
 | R6 | `f9455b5` | Catalog live-count summary; CRUD stays in Legacy → Configuration (full reconciliation is R6 carry-over) |
 | R7 | `f080a61` | Workflow editor migrated; CommandOS summary |
-| R8-R13 | `56d1abc` | Tenant-admin read-only / summary surfaces for Comms, Compliance, Integrations, Subscription; Analytics + Activity stubbed pending reconciliation with admin.html's existing tabs |
+| R8 | `56d1abc`, `6dc7725` | Comms template editor ported into tenant admin |
+| R9 | `56d1abc`, `9bb5552` | Compliance editor ported into tenant admin |
+| R10 | `56d1abc`, `59f5a55` + migration 023 | Integrations config editor (credentials remain platform-only via trigger guard) |
+| R6 (full) | `6196daf` | Catalog read-only view in tenant admin (protocols table + category/type chips + packages list); legacy Configuration editor still primary for writes pending tenant-scoping carry-over |
+| R11 (full) | `13b10c6` | Per-tenant operational pulse (stat cards + 30-day bars + enabled modules) above the existing Pulse analytics KPIs |
+| R12 (full) | `8777678` | Config-change timeline (before/after diff rows, change-type filter) above the HIPAA audit table |
+| R13 (full) | `ef23b64` | Module entitlements panel in Subscription view (grouped by source + plan-gap indicator) |
 
 ## Migration 022
 
@@ -57,22 +63,15 @@ catalog editor. Its inserts don't set `tenant_id`; they assume
 single-tenant. Reconciliation = sweep the Configuration tab's
 DB writes to always filter/set `tenant_id = window.Tenant.id`,
 then move the resulting tenant-aware editor into Setup → Catalog
-and delete the Legacy sidebar section.
+and delete the Legacy sidebar section. The R6 full port
+(`6196daf`) shipped the read-only view in Setup → Catalog; the
+legacy editor remains the write path until that sweep lands.
 
-### R8-R13 carry-overs — full editors
+### R8-R13 ports — SHIPPED
 
-Each of Comms / Compliance / Integrations / Subscription / etc.
-ships with a live count / status summary today in the tenant
-admin. Full editors still run out of CommandOS for tenant-owner
-convenience. Each migrates to its tenant-admin tab when the
-authoring surface gets its own dedicated port, matching the
-shape R4 (Brand) / R5 (Terminology) / R7 (Workflow) used.
-
-### R11 / R12 — reconcile admin.html's existing tabs
-
-admin.html's Analytics + Audit tabs predate the CommandOS-era
-per-tenant views. R11 and R12 carry-overs reconcile the two,
-keeping the best of each and deleting duplicates.
+R8 (Comms), R9 (Compliance), R10 (Integrations), R11 (Analytics),
+R12 (Activity) and R13 (Subscription) all shipped their full
+ports. Nothing pending here.
 
 ### CommandOS cleanup
 

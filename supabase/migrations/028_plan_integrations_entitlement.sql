@@ -65,19 +65,26 @@ ALTER TABLE tenant_integrations
 -- Extend the staff-readable view so tenant admins can see the mode
 -- (they need it to render the test/live toggle). The view already
 -- excludes credentials; mode is non-secret config.
+--
+-- IMPORTANT: new columns must be appended at the END of the SELECT
+-- list. Postgres CREATE OR REPLACE VIEW only allows additions after
+-- the existing columns — inserting a column in the middle raises
+-- "cannot change name of view column". The column position in this
+-- SELECT is a public contract for SELECT * consumers (like the
+-- tenant_integrations_for_my_tenants function below).
 CREATE OR REPLACE VIEW tenant_integrations_public AS
   SELECT
     id,
     tenant_id,
     provider,
     status,
-    mode,
     config,
     last_connected_at,
     last_error,
     last_error_at,
     created_at,
-    updated_at
+    updated_at,
+    mode
   FROM tenant_integrations;
 
 ALTER VIEW tenant_integrations_public SET (security_barrier = true);

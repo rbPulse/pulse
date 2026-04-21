@@ -848,7 +848,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-title">Catalog</div>
           <div class="tab-subtitle">Protocols, categories, product types, packages &mdash; everything in this tenant&rsquo;s offering.</div>
         </div>
-        <div id="catalog-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading catalog…</div></div>
 
         <!-- Catalog editor (relocated from Legacy → Configuration in R6 carry-over) -->
         <!-- Product Catalog (unified products + categories) -->
@@ -6096,68 +6095,18 @@ function saveTerminologySetup() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// R6: CATALOG SETUP (summary + full editor)
-// Renders the read-only summary at top, then triggers the editor's
-// data loaders so the relocated cfg-protocols markup (moved from
-// Legacy → Configuration in R6 carry-over) is fully populated.
-// Migration 024 grants tenant_owner/tenant_admin write on the
-// underlying catalog tables.
+// R6: CATALOG SETUP
+// Single editor: protocols table + search + Manage Categories /
+// Bulk Import / Export / + New Product. This function just kicks
+// the data loaders for the relocated cfg-protocols markup (moved
+// from Legacy → Configuration in R6 carry-over). Migration 024
+// grants tenant_owner/tenant_admin write on the catalog tables.
 // ══════════════════════════════════════════════════════════════════
 function renderCatalogSetup() {
-  var body = document.getElementById('catalog-setup-body');
-  if (!body || !window.Tenant) return;
-  var tid = window.Tenant.id;
-  body.innerHTML = '<div style="padding:20px;color:var(--text3);">Loading catalog…</div>';
-  Promise.all([
-    db.from('protocol_templates').select('id, key, name, product_type, category, price, subscription_cadence, is_archived').eq('tenant_id', tid).order('category').order('name'),
-    db.from('protocol_categories').select('name, is_archived').eq('tenant_id', tid).order('display_order'),
-    db.from('protocol_product_types').select('name, is_archived').eq('tenant_id', tid).order('display_order'),
-    db.from('protocol_packages').select('id, name, price, cadence, items, is_archived').eq('tenant_id', tid).order('display_order').then(function(r){return r;}).catch(function(){return {data:[]};})
-  ]).then(function(results) {
-    body.innerHTML = _buildCatalogSetupBody(results[0].data || [], results[1].data || [], results[2].data || [], results[3].data || []);
-  }).catch(function(err) {
-    body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
-  });
-  // Populate the relocated editor below the summary.
+  if (!window.Tenant) return;
   if (typeof loadProtocols === 'function')    loadProtocols();
   if (typeof loadCategories === 'function')   loadCategories();
   if (typeof loadProductTypes === 'function') loadProductTypes();
-}
-
-function _buildCatalogSetupBody(protocols, categories, types, packages) {
-  var active = function(arr){return arr.filter(function(x){return !x.is_archived;});};
-  var stats = '<div class="comp-section">' +
-    '<div class="comp-section-title">Catalog summary</div>' +
-    '<div class="comp-section-sub">Snapshot of protocols / categories / product types / packages scoped to this tenant. Full editor below.</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">' +
-      _summaryCard('Active protocols', active(protocols).length, (protocols.length - active(protocols).length) + ' archived') +
-      _summaryCard('Categories', active(categories).length) +
-      _summaryCard('Product types', active(types).length) +
-      _summaryCard('Packages', active(packages).length) +
-    '</div>' +
-  '</div>';
-  var protocolsTbl = protocols.length === 0
-    ? '<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px;">No protocols scoped to this tenant.</div>'
-    : '<table class="admin-table" style="width:100%;"><thead><tr><th>Name</th><th>Key</th><th>Category</th><th>Type</th><th style="text-align:right;">Price</th><th>Cadence</th><th>Status</th></tr></thead><tbody>' +
-      protocols.map(function(p) {
-        return '<tr><td>' + _brandEscHtml(p.name || '\u2014') + '</td><td style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);">' + _brandEscHtml(p.key || '') + '</td><td>' + _brandEscHtml(p.category || '\u2014') + '</td><td>' + _brandEscHtml(p.product_type || '\u2014') + '</td><td style="text-align:right;font-variant-numeric:tabular-nums;">' + (p.price != null ? '$' + Number(p.price).toFixed(2) : '\u2014') + '</td><td>' + _brandEscHtml(p.subscription_cadence || 'one-time') + '</td><td>' + (p.is_archived ? '<span style="color:var(--text3);font-size:10px;">archived</span>' : '<span style="color:var(--green);font-size:10px;font-weight:600;">active</span>') + '</td></tr>';
-      }).join('') + '</tbody></table>';
-  var chipsHtml = function(arr) {
-    return arr.length === 0 ? '<span style="color:var(--text3);font-size:12px;">\u2014</span>' :
-      arr.map(function(x) {
-        return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text2);margin-right:4px;margin-bottom:4px;' + (x.is_archived ? 'opacity:0.5;text-decoration:line-through;' : '') + '">' + _brandEscHtml(x.name) + '</span>';
-      }).join('');
-  };
-  var packagesList = packages.length > 0 ? '<div class="comp-section"><div class="comp-section-title">Packages \u00B7 ' + active(packages).length + '</div>' +
-    active(packages).map(function(p) {
-      return '<div class="comp-list-item"><div><div class="comp-list-title">' + _brandEscHtml(p.name) + '</div><div class="comp-list-sub">' + ((Array.isArray(p.items) ? p.items.length : 0) + ' items \u00B7 ' + (p.price != null ? '$' + Number(p.price).toFixed(2) : 'custom') + ' \u00B7 ' + (p.cadence || 'one-time')) + '</div></div><div></div></div>';
-    }).join('') +
-  '</div>' : '';
-  return stats +
-    '<div class="comp-section"><div class="comp-section-title">Protocols \u00B7 ' + active(protocols).length + '</div>' + protocolsTbl + '</div>' +
-    '<div class="comp-section"><div class="comp-section-title">Categories</div><div style="display:flex;flex-wrap:wrap;gap:4px;">' + chipsHtml(categories) + '</div></div>' +
-    '<div class="comp-section"><div class="comp-section-title">Product types</div><div style="display:flex;flex-wrap:wrap;gap:4px;">' + chipsHtml(types) + '</div></div>' +
-    packagesList;
 }
 
 // ══════════════════════════════════════════════════════════════════

@@ -5782,7 +5782,7 @@ function _renderWizardScreen() {
     case 'language':   body = _wizScreenLanguage();       break;
     case 'clinicType': body = _wizScreenClinicType();     break;
     case 'workflow':   body = _wizScreenWorkflow();       break;
-    case 'comms':      body = _wizScreenCommsStub();      break;
+    case 'comms':      body = _wizScreenComms();          break;
     case 'territory':  body = _wizScreenTerritoryStub();  break;
     case 'brand':      body = _wizScreenBrandStub();      break;
     case 'review':     body = _wizScreenReviewStub();     break;
@@ -6053,7 +6053,138 @@ function _wizWfToggle(key) {
   _saveWizardState();
   _repaintWizardScreen();
 }
-function _wizScreenCommsStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Comms questions land in W2.</div>'; }
+// ── Screen 4: Automated messages ───────────────────────────────────
+// Three question clusters:
+//   1. Which automations fire (toggle list — welcome, order, refill
+//      reminder, inactivity nudge, check-in reminder, follow-up).
+//   2. Tone preset — four presets (Warm / Professional / Clinical /
+//      Direct) that seed default template wording for every enabled
+//      automation. Admins can still edit individual templates later
+//      in Setup → Communications.
+//   3. Timing: inactivity threshold (slider), check-in cadence.
+var _WIZ_AUTO_CATALOG = [
+  { k:'welcome',             t:'Welcome',              s:'First message a new member receives on sign-up. Sets the tone for their care relationship.' },
+  { k:'order_confirmation',  t:'Order confirmation',   s:'Confirms their first protocol is being prepared. Merged with welcome on the same portal load.' },
+  { k:'refill_reminder',     t:'Refill reminder',      s:'Heads-up before their current supply runs out. Fires at the refill-window threshold.' },
+  { k:'inactivity_nudge',    t:'Inactivity nudge',     s:'Gentle check-in for members who haven\'t logged activity or replied recently.' },
+  { k:'check_in_reminder',   t:'Check-in reminder',    s:'Prompt to complete scheduled clinical check-ins (weight, symptoms, mood).' },
+  { k:'follow_up',           t:'Follow-up',            s:'Post-protocol outreach on your follow-up cadence.' }
+];
+var _WIZ_TONES = [
+  { v:'warm',         t:'Warm',         s:'"Hi {firstName}! We\'re glad you\'re here..."' },
+  { v:'professional', t:'Professional', s:'"Welcome to {clinicName}, {firstName}. Your care team is ready..."' },
+  { v:'clinical',     t:'Clinical',     s:'"Patient {firstName}: your intake is complete. Clinician review within 24h."' },
+  { v:'direct',       t:'Direct',       s:'"{firstName}, you\'re in. Next: {nextStep}."' }
+];
+
+function _wizCommsDefaults() {
+  var ct = window._wizardState.answers.clinicType;
+  // Every clinic defaults to all automations ON. Tone preset is
+  // clinic-type-informed: hormone therapy is clinical by default,
+  // wellness is warm, everything else is professional.
+  var enabled = {};
+  _WIZ_AUTO_CATALOG.forEach(function(a){ enabled[a.k] = true; });
+  var tone = 'professional';
+  if (ct === 'wellness')         tone = 'warm';
+  else if (ct === 'hormone_therapy') tone = 'clinical';
+  else if (ct === 'weight_loss')     tone = 'warm';
+  return { enabled: enabled, tone: tone, inactivityDays: 7, checkInCadence: 'monthly' };
+}
+
+function _wizEffectiveComms() {
+  var a = window._wizardState.answers.comms;
+  var d = _wizCommsDefaults();
+  var enabled = Object.assign({}, d.enabled);
+  // User-set values from a.enabled override defaults. undefined = default.
+  if (a.enabled) {
+    Object.keys(a.enabled).forEach(function(k) { enabled[k] = !!a.enabled[k]; });
+  }
+  return {
+    enabled: enabled,
+    tone: a.tone || d.tone,
+    inactivityDays: a.inactivityDays != null ? a.inactivityDays : d.inactivityDays,
+    checkInCadence: a.checkInCadence || d.checkInCadence
+  };
+}
+
+function _wizScreenComms() {
+  var e = _wizEffectiveComms();
+  var toggleRows = _WIZ_AUTO_CATALOG.map(function(a) {
+    var on = e.enabled[a.k];
+    return '<div class="wiz-toggle-row">' +
+      '<div class="wiz-toggle-row-text">' +
+        '<div class="wiz-toggle-row-title">' + _brandEscHtml(a.t) + '</div>' +
+        '<div class="wiz-toggle-row-sub">' + _brandEscHtml(a.s) + '</div>' +
+      '</div>' +
+      '<div class="wiz-switch' + (on ? ' on' : '') + '" onclick="_wizCommsToggleAuto(\'' + a.k + '\')" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></div>' +
+    '</div>';
+  }).join('');
+
+  var toneCards = _WIZ_TONES.map(function(o) {
+    var sel = e.tone === o.v ? ' selected' : '';
+    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizCommsSet(\'tone\',\'' + o.v + '\')">' +
+      '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
+      '<div class="wiz-choice-sub" style="font-style:italic;">' + _brandEscHtml(o.s) + '</div>' +
+    '</button>';
+  }).join('');
+
+  var cadenceOpts = [
+    { v:'weekly',    t:'Weekly',    s:'Every 7 days' },
+    { v:'monthly',   t:'Monthly',   s:'Every 30 days' },
+    { v:'quarterly', t:'Quarterly', s:'Every 90 days' }
+  ];
+  var cadenceCards = cadenceOpts.map(function(o) {
+    var sel = e.checkInCadence === o.v ? ' selected' : '';
+    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizCommsSet(\'checkInCadence\',\'' + o.v + '\')">' +
+      '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
+      '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
+    '</button>';
+  }).join('');
+
+  return '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Which messages fire automatically?</div>' +
+      '<div class="wiz-q-help">Toggle any message off if you\'d rather send it manually. All default on.</div>' +
+      '<div class="wiz-toggle-list">' + toggleRows + '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Tone</div>' +
+      '<div class="wiz-q-help">Sets the voice for every message. Individual templates are editable in Setup → Communications after apply.</div>' +
+      '<div class="wiz-choices">' + toneCards + '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Inactivity threshold</div>' +
+      '<div class="wiz-q-help">A member is considered inactive after this many days without a dose log or portal visit. The inactivity nudge fires once they cross it.</div>' +
+      '<div class="wiz-slider-wrap">' +
+        '<input type="range" class="wiz-slider" min="3" max="30" step="1" value="' + e.inactivityDays + '" oninput="_wizCommsSetSlider(\'inactivityDays\', this.value)"/>' +
+        '<div class="wiz-slider-val">' + e.inactivityDays + ' days</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Check-in reminder cadence</div>' +
+      '<div class="wiz-q-help">How often the scheduled check-in reminder fires. Independent from the follow-up cadence on the Workflow screen.</div>' +
+      '<div class="wiz-choices">' + cadenceCards + '</div>' +
+    '</div>';
+}
+
+function _wizCommsToggleAuto(key) {
+  var e = _wizEffectiveComms();
+  if (!window._wizardState.answers.comms.enabled) window._wizardState.answers.comms.enabled = {};
+  window._wizardState.answers.comms.enabled[key] = !e.enabled[key];
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+function _wizCommsSet(key, val) {
+  window._wizardState.answers.comms[key] = val;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+function _wizCommsSetSlider(key, val) {
+  var n = parseInt(val, 10);
+  window._wizardState.answers.comms[key] = n;
+  _saveWizardState();
+  var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
+  if (valEl) valEl.textContent = n + ' days';
+}
 function _wizScreenTerritoryStub()  { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Territory selector lands in W2.</div>'; }
 function _wizScreenBrandStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Brand basics land in W2.</div>'; }
 function _wizScreenReviewStub()     { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Review summary lands in W3 once answers are captured.</div>'; }

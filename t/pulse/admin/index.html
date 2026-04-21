@@ -704,11 +704,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <body>
 
 <!-- LOADING -->
+<!-- Brand data-brand attrs let brand.js's applyEarly() paint the
+     right wordmark + logo from localStorage cache on returning
+     visits. First-time visitors see the neutral "Loading…" text;
+     for Pulse's own tenant the heartbeat SVG is kept because
+     slug==='pulse' is treated as the native brand mark. -->
 <div id="admin-loading">
-  <div class="loading-icon">
+  <div class="loading-icon" data-brand="logo-mark">
     <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
   </div>
-  <div class="loading-wordmark" id="loadingWordmark">Pulse Admin</div>
+  <div class="loading-wordmark" id="loadingWordmark" data-brand="wordmark" data-brand-default="Loading…">Loading…</div>
 </div>
 
 <!-- NAV -->

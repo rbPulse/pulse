@@ -203,14 +203,73 @@
     }
   }
 
-  function apply() { applyTo(document); }
+  function apply() {
+    applyTo(document);
+    // Cache the current tenant's brand so the next visit (or a hard
+    // reload) can paint it before tenant.js has finished fetching.
+    // Only write when we actually have a tenant resolved — apply()
+    // may be called from the wizard preview with window.Tenant not
+    // yet set, and we don't want to poison the cache with empties.
+    if (window.Tenant && window.Tenant.slug && window.Tenant.brand) {
+      _writeBrandCache(window.Tenant.slug, window.Tenant.brand);
+    }
+  }
+
+  // ── Brand cache (localStorage) ────────────────────────────────────
+  // Keyed by tenant slug extracted from the URL. applyEarly() reads
+  // this cache before tenant.js kicks in so returning visitors see
+  // the correct wordmark / logo / accent on the loading screen
+  // instead of Pulse's defaults for a few hundred milliseconds.
+  //
+  // apply() writes back every time a fresh brand resolves, so the
+  // cache stays close to source-of-truth without a separate sync.
+
+  function _slugFromUrl() {
+    var m = (window.location && window.location.pathname || '').match(/\/t\/([^\/]+)\//);
+    return m ? m[1] : null;
+  }
+  function _cacheKey(slug) { return 'pulse_brand_cache_' + slug; }
+
+  function _writeBrandCache(slug, brand) {
+    try { localStorage.setItem(_cacheKey(slug), JSON.stringify(brand || {})); }
+    catch (_) { /* quota / privacy mode — ignore */ }
+  }
+  function _readBrandCache(slug) {
+    try {
+      var raw = localStorage.getItem(_cacheKey(slug));
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+
+  // Called before tenant.js has resolved. Reads the cached brand for
+  // the URL-derived slug and applies it to any data-brand elements on
+  // the page. Safe to call multiple times — tenant.js later runs
+  // Brand.apply() which overwrites anything the cache injected.
+  function applyEarly() {
+    var slug = _slugFromUrl();
+    if (!slug) return false;
+    var cached = _readBrandCache(slug);
+    if (!cached) return false;
+    // Stub window.Tenant with just enough for applyTo to work. If
+    // tenant.js later populates a richer object, it takes over.
+    if (!window.Tenant) window.Tenant = { slug: slug, brand: cached };
+    else if (!window.Tenant.brand) window.Tenant.brand = cached;
+    applyTo(document);
+    return true;
+  }
 
   window.Brand = {
-    apply:   apply,
-    applyTo: applyTo,
+    apply:      apply,
+    applyTo:    applyTo,
+    applyEarly: applyEarly,
     // Helpers exposed for edge cases (admin preview paints a single
     // preview block that isn't backed by window.Tenant).
     _hexToRgba: hexToRgba,
     _applyAccent: applyAccent
   };
+
+  // Kick off early-brand as soon as brand.js loads. Paints from cache
+  // if present so the loading screen reflects the correct tenant.
+  if (document.readyState !== 'loading') applyEarly();
+  else document.addEventListener('DOMContentLoaded', applyEarly);
 })();

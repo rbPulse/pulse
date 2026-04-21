@@ -2461,7 +2461,9 @@ function saveAutoConfig() {
 }
 
 function loadProtocols() {
-  db.from('protocol_templates').select('*').order('name', { ascending: true }).then(function(r) {
+  var tid = window.Tenant && window.Tenant.id;
+  if (!tid) return;
+  db.from('protocol_templates').select('*').eq('tenant_id', tid).order('name', { ascending: true }).then(function(r) {
     if (r.error) {
       _allProtocols = [];
       document.getElementById('protocolsNotReady').style.display = '';
@@ -2797,11 +2799,14 @@ function saveProtocol() {
   };
   var btn = document.getElementById('protoSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  var tid = window.Tenant && window.Tenant.id;
+  if (!tid) { showToast('Tenant context missing.', 'error'); if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }
   var op;
   if (_editingProtocolId) {
-    op = db.from('protocol_templates').update(payload).eq('id', _editingProtocolId);
+    op = db.from('protocol_templates').update(payload).eq('id', _editingProtocolId).eq('tenant_id', tid);
   } else {
     payload.created_by = currentUserId || null;
+    payload.tenant_id  = tid;
     op = db.from('protocol_templates').insert(payload);
   }
   op.then(function(r) {
@@ -2823,7 +2828,8 @@ function toggleArchiveProtocol(id) {
   var p = _allProtocols.find(function(x) { return x.id === id; });
   if (!p) return;
   var nextState = !p.is_archived;
-  db.from('protocol_templates').update({ is_archived: nextState, updated_at: new Date().toISOString() }).eq('id', id).then(function(r) {
+  var tid2 = window.Tenant && window.Tenant.id;
+  db.from('protocol_templates').update({ is_archived: nextState, updated_at: new Date().toISOString() }).eq('id', id).eq('tenant_id', tid2).then(function(r) {
     if (r.error) { showToast('Update failed.', 'error'); return; }
     writeAuditLog(nextState ? 'protocol.archived' : 'protocol.restored', null, { key: p.key });
     showToast(nextState ? 'Protocol archived.' : 'Protocol restored.', 'success');
@@ -2833,7 +2839,8 @@ function toggleArchiveProtocol(id) {
 
 function loadCategories() {
   var notReady = document.getElementById('catMgrNotReady');
-  db.from('protocol_categories').select('*').order('display_order', { ascending: true }).then(function(r) {
+  var tidC = window.Tenant && window.Tenant.id; if (!tidC) return;
+  db.from('protocol_categories').select('*').eq('tenant_id', tidC).order('display_order', { ascending: true }).then(function(r) {
     if (r.error) {
       _allCategories = [];
       if (notReady) notReady.style.display = '';
@@ -2893,7 +2900,8 @@ var _allProductTypes = []; // array of { id, name, display_order, is_archived }
 var _showArchivedTypes = false;
 
 function _loadProductTypes() {
-  return db.from('protocol_product_types').select('*').order('display_order', { ascending: true })
+  var tidPT = window.Tenant && window.Tenant.id; if (!tidPT) return Promise.resolve({ data: [] });
+  return db.from('protocol_product_types').select('*').eq('tenant_id', tidPT).order('display_order', { ascending: true })
     .then(function(r) {
       if (r.error) throw r.error;
       _allProductTypes = (r.data || []).map(function(t) { return { id: t.id, name: t.name, display_order: t.display_order, is_archived: !!t.is_archived }; });
@@ -2968,7 +2976,9 @@ function addProductType() {
   var exists = _allProductTypes.some(function(t) { return t.name.toLowerCase() === name.toLowerCase(); });
   if (exists) { showToast('Subcategory already exists.', 'error'); return; }
   var maxOrder = _allProductTypes.reduce(function(m, t) { return Math.max(m, t.display_order || 0); }, 0);
-  db.from('protocol_product_types').insert({ name: name, display_order: maxOrder + 1 })
+  var tidPTI = window.Tenant && window.Tenant.id;
+  if (!tidPTI) { showToast('Tenant context missing.', 'error'); return; }
+  db.from('protocol_product_types').insert({ tenant_id: tidPTI, name: name, display_order: maxOrder + 1 })
     .then(function(r) {
       if (r.error) { showToast('Add failed: ' + (r.error.message || 'unknown'), 'error'); return; }
       writeAuditLog('product_type.created', null, { name: name });
@@ -2983,7 +2993,8 @@ function toggleArchiveProductType(id) {
   var t = _allProductTypes.find(function(x) { return x.id === id; });
   if (!t) return;
   var nextState = !t.is_archived;
-  db.from('protocol_product_types').update({ is_archived: nextState }).eq('id', id)
+  var tidPTA = window.Tenant && window.Tenant.id;
+  db.from('protocol_product_types').update({ is_archived: nextState }).eq('id', id).eq('tenant_id', tidPTA)
     .then(function(r) {
       if (r.error) { showToast('Update failed.', 'error'); return; }
       writeAuditLog(nextState ? 'product_type.archived' : 'product_type.restored', null, { name: t.name });
@@ -3198,7 +3209,10 @@ function confirmBulkImport() {
       updated_at: new Date().toISOString()
     };
   });
-  db.from('protocol_templates').upsert(payloads, { onConflict: 'key' })
+  var tidBulk = window.Tenant && window.Tenant.id;
+  if (!tidBulk) { showToast('Tenant context missing.', 'error'); return; }
+  payloads.forEach(function(p){ p.tenant_id = tidBulk; });
+  db.from('protocol_templates').upsert(payloads, { onConflict: 'tenant_id,key' })
     .then(function(r) {
       if (r.error) {
         showToast('Import failed: ' + r.error.message, 'error');
@@ -3247,7 +3261,9 @@ function addCategory() {
   var name = (input.value || '').trim();
   if (!name) { showToast('Enter a category name.', 'error'); return; }
   var maxOrder = _allCategories.reduce(function(m, c) { return Math.max(m, c.display_order || 0); }, 0);
-  db.from('protocol_categories').insert({ name: name, display_order: maxOrder + 1 }).then(function(r) {
+  var tidCI = window.Tenant && window.Tenant.id;
+  if (!tidCI) { showToast('Tenant context missing.', 'error'); return; }
+  db.from('protocol_categories').insert({ tenant_id: tidCI, name: name, display_order: maxOrder + 1 }).then(function(r) {
     if (r.error) { showToast('Add failed: ' + (r.error.message || 'unknown'), 'error'); return; }
     writeAuditLog('category.created', null, { name: name });
     showToast('Category added.', 'success');
@@ -3404,7 +3420,8 @@ function toggleArchiveCategory(id) {
   var c = _allCategories.find(function(x) { return x.id === id; });
   if (!c) return;
   var nextState = !c.is_archived;
-  db.from('protocol_categories').update({ is_archived: nextState }).eq('id', id).then(function(r) {
+  var tidCA = window.Tenant && window.Tenant.id;
+  db.from('protocol_categories').update({ is_archived: nextState }).eq('id', id).eq('tenant_id', tidCA).then(function(r) {
     if (r.error) { showToast('Update failed.', 'error'); return; }
     writeAuditLog(nextState ? 'category.archived' : 'category.restored', null, { name: c.name });
     showToast(nextState ? 'Category archived.' : 'Category restored.', 'success');
@@ -3516,7 +3533,8 @@ function writeAuditLog(action, targetId, details) {
 // the table isn't initialized yet.
 function _populateProtocolSelect(selEl, currentValue) {
   if (!selEl) return;
-  db.from('protocol_templates').select('name, is_archived').order('name', { ascending: true })
+  var tidPPS = window.Tenant && window.Tenant.id;
+  db.from('protocol_templates').select('name, is_archived').eq('tenant_id', tidPPS).order('name', { ascending: true })
     .then(function(r) {
       if (r.error || !r.data || !r.data.length) { selEl.value = currentValue || ''; return; }
       var active = r.data.filter(function(p) { return !p.is_archived; });

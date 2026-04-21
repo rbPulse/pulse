@@ -62,16 +62,29 @@ The redirect stubs at `/admin.html`, `/portal.html`,
 new homes. Delete after 30 days of no traffic (Cloudflare /
 GitHub Pages analytics will confirm).
 
-### R6 carry-over — Catalog full CRUD
+### R6 carry-over — SHIPPED
 
-admin.html's Legacy → Configuration tab is the pre-multi-tenant
-catalog editor. Its inserts don't set `tenant_id`; they assume
-single-tenant. Reconciliation = sweep the Configuration tab's
-DB writes to always filter/set `tenant_id = window.Tenant.id`,
-then move the resulting tenant-aware editor into Setup → Catalog
-and delete the Legacy sidebar section. The R6 full port
-(`6196daf`) shipped the read-only view in Setup → Catalog; the
-legacy editor remains the write path until that sweep lands.
+All 12 catalog DB operations in Legacy → Configuration are now
+tenant-scoped (`loadProtocols`, `saveProtocol`,
+`toggleArchiveProtocol`, `loadCategories`, `addCategory`,
+`toggleArchiveCategory`, `loadProductTypes`, `addProductType`,
+`toggleArchiveProductType`, bulk protocol upsert,
+`_populateProtocolSelect`, and the existing R6 read views).
+Every SELECT filters by `tenant_id`; every INSERT sets
+`tenant_id`; every UPDATE gates by `tenant_id` as defense-in-
+depth.
+
+Migration `024_tenant_admin_catalog_write.sql` adds the
+missing RLS policies on `protocol_templates`, `protocol_categories`,
+and `protocol_product_types` so tenant owners/admins can write
+their own tenant's catalog rows. Retires the legacy
+`profiles.role = 'admin'` write policies from migration 005.
+
+Remaining (UI-only cleanup): move the Configuration editor UI
+out of the Legacy sidebar section and into Setup → Catalog as
+an inline editor, then delete the Legacy group entirely. That's
+a pure markup shuffle with no DB implications — deferred until
+the tenant-scoped writes are proven stable in production.
 
 ### R8-R13 ports — SHIPPED
 

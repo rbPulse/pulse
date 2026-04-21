@@ -5785,7 +5785,7 @@ function _renderWizardScreen() {
     case 'comms':      body = _wizScreenComms();          break;
     case 'territory':  body = _wizScreenTerritory();      break;
     case 'brand':      body = _wizScreenBrand();          break;
-    case 'review':     body = _wizScreenReviewStub();     break;
+    case 'review':     body = _wizScreenReview();         break;
     default:           body = '<div>?</div>';
   }
   var isLast  = state.step === _WIZARD_STEPS.length - 1;
@@ -6315,7 +6315,122 @@ function _wizBrandAccentHex(hex) {
   var preview = document.querySelector('#setup-wizard-body .wiz-preview');
   if (preview) preview.outerHTML = _wizBrandPreview();
 }
-function _wizScreenReviewStub()     { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Review summary lands in W3 once answers are captured.</div>'; }
+// ── Screen 7: Review ───────────────────────────────────────────────
+// Summarises every answer as a card with an Edit button that jumps
+// back to that step. Skipped steps render explicitly so admins can
+// see what they deferred. Final "Apply all changes" lives in the
+// footer (rendered by _renderWizardScreen) and calls W3's RPC.
+function _wizScreenReview() {
+  var a = window._wizardState.answers;
+  var skipped = window._wizardState.skipped || {};
+  var sections = [];
+
+  // Each reviewer builds a human-readable summary string (or null
+  // when the step is empty / skipped). Keeps this function light
+  // and readable.
+  sections.push(_wizReviewSection(0, 'Language', _wizReviewLanguage(a, skipped)));
+  sections.push(_wizReviewSection(1, 'Clinic type', _wizReviewClinicType(a, skipped)));
+  sections.push(_wizReviewSection(2, 'Workflow', _wizReviewWorkflow(a, skipped)));
+  sections.push(_wizReviewSection(3, 'Automated messages', _wizReviewComms(a, skipped)));
+  sections.push(_wizReviewSection(4, 'Territory', _wizReviewTerritory(a, skipped)));
+  sections.push(_wizReviewSection(5, 'Brand', _wizReviewBrand(a, skipped)));
+
+  return '<div class="wiz-q" style="margin-bottom:12px;">' +
+      '<div class="wiz-q-help">Jump back to any step to tweak — nothing is written until you click Apply below.</div>' +
+    '</div>' +
+    sections.join('');
+}
+
+function _wizReviewSection(stepIdx, title, content) {
+  var skippedTag = content.skipped
+    ? '<span class="wiz-review-skipped">Skipped — keeping current values.</span>'
+    : null;
+  return '<div class="wiz-review-section">' +
+    '<div class="wiz-review-head">' +
+      '<div class="wiz-review-title">' + _brandEscHtml(title) + '</div>' +
+      '<button type="button" class="wiz-review-edit" onclick="_wizardGoTo(' + stepIdx + ')">Edit &rarr;</button>' +
+    '</div>' +
+    '<div class="wiz-review-body">' + (skippedTag || content.html || '<span class="wiz-review-skipped">No changes — keeping current values.</span>') + '</div>' +
+  '</div>';
+}
+
+function _wizReviewLanguage(a, skipped) {
+  if (skipped.language) return { skipped:true };
+  var l = a.language || {};
+  var parts = [];
+  if (l.memberTerm)    parts.push('Members called <strong>' + _brandEscHtml(l.memberTerm) + '</strong>');
+  if (l.clinicianTerm) parts.push('Clinicians called <strong>' + _brandEscHtml(l.clinicianTerm) + '</strong>');
+  if (l.protocolTerm)  parts.push('Protocols called <strong>' + _brandEscHtml(l.protocolTerm) + '</strong>');
+  if (parts.length === 0) return { html:null };
+  return { html: parts.join(' · ') };
+}
+
+function _wizReviewClinicType(a, skipped) {
+  if (skipped.clinicType) return { skipped:true };
+  var ct = a.clinicType;
+  if (!ct) return { html:null };
+  var m = {
+    peptide_therapy: 'Peptide Therapy',
+    weight_loss:     'Weight Loss',
+    hormone_therapy: 'Hormone Therapy',
+    wellness:        'General Wellness',
+    other:           'Other'
+  };
+  return { html: 'Clinic type: <strong>' + _brandEscHtml(m[ct] || ct) + '</strong> — seeds defaults for workflow and messaging.' };
+}
+
+function _wizReviewWorkflow(a, skipped) {
+  if (skipped.workflow) return { skipped:true };
+  var w = _wizEffectiveWorkflow();
+  var customized = a.workflow && (a.workflow.consultPolicy || a.workflow.refillDays != null || a.workflow.intakeRequired != null || a.workflow.followUpDays != null);
+  if (!customized) return { html:null };
+  var policyLabel = { async:'Async review', sync:'Live video consult', either:'Either' }[w.consultPolicy] || w.consultPolicy;
+  var parts = [
+    'First Rx via <strong>' + _brandEscHtml(policyLabel) + '</strong>',
+    'Refill window <strong>' + w.refillDays + ' days</strong>',
+    (w.intakeRequired ? '<strong>Intake required</strong>' : '<strong>No intake required</strong>'),
+    'Follow-up every <strong>' + w.followUpDays + ' days</strong>'
+  ];
+  return { html: parts.join(' · ') };
+}
+
+function _wizReviewComms(a, skipped) {
+  if (skipped.comms) return { skipped:true };
+  var customized = a.comms && (a.comms.tone || a.comms.inactivityDays != null || a.comms.checkInCadence || (a.comms.enabled && Object.keys(a.comms.enabled).length));
+  if (!customized) return { html:null };
+  var e = _wizEffectiveComms();
+  var onCount = Object.keys(e.enabled).filter(function(k){ return e.enabled[k]; }).length;
+  var total = _WIZ_AUTO_CATALOG.length;
+  var toneLabel = { warm:'Warm', professional:'Professional', clinical:'Clinical', direct:'Direct' }[e.tone] || e.tone;
+  return { html:
+    '<strong>' + onCount + ' of ' + total + '</strong> automations enabled · ' +
+    'Tone: <strong>' + _brandEscHtml(toneLabel) + '</strong> · ' +
+    'Inactivity threshold <strong>' + e.inactivityDays + ' days</strong> · ' +
+    'Check-in <strong>' + _brandEscHtml(e.checkInCadence) + '</strong>'
+  };
+}
+
+function _wizReviewTerritory(a, skipped) {
+  if (skipped.territory) return { skipped:true };
+  var states = (a.territory && a.territory.states) || [];
+  if (states.length === 0) return { html:null };
+  var preview = states.slice(0, 12).join(', ');
+  var more = states.length > 12 ? ' + ' + (states.length - 12) + ' more' : '';
+  return { html: '<strong>' + states.length + '</strong> state' + (states.length === 1 ? '' : 's') + ': ' + _brandEscHtml(preview) + more };
+}
+
+function _wizReviewBrand(a, skipped) {
+  if (skipped.brand) return { skipped:true };
+  var b = a.brand || {};
+  var hasAny = (b.wordmark || b.accentColor || b.supportEmail || b.supportPhone);
+  if (!hasAny) return { html:null };
+  var parts = [];
+  if (b.wordmark)    parts.push('Wordmark <strong>' + _brandEscHtml(b.wordmark) + '</strong>');
+  if (b.accentColor) parts.push('Accent <strong style="font-family:\'SF Mono\',monospace;">' + _brandEscHtml(b.accentColor) + '</strong> <span style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;background:' + _brandEscAttr(b.accentColor) + ';"></span>');
+  if (b.supportEmail) parts.push('Support email <strong>' + _brandEscHtml(b.supportEmail) + '</strong>');
+  if (b.supportPhone) parts.push('Phone <strong>' + _brandEscHtml(b.supportPhone) + '</strong>');
+  return { html: parts.join(' · ') };
+}
 
 // ── Navigation ─────────────────────────────────────────────────────────
 function _wizardNext() {

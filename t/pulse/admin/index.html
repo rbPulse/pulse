@@ -5781,7 +5781,7 @@ function _renderWizardScreen() {
   switch (step.key) {
     case 'language':   body = _wizScreenLanguage();       break;
     case 'clinicType': body = _wizScreenClinicType();     break;
-    case 'workflow':   body = _wizScreenWorkflowStub();   break;
+    case 'workflow':   body = _wizScreenWorkflow();       break;
     case 'comms':      body = _wizScreenCommsStub();      break;
     case 'territory':  body = _wizScreenTerritoryStub();  break;
     case 'brand':      body = _wizScreenBrandStub();      break;
@@ -5928,7 +5928,131 @@ function _wizClinicPick(value) {
   _saveWizardState();
   _repaintWizardScreen();
 }
-function _wizScreenWorkflowStub()   { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Workflow questions land in W2.</div>'; }
+// ── Screen 3: Workflow ─────────────────────────────────────────────
+// Four questions shaping how members move intake → consult → refill.
+// Each answer maps 1:1 to a tenants.workflow JSONB path. Defaults
+// depend on the clinic type chosen in screen 2 (resolved below via
+// _wizWorkflowDefaults); admins override any single value without
+// affecting the others.
+function _wizWorkflowDefaults() {
+  var ct = window._wizardState.answers.clinicType;
+  // Smart defaults per vertical. Mirrors the template presets from
+  // migration 025 but as in-memory defaults, not stored templates.
+  switch (ct) {
+    case 'peptide_therapy': return { consultPolicy:'async', refillDays:14, intakeRequired:true,  followUpDays:30 };
+    case 'weight_loss':     return { consultPolicy:'async', refillDays:7,  intakeRequired:true,  followUpDays:30 };
+    case 'hormone_therapy': return { consultPolicy:'sync',  refillDays:30, intakeRequired:true,  followUpDays:90 };
+    case 'wellness':        return { consultPolicy:'async', refillDays:14, intakeRequired:false, followUpDays:90 };
+    default:                return { consultPolicy:'async', refillDays:14, intakeRequired:true,  followUpDays:30 };
+  }
+}
+
+function _wizEffectiveWorkflow() {
+  var a = window._wizardState.answers.workflow;
+  var d = _wizWorkflowDefaults();
+  return {
+    consultPolicy:  a.consultPolicy  || d.consultPolicy,
+    refillDays:     a.refillDays != null     ? a.refillDays     : d.refillDays,
+    intakeRequired: a.intakeRequired != null ? a.intakeRequired : d.intakeRequired,
+    followUpDays:   a.followUpDays != null   ? a.followUpDays   : d.followUpDays
+  };
+}
+
+function _wizScreenWorkflow() {
+  var w = _wizEffectiveWorkflow();
+  var policyOpts = [
+    { v:'async',  t:'Async review',       s:'Clinician reviews intake and prescribes on approval. Fastest for members.' },
+    { v:'sync',   t:'Live video consult', s:'Required before first prescription. Higher-touch, lower-volume.' },
+    { v:'either', t:'Either works',       s:'Clinician chooses per member based on the intake responses.' }
+  ];
+  var policyCards = policyOpts.map(function(o) {
+    var sel = w.consultPolicy === o.v ? ' selected' : '';
+    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizWfSet(\'consultPolicy\',\'' + o.v + '\')">' +
+      '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
+      '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
+    '</button>';
+  }).join('');
+
+  var refillMarks = [7, 14, 30, 60];
+  var refillStr = w.refillDays + (w.refillDays === 1 ? ' day' : ' days');
+
+  return '<div class="wiz-q">' +
+      '<div class="wiz-q-label">How do first prescriptions happen?</div>' +
+      '<div class="wiz-q-help">How your clinicians review new members before their first protocol. Changeable per-tenant later in Setup → Workflow.</div>' +
+      '<div class="wiz-choices">' + policyCards + '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Refill eligibility window</div>' +
+      '<div class="wiz-q-help">How many days before a member runs out should the refill button appear in their portal?</div>' +
+      '<div class="wiz-slider-wrap">' +
+        '<input type="range" class="wiz-slider" min="0" max="60" step="1" value="' + w.refillDays + '" oninput="_wizWfSetSlider(\'refillDays\', this.value)"/>' +
+        '<div class="wiz-slider-val">' + _brandEscHtml(refillStr) + '</div>' +
+      '</div>' +
+      '<div class="wiz-preset-row" style="margin-top:10px;">' +
+        refillMarks.map(function(m) {
+          return '<button type="button" class="wiz-preset' + (w.refillDays === m ? ' selected' : '') + '" onclick="_wizWfSet(\'refillDays\',' + m + ')">' + m + ' days</button>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Intake questionnaire</div>' +
+      '<div class="wiz-q-help">Require a structured intake before the first prescription? Most clinics do; some wellness-only programs skip it.</div>' +
+      '<div class="wiz-toggle-list">' +
+        '<div class="wiz-toggle-row">' +
+          '<div class="wiz-toggle-row-text">' +
+            '<div class="wiz-toggle-row-title">Require intake before first prescription</div>' +
+            '<div class="wiz-toggle-row-sub">Clinicians can\'t approve a prescription without a completed intake form.</div>' +
+          '</div>' +
+          '<div class="wiz-switch' + (w.intakeRequired ? ' on' : '') + '" onclick="_wizWfToggle(\'intakeRequired\')" role="switch" aria-checked="' + (w.intakeRequired ? 'true' : 'false') + '"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Follow-up cadence</div>' +
+      '<div class="wiz-q-help">How often do you check in with active members? Drives the scheduled check-in reminders and the per-member follow-up calendar.</div>' +
+      '<div class="wiz-choices">' +
+        [30, 60, 90].map(function(d) {
+          var sel = w.followUpDays === d ? ' selected' : '';
+          var labels = { 30:'Monthly', 60:'Every other month', 90:'Quarterly' };
+          return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizWfSet(\'followUpDays\',' + d + ')">' +
+            '<div class="wiz-choice-title">' + labels[d] + '</div>' +
+            '<div class="wiz-choice-sub">Every ' + d + ' days</div>' +
+          '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+}
+
+function _wizWfSet(key, val) {
+  window._wizardState.answers.workflow[key] = val;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+function _wizWfSetSlider(key, val) {
+  // Slider input fires continuously; don't repaint the whole screen
+  // (that would break the drag). Just update the displayed number and
+  // the persisted state, then refresh the nearby preset chips.
+  var n = parseInt(val, 10);
+  window._wizardState.answers.workflow[key] = n;
+  _saveWizardState();
+  var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
+  if (valEl) valEl.textContent = n + (n === 1 ? ' day' : ' days');
+  // Refresh preset chip active state without full repaint.
+  var presets = document.querySelectorAll('#setup-wizard-body .wiz-preset');
+  for (var i = 0; i < presets.length; i++) {
+    var m = presets[i].textContent.match(/^(\d+)/);
+    presets[i].classList.toggle('selected', !!(m && parseInt(m[1], 10) === n));
+  }
+}
+function _wizWfToggle(key) {
+  var cur = window._wizardState.answers.workflow[key];
+  var eff = _wizEffectiveWorkflow();
+  // Current effective (with default fallback) is what the user sees;
+  // flip it relative to that.
+  window._wizardState.answers.workflow[key] = !eff[key];
+  _saveWizardState();
+  _repaintWizardScreen();
+}
 function _wizScreenCommsStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Comms questions land in W2.</div>'; }
 function _wizScreenTerritoryStub()  { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Territory selector lands in W2.</div>'; }
 function _wizScreenBrandStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Brand basics land in W2.</div>'; }

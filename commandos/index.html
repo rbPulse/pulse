@@ -1442,19 +1442,18 @@ var CONFIG_LAYERS = [
 // Tab registry for the detail modal. `build` returns the inner HTML for
 // that tab's panel. Tabs without a build function render a placeholder
 // card naming the phase that wires them.
+// Six legacy tabs were retired (Brand / Terminology / Catalog /
+// Workflow / Comms / Compliance) — they duplicated what tenant
+// admins now own in their own portal. Integrations stays because
+// credentials are platform-owned (Phase 7 security posture).
+// Diagnostics + Analytics fold into Overview in P4.
 var DETAIL_TABS = [
-  { key: 'overview',     label: 'Overview',      build: buildOverviewTab                           },
-  { key: 'brand',        label: 'Brand',         build: buildBrandTab                              },
-  { key: 'terminology',  label: 'Terminology',   build: buildTerminologyTab                        },
-  { key: 'catalog',      label: 'Catalog',       build: buildCatalogTab                            },
-  { key: 'workflow',     label: 'Workflow',      build: buildWorkflowTab                           },
-  { key: 'comms',        label: 'Communications', build: buildCommsTab                              },
-  { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab                       },
-  { key: 'compliance',   label: 'Compliance',    build: buildComplianceTab                         },
-  { key: 'billing',      label: 'Subscription',  build: buildBillingTab                            },
-  { key: 'audit',        label: 'Activity',      build: buildActivityTab                           },
-  { key: 'analytics',    label: 'Analytics',     build: buildTenantAnalyticsTab                    },
-  { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab                        }
+  { key: 'overview',     label: 'Overview',      build: buildOverviewTab       },
+  { key: 'integrations', label: 'Integrations',  build: buildIntegrationsTab   },
+  { key: 'billing',      label: 'Subscription',  build: buildBillingTab        },
+  { key: 'audit',        label: 'Activity',      build: buildActivityTab       },
+  { key: 'analytics',    label: 'Analytics',     build: buildTenantAnalyticsTab },
+  { key: 'diagnostics',  label: 'Diagnostics',   build: buildDiagnosticsTab    }
 ];
 
 var _activeDetailTenant = null;
@@ -1773,14 +1772,10 @@ function renderWizard() {
       nextBtn +
     '</div>';
 
-  // Run the same post-render hooks the tabbed view would.
-  if (current.tab === 'brand'        && typeof afterRenderBrandTab        === 'function') afterRenderBrandTab(t);
-  if (current.tab === 'terminology'  && typeof afterRenderTerminologyTab  === 'function') afterRenderTerminologyTab(t);
-  if (current.tab === 'catalog'      && typeof afterRenderCatalogTab      === 'function') afterRenderCatalogTab(t);
-  if (current.tab === 'workflow'     && typeof afterRenderWorkflowTab     === 'function') afterRenderWorkflowTab(t);
-  if (current.tab === 'comms'        && typeof afterRenderCommsTab        === 'function') afterRenderCommsTab(t);
+  // Post-render hooks for platform-owned tabs. Brand / Terminology /
+  // Catalog / Workflow / Comms / Compliance hooks were retired with
+  // their tabs in P2.
   if (current.tab === 'integrations' && typeof afterRenderIntegrationsTab === 'function') afterRenderIntegrationsTab(t);
-  if (current.tab === 'compliance'   && typeof afterRenderComplianceTab   === 'function') afterRenderComplianceTab(t);
   if (current.tab === 'billing'      && typeof afterRenderBillingTab      === 'function') afterRenderBillingTab(t);
 }
 
@@ -2025,29 +2020,11 @@ function renderDetailTabPanels() {
       '" id="detailPanel-' + escAttr(tab.key) + '">' + inner + '</div>';
   }).join('');
 
-  // Post-render hooks for tabs that need runtime wiring (event listeners,
-  // focus, etc.). Overview + placeholders need none; Brand + Terminology
-  // wire their forms.
-  if (typeof afterRenderBrandTab === 'function' && _activeDetailTab === 'brand') {
-    afterRenderBrandTab(t);
-  }
-  if (typeof afterRenderTerminologyTab === 'function' && _activeDetailTab === 'terminology') {
-    afterRenderTerminologyTab(t);
-  }
-  if (typeof afterRenderCatalogTab === 'function' && _activeDetailTab === 'catalog') {
-    afterRenderCatalogTab(t);
-  }
-  if (typeof afterRenderWorkflowTab === 'function' && _activeDetailTab === 'workflow') {
-    afterRenderWorkflowTab(t);
-  }
-  if (typeof afterRenderCommsTab === 'function' && _activeDetailTab === 'comms') {
-    afterRenderCommsTab(t);
-  }
+  // Post-render hooks for platform-owned tabs only. Brand /
+  // Terminology / Catalog / Workflow / Comms / Compliance hooks
+  // were retired with their tabs in P2.
   if (typeof afterRenderIntegrationsTab === 'function' && _activeDetailTab === 'integrations') {
     afterRenderIntegrationsTab(t);
-  }
-  if (typeof afterRenderComplianceTab === 'function' && _activeDetailTab === 'compliance') {
-    afterRenderComplianceTab(t);
   }
   if (typeof afterRenderBillingTab === 'function' && _activeDetailTab === 'billing') {
     afterRenderBillingTab(t);
@@ -2124,41 +2101,6 @@ var BRAND_FIELDS_DEFAULT = {
   logo_url:      '',
   favicon_url:   ''
 };
-
-function buildBrandTab(t) {
-  // R4: Brand editing moved to the tenant admin portal. CommandOS now
-  // shows a read-only summary + a deep link to the tenant admin's
-  // Setup → Brand tab for operators who need to assist. The full form
-  // code below is kept for reference — if this branch is ever needed
-  // (e.g. operator overrides), flip the const to re-enable. Deletion
-  // comes in R14 after the full migration run stabilises.
-  var READ_ONLY_PLACEHOLDER = true;
-  if (READ_ONLY_PLACEHOLDER) {
-    var b = Object.assign({}, BRAND_FIELDS_DEFAULT, t.brand || {});
-    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-brand';
-    var hasContent = b.wordmark || b.accent_color || b.logo_url || b.support_email;
-    return '<div class="brand-form">' +
-      '<div class="brand-form-section">' +
-        '<div class="brand-form-section-title">Brand</div>' +
-        '<div class="brand-form-section-sub">Brand is authored by this tenant\u2019s admin. CommandOS shows a summary here and deep-links to the tenant admin\u2019s Setup \u2192 Brand tab when operators need to assist.</div>' +
-        (hasContent
-          ? '<div class="brand-form-grid">' +
-              '<div class="brand-form-field"><label>Wordmark</label><div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);">' + escHtml(b.wordmark || '(default)') + '</div></div>' +
-              '<div class="brand-form-field"><label>Legal name</label><div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);">' + escHtml(t.legal_name || '(unset)') + '</div></div>' +
-              '<div class="brand-form-field"><label>Accent</label><div style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:12px;color:var(--text2);">' + escHtml(b.accent_color || '(default)') + '</div></div>' +
-              '<div class="brand-form-field"><label>Sender email</label><div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);">' + escHtml(b.sender_email || '(unset)') + '</div></div>' +
-              '<div class="brand-form-field"><label>Support email</label><div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);">' + escHtml(b.support_email || '(unset)') + '</div></div>' +
-              '<div class="brand-form-field"><label>Logo URL</label><div style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);word-break:break-all;">' + escHtml(b.logo_url || '(unset)') + '</div></div>' +
-            '</div>'
-          : '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:24px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;">No brand configured yet. Tenant admins author this in the tenant admin portal.</div>') +
-      '</div>' +
-      '<div class="brand-actions">' +
-        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
-      '</div>' +
-    '</div>';
-  }
-}
-
 // ── Asset upload ──
 // Uploads go to the public `brand-assets` bucket created in migration
 // 013. Path convention: {tenant_id}/{kind}-{timestamp}.{ext}. The
@@ -2252,66 +2194,6 @@ function formatBytes(n) {
   if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
   return (n / (1024 * 1024)).toFixed(1) + ' MB';
 }
-
-// Keep the color picker and hex field in sync. Called after the brand
-// form is rendered because the event-listener targets don't exist until
-// then (the tab re-renders on every switch).
-function afterRenderBrandTab(t) {
-  var picker = document.getElementById('brandAccentPicker');
-  var hex    = document.getElementById('brandAccentHex');
-  if (!picker || !hex) return;
-
-  // Re-entering the tab discards its dirty flag since we're rendering
-  // from persisted state. The first input below re-marks it.
-  clearDirty('brand');
-
-  picker.addEventListener('input', function() {
-    hex.value = picker.value.toUpperCase();
-    markDirty('brand');
-  });
-  hex.addEventListener('input', function() {
-    var v = hex.value.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v.toLowerCase();
-    markDirty('brand');
-  });
-
-  // Keep asset thumbnails in sync when the operator edits the URL
-  // field directly (e.g. pasting a CDN URL instead of uploading).
-  ['logo', 'favicon'].forEach(function(kind) {
-    var urlEl    = document.getElementById(ASSET_KINDS[kind].urlId);
-    var removeEl = document.getElementById(ASSET_KINDS[kind].removeId);
-    if (!urlEl || !removeEl) return;
-    urlEl.addEventListener('input', function() {
-      var v = urlEl.value.trim();
-      setAssetPreview(kind, v);
-      removeEl.disabled = !v;
-      markDirty('brand');
-    });
-  });
-
-  // Live preview: every form field that affects the rendered brand
-  // also pushes updates to the preview panel on input.
-  var previewFieldIds = [
-    'brandWordmark', 'brandAccentHex', 'brandAccentPicker',
-    'brandSupportEmail', 'brandSupportPhone', 'brandFooterCopy',
-    'brandLogoUrl', 'brandFaviconUrl'
-  ];
-  previewFieldIds.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('input', function() {
-      updateBrandPreview();
-      markDirty('brand');
-    });
-  });
-
-  // Fields not in the preview list but still dirty-relevant:
-  ['brandLegalName', 'brandSenderEmail', 'brandSenderName'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('input', function() { markDirty('brand'); });
-  });
-  updateBrandPreview();
-}
-
 // Reads current form values and re-paints the preview panel. Called on
 // initial render and on every input event. Cheap — DOM updates only,
 // no network, no re-render of the whole form.
@@ -5092,31 +4974,6 @@ var _compData = {
   consents:  [],
   licenses:  []
 };
-
-function buildComplianceTab(t) {
-  // R9: full editor moved to tenant admin.
-  var READ_ONLY_PLACEHOLDER = true;
-  if (READ_ONLY_PLACEHOLDER) {
-    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-compliance';
-    return '<div class="brand-form">' +
-      '<div class="brand-form-section">' +
-        '<div class="brand-form-section-title">Compliance</div>' +
-        '<div class="brand-form-section-sub">Operating states, locations, consents, licenses — authored by this tenant’s admin.</div>' +
-        '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:20px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Editor moved to tenant admin in R9.</div>' +
-      '</div>' +
-      '<div class="brand-actions">' +
-        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin →</a>' +
-      '</div>' +
-    '</div>';
-  }
-}
-
-function afterRenderComplianceTab(t) {
-  // READ_ONLY placeholder is active on the Compliance tab;
-  // data fetches retired. If operator-edit is ever re-enabled,
-  // restore the regions/locations/consents/licenses queries.
-}
-
 function renderComplianceBody(t) {
   return renderRegionsSection(t)
        + renderLocationsSection(t)
@@ -6210,58 +6067,6 @@ var COMMS_SAMPLE_VARS = {
 };
 
 var _commsOverrides = {}; // "key|channel" → DB row
-
-function buildCommsTab(t) {
-  // R8: full editor moved to tenant admin. CommandOS keeps a summary
-  // only. Legacy below preserved for potential operator-override use.
-  var READ_ONLY_PLACEHOLDER = true;
-  if (READ_ONLY_PLACEHOLDER) {
-    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-comms';
-    return '<div class="brand-form">' +
-      '<div class="brand-form-section">' +
-        '<div class="brand-form-section-title">Communications</div>' +
-        '<div class="brand-form-section-sub">Message templates are authored by this tenant’s admin. Click through to the tenant admin’s Setup → Communications tab when operators need to assist.</div>' +
-        '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:20px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Editor moved to tenant admin in R8.</div>' +
-      '</div>' +
-      '<div class="brand-actions">' +
-        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin →</a>' +
-      '</div>' +
-    '</div>';
-  }
-}
-
-function afterRenderCommsTab(t) {
-  var wrap = document.getElementById('commsBody');
-  if (!wrap) return;
-
-  db.from('communication_templates')
-    .select('id, key, channel, subject, body, is_enabled, cadence')
-    .eq('tenant_id', t.id)
-    .then(function(r) {
-      if (_activeDetailTab !== 'comms' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
-
-      _commsOverrides = {};
-      if (r.error) {
-        var msg = (r.error.message || '').toLowerCase();
-        var hint = /does not exist|relation .* does not exist/.test(msg)
-          ? 'Run migration 015_communication_templates.sql in the Supabase SQL editor to create the table.'
-          : null;
-        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load templates</strong><br/>' +
-          escHtml(r.error.message || '') +
-          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
-        return;
-      }
-      (r.data || []).forEach(function(row) {
-        _commsOverrides[row.key + '|' + row.channel] = row;
-      });
-      wrap.innerHTML = renderCommsBody(t);
-    })
-    .catch(function(err) {
-      if (_activeDetailTab !== 'comms' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
-      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-    });
-}
-
 function renderCommsBody(t) {
   var groups = window.Messaging.GROUPS;
   var catalog = window.Messaging.CATALOG;
@@ -6480,42 +6285,6 @@ function resetCommsTemplate(key, channel) {
       showToast('Reset failed: ' + ((err && err.message) || 'unknown error'), 'error');
     });
 }
-
-// ── Workflow tab ──
-// Auto-renders from Workflow.SCHEMA. Every field type (bool, number,
-// enum) maps to a matching input variant; the section layout comes
-// straight from the catalog. Adding a new rule is a one-place edit
-// in workflow.js — this tab picks it up without changes.
-//
-// Storage: all fields are written on save (not just overrides),
-// because workflow values aren't as obviously "default vs override"
-// as terminology strings — an operator explicitly choosing the
-// default intake-required=true is a deliberate config act, not a
-// noop. Easier to reason about the persisted JSONB if it always
-// reflects the full shape.
-function buildWorkflowTab(t) {
-  // R7: Workflow editing moved to tenant admin. CommandOS shows a
-  // summary count of overrides + deep link. Legacy editor preserved
-  // below the early return.
-  var READ_ONLY_PLACEHOLDER = true;
-  if (READ_ONLY_PLACEHOLDER) {
-    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-workflow';
-    var sections = Object.keys(t.workflow || {}).length;
-    return '<div class="brand-form">' +
-      '<div class="brand-form-section">' +
-        '<div class="brand-form-section-title">Workflow</div>' +
-        '<div class="brand-form-section-sub">Workflow rules (intake / consult / refill / SLAs / assignment / follow-up) are authored by this tenant\u2019s admin. Click through to assist.</div>' +
-        (sections > 0
-          ? '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);"><strong>' + sections + '</strong> section' + (sections === 1 ? '' : 's') + ' customised from defaults.</div>'
-          : '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:24px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Using bundled workflow defaults.</div>') +
-      '</div>' +
-      '<div class="brand-actions">' +
-        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
-      '</div>' +
-    '</div>';
-  }
-}
-
 function toggleWorkflowSection(sectionKey) {
   var el = document.getElementById('wfSection-' + sectionKey);
   if (el) el.classList.toggle('collapsed');
@@ -6593,74 +6362,6 @@ function workflowEqual(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return a === b;
   return String(a) === String(b);
 }
-
-function afterRenderWorkflowTab(t) {
-  if (!window.Workflow) return;
-  var panel = document.getElementById('detailPanel-workflow');
-  if (!panel) return;
-
-  clearDirty('workflow');
-
-  // Delegated listener updates the overridden badge + validates numbers
-  // on every change. Lives on the panel so we don't wire N individual
-  // listeners when the tab re-renders.
-  panel.addEventListener('input', function(e) {
-    var el = e.target;
-    if (!el || !el.getAttribute) return;
-    var section = el.getAttribute('data-wf-section');
-    var key     = el.getAttribute('data-wf-key');
-    var type    = el.getAttribute('data-wf-type');
-    if (!section || !key || !type) return;
-
-    markDirty('workflow');
-
-    var current = readWorkflowFieldValue(el, type);
-    var def = window.Workflow.DEFAULTS[section] ? window.Workflow.DEFAULTS[section][key] : null;
-    var id = 'wf-' + section + '-' + key;
-    var badge = document.getElementById(id + '-badge');
-
-    if (type === 'bool') {
-      // Flip the visible On/Off label next to the toggle.
-      var toggleLabel = el.parentElement && el.parentElement.querySelector('.workflow-toggle-label');
-      if (toggleLabel) toggleLabel.textContent = current ? 'On' : 'Off';
-    }
-
-    if (type === 'number') {
-      var min = parseFloat(el.getAttribute('data-wf-min'));
-      var max = parseFloat(el.getAttribute('data-wf-max'));
-      var valid = !isNaN(current) && (isNaN(min) || current >= min) && (isNaN(max) || current <= max);
-      el.classList.toggle('err', !valid);
-    }
-
-    if (badge) {
-      if (!workflowEqual(current, def)) {
-        badge.className = 'workflow-field-default overridden';
-        badge.textContent = 'Overridden';
-      } else {
-        var field = null;
-        window.Workflow.SCHEMA.forEach(function(s) {
-          if (s.section !== section) return;
-          s.fields.forEach(function(f) { if (f.key === key) field = f; });
-        });
-        badge.className = 'workflow-field-default';
-        badge.textContent = 'Default: ' + (field ? formatWorkflowValue(def, field) : String(def));
-      }
-    }
-  });
-  // Also listen for change on selects (input fires too on most browsers,
-  // but be defensive — some older engines only fire change on <select>).
-  panel.addEventListener('change', function(e) {
-    var el = e.target;
-    if (el && el.tagName === 'SELECT' && el.getAttribute('data-wf-section')) {
-      panel.dispatchEvent(new Event('input', { bubbles: false }));
-      // Re-fire input handler on the actual element so badge updates.
-      var evt = document.createEvent('Event');
-      evt.initEvent('input', true, true);
-      el.dispatchEvent(evt);
-    }
-  });
-}
-
 function readWorkflowFieldValue(el, type) {
   if (type === 'bool')   return !!el.checked;
   if (type === 'number') return parseFloat(el.value);
@@ -6779,74 +6480,6 @@ function workflowDiff(prev, next) {
   });
   return diff;
 }
-
-// ── Catalog tab ──
-// Read-only view for Phase 4 foundations. Fetches the four catalog
-// tables (protocol_templates, protocol_categories, protocol_product_types,
-// protocol_packages) filtered to the selected tenant, then renders each
-// as a compact read-only section. CRUD UI (editor modals, drag-to-
-// reorder, archive/unarchive) comes in a follow-up commit; this pass
-// proves tenant scoping works end-to-end and gives operators the
-// shortcut "is this tenant's catalog configured" visibility without
-// cracking open the SQL client.
-//
-// Per-query .catch() so a missing table (e.g. protocol_packages before
-// migration 014 runs) shows an inline error for just that section
-// instead of blanking the whole tab.
-function buildCatalogTab(t) {
-  // R6: Catalog editing moved to tenant admin. CommandOS keeps the
-  // read-only count summary (same queries) so operators can see fleet-
-  // wide catalog health at a glance without leaving the modal. CRUD
-  // deep-links to tenant admin. The original renderCatalogBody still
-  // runs under afterRenderCatalogTab to populate the summary.
-  return '<div id="catalogBody"><div class="catalog-loading">Loading catalog…</div></div>' +
-    '<div class="brand-actions" style="margin-top:12px;">' +
-      '<a class="form-btn primary" href="/t/' + escAttr(t.slug) + '/admin/#setup-catalog" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
-    '</div>';
-}
-
-function afterRenderCatalogTab(t) {
-  var wrap = document.getElementById('catalogBody');
-  if (!wrap) return;
-
-  function safe(promise, label) {
-    return promise.then(function(r) {
-      if (r.error) return { error: r.error, data: [], label: label };
-      return { data: r.data || [], label: label };
-    }).catch(function(err) {
-      return { error: err, data: [], label: label };
-    });
-  }
-
-  Promise.all([
-    safe(db.from('protocol_templates')
-          .select('id, key, name, product_type, category, price, refill_price, subscription_cadence, is_archived, compounds')
-          .eq('tenant_id', t.id).order('category', { ascending: true, nullsLast: true }).order('name'),
-         'protocols'),
-    safe(db.from('protocol_categories')
-          .select('id, name, display_order, is_archived')
-          .eq('tenant_id', t.id).order('display_order'),
-         'categories'),
-    safe(db.from('protocol_product_types')
-          .select('id, name, display_order, is_archived')
-          .eq('tenant_id', t.id).order('display_order'),
-         'types'),
-    safe(db.from('protocol_packages')
-          .select('id, key, name, description, price, refill_price, cadence, items, is_archived')
-          .eq('tenant_id', t.id).order('display_order'),
-         'packages')
-  ]).then(function(results) {
-    // Guard: tab might have switched away before the fetch resolved.
-    if (_activeDetailTab !== 'catalog' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
-    wrap.innerHTML = renderCatalogBody(t, {
-      protocols:  results[0],
-      categories: results[1],
-      types:      results[2],
-      packages:   results[3]
-    });
-  });
-}
-
 function renderCatalogBody(t, sections) {
   var protocols  = sections.protocols.data;
   var categories = sections.categories.data;
@@ -7050,72 +6683,6 @@ var _TERM_PREVIEW_LINES = [
   'Your {protocol} is ready. Tap "Start" to begin your first {dose}.',
   'Need a {refill}? Message your {clinician} — they usually respond within 24 hours.'
 ];
-
-function buildTerminologyTab(t) {
-  // R5: Terminology editing moved to the tenant admin portal.
-  // CommandOS shows a read-only summary + deep link. Legacy editor
-  // code preserved below the early return.
-  var READ_ONLY_PLACEHOLDER = true;
-  if (READ_ONLY_PLACEHOLDER) {
-    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-terminology';
-    var over = t.terminology || {};
-    var overrideCount = Object.keys(over).length;
-    var sample = Object.keys(over).slice(0, 6);
-    return '<div class="brand-form">' +
-      '<div class="brand-form-section">' +
-        '<div class="brand-form-section-title">Terminology</div>' +
-        '<div class="brand-form-section-sub">Terminology is authored by this tenant\u2019s admin. Click through to the tenant admin\u2019s Setup \u2192 Terminology tab when operators need to assist.</div>' +
-        (overrideCount > 0
-          ? '<div style="font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);margin-bottom:10px;"><strong>' + overrideCount + '</strong> override' + (overrideCount === 1 ? '' : 's') + ' from defaults.</div>' +
-            (sample.length > 0
-              ? '<div style="font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:11px;color:var(--text3);line-height:1.7;">' +
-                  sample.map(function(k) { return escHtml(k) + ' \u2192 ' + escHtml(over[k]); }).join('<br/>') +
-                  (overrideCount > 6 ? '<br/>…' + (overrideCount - 6) + ' more' : '') +
-                '</div>'
-              : '')
-          : '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:24px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);line-height:1.6;">No overrides yet. This tenant uses the bundled defaults.</div>') +
-      '</div>' +
-      '<div class="brand-actions">' +
-        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin \u2192</a>' +
-      '</div>' +
-    '</div>';
-  }
-}
-
-function afterRenderTerminologyTab(t) {
-  if (!window.Terminology) return;
-
-  clearDirty('terminology');
-
-  // Attach a single delegated input listener on the tab panel. Each
-  // input carries data-term-key so we know which entry mutated without
-  // wiring N listeners individually.
-  var panel = document.getElementById('detailPanel-terminology');
-  if (!panel) return;
-
-  panel.addEventListener('input', function(e) {
-    var el = e.target;
-    if (!el || !el.getAttribute || !el.getAttribute('data-term-key')) return;
-    markDirty('terminology');
-    var key    = el.getAttribute('data-term-key');
-    var def    = el.getAttribute('data-term-default');
-    var value  = (el.value || '').trim();
-    var badge  = document.getElementById('term-badge-' + key);
-    if (badge) {
-      if (value && value !== def) {
-        badge.className = 'term-field-default overridden';
-        badge.textContent = 'Overridden';
-      } else {
-        badge.className = 'term-field-default';
-        badge.textContent = 'Default: ' + def;
-      }
-    }
-    updateTerminologyPreview();
-  });
-
-  updateTerminologyPreview();
-}
-
 // Rewrites the preview lines using whatever's currently in the form
 // fields (or defaults for keys the operator hasn't touched). Called on
 // initial render and after each keystroke.

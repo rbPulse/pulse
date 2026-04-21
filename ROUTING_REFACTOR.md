@@ -80,11 +80,20 @@ and `protocol_product_types` so tenant owners/admins can write
 their own tenant's catalog rows. Retires the legacy
 `profiles.role = 'admin'` write policies from migration 005.
 
-Remaining (UI-only cleanup): move the Configuration editor UI
-out of the Legacy sidebar section and into Setup → Catalog as
-an inline editor, then delete the Legacy group entirely. That's
-a pure markup shuffle with no DB implications — deferred until
-the tenant-scoped writes are proven stable in production.
+UI shuffle shipped: the `cfg-protocols` editor block and the
+Manage Catalog Settings modal were relocated from
+`tab-configure` into `tab-setup-catalog`, beneath the read-only
+summary. `renderCatalogSetup` now kicks off `loadProtocols` /
+`loadCategories` / `loadProductTypes` so the editor populates
+together with the summary. `switchConfigSection` was scoped to
+`tab-configure` so the relocated section isn't affected by
+subnav clicks inside the legacy tab.
+
+What remains of the Legacy group: Clinician Capacity and
+Automations. Sidebar section renamed "Operations"; item relabeled
+"Clinicians & Automations" to match. The `tab-configure` tab
+title is now "Operations Legacy" and its subnav starts on
+Clinician Capacity.
 
 ### R8-R13 ports — SHIPPED
 

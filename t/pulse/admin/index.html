@@ -807,10 +807,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <span class="sidebar-item-label">Subscription</span>
         </div>
 
-        <div class="sidebar-section-label">Legacy</div>
+        <div class="sidebar-section-label">Operations</div>
         <div class="sidebar-item" id="nav-configure" onclick="switchTab('configure')">
           <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
-          <span class="sidebar-item-label">Configuration</span>
+          <span class="sidebar-item-label">Clinicians &amp; Automations</span>
         </div>
       </div>
     </aside>
@@ -849,6 +849,76 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <div class="tab-subtitle">Protocols, categories, product types, packages &mdash; everything in this tenant&rsquo;s offering.</div>
         </div>
         <div id="catalog-setup-body"><div style="padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;">Loading catalog…</div></div>
+
+        <!-- Catalog editor (relocated from Legacy → Configuration in R6 carry-over) -->
+        <!-- Product Catalog (unified products + categories) -->
+        <div class="cfg-section active" id="cfg-protocols">
+          <!-- Toolbar: search on the left, utility + primary action on the
+               right. Column sort/filter lives inline in the table header. -->
+          <div class="cfg-toolbar">
+            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="max-width:320px;flex:1;"/>
+            <div class="cfg-toolbar-right">
+              <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
+              <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
+              <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
+              <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:6px;">+ New Product</button>
+            </div>
+          </div>
+          <div class="cfg-results-bar"><span id="protocolCount"></span></div>
+          <!-- Hidden fallback kept so any legacy JS references resolve safely -->
+          <select id="protocolArchiveFilter" style="display:none;"><option value="active" selected>Active</option></select>
+          <div id="protocolsNotReady" style="display:none;">
+            <div class="cfg-migration-note">
+              <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
+            </div>
+          </div>
+          <div class="admin-table-wrap" id="protocolsTableWrap">
+            <table class="admin-table cfg-product-table">
+              <thead id="protocolsThead"></thead>
+              <tbody id="protocolsGrid"></tbody>
+            </table>
+          </div>
+          <div id="protocolsEmpty" class="cfg-placeholder" style="display:none;">
+            <strong>No products match your filters.</strong>
+            Try clearing the search or category filter, or add a new product above.
+          </div>
+        </div>
+
+        <!-- Category manager modal -->
+        <div class="detail-panel-backdrop" id="catMgrBackdrop" onclick="closeCategoryManager()"></div>
+        <div class="detail-panel" id="catMgrPanel" style="max-width:560px;">
+          <div class="detail-panel-header">
+            <div class="detail-panel-title">Manage Catalog Settings</div>
+            <button class="detail-close" onclick="closeCategoryManager()">Close</button>
+          </div>
+          <div id="catMgrNotReady" style="display:none;margin-bottom:12px;">
+            <div class="cfg-migration-note">
+              <strong>Migration required.</strong> Run <code>005_protocol_templates.sql</code> to enable.
+            </div>
+          </div>
+
+          <!-- Subcategories section (formerly Product Types) -->
+          <div class="detail-section-title">Subcategories</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Sub-groupings within a category (e.g. Pod, Stack).</div>
+          <div class="cat-mgr-add">
+            <input type="text" class="search-input" id="newTypeInput" placeholder="New subcategory name..." style="flex:1;"/>
+            <button class="form-btn primary" onclick="addProductType()">Add</button>
+          </div>
+          <div class="cat-mgr-list" id="typeMgrList"></div>
+          <button type="button" class="cfg-cat-manage-btn" id="typeMgrArchiveToggle" onclick="toggleTypeMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
+
+          <div class="detail-divider"></div>
+
+          <!-- Categories section -->
+          <div class="detail-section-title">Categories</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Functional groupings shown in the category filter (e.g. Performance, Longevity, Recovery).</div>
+          <div class="cat-mgr-add">
+            <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;"/>
+            <button class="form-btn primary" onclick="addCategory()">Add</button>
+          </div>
+          <div class="cat-mgr-list" id="catMgrList"></div>
+          <button type="button" class="cfg-cat-manage-btn" id="catMgrArchiveToggle" onclick="toggleCatMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
+        </div>
       </div>
 
       <div class="admin-tab" id="tab-setup-workflow">
@@ -1371,87 +1441,18 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <!-- CONFIGURE TAB (Phase 4) -->
       <div class="admin-tab" id="tab-configure">
         <div class="tab-header">
-          <div class="tab-title">Configuration</div>
-          <div class="tab-subtitle">Platform-level settings for products, categories, and workflows</div>
+          <div class="tab-title">Operations Legacy</div>
+          <div class="tab-subtitle">Clinician capacity and automation toggles. Product catalog moved to Setup → Catalog.</div>
         </div>
 
         <div class="cfg-subnav">
-          <button type="button" class="cfg-subnav-pill active" data-cfg="protocols" onclick="switchConfigSection('protocols')">Product Catalog</button>
-          <button type="button" class="cfg-subnav-pill" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
+          <button type="button" class="cfg-subnav-pill active" data-cfg="clinicians" onclick="switchConfigSection('clinicians')">Clinician Capacity</button>
           <button type="button" class="cfg-subnav-pill" data-cfg="notifications" onclick="switchConfigSection('notifications')">Automations</button>
         </div>
 
-        <!-- Product Catalog (unified products + categories) -->
-        <div class="cfg-section active" id="cfg-protocols">
-          <!-- Toolbar: search on the left, utility + primary action on the
-               right. Column sort/filter lives inline in the table header. -->
-          <div class="cfg-toolbar">
-            <input type="text" class="search-input" id="protocolSearch" placeholder="Search products..." oninput="filterProtocols()" style="max-width:320px;flex:1;"/>
-            <div class="cfg-toolbar-right">
-              <button class="cfg-util-btn" onclick="openCategoryManager()">Manage Categories</button>
-              <button class="cfg-util-btn" onclick="openBulkImport()">Bulk Import</button>
-              <button class="cfg-util-btn" onclick="exportProductsCSV()">Export</button>
-              <button class="toolbar-btn" onclick="openProtocolEditor()" style="margin-left:6px;">+ New Product</button>
-            </div>
-          </div>
-          <div class="cfg-results-bar"><span id="protocolCount"></span></div>
-          <!-- Hidden fallback kept so any legacy JS references resolve safely -->
-          <select id="protocolArchiveFilter" style="display:none;"><option value="active" selected>Active</option></select>
-          <div id="protocolsNotReady" style="display:none;">
-            <div class="cfg-migration-note">
-              <strong>Migration required.</strong> The <code>protocol_templates</code> table isn't initialized yet. Run <code>supabase/migrations/005_protocol_templates.sql</code> in your Supabase SQL editor to enable this surface.
-            </div>
-          </div>
-          <div class="admin-table-wrap" id="protocolsTableWrap">
-            <table class="admin-table cfg-product-table">
-              <thead id="protocolsThead"></thead>
-              <tbody id="protocolsGrid"></tbody>
-            </table>
-          </div>
-          <div id="protocolsEmpty" class="cfg-placeholder" style="display:none;">
-            <strong>No products match your filters.</strong>
-            Try clearing the search or category filter, or add a new product above.
-          </div>
-        </div>
-
-        <!-- Category manager modal -->
-        <div class="detail-panel-backdrop" id="catMgrBackdrop" onclick="closeCategoryManager()"></div>
-        <div class="detail-panel" id="catMgrPanel" style="max-width:560px;">
-          <div class="detail-panel-header">
-            <div class="detail-panel-title">Manage Catalog Settings</div>
-            <button class="detail-close" onclick="closeCategoryManager()">Close</button>
-          </div>
-          <div id="catMgrNotReady" style="display:none;margin-bottom:12px;">
-            <div class="cfg-migration-note">
-              <strong>Migration required.</strong> Run <code>005_protocol_templates.sql</code> to enable.
-            </div>
-          </div>
-
-          <!-- Subcategories section (formerly Product Types) -->
-          <div class="detail-section-title">Subcategories</div>
-          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Sub-groupings within a category (e.g. Pod, Stack).</div>
-          <div class="cat-mgr-add">
-            <input type="text" class="search-input" id="newTypeInput" placeholder="New subcategory name..." style="flex:1;"/>
-            <button class="form-btn primary" onclick="addProductType()">Add</button>
-          </div>
-          <div class="cat-mgr-list" id="typeMgrList"></div>
-          <button type="button" class="cfg-cat-manage-btn" id="typeMgrArchiveToggle" onclick="toggleTypeMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
-
-          <div class="detail-divider"></div>
-
-          <!-- Categories section -->
-          <div class="detail-section-title">Categories</div>
-          <div style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-bottom:10px;">Functional groupings shown in the category filter (e.g. Performance, Longevity, Recovery).</div>
-          <div class="cat-mgr-add">
-            <input type="text" class="search-input" id="newCategoryInput" placeholder="New category name..." style="flex:1;"/>
-            <button class="form-btn primary" onclick="addCategory()">Add</button>
-          </div>
-          <div class="cat-mgr-list" id="catMgrList"></div>
-          <button type="button" class="cfg-cat-manage-btn" id="catMgrArchiveToggle" onclick="toggleCatMgrArchived()" style="margin-top:10px;display:none;">Show archived</button>
-        </div>
 
         <!-- Clinician capacity sub-section -->
-        <div class="cfg-section" id="cfg-clinicians">
+        <div class="cfg-section active" id="cfg-clinicians">
           <div class="toolbar">
             <input type="text" class="search-input" id="clinicianCapSearch" placeholder="Search clinicians..." oninput="renderClinicianCapacity()"/>
             <span class="toolbar-count" id="clinicianCapCount"></span>
@@ -2078,10 +2079,14 @@ document.addEventListener('click', function(e) {
 });
 
 function switchConfigSection(section) {
-  document.querySelectorAll('.cfg-section').forEach(function(el) { el.classList.remove('active'); });
-  document.querySelectorAll('.cfg-subnav-pill').forEach(function(el) { el.classList.remove('active'); });
-  var target = document.getElementById('cfg-' + section);
-  var pill = document.querySelector('.cfg-subnav-pill[data-cfg="' + section + '"]');
+  // Scoped to tab-configure so the relocated cfg-protocols section
+  // living in tab-setup-catalog isn't affected by subnav clicks.
+  var tab = document.getElementById('tab-configure');
+  if (!tab) return;
+  tab.querySelectorAll('.cfg-section').forEach(function(el) { el.classList.remove('active'); });
+  tab.querySelectorAll('.cfg-subnav-pill').forEach(function(el) { el.classList.remove('active'); });
+  var target = tab.querySelector('#cfg-' + section);
+  var pill = tab.querySelector('.cfg-subnav-pill[data-cfg="' + section + '"]');
   if (target) target.classList.add('active');
   if (pill) pill.classList.add('active');
   // Refresh live-data sub-sections when opened
@@ -6091,13 +6096,12 @@ function saveTerminologySetup() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// R6: CATALOG SETUP (read-only summary)
-// Fetches protocol / category / product_type / package counts for
-// this tenant. Editing still happens through the legacy
-// Configuration tab until R6 carry-over merges the two. That
-// reconciliation needs the Configuration tab to stop inserting
-// with tenant_id=NULL (pre-multi-tenant assumption) and start
-// scoping inserts to window.Tenant.id.
+// R6: CATALOG SETUP (summary + full editor)
+// Renders the read-only summary at top, then triggers the editor's
+// data loaders so the relocated cfg-protocols markup (moved from
+// Legacy → Configuration in R6 carry-over) is fully populated.
+// Migration 024 grants tenant_owner/tenant_admin write on the
+// underlying catalog tables.
 // ══════════════════════════════════════════════════════════════════
 function renderCatalogSetup() {
   var body = document.getElementById('catalog-setup-body');
@@ -6114,13 +6118,17 @@ function renderCatalogSetup() {
   }).catch(function(err) {
     body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
   });
+  // Populate the relocated editor below the summary.
+  if (typeof loadProtocols === 'function')    loadProtocols();
+  if (typeof loadCategories === 'function')   loadCategories();
+  if (typeof loadProductTypes === 'function') loadProductTypes();
 }
 
 function _buildCatalogSetupBody(protocols, categories, types, packages) {
   var active = function(arr){return arr.filter(function(x){return !x.is_archived;});};
   var stats = '<div class="comp-section">' +
     '<div class="comp-section-title">Catalog summary</div>' +
-    '<div class="comp-section-sub">Read-only view. Protocol edits still live in Legacy \u2192 Configuration (R6 carry-over: sweep the legacy editor to be tenant-scoped then merge it here).</div>' +
+    '<div class="comp-section-sub">Snapshot of protocols / categories / product types / packages scoped to this tenant. Full editor below.</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">' +
       _summaryCard('Active protocols', active(protocols).length, (protocols.length - active(protocols).length) + ' archived') +
       _summaryCard('Categories', active(categories).length) +
@@ -6149,8 +6157,7 @@ function _buildCatalogSetupBody(protocols, categories, types, packages) {
     '<div class="comp-section"><div class="comp-section-title">Protocols \u00B7 ' + active(protocols).length + '</div>' + protocolsTbl + '</div>' +
     '<div class="comp-section"><div class="comp-section-title">Categories</div><div style="display:flex;flex-wrap:wrap;gap:4px;">' + chipsHtml(categories) + '</div></div>' +
     '<div class="comp-section"><div class="comp-section-title">Product types</div><div style="display:flex;flex-wrap:wrap;gap:4px;">' + chipsHtml(types) + '</div></div>' +
-    packagesList +
-    '<div class="brand-actions"><button class="form-btn secondary" onclick="switchTab(\'configure\')">Open Legacy Configuration for edits \u2192</button></div>';
+    packagesList;
 }
 
 // ══════════════════════════════════════════════════════════════════

@@ -5935,19 +5935,21 @@ function _wizScreenLanguage() {
     var isCustom = current && !opts.some(function(o){ return o.v === current; });
     var cards = opts.map(function(o) {
       var sel = current === o.v ? ' selected' : '';
-      return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizLangPick(\'' + key + '\', \'' + _brandEscAttr(o.v) + '\')">' +
+      return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="' + key + '" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizLangPick(\'' + key + '\', \'' + _brandEscAttr(o.v) + '\')">' +
         '<div class="wiz-choice-title">' + _brandEscHtml(o.v) + '</div>' +
         '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
       '</button>';
     }).join('');
-    var customBtn = '<button type="button" class="wiz-choice' + (isCustom ? ' selected' : '') + '" onclick="_wizLangPickCustom(\'' + key + '\')">' +
+    var customBtn = '<button type="button" class="wiz-choice' + (isCustom ? ' selected' : '') + '" data-wiz-group="' + key + '" data-wiz-value="__custom__" onclick="_wizLangPickCustom(\'' + key + '\')">' +
       '<div class="wiz-choice-title">Custom</div>' +
-      '<div class="wiz-choice-sub">' + (isCustom ? _brandEscHtml(current) : 'Something else') + '</div>' +
+      '<div class="wiz-choice-sub" data-wiz-custom-sub="' + key + '">' + (isCustom ? _brandEscHtml(current) : 'Something else') + '</div>' +
     '</button>';
-    var customInput = isCustom
-      ? '<input type="text" class="wiz-input" style="margin-top:10px;" placeholder="Type your term" value="' + _brandEscAttr(current) + '" oninput="_wizLangCustomInput(\'' + key + '\', this.value)"/>'
-      : '';
-    return '<div class="wiz-q">' +
+    // Always render the custom input; hide via display:none when
+    // not active. That way flipping to custom mode is a style
+    // toggle rather than a DOM insertion (no flash).
+    var inputStyle = 'margin-top:10px;' + (isCustom ? '' : 'display:none;');
+    var customInput = '<input type="text" class="wiz-input" id="wizLangCustom-' + _brandEscAttr(key) + '" style="' + inputStyle + '" placeholder="Type your term" value="' + _brandEscAttr(isCustom ? current : '') + '" oninput="_wizLangCustomInput(\'' + key + '\', this.value)"/>';
+    return '<div class="wiz-q" data-wiz-lang-q="' + _brandEscAttr(key) + '">' +
       '<div class="wiz-q-label">' + _brandEscHtml(label) + '</div>' +
       '<div class="wiz-q-help">' + _brandEscHtml(help) + '</div>' +
       '<div class="wiz-choices">' + cards + customBtn + '</div>' +
@@ -5974,26 +5976,47 @@ function _wizLanguagePreview() {
 function _wizLangPick(key, value) {
   window._wizardState.answers.language[key] = value;
   _saveWizardState();
-  _repaintWizardScreen();
+  _wizSelectExclusive(key, value);
+  _wizToggleCustomInput(key, false);
+  _wizReplaceEl('.wiz-preview', _wizLanguagePreview());
 }
 function _wizLangPickCustom(key) {
   // Flip to custom mode by writing a sentinel that doesn't match any
-  // preset. User then types into the input that appears.
+  // preset. User then types into the hidden-until-now input.
   var current = window._wizardState.answers.language[key];
   var opts = _WIZ_LANG_OPTIONS[key];
   var isAlreadyCustom = current && !opts.some(function(o){ return o.v === current; });
-  if (!isAlreadyCustom) window._wizardState.answers.language[key] = ' ';
+  if (!isAlreadyCustom) window._wizardState.answers.language[key] = '';
   _saveWizardState();
-  _repaintWizardScreen();
-  var input = document.querySelector('#setup-wizard-body input[oninput*="' + key + '"]');
+  _wizSelectExclusive(key, '__custom__');
+  _wizToggleCustomInput(key, true);
+  var input = document.getElementById('wizLangCustom-' + key);
   if (input) input.focus();
 }
 function _wizLangCustomInput(key, val) {
   window._wizardState.answers.language[key] = val;
   _saveWizardState();
-  // Only repaint the preview + dot states — keep focus on the input.
-  var host = document.querySelector('#setup-wizard-body .wiz-preview');
-  if (host) host.outerHTML = _wizLanguagePreview();
+  var subEl = document.querySelector('[data-wiz-custom-sub="' + key + '"]');
+  if (subEl) subEl.textContent = val || 'Something else';
+  _wizReplaceEl('.wiz-preview', _wizLanguagePreview());
+}
+
+// Helpers: toggle .selected exclusively within a data-wiz-group,
+// show/hide the custom input for a language question, and
+// replace an element in place without animating the whole card.
+function _wizSelectExclusive(group, value) {
+  var pills = document.querySelectorAll('#setup-wizard-body [data-wiz-group="' + group + '"]');
+  for (var i = 0; i < pills.length; i++) {
+    pills[i].classList.toggle('selected', pills[i].getAttribute('data-wiz-value') === String(value));
+  }
+}
+function _wizToggleCustomInput(key, show) {
+  var input = document.getElementById('wizLangCustom-' + key);
+  if (input) input.style.display = show ? '' : 'none';
+}
+function _wizReplaceEl(selector, html) {
+  var el = document.querySelector('#setup-wizard-body ' + selector);
+  if (el) el.outerHTML = html;
 }
 
 // ── Screen 2: What kind of clinic? ─────────────────────────────────
@@ -6012,7 +6035,7 @@ function _wizScreenClinicType() {
   var cur = window._wizardState.answers.clinicType;
   var cards = _WIZ_CLINIC_TYPES.map(function(o) {
     var sel = cur === o.v ? ' selected' : '';
-    return '<button type="button" class="wiz-choice' + sel + '" style="padding:18px 20px;" onclick="_wizClinicPick(\'' + o.v + '\')">' +
+    return '<button type="button" class="wiz-choice' + sel + '" style="padding:18px 20px;" data-wiz-group="clinicType" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizClinicPick(\'' + o.v + '\')">' +
       '<div class="wiz-choice-title" style="font-size:14px;margin-bottom:4px;">' + _brandEscHtml(o.t) + '</div>' +
       '<div class="wiz-choice-sub" style="font-size:12px;line-height:1.5;">' + _brandEscHtml(o.s) + '</div>' +
     '</button>';
@@ -6025,7 +6048,7 @@ function _wizScreenClinicType() {
 function _wizClinicPick(value) {
   window._wizardState.answers.clinicType = value;
   _saveWizardState();
-  _repaintWizardScreen();
+  _wizSelectExclusive('clinicType', value);
 }
 // ── Screen 3: Workflow ─────────────────────────────────────────────
 // Four questions shaping how members move intake → consult → refill.
@@ -6066,7 +6089,7 @@ function _wizScreenWorkflow() {
   ];
   var policyCards = policyOpts.map(function(o) {
     var sel = w.consultPolicy === o.v ? ' selected' : '';
-    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizWfSet(\'consultPolicy\',\'' + o.v + '\')">' +
+    return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="consultPolicy" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizWfSet(\'consultPolicy\',\'' + o.v + '\')">' +
       '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
       '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
     '</button>';
@@ -6089,7 +6112,7 @@ function _wizScreenWorkflow() {
       '</div>' +
       '<div class="wiz-preset-row" style="margin-top:10px;">' +
         refillMarks.map(function(m) {
-          return '<button type="button" class="wiz-preset' + (w.refillDays === m ? ' selected' : '') + '" onclick="_wizWfSet(\'refillDays\',' + m + ')">' + m + ' days</button>';
+          return '<button type="button" class="wiz-preset' + (w.refillDays === m ? ' selected' : '') + '" data-wiz-group="refillDays" data-wiz-value="' + m + '" onclick="_wizWfSet(\'refillDays\',' + m + ')">' + m + ' days</button>';
         }).join('') +
       '</div>' +
     '</div>' +
@@ -6102,7 +6125,7 @@ function _wizScreenWorkflow() {
             '<div class="wiz-toggle-row-title">Require intake before first prescription</div>' +
             '<div class="wiz-toggle-row-sub">Clinicians can\'t approve a prescription without a completed intake form.</div>' +
           '</div>' +
-          '<div class="wiz-switch' + (w.intakeRequired ? ' on' : '') + '" onclick="_wizWfToggle(\'intakeRequired\')" role="switch" aria-checked="' + (w.intakeRequired ? 'true' : 'false') + '"></div>' +
+          '<div class="wiz-switch' + (w.intakeRequired ? ' on' : '') + '" data-wiz-switch="intakeRequired" onclick="_wizWfToggle(\'intakeRequired\')" role="switch" aria-checked="' + (w.intakeRequired ? 'true' : 'false') + '"></div>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -6113,7 +6136,7 @@ function _wizScreenWorkflow() {
         [30, 60, 90].map(function(d) {
           var sel = w.followUpDays === d ? ' selected' : '';
           var labels = { 30:'Monthly', 60:'Every other month', 90:'Quarterly' };
-          return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizWfSet(\'followUpDays\',' + d + ')">' +
+          return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="followUpDays" data-wiz-value="' + d + '" onclick="_wizWfSet(\'followUpDays\',' + d + ')">' +
             '<div class="wiz-choice-title">' + labels[d] + '</div>' +
             '<div class="wiz-choice-sub">Every ' + d + ' days</div>' +
           '</button>';
@@ -6125,32 +6148,34 @@ function _wizScreenWorkflow() {
 function _wizWfSet(key, val) {
   window._wizardState.answers.workflow[key] = val;
   _saveWizardState();
-  _repaintWizardScreen();
+  _wizSelectExclusive(key, val);
+  // If the user picked via a slider preset, sync the slider + label.
+  if (key === 'refillDays') {
+    var slider = document.querySelector('#setup-wizard-body .wiz-slider');
+    if (slider) slider.value = val;
+    var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
+    if (valEl) valEl.textContent = val + (val === 1 ? ' day' : ' days');
+  }
 }
 function _wizWfSetSlider(key, val) {
-  // Slider input fires continuously; don't repaint the whole screen
-  // (that would break the drag). Just update the displayed number and
-  // the persisted state, then refresh the nearby preset chips.
   var n = parseInt(val, 10);
   window._wizardState.answers.workflow[key] = n;
   _saveWizardState();
   var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
   if (valEl) valEl.textContent = n + (n === 1 ? ' day' : ' days');
-  // Refresh preset chip active state without full repaint.
-  var presets = document.querySelectorAll('#setup-wizard-body .wiz-preset');
-  for (var i = 0; i < presets.length; i++) {
-    var m = presets[i].textContent.match(/^(\d+)/);
-    presets[i].classList.toggle('selected', !!(m && parseInt(m[1], 10) === n));
-  }
+  // Sync the preset chips without full repaint.
+  _wizSelectExclusive(key, n);
 }
 function _wizWfToggle(key) {
-  var cur = window._wizardState.answers.workflow[key];
   var eff = _wizEffectiveWorkflow();
-  // Current effective (with default fallback) is what the user sees;
-  // flip it relative to that.
-  window._wizardState.answers.workflow[key] = !eff[key];
+  var next = !eff[key];
+  window._wizardState.answers.workflow[key] = next;
   _saveWizardState();
-  _repaintWizardScreen();
+  var sw = document.querySelector('#setup-wizard-body [data-wiz-switch="' + key + '"]');
+  if (sw) {
+    sw.classList.toggle('on', next);
+    sw.setAttribute('aria-checked', next ? 'true' : 'false');
+  }
 }
 // ── Screen 4: Automated messages ───────────────────────────────────
 // Three question clusters:
@@ -6215,13 +6240,13 @@ function _wizScreenComms() {
         '<div class="wiz-toggle-row-title">' + _brandEscHtml(a.t) + '</div>' +
         '<div class="wiz-toggle-row-sub">' + _brandEscHtml(a.s) + '</div>' +
       '</div>' +
-      '<div class="wiz-switch' + (on ? ' on' : '') + '" onclick="_wizCommsToggleAuto(\'' + a.k + '\')" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></div>' +
+      '<div class="wiz-switch' + (on ? ' on' : '') + '" data-wiz-switch="auto_' + _brandEscAttr(a.k) + '" onclick="_wizCommsToggleAuto(\'' + a.k + '\')" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></div>' +
     '</div>';
   }).join('');
 
   var toneCards = _WIZ_TONES.map(function(o) {
     var sel = e.tone === o.v ? ' selected' : '';
-    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizCommsSet(\'tone\',\'' + o.v + '\')">' +
+    return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="tone" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizCommsSet(\'tone\',\'' + o.v + '\')">' +
       '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
       '<div class="wiz-choice-sub" style="font-style:italic;">' + _brandEscHtml(o.s) + '</div>' +
     '</button>';
@@ -6234,7 +6259,7 @@ function _wizScreenComms() {
   ];
   var cadenceCards = cadenceOpts.map(function(o) {
     var sel = e.checkInCadence === o.v ? ' selected' : '';
-    return '<button type="button" class="wiz-choice' + sel + '" onclick="_wizCommsSet(\'checkInCadence\',\'' + o.v + '\')">' +
+    return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="checkInCadence" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizCommsSet(\'checkInCadence\',\'' + o.v + '\')">' +
       '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
       '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
     '</button>';
@@ -6268,14 +6293,19 @@ function _wizScreenComms() {
 function _wizCommsToggleAuto(key) {
   var e = _wizEffectiveComms();
   if (!window._wizardState.answers.comms.enabled) window._wizardState.answers.comms.enabled = {};
-  window._wizardState.answers.comms.enabled[key] = !e.enabled[key];
+  var next = !e.enabled[key];
+  window._wizardState.answers.comms.enabled[key] = next;
   _saveWizardState();
-  _repaintWizardScreen();
+  var sw = document.querySelector('#setup-wizard-body [data-wiz-switch="auto_' + key + '"]');
+  if (sw) {
+    sw.classList.toggle('on', next);
+    sw.setAttribute('aria-checked', next ? 'true' : 'false');
+  }
 }
 function _wizCommsSet(key, val) {
   window._wizardState.answers.comms[key] = val;
   _saveWizardState();
-  _repaintWizardScreen();
+  _wizSelectExclusive(key, val);
 }
 function _wizCommsSetSlider(key, val) {
   var n = parseInt(val, 10);
@@ -6309,14 +6339,14 @@ function _wizScreenTerritory() {
   }).join('');
   var chips = _WIZ_STATES.map(function(s) {
     var sel = selSet[s] ? ' selected' : '';
-    return '<span class="wiz-chip' + sel + '" onclick="_wizTerritoryToggle(\'' + s + '\')">' + s + '</span>';
+    return '<span class="wiz-chip' + sel + '" data-wiz-state="' + s + '" onclick="_wizTerritoryToggle(\'' + s + '\')">' + s + '</span>';
   }).join('');
   return '<div class="wiz-q">' +
       '<div class="wiz-q-label">Where do you operate?</div>' +
       '<div class="wiz-q-help">States your clinicians are licensed in — members in other states see a "not available in your area" notice on the intake form. You can change this any time.</div>' +
       '<div class="wiz-preset-row">' + presetRow + '</div>' +
       '<div style="padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:10px;line-height:2.2;">' + chips + '</div>' +
-      '<div style="margin-top:8px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);">' +
+      '<div style="margin-top:8px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);" id="wizTerritoryCount">' +
         '<strong>' + selected.length + '</strong> selected' +
       '</div>' +
     '</div>';
@@ -6328,14 +6358,28 @@ function _wizTerritoryToggle(state) {
   if (idx >= 0) list.splice(idx, 1); else list.push(state);
   window._wizardState.answers.territory.states = list;
   _saveWizardState();
-  _repaintWizardScreen();
+  var chip = document.querySelector('#setup-wizard-body [data-wiz-state="' + state + '"]');
+  if (chip) chip.classList.toggle('selected', idx < 0);
+  _wizUpdateTerritoryCount();
 }
 
 function _wizTerritoryPreset(key) {
   var map = { just_ca:['CA'], top_10:_WIZ_TOP_10.slice(), all_50:_WIZ_STATES.slice(), clear:[] };
-  window._wizardState.answers.territory.states = map[key] || [];
+  var list = map[key] || [];
+  window._wizardState.answers.territory.states = list;
   _saveWizardState();
-  _repaintWizardScreen();
+  var selSet = {}; list.forEach(function(s){ selSet[s] = true; });
+  var chips = document.querySelectorAll('#setup-wizard-body [data-wiz-state]');
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].classList.toggle('selected', !!selSet[chips[i].getAttribute('data-wiz-state')]);
+  }
+  _wizUpdateTerritoryCount();
+}
+
+function _wizUpdateTerritoryCount() {
+  var n = (window._wizardState.answers.territory.states || []).length;
+  var el = document.getElementById('wizTerritoryCount');
+  if (el) el.innerHTML = '<strong>' + n + '</strong> selected';
 }
 
 // ── Screen 6: Brand ────────────────────────────────────────────────

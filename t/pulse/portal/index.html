@@ -5130,7 +5130,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
   <div class="nav-right">
     <span class="nav-user-email" id="navEmail"></span>
     <span class="nav-role-badge" id="navRoleBadge" style="display:none;"></span>
-    <a href="/t/pulse/admin/" id="navAdminLink" style="display:none;font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);padding:3px 9px;border-radius:999px;text-decoration:none;">Admin</a>
+    <a href="../admin/" id="navAdminLink" style="display:none;font-family:'Inter',sans-serif;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;background:rgba(200,155,45,0.08);border:1px solid rgba(200,155,45,0.18);color:rgba(220,180,75,0.8);padding:3px 9px;border-radius:999px;text-decoration:none;">Admin</a>
     <div style="position:relative;">
       <button class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" aria-label="Notifications">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -5277,7 +5277,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
           <div class="ov-stat"><div class="ov-stat-val" id="statOnTimeLifetime">—</div><div class="ov-stat-sub">TO-DATE</div></div>
         </div>
         <div class="member-card" style="display:none;"><div><div class="member-badge"><span class="member-badge-dot"></span>Founding Member</div><div class="member-since" id="memberSince">Member since —</div></div><div class="status-pill waitlist" id="statusPill">Waitlist Member</div></div>
-        <div class="action-card" id="actionCard" style="display:none;"><div class="action-card-title">Start your protocol.</div><div class="action-card-sub" id="actionSub"></div><a href="/t/pulse/consultation/" class="btn-green" id="actionBtn">Book Your Consultation</a></div>
+        <div class="action-card" id="actionCard" style="display:none;"><div class="action-card-title">Start your protocol.</div><div class="action-card-sub" id="actionSub"></div><a href="../consultation/" class="btn-green" id="actionBtn">Book Your Consultation</a></div>
         <div class="quick-stats" id="quickStats" style="display:none;"><div class="stat-tile"><div class="stat-tile-val" id="_statCategory2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCompounds2">—</div></div><div class="stat-tile"><div class="stat-tile-val" id="_statCycle2">—</div></div></div>
 
         <!-- ══════════════════════════════════════════════════════════════
@@ -5539,7 +5539,7 @@ body.clinician-mode #evalOverlay .nav-icon svg{stroke:#3a7a5c !important;}
         <div id="protoEmpty" class="empty-state">
           <div class="empty-title">No protocol on file.</div>
           <div class="empty-sub">Your recommended protocol will appear here after you complete your clinical consultation.</div>
-          <a href="/t/pulse/consultation/" class="btn-green">Book Your Consultation</a>
+          <a href="../consultation/" class="btn-green">Book Your Consultation</a>
         </div>
 
         <!-- Protocol content (hidden until loaded) -->
@@ -7575,7 +7575,7 @@ function initPortal(user) {
 
   // Super admin email shortcut — send directly to admin portal
   if (user && user.email && SUPER_ADMIN_EMAILS.indexOf(user.email.toLowerCase()) !== -1) {
-    window.location.href = '/t/pulse/admin/';
+    window.location.href = '../admin/';
     return;
   }
 
@@ -7611,7 +7611,7 @@ function initPortal(user) {
                     || r.review_status === 'discontinued';
               });
               if (!purchased) {
-                window.location.href = '/t/pulse/consultation/';
+                window.location.href = '../consultation/';
                 return;
               }
               _continuePortalInit(user, role);
@@ -7765,11 +7765,11 @@ function _continuePortalInit(user, role) {
             .then(function(apptRes) {
               if (apptRes.data && apptRes.data.length > 0) {
                 // Has appointment — send to consultation.html which will show waiting page
-                window.location.href = '/t/pulse/consultation/';
+                window.location.href = '../consultation/';
                 return;
               }
               // No consultation AND no appointment — send to intake form
-              window.location.href = '/t/pulse/consultation/?new=1';
+              window.location.href = '../consultation/?new=1';
             });
         }
         // Purchase completed OR already prescribed — stay on portal, skip all redirect checks.
@@ -7820,12 +7820,12 @@ function _continuePortalInit(user, role) {
               }
               // Completed appointment — send to Step 6 (summary/evaluation results)
               if (apptStatus === 'completed') {
-                window.location.href = '/t/pulse/consultation/';
+                window.location.href = '../consultation/';
                 return;
               }
               // Pending/confirmed appointment, no protocol yet — send to waiting page
               if ((apptStatus === 'pending' || apptStatus === 'confirmed') && !hasProtocol) {
-                window.location.href = '/t/pulse/consultation/';
+                window.location.href = '../consultation/';
                 return;
               }
             }
@@ -12334,7 +12334,7 @@ function _updateApptStatus(apptId, newStatus) {
                 '<p>Hi ' + (patientName || 'there') + ',</p>' +
                 '<p>We\'re sorry to let you know that your clinician has had to cancel your appointment.</p>' +
                 '<p><strong>Original time:</strong> ' + _apptDateStr + '</p>' +
-                '<p>Please <a href="' + (window.location.origin + '/t/pulse/portal/') + '">log in to the Pulse portal</a> to reschedule at your convenience.</p>'
+                '<p>Please <a href="' + (window.location.origin + '../portal/') + '">log in to the Pulse portal</a> to reschedule at your convenience.</p>'
               );
             }
           }
@@ -17716,7 +17716,7 @@ function _saveAssignedProtocol(patientId) {
                 'Your Pulse protocol has been assigned',
                 '<p>Hi ' + (_pName || 'there') + ',</p>' +
                 '<p>Your clinician has assigned you a protocol: <strong>' + proto + '</strong>.</p>' +
-                '<p>Log in to the <a href="' + (window.location.origin + '/t/pulse/portal/') + '">Pulse portal</a> to view your protocol details and get started.</p>'
+                '<p>Log in to the <a href="' + (window.location.origin + '../portal/') + '">Pulse portal</a> to view your protocol details and get started.</p>'
               );
             }
             break;
@@ -18899,7 +18899,7 @@ function sendClMessage() {
             'Your Pulse clinician replied',
             '<p>Your clinician has sent you a new message.</p>' +
             '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
-            '<p><a href="' + (window.location.origin + '/t/pulse/portal/') + '">Log in to the Pulse portal</a> to view the full conversation.</p>'
+            '<p><a href="' + (window.location.origin + '../portal/') + '">Log in to the Pulse portal</a> to view the full conversation.</p>'
           );
         }
       }
@@ -19168,7 +19168,7 @@ function sendConsumerMessage() {
           'New message from ' + (_memberDisplayName || 'a patient'),
           '<p>You have a new message from <strong>' + (_memberDisplayName || 'a patient') + '</strong>.</p>' +
           '<blockquote style="border-left:3px solid #3a7a5c;padding-left:12px;color:#555;">' + text.slice(0, 120).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</blockquote>' +
-          '<p><a href="' + (window.location.origin + '/t/pulse/portal/') + '">Go to portal</a> to reply.</p>'
+          '<p><a href="' + (window.location.origin + '../portal/') + '">Go to portal</a> to reply.</p>'
         );
         // Phase 27: insert notification for clinician if their user ID is available
         if (CLINICIAN_ID) {
@@ -20675,7 +20675,7 @@ function _confirmConsumerCancel() {
           'Your Pulse appointment has been cancelled',
           '<p>Hi ' + (_memberDisplayName || 'there') + ',</p>' +
           '<p>Your appointment has been cancelled as requested.</p>' +
-          '<p>You can book a new appointment at any time from your <a href="' + (window.location.origin + '/t/pulse/portal/') + '">Pulse portal</a>.</p>'
+          '<p>You can book a new appointment at any time from your <a href="' + (window.location.origin + '../portal/') + '">Pulse portal</a>.</p>'
         );
       }
       if (_clinicianEmail) {
@@ -20683,7 +20683,7 @@ function _confirmConsumerCancel() {
           _clinicianEmail,
           'Appointment cancelled by member',
           '<p>A patient (<strong>' + (_memberDisplayName || 'unknown') + '</strong>) has cancelled their appointment.</p>' +
-          '<p><a href="' + (window.location.origin + '/t/pulse/portal/') + '">Log in to the portal</a> to review their schedule.</p>'
+          '<p><a href="' + (window.location.origin + '../portal/') + '">Log in to the portal</a> to review their schedule.</p>'
         );
       }
       // Phase 27: insert notification for the consumer confirming their cancellation

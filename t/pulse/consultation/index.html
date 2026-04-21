@@ -770,11 +770,11 @@ label.field-label{color:rgba(0,0,0,0.45);}
 
 <!-- NAV -->
 <nav>
-  <a href="/t/pulse/" class="nav-brand">
+  <a href="../" class="nav-brand">
     <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
     <span class="nav-name">PULSE</span>
   </a>
-  <a href="/t/pulse/" class="nav-back">← Back to home</a>
+  <a href="../" class="nav-back">← Back to home</a>
 </nav>
 
 <!-- PROGRESS -->
@@ -818,7 +818,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
     <div class="ineligible-title">Not eligible at this time</div>
     <div class="ineligible-body">Based on your responses, Pulse is unable to provide a protocol consultation at this time. One or more of your responses indicates a condition that requires direct management by your treating physician before peptide therapy can be considered.</div>
     <div class="ineligible-note">This is not a medical determination. Please consult your physician for guidance specific to your situation. You may re-apply when your circumstances change.</div>
-    <a href="/t/pulse/" class="btn-secondary" style="display:inline-block;text-decoration:none;text-align:center;">Return to Pulse</a>
+    <a href="../" class="btn-secondary" style="display:inline-block;text-decoration:none;text-align:center;">Return to Pulse</a>
   </div>
 
   <!-- WELCOME BANNER (shown only when arriving from sign-up via ?new=1) -->
@@ -1430,7 +1430,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
       </div>
 
       <div style="margin-top:32px;text-align:center;">
-        <a href="/t/pulse/" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;background:rgba(255,255,255,0.08);color:var(--grey);">Return Home</a>
+        <a href="../" class="btn-primary" style="display:inline-block;text-decoration:none;padding:16px 48px;font-size:13px;background:rgba(255,255,255,0.08);color:var(--grey);">Return Home</a>
       </div>
       <div style="margin-top:16px;text-align:center;">
         <button onclick="startNewConsultation()" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);background:none;border:1px solid rgba(58,122,92,0.3);padding:10px 20px;border-radius:8px;cursor:pointer;">Start New Consultation</button>
@@ -1452,7 +1452,7 @@ async function _signUpWithGoogle() {
   try {
     var { error } = await window._sbClient.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/t/pulse/consultation/' }
+      options: { redirectTo: window.location.origin + '../consultation/' }
     });
     if (error) {
       console.warn('[Pulse] Google OAuth error:', error.message);
@@ -3596,9 +3596,9 @@ async function _populateStep6() {
 async function _activateAndGoToPortal() {
   try {
     var client = window._sbClient;
-    if (!client) { window.location.href = '/t/pulse/portal/'; return; }
+    if (!client) { window.location.href = '../portal/'; return; }
     var session = (await client.auth.getSession()).data.session;
-    if (!session) { window.location.href = '/t/pulse/portal/'; return; }
+    if (!session) { window.location.href = '../portal/'; return; }
 
     // Collect only the checked/selected protocols
     var selectedProtocols = {};
@@ -3632,10 +3632,10 @@ async function _activateAndGoToPortal() {
       }).eq('id', consultId);
     }
 
-    window.location.href = '/t/pulse/portal/';
+    window.location.href = '../portal/';
   } catch(e) {
     console.warn('[Pulse] activate failed:', e);
-    window.location.href = '/t/pulse/portal/';
+    window.location.href = '../portal/';
   }
 }
 
@@ -3876,7 +3876,7 @@ async function saveFullIntake() {
       '<p>A new intake form has been submitted and assigned to you for review.</p>' +
       '<p><strong>Patient:</strong> ' + _patientName + '</p>' +
       '<p><strong>Submitted:</strong> ' + _submittedAt + '</p>' +
-      '<p><a href="' + window.location.origin + '/t/pulse/portal/">Log in to the Pulse portal</a> to review.</p>'
+      '<p><a href="' + new URL('../portal/', window.location.href).href + '">Log in to the Pulse portal</a> to review.</p>'
     );
   }
 
@@ -4125,11 +4125,11 @@ window._sbClient = createClient(
     if (roleCheck.data && roleCheck.data.length > 0) {
       var userRole = roleCheck.data[0].role;
       if (userRole === 'super_admin' || userRole === 'admin') {
-        window.location.href = '/t/pulse/admin/';
+        window.location.href = '../admin/';
         return;
       }
       if (userRole === 'clinician') {
-        window.location.href = '/t/pulse/portal/';
+        window.location.href = '../portal/';
         return;
       }
     }
@@ -4153,7 +4153,7 @@ window._sbClient = createClient(
     // If completed purchase, redirect to portal
     var _purchaseComplete = (hasConsultation && (consultation.purchase_status === 'completed' || (consultation.data && consultation.data.purchase_status === 'completed')));
     if (_purchaseComplete) {
-      window.location.href = '/t/pulse/portal/';
+      window.location.href = '../portal/';
       return;
     }
 
@@ -4312,7 +4312,7 @@ window._sbClient = createClient(
         document.getElementById('reviewBooking').style.display = 'none';
         var withdrawHome = document.createElement('div');
         withdrawHome.style.cssText = 'margin-top:24px;text-align:center;';
-        withdrawHome.innerHTML = '<a href="/t/pulse/" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);text-decoration:none;">Return Home</a>' +
+        withdrawHome.innerHTML = '<a href="../" style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--grey2);text-decoration:none;">Return Home</a>' +
           '<div style="margin-top:16px;">' +
             '<button onclick="startNewConsultation()" style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);background:none;border:1px solid rgba(58,122,92,0.3);padding:10px 20px;border-radius:8px;cursor:pointer;">Start New Consultation</button>' +
           '</div>';
@@ -4390,7 +4390,7 @@ window._sbClient = createClient(
 
     // Has consultation but no review_status and no appointment — redirect to portal
     if (hasConsultation && !reviewStatus) {
-      window.location.href = '/t/pulse/portal/';
+      window.location.href = '../portal/';
       return;
     }
 

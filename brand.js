@@ -106,6 +106,40 @@
     }
   }
 
+  // data-brand="logo-mark" lives on the circular brand-mark container
+  // in each portal's nav. Rendering rules:
+  //   1. tenant has logo_url       → replace innerHTML with <img>
+  //   2. tenant.slug === 'pulse'   → no-op (keep the default heartbeat
+  //                                  SVG the page baked in — it's Pulse's own mark)
+  //   3. otherwise                 → render initials from the wordmark
+  //                                  (e.g. "Acme Health" → "AH"). If there's
+  //                                  no wordmark either, hide the container
+  //                                  so we don't flash Pulse's icon for a
+  //                                  tenant that hasn't set up a mark.
+  function applyLogoMark(el, brand) {
+    if (brand.logo_url) {
+      el.innerHTML = '<img src="' + escHtml(brand.logo_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+      el.removeAttribute('data-brand-empty');
+      return;
+    }
+    var slug = (window.Tenant && window.Tenant.slug) || '';
+    if (slug === 'pulse') {
+      // Pulse tenant keeps its native heartbeat. No-op.
+      return;
+    }
+    var wm = (brand.wordmark || '').trim();
+    if (wm) {
+      var initials = wm.split(/\s+/).map(function(w){ return w.charAt(0).toUpperCase(); }).slice(0, 2).join('');
+      el.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0;color:var(--brand-accent, currentColor);">' + escHtml(initials) + '</span>';
+      el.removeAttribute('data-brand-empty');
+    } else {
+      // No logo, no wordmark — collapse the container to avoid showing
+      // Pulse's heartbeat mark to a tenant that hasn't set anything up.
+      el.style.display = 'none';
+      el.setAttribute('data-brand-empty', 'true');
+    }
+  }
+
   function applyTo(root) {
     var brand = (window.Tenant && window.Tenant.brand) || {};
     var scope = root || document;
@@ -122,6 +156,9 @@
           break;
         case 'logo':
           applyLogo(el, brand);
+          break;
+        case 'logo-mark':
+          applyLogoMark(el, brand);
           break;
         case 'legal-name':
           el.textContent = brand.legal_name || el.getAttribute('data-brand-default') || '';

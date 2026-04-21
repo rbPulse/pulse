@@ -1968,10 +1968,13 @@ async function doModalAuth() {
     }
     if (r.error) throw r.error;
     closeAuthModal();
-    // Always check role for routing — same dispatch logic as the
-    // universal router at /, but tenant-scoped to Pulse because this
-    // is Pulse's landing page. Anyone signing in here lands inside
-    // Pulse's own surfaces.
+    // Always check role for routing — tenant-scoped to Pulse because
+    // this is Pulse's landing page. Policy: the Pulse site never
+    // routes anyone to CommandOS. CommandOS is a completely separate
+    // entry point and logging in via Pulse stays inside Pulse. A
+    // platform-role operator who wants the control plane navigates
+    // to /commandos/ directly; signing in on Pulse's marketing site
+    // lands them in the Pulse admin portal like any other admin.
     var userId = r.data.user ? r.data.user.id : (r.data.session ? r.data.session.user.id : null);
     var defaultDest = window._modalMode === 'signup' ? 'consultation/?new=1' : 'portal/';
     if (userId) {
@@ -1979,13 +1982,9 @@ async function doModalAuth() {
         var pr = await window._sbClient.from('profiles').select('role, platform_role').eq('user_id', userId).limit(1);
         if (pr.data && pr.data.length > 0) {
           var profile = pr.data[0];
-          // Platform role wins over tenant role: operators signing
-          // into Pulse's landing still go to CommandOS.
-          if (profile.platform_role) {
-            window.location.href = '/commandos/';
-            return;
-          }
-          if (profile.role === 'super_admin' || profile.role === 'admin') {
+          // Anyone with elevated rights (platform operator OR tenant
+          // admin) that lands here goes to the Pulse admin portal.
+          if (profile.platform_role || profile.role === 'super_admin' || profile.role === 'admin') {
             window.location.href = 'admin/';
             return;
           }

@@ -5657,12 +5657,17 @@ function _wizardDefaultState() {
 }
 
 function _loadWizardState() {
+  // Preference order:
+  //   1. In-progress persisted state (user started answering,
+  //      refreshed or came back later — resume where they left off).
+  //   2. Prefill from current tenant config (the "edit mode" path —
+  //      admins re-running the wizard see their current values as
+  //      starting points, which lets them tweak without re-typing).
+  //   3. Empty defaults (brand new tenant, never configured).
   try {
     var raw = localStorage.getItem(_wizardStateKey());
     if (raw) {
       var parsed = JSON.parse(raw);
-      // Migrate older state gracefully: fill any missing defaults so
-      // schema drift doesn't blow up re-renders.
       var fresh = _wizardDefaultState();
       fresh.step = Math.max(0, Math.min(parsed.step || 0, _WIZARD_STEPS.length - 1));
       Object.keys(fresh.answers).forEach(function(k) {
@@ -5675,8 +5680,92 @@ function _loadWizardState() {
       fresh.skipped = Object.assign({}, parsed.skipped || {});
       return fresh;
     }
-  } catch (_) { /* fall through to defaults */ }
-  return _wizardDefaultState();
+  } catch (_) { /* fall through */ }
+  return _wizardPrefillFromTenant();
+}
+
+// Build a wizard state seeded from the current tenant's config.
+// Every answered step reflects what's already set so admins editing
+// a configured tenant don't have to re-type. Regions pulled from
+// tenant_regions are fetched asynchronously — the initial render
+// shows an empty state, then repaints once the fetch resolves.
+function _wizardPrefillFromTenant() {
+  var s = _wizardDefaultState();
+  if (!window.Tenant) return s;
+  var t = window.Tenant;
+  var b = t.brand || {};
+  var term = t.terminology || {};
+  var wf = t.workflow || {};
+
+  // Language: pull singulars; ignore plurals (the RPC auto-derives
+  // them, and showing both on the wizard would confuse).
+  s.answers.language.memberTerm    = term.member    || '';
+  s.answers.language.clinicianTerm = term.clinician || '';
+  s.answers.language.protocolTerm  = term.protocol  || '';
+
+  // Workflow: map config paths back to wizard-shape answers.
+  if (wf.consult && wf.consult.policy) {
+    s.answers.workflow.consultPolicy =
+      wf.consult.policy === 'synchronous_for_first_rx' ? 'sync' :
+      wf.consult.policy === 'either' ? 'either' : 'async';
+  }
+  if (wf.refill && typeof wf.refill.eligibility_days_before_runout === 'number') {
+    s.answers.workflow.refillDays = wf.refill.eligibility_days_before_runout;
+  }
+  if (wf.intake && typeof wf.intake.required === 'boolean') {
+    s.answers.workflow.intakeRequired = wf.intake.required;
+  }
+  if (wf.follow_up && typeof wf.follow_up.cadence_days === 'number') {
+    s.answers.workflow.followUpDays = wf.follow_up.cadence_days;
+  }
+
+  // Brand: direct mapping.
+  s.answers.brand.wordmark     = b.wordmark      || '';
+  s.answers.brand.accentColor  = b.accent_color  || '';
+  s.answers.brand.supportEmail = b.support_email || '';
+  s.answers.brand.supportPhone = b.support_phone || '';
+
+  // Clinic type isn't stored — can't be inferred from current config.
+  // Leave blank; admin re-picks if they want smart defaults to drive
+  // other screens, but nothing breaks if they skip.
+
+  // Territory + comms pulled async below (needs extra queries).
+  _wizardPrefillAsync();
+  return s;
+}
+
+function _wizardPrefillAsync() {
+  if (!window.Tenant) return;
+  var tid = window.Tenant.id;
+
+  // Regions currently allowed.
+  db.from('tenant_regions').select('state, is_allowed').eq('tenant_id', tid)
+    .then(function(r) {
+      if (!window._wizardState) return;
+      var allowed = (r.data || []).filter(function(row){ return row.is_allowed; }).map(function(row){ return row.state; });
+      // Only overwrite if the user hasn't started editing this step.
+      if (!window._wizardState.answers.territory.states.length) {
+        window._wizardState.answers.territory.states = allowed;
+        // Only repaint if user is on the territory step so we don't
+        // disturb active typing / focus elsewhere.
+        if (window._wizardState.step === 4) _repaintWizardScreen();
+      }
+    }).catch(function(){});
+
+  // Communication template tone — inferred by matching the current
+  // welcome template body against the four tone variants. Best-effort;
+  // falls back to default if nothing matches cleanly.
+  db.from('communication_templates').select('key, body, is_enabled').eq('tenant_id', tid)
+    .then(function(r) {
+      if (!window._wizardState || !r.data) return;
+      var rows = r.data || [];
+      var enabled = {};
+      rows.forEach(function(row) { enabled[row.key] = !!row.is_enabled; });
+      if (Object.keys(enabled).length > 0 && !Object.keys(window._wizardState.answers.comms.enabled || {}).length) {
+        window._wizardState.answers.comms.enabled = enabled;
+        if (window._wizardState.step === 3) _repaintWizardScreen();
+      }
+    }).catch(function(){});
 }
 
 function _saveWizardState() {

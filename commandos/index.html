@@ -2157,153 +2157,6 @@ function buildBrandTab(t) {
       '</div>' +
     '</div>';
   }
-  // Legacy editor (kept for optional reactivation):
-  var b = Object.assign({}, BRAND_FIELDS_DEFAULT, t.brand || {});
-  var acc = b.accent_color || '#3a4a5c';
-  return '<div class="brand-form">' +
-
-    '<div class="brand-preview" id="brandPreview">' +
-      '<div class="brand-preview-label">' +
-        '<span>Live preview</span>' +
-        '<span class="brand-preview-label-note">Updates as you type. Click Save Brand to persist.</span>' +
-      '</div>' +
-      '<div class="brand-preview-frame">' +
-        '<div class="brand-preview-nav">' +
-          '<div class="brand-preview-brand">' +
-            '<div class="brand-preview-icon" id="brandPreviewIcon">' +
-              '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
-            '</div>' +
-            '<span class="brand-preview-wordmark" id="brandPreviewWordmark">PULSE</span>' +
-          '</div>' +
-          '<span class="brand-preview-role" id="brandPreviewRole">Admin</span>' +
-        '</div>' +
-        '<span class="brand-preview-cta" id="brandPreviewCta">Primary action</span>' +
-        '<div class="brand-preview-support" id="brandPreviewSupport"><span class="sup-val">Support contacts appear here</span></div>' +
-        '<div class="brand-preview-footer" id="brandPreviewFooter">Footer copy appears here.</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Identity</div>' +
-      '<div class="brand-form-section-sub">How this tenant presents itself across the downstream portals. Wordmark replaces "PULSE" in the nav; legal name appears in footers and compliance surfaces.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field">' +
-          '<label for="brandWordmark">Wordmark</label>' +
-          '<input type="text" id="brandWordmark" value="' + escAttr(b.wordmark) + '" placeholder="ACME" maxlength="32"/>' +
-          '<div class="brand-help">Shown in nav headers. Keep short; it\'s set in caps and letter-spaced.</div>' +
-        '</div>' +
-        '<div class="brand-form-field">' +
-          '<label for="brandLegalName">Legal name</label>' +
-          '<input type="text" id="brandLegalName" value="' + escAttr(t.legal_name || '') + '" placeholder="Acme Health, Inc."/>' +
-          '<div class="brand-help">Full legal entity name. Used in footers, receipts, and audit records.</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Accent</div>' +
-      '<div class="brand-form-section-sub">Single accent color used for primary actions, active nav state, and role badges. Pick a hue that reads against the cream surface.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field full">' +
-          '<label for="brandAccentColor">Accent color</label>' +
-          '<div class="color-row">' +
-            '<input type="color" id="brandAccentPicker" value="' + escAttr(acc) + '"/>' +
-            '<input type="text" id="brandAccentHex" value="' + escAttr(acc) + '" placeholder="#3A4A5C" maxlength="7"/>' +
-          '</div>' +
-          '<div class="brand-help">Hex code. Picker and text field stay in sync — edit either.</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Sender identity</div>' +
-      '<div class="brand-form-section-sub">Outbound email appears to come from this address and name. Verified deliverability is a Phase 7 integrations concern — this tab just stores the intended values.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field">' +
-          '<label for="brandSenderEmail">Sender email</label>' +
-          '<input type="email" id="brandSenderEmail" value="' + escAttr(b.sender_email) + '" placeholder="hello@acmehealth.com"/>' +
-        '</div>' +
-        '<div class="brand-form-field">' +
-          '<label for="brandSenderName">Sender name</label>' +
-          '<input type="text" id="brandSenderName" value="' + escAttr(b.sender_name) + '" placeholder="Acme Health"/>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Support</div>' +
-      '<div class="brand-form-section-sub">Contact routes patients and clinicians see. Shown in footers, help menus, and auto-generated error pages.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field">' +
-          '<label for="brandSupportEmail">Support email</label>' +
-          '<input type="email" id="brandSupportEmail" value="' + escAttr(b.support_email) + '" placeholder="support@acmehealth.com"/>' +
-        '</div>' +
-        '<div class="brand-form-field">' +
-          '<label for="brandSupportPhone">Support phone</label>' +
-          '<input type="tel" id="brandSupportPhone" value="' + escAttr(b.support_phone) + '" placeholder="+1-555-0100"/>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Assets</div>' +
-      '<div class="brand-form-section-sub">Upload files to Pulse Storage or paste an external URL if your team already hosts assets on a CDN. Uploads are served publicly so downstream portals can render them without a signed URL.</div>' +
-      '<div class="brand-form-grid">' +
-
-        '<div class="brand-form-field">' +
-          '<label>Logo</label>' +
-          '<div class="asset-uploader">' +
-            '<div class="asset-thumb' + (b.logo_url ? '' : ' empty') + '" id="brandLogoThumb">' +
-              (b.logo_url ? '<img src="' + escAttr(b.logo_url) + '" alt="Logo preview"/>' : 'No logo') +
-            '</div>' +
-            '<div class="asset-actions">' +
-              '<div class="asset-row">' +
-                '<label class="asset-file-label">Upload<input type="file" accept="image/*" id="brandLogoFile" onchange="handleAssetUpload(\'logo\')"/></label>' +
-                '<button type="button" class="asset-btn danger" id="brandLogoRemove" onclick="clearAsset(\'logo\')"' + (b.logo_url ? '' : ' disabled') + '>Remove</button>' +
-              '</div>' +
-              '<input type="text" id="brandLogoUrl" class="asset-url-input" value="' + escAttr(b.logo_url) + '" placeholder="https://…/logo.png or leave blank"/>' +
-              '<div class="asset-status" id="brandLogoStatus"></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="brand-form-field">' +
-          '<label>Favicon</label>' +
-          '<div class="asset-uploader">' +
-            '<div class="asset-thumb square' + (b.favicon_url ? '' : ' empty') + '" id="brandFaviconThumb">' +
-              (b.favicon_url ? '<img src="' + escAttr(b.favicon_url) + '" alt="Favicon preview"/>' : 'None') +
-            '</div>' +
-            '<div class="asset-actions">' +
-              '<div class="asset-row">' +
-                '<label class="asset-file-label">Upload<input type="file" accept="image/*,image/x-icon" id="brandFaviconFile" onchange="handleAssetUpload(\'favicon\')"/></label>' +
-                '<button type="button" class="asset-btn danger" id="brandFaviconRemove" onclick="clearAsset(\'favicon\')"' + (b.favicon_url ? '' : ' disabled') + '>Remove</button>' +
-              '</div>' +
-              '<input type="text" id="brandFaviconUrl" class="asset-url-input" value="' + escAttr(b.favicon_url) + '" placeholder="https://…/favicon.ico or leave blank"/>' +
-              '<div class="asset-status" id="brandFaviconStatus"></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-      '</div>' +
-    '</div>' +
-
-    '<div class="brand-form-section">' +
-      '<div class="brand-form-section-title">Footer</div>' +
-      '<div class="brand-form-section-sub">Copy appended to every downstream portal footer. Keep short — legal name and year are typically enough.</div>' +
-      '<div class="brand-form-grid">' +
-        '<div class="brand-form-field full">' +
-          '<label for="brandFooterCopy">Footer copy</label>' +
-          '<textarea id="brandFooterCopy" placeholder="© 2026 Acme Health, Inc. All rights reserved.">' + escHtml(b.footer_copy) + '</textarea>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div id="brandError" class="form-err" style="display:none;"></div>' +
-    '<div class="brand-actions">' +
-      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
-      '<button class="form-btn primary" id="brandSaveBtn" onclick="saveBrand()">Save Brand</button>' +
-    '</div>' +
-  '</div>';
 }
 
 // ── Asset upload ──
@@ -5256,68 +5109,12 @@ function buildComplianceTab(t) {
       '</div>' +
     '</div>';
   }
-
-  if (!window.Compliance) {
-    return '<div class="detail-tab-placeholder">' +
-      '<div class="detail-tab-placeholder-title">compliance.js not loaded</div>' +
-      '<div class="detail-tab-placeholder-body">Reload the page — the compliance helper is missing.</div>' +
-    '</div>';
-  }
-  return '<div id="compBody"><div class="comp-loading">Loading compliance data…</div></div>';
 }
 
 function afterRenderComplianceTab(t) {
-  var wrap = document.getElementById('compBody');
-  if (!wrap) return;
-
-  Promise.all([
-    db.from('tenant_regions').select('*').eq('tenant_id', t.id).order('state'),
-    db.from('tenant_locations').select('*').eq('tenant_id', t.id).order('display_order'),
-    db.from('tenant_consents').select('*').eq('tenant_id', t.id).order('key').order('version', { ascending: false }),
-    // Licenses scoped to clinicians who are members of this tenant.
-    // Two-step: pull member user_ids first, then filter licenses by them.
-    db.from('tenant_memberships').select('user_id, role').eq('tenant_id', t.id).in('role', ['tenant_clinician','tenant_nurse'])
-  ]).then(function(results) {
-    if (_activeDetailTab !== 'compliance' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
-
-    // Any of the four can fail independently (e.g. migration 017 not
-    // run yet). Show a section-level error for failed slices instead
-    // of blanking the whole tab.
-    _compData = {
-      regions:   results[0].data || [],
-      locations: results[1].data || [],
-      consents:  results[2].data || [],
-      memberships: results[3].data || [],
-      licenses:  [],
-      errors: {
-        regions:   results[0].error || null,
-        locations: results[1].error || null,
-        consents:  results[2].error || null,
-        licenses:  null
-      }
-    };
-
-    // Fetch licenses for the clinicians at this tenant. If no members
-    // are tenant clinicians yet, skip the fetch entirely.
-    var userIds = (_compData.memberships || []).map(function(m) { return m.user_id; });
-    if (userIds.length === 0) {
-      wrap.innerHTML = renderComplianceBody(t);
-      return;
-    }
-    db.from('clinician_state_licenses').select('*').in('user_id', userIds).order('expires_date')
-      .then(function(lr) {
-        _compData.licenses = lr.data || [];
-        _compData.errors.licenses = lr.error || null;
-        wrap.innerHTML = renderComplianceBody(t);
-      })
-      .catch(function(err) {
-        _compData.errors.licenses = err;
-        wrap.innerHTML = renderComplianceBody(t);
-      });
-  }).catch(function(err) {
-    if (_activeDetailTab !== 'compliance' || !_activeDetailTenant || _activeDetailTenant.id !== t.id) return;
-    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-  });
+  // READ_ONLY placeholder is active on the Compliance tab;
+  // data fetches retired. If operator-edit is ever re-enabled,
+  // restore the regions/locations/consents/licenses queries.
 }
 
 function renderComplianceBody(t) {
@@ -6431,14 +6228,6 @@ function buildCommsTab(t) {
       '</div>' +
     '</div>';
   }
-
-  if (!window.Messaging) {
-    return '<div class="detail-tab-placeholder">' +
-      '<div class="detail-tab-placeholder-title">messaging.js not loaded</div>' +
-      '<div class="detail-tab-placeholder-body">Reload the page — the messaging helper is missing from this session.</div>' +
-    '</div>';
-  }
-  return '<div id="commsBody"><div class="comms-loading">Loading templates…</div></div>';
 }
 
 function afterRenderCommsTab(t) {
@@ -6725,55 +6514,6 @@ function buildWorkflowTab(t) {
       '</div>' +
     '</div>';
   }
-
-  if (!window.Workflow) {
-    return '<div class="detail-tab-placeholder">' +
-      '<div class="detail-tab-placeholder-title">workflow.js not loaded</div>' +
-      '<div class="detail-tab-placeholder-body">Reload the page — the workflow helper is missing from this session.</div>' +
-    '</div>';
-  }
-
-  var schema   = window.Workflow.SCHEMA;
-  var defaults = window.Workflow.DEFAULTS;
-  var current  = t.workflow || {};
-
-  var out = '<div class="brand-form">';
-
-  // Collapsible sections — first one (Intake) expanded by default so
-  // operators immediately see content; the rest collapsed to reduce
-  // scroll. Click the section header to toggle.
-  schema.forEach(function(section, idx) {
-    var collapsed = idx > 0 ? ' collapsed' : '';
-    out += '<div class="workflow-section' + collapsed + '" id="wfSection-' + escAttr(section.section) + '">' +
-      '<div class="workflow-section-head" onclick="toggleWorkflowSection(\'' + escAttr(section.section) + '\')">' +
-        '<div>' +
-          '<div class="workflow-section-title">' + escHtml(section.label) + '</div>' +
-          '<div class="workflow-section-sub">' + escHtml(section.description) + '</div>' +
-        '</div>' +
-        '<span class="workflow-section-toggle">\u25BE</span>' +
-      '</div>' +
-      '<div class="workflow-section-body">' +
-        '<div class="workflow-grid">' +
-          section.fields.map(function(field) {
-            var sectionCurrent = current[section.section] || {};
-            var val = Object.prototype.hasOwnProperty.call(sectionCurrent, field.key)
-              ? sectionCurrent[field.key]
-              : defaults[section.section][field.key];
-            return renderWorkflowField(section.section, field, val, defaults[section.section][field.key]);
-          }).join('') +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  });
-
-  out += '<div id="workflowError" class="form-err" style="display:none;"></div>' +
-    '<div class="brand-actions">' +
-      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
-      '<button class="form-btn primary" id="workflowSaveBtn" onclick="saveWorkflow()">Save Workflow</button>' +
-    '</div>';
-
-  out += '</div>';
-  return out;
 }
 
 function toggleWorkflowSection(sectionKey) {
@@ -7340,71 +7080,6 @@ function buildTerminologyTab(t) {
       '</div>' +
     '</div>';
   }
-
-  if (!window.Terminology) {
-    return '<div class="detail-tab-placeholder">' +
-      '<div class="detail-tab-placeholder-title">terminology.js not loaded</div>' +
-      '<div class="detail-tab-placeholder-body">Reload the page — the terminology helper is missing from this session.</div>' +
-    '</div>';
-  }
-
-  var overrides = t.terminology || {};
-  var groups    = window.Terminology.GROUPS;
-  var keys      = window.Terminology.KEYS;
-
-  var out = '<div class="brand-form">';
-
-  // ── Live preview ──
-  out += '<div class="term-preview" id="termPreview">' +
-    '<div class="term-preview-label">' +
-      '<span>Live preview</span>' +
-      '<span class="term-preview-label-note">Updates as you type. Click Save Terminology to persist.</span>' +
-    '</div>' +
-    '<div class="term-preview-body" id="termPreviewBody">' +
-      _TERM_PREVIEW_LINES.map(function(line, idx) {
-        return '<div class="term-preview-line" id="termPreviewLine-' + idx + '"></div>';
-      }).join('') +
-    '</div>' +
-  '</div>';
-
-  // ── One section per group ──
-  groups.forEach(function(group) {
-    var groupKeys = keys.filter(function(k) { return k.group === group.key; });
-    if (groupKeys.length === 0) return;
-    out += '<div class="term-group">' +
-      '<div class="term-group-title">' + escHtml(group.label) + '</div>' +
-      '<div class="term-group-sub">' + escHtml(group.description) + '</div>' +
-      '<div class="term-grid">' +
-        groupKeys.map(function(entry) {
-          var val = typeof overrides[entry.key] === 'string' ? overrides[entry.key] : '';
-          var isOverridden = val && val !== entry.default;
-          return '<div class="term-field">' +
-            '<div class="term-field-row">' +
-              '<label for="term-' + escAttr(entry.key) + '">' + escHtml(entry.key) + '</label>' +
-              '<span class="term-field-default' + (isOverridden ? ' overridden' : '') +
-                '" id="term-badge-' + escAttr(entry.key) + '">' +
-                (isOverridden ? 'Overridden' : 'Default: ' + escHtml(entry.default)) +
-              '</span>' +
-            '</div>' +
-            '<input type="text" id="term-' + escAttr(entry.key) +
-              '" value="' + escAttr(val) + '" placeholder="' + escAttr(entry.default) +
-              '" data-term-key="' + escAttr(entry.key) +
-              '" data-term-default="' + escAttr(entry.default) + '"/>' +
-            '<div class="term-field-help">' + escHtml(entry.description) + '</div>' +
-          '</div>';
-        }).join('') +
-      '</div>' +
-    '</div>';
-  });
-
-  out += '<div id="termError" class="form-err" style="display:none;"></div>' +
-    '<div class="brand-actions">' +
-      '<button class="form-btn secondary" onclick="switchDetailTab(\'overview\')">Back to Overview</button>' +
-      '<button class="form-btn primary" id="termSaveBtn" onclick="saveTerminology()">Save Terminology</button>' +
-    '</div>';
-
-  out += '</div>';
-  return out;
 }
 
 function afterRenderTerminologyTab(t) {

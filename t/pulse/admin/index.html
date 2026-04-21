@@ -680,6 +680,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .comms-preview-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--text);line-height:1.5;white-space:pre-wrap;display:none;}
 .comms-preview-box.show{display:block;}
 .comms-preview-subject{font-family:'Inter',sans-serif;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:12px;}
+
+/* ══════════════════════════════════════════════════════════════════
+   R9: COMPLIANCE — states grid + locations + consents + licenses
+   ══════════════════════════════════════════════════════════════════ */
+.comp-section{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px;}
+.comp-section-title{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.comp-section-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;}
+.comp-states-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;}
+.comp-state{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:8px 10px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all .15s;text-align:center;user-select:none;display:flex;flex-direction:column;gap:2px;align-items:center;}
+.comp-state:hover{border-color:var(--text3);color:var(--text2);}
+.comp-state.allowed{background:var(--green-tint);border-color:var(--green-border);color:var(--green);font-weight:600;}
+.comp-state.blocked{background:var(--red-tint);border-color:var(--red-border);color:var(--red);text-decoration:line-through;opacity:0.7;}
+.comp-state-code{font-weight:600;letter-spacing:0.04em;}
+.comp-list-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-family:'Inter',sans-serif;font-size:12px;}
+.comp-list-title{font-weight:500;color:var(--text);}
+.comp-list-sub{color:var(--text3);font-size:11px;margin-top:2px;}
+.comp-add-form{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-top:10px;display:none;}
+.comp-add-form.show{display:block;}
 </style>
 </head>
 <body>
@@ -6505,24 +6523,205 @@ function resetCommsSetupTemplate(key, channel) {
     });
 }
 
-// ── R9: Compliance ──
+// ── R9: Compliance — full 4-section editor port ──
+// Regions: click-to-cycle state grid (unset → allowed → blocked → unset)
+// Locations: list + add-form; edit/archive from Compliance carry-over
+// Consents: list + add-new-key; versioning from Compliance carry-over
+// Licenses: count summary; CRUD belongs on clinician profile per Phase 8 carry-over
+
+var _compData = { regions: [], locations: [], consents: [], licenses: [] };
+
 function renderComplianceSetup() {
   var body = document.getElementById('compliance-setup-body');
   if (!body || !window.Tenant) return;
   var tid = window.Tenant.id;
+  body.innerHTML = '<div style="padding:20px;color:var(--text3);">Loading…</div>';
   Promise.all([
-    db.from('tenant_regions').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_allowed', true),
-    db.from('tenant_locations').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false),
-    db.from('tenant_consents').select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('is_archived', false)
+    db.from('tenant_regions').select('state, is_allowed').eq('tenant_id', tid),
+    db.from('tenant_locations').select('*').eq('tenant_id', tid).eq('is_archived', false).order('display_order'),
+    db.from('tenant_consents').select('id, key, version, title, is_archived').eq('tenant_id', tid).order('key').order('version', { ascending: false }),
+    db.from('tenant_memberships').select('user_id').eq('tenant_id', tid).in('role', ['tenant_clinician','tenant_nurse'])
   ]).then(function(results) {
-    _summarySection(body, 'Compliance', 'Operating states, physical locations, consent templates. CRUD authored from CommandOS today; tenant-admin editor lands in a follow-up.', '');
-    document.getElementById('_summary-content').innerHTML =
-      _summaryCard('Operating states', results[0].count || 0) +
-      _summaryCard('Active locations', results[1].count || 0) +
-      _summaryCard('Consent templates', results[2].count || 0, 'non-archived versions');
+    _compData.regions = results[0].data || [];
+    _compData.locations = results[1].data || [];
+    _compData.consents = results[2].data || [];
+    var userIds = (results[3].data || []).map(function(m){return m.user_id;});
+    if (userIds.length === 0) { _compData.licenses = []; body.innerHTML = _buildComplianceBody(); return; }
+    return db.from('clinician_state_licenses').select('expires_date, is_active').in('user_id', userIds).eq('is_active', true)
+      .then(function(lr) {
+        _compData.licenses = lr.data || [];
+        body.innerHTML = _buildComplianceBody();
+      });
   }).catch(function(err) {
     body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
   });
+}
+
+// US states catalog — minimal port of Compliance.STATES.
+var _STATES = (window.Compliance && window.Compliance.STATES) || [];
+
+function _buildComplianceBody() {
+  return _compRegionsSection() + _compLocationsSection() + _compConsentsSection() + _compLicensesSection();
+}
+
+function _compRegionsSection() {
+  var byState = {};
+  _compData.regions.forEach(function(r) { byState[r.state] = r; });
+  var allowedCount = _compData.regions.filter(function(r){return r.is_allowed;}).length;
+  var grid = '<div class="comp-states-grid">' +
+    _STATES.map(function(s) {
+      var row = byState[s.code];
+      var cls = row && row.is_allowed ? 'comp-state allowed' : row ? 'comp-state blocked' : 'comp-state';
+      return '<div class="' + cls + '" onclick="toggleRegionSetup(\'' + s.code + '\')" title="' + _brandEscAttr(s.name) + '">' +
+        '<span class="comp-state-code">' + _brandEscHtml(s.code) + '</span>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+  return '<div class="comp-section">' +
+    '<div class="comp-section-title">Operating states · ' + allowedCount + ' allowed</div>' +
+    '<div class="comp-section-sub">Click to cycle: unset → allowed (green) → blocked (red) → unset.</div>' +
+    grid +
+  '</div>';
+}
+
+function toggleRegionSetup(state) {
+  if (!window.Tenant) return;
+  var tid = window.Tenant.id;
+  var existing = _compData.regions.find(function(r){return r.state === state;});
+  var next, promise;
+  if (!existing) {
+    next = { action: 'insert', is_allowed: true };
+    promise = db.from('tenant_regions').insert({ tenant_id: tid, state: state, is_allowed: true }).select().single();
+  } else if (existing.is_allowed) {
+    next = { action: 'update', is_allowed: false };
+    promise = db.from('tenant_regions').update({ is_allowed: false }).eq('tenant_id', tid).eq('state', state).select().single();
+  } else {
+    next = { action: 'delete' };
+    promise = db.from('tenant_regions').delete().eq('tenant_id', tid).eq('state', state);
+  }
+  promise.then(function(r) {
+    if (r.error) throw r.error;
+    if (next.action === 'insert' && r.data) _compData.regions.push(r.data);
+    if (next.action === 'update' && r.data) { var i = _compData.regions.findIndex(function(x){return x.state === state;}); if (i >= 0) _compData.regions[i] = r.data; }
+    if (next.action === 'delete') _compData.regions = _compData.regions.filter(function(x){return x.state !== state;});
+    var body = document.getElementById('compliance-setup-body');
+    if (body) body.innerHTML = _buildComplianceBody();
+    db.from('audit_logs').insert({
+      action: 'tenant.region_toggled', actor_id: currentUserId, actor_email: currentUserEmail,
+      target_id: tid, tenant_id: tid, change_type: 'compliance',
+      details: JSON.stringify({ source: 'tenant-admin', state: state, action: next.action, is_allowed: next.is_allowed })
+    }).catch(function(){});
+  }).catch(function(err) {
+    showToast && showToast('Region change failed: ' + (err.message || 'unknown'), 'error');
+  });
+}
+
+function _compLocationsSection() {
+  var list = _compData.locations.length === 0
+    ? '<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px;">No locations yet.</div>'
+    : _compData.locations.map(function(loc) {
+        var addr = [loc.address_line1, loc.city, loc.state, loc.postal_code].filter(Boolean).join(', ');
+        return '<div class="comp-list-item">' +
+          '<div><div class="comp-list-title">' + _brandEscHtml(loc.name) + (loc.is_primary ? ' <span style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:0.1em;">Primary</span>' : '') + '</div>' +
+          '<div class="comp-list-sub">' + _brandEscHtml(addr || '—') + '</div></div>' +
+          '<div></div>' +
+        '</div>';
+      }).join('');
+  return '<div class="comp-section">' +
+    '<div class="comp-section-title">Locations · ' + _compData.locations.length + '</div>' +
+    '<div class="comp-section-sub">Physical clinic addresses. Add via form below. Edit/archive lives in CommandOS for now.</div>' +
+    list +
+    '<div style="margin-top:10px;"><button class="form-btn primary" onclick="_compToggleLocForm()">+ Add location</button></div>' +
+    '<div class="comp-add-form" id="compLocForm">' +
+      '<div class="brand-form-grid">' +
+        '<div class="brand-form-field"><label>Name</label><input type="text" id="_locName" placeholder="Main clinic"/></div>' +
+        '<div class="brand-form-field"><label>Address</label><input type="text" id="_locAddr" placeholder="123 Main St"/></div>' +
+        '<div class="brand-form-field"><label>City</label><input type="text" id="_locCity"/></div>' +
+        '<div class="brand-form-field"><label>State (2-letter)</label><input type="text" id="_locState" maxlength="2" style="text-transform:uppercase"/></div>' +
+        '<div class="brand-form-field"><label>Postal</label><input type="text" id="_locPostal"/></div>' +
+        '<div class="brand-form-field"><label>Phone</label><input type="tel" id="_locPhone"/></div>' +
+      '</div>' +
+      '<div class="brand-actions" style="margin-top:10px;">' +
+        '<button class="form-btn secondary" onclick="_compToggleLocForm()">Cancel</button>' +
+        '<button class="form-btn primary" onclick="_compSaveLoc()">Save location</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function _compToggleLocForm() { var f = document.getElementById('compLocForm'); if (f) f.classList.toggle('show'); }
+
+function _compSaveLoc() {
+  if (!window.Tenant) return;
+  var tid = window.Tenant.id;
+  var name = document.getElementById('_locName').value.trim();
+  if (!name) { showToast && showToast('Name required.', 'error'); return; }
+  var state = document.getElementById('_locState').value.trim().toUpperCase();
+  db.from('tenant_locations').insert({
+    tenant_id: tid, name: name,
+    address_line1: document.getElementById('_locAddr').value.trim() || null,
+    city: document.getElementById('_locCity').value.trim() || null,
+    state: state || null,
+    postal_code: document.getElementById('_locPostal').value.trim() || null,
+    phone: document.getElementById('_locPhone').value.trim() || null,
+    is_primary: _compData.locations.length === 0
+  }).select().single().then(function(r) {
+    if (r.error) throw r.error;
+    _compData.locations.push(r.data);
+    var body = document.getElementById('compliance-setup-body');
+    if (body) body.innerHTML = _buildComplianceBody();
+    showToast && showToast('Location saved.', 'success');
+    db.from('audit_logs').insert({
+      action: 'tenant.location_added', actor_id: currentUserId, actor_email: currentUserEmail,
+      target_id: tid, tenant_id: tid, change_type: 'compliance',
+      details: JSON.stringify({ source: 'tenant-admin', location_id: r.data.id })
+    }).catch(function(){});
+  }).catch(function(err) {
+    showToast && showToast('Save failed: ' + (err.message || 'unknown'), 'error');
+  });
+}
+
+function _compConsentsSection() {
+  // Group by key, show latest version per key
+  var byKey = {};
+  _compData.consents.forEach(function(c) {
+    if (!byKey[c.key] || (byKey[c.key].version || 0) < (c.version || 0)) byKey[c.key] = c;
+  });
+  var latestList = Object.keys(byKey).map(function(k) { return byKey[k]; });
+  var list = latestList.length === 0
+    ? '<div style="padding:18px;text-align:center;color:var(--text3);font-size:12px;">No consent templates.</div>'
+    : latestList.map(function(c) {
+        return '<div class="comp-list-item">' +
+          '<div><div class="comp-list-title">' + _brandEscHtml(c.title || c.key) + '</div>' +
+          '<div class="comp-list-sub">' + _brandEscHtml(c.key) + ' · v' + (c.version || 1) + (c.is_archived ? ' · archived' : '') + '</div></div>' +
+          '<div></div>' +
+        '</div>';
+      }).join('');
+  return '<div class="comp-section">' +
+    '<div class="comp-section-title">Consent templates · ' + latestList.length + '</div>' +
+    '<div class="comp-section-sub">Versioned consent text shown to members during intake. Editing + new versions handled via CommandOS.</div>' +
+    list +
+  '</div>';
+}
+
+function _compLicensesSection() {
+  var now = Date.now(), in30 = now + 30*86400000;
+  var expired = 0, exp30 = 0;
+  _compData.licenses.forEach(function(l) {
+    if (!l.expires_date) return;
+    var t = new Date(l.expires_date).getTime();
+    if (t < now) expired++;
+    else if (t < in30) exp30++;
+  });
+  return '<div class="comp-section">' +
+    '<div class="comp-section-title">Clinician licenses</div>' +
+    '<div class="comp-section-sub">Licenses held by clinicians on this tenant. CRUD belongs on the clinician’s own profile.</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">' +
+      _summaryCard('Active licenses', _compData.licenses.length) +
+      _summaryCard('Expired', expired, expired > 0 ? 'needs attention' : '') +
+      _summaryCard('Expiring ≤30d', exp30, exp30 > 0 ? 'review soon' : '') +
+    '</div>' +
+  '</div>';
 }
 
 // ── R10: Integrations ──

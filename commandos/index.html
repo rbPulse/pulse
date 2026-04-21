@@ -5241,6 +5241,22 @@ var _compData = {
 };
 
 function buildComplianceTab(t) {
+  // R9: full editor moved to tenant admin.
+  var READ_ONLY_PLACEHOLDER = true;
+  if (READ_ONLY_PLACEHOLDER) {
+    var adminUrl = '/t/' + encodeURIComponent(t.slug) + '/admin/#setup-compliance';
+    return '<div class="brand-form">' +
+      '<div class="brand-form-section">' +
+        '<div class="brand-form-section-title">Compliance</div>' +
+        '<div class="brand-form-section-sub">Operating states, locations, consents, licenses — authored by this tenant’s admin.</div>' +
+        '<div style="background:var(--card2);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:20px;text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);">Editor moved to tenant admin in R9.</div>' +
+      '</div>' +
+      '<div class="brand-actions">' +
+        '<a class="form-btn primary" href="' + escAttr(adminUrl) + '" target="_blank" rel="noopener" style="text-decoration:none;">Open in tenant admin →</a>' +
+      '</div>' +
+    '</div>';
+  }
+
   if (!window.Compliance) {
     return '<div class="detail-tab-placeholder">' +
       '<div class="detail-tab-placeholder-title">compliance.js not loaded</div>' +

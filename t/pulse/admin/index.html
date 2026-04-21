@@ -7063,40 +7063,91 @@ function renderSubscriptionView() {
   var body = document.getElementById('subscription-body');
   if (!body || !window.Tenant) return;
   var tid = window.Tenant.id;
+  body.innerHTML = '<div style="padding:20px;color:var(--text3);">Loading subscription\u2026</div>';
+  function safe(q) { return q.then(function(r){return r;}).catch(function(){return {data:[]};}); }
   Promise.all([
     db.from('tenant_subscriptions').select('plan_id, status, billing_cycle, current_period_start, current_period_end, trial_end').eq('tenant_id', tid).in('status', ['trialing','active','past_due','paused','incomplete']).limit(1),
-    db.from('plans').select('id, name, monthly_price, annual_price, description').order('display_order')
+    db.from('plans').select('id, name, monthly_price, annual_price, description').order('display_order'),
+    safe(db.from('module_entitlements').select('module_key, enabled, source').eq('tenant_id', tid)),
+    safe(db.from('plan_modules').select('plan_id, module_key, included'))
   ]).then(function(results) {
     var sub = (results[0].data || [])[0];
     var plansById = {}; (results[1].data || []).forEach(function(p) { plansById[p.id] = p; });
+    var entitlements = results[2].data || [];
+    var planModules  = results[3].data || [];
     if (!sub) {
       body.innerHTML = '<div class="brand-form"><div class="brand-form-section">' +
         '<div class="brand-form-section-title">Subscription</div>' +
         '<div class="brand-form-section-sub">No active subscription on file. Contact your CommandOS account manager to assign a plan.</div>' +
-        '</div></div>';
+        '</div>' +
+        _renderModulesPanel(entitlements, [], null) +
+      '</div>';
       return;
     }
     var plan = plansById[sub.plan_id] || { name: '(unknown)', monthly_price: null };
     var priceTxt = (sub.billing_cycle === 'annual' && plan.annual_price != null)
       ? '$' + Number(plan.annual_price).toFixed(2) + '/yr'
       : (plan.monthly_price != null ? '$' + Number(plan.monthly_price).toFixed(2) + '/mo' : 'Custom');
+    var planModuleKeys = planModules.filter(function(pm){ return pm.plan_id === sub.plan_id && pm.included; }).map(function(pm){ return pm.module_key; });
     body.innerHTML = '<div class="brand-form">' +
       '<div class="brand-form-section">' +
         '<div class="brand-form-section-title">Subscription</div>' +
         '<div class="brand-form-section-sub">Current plan + period. Plan changes flow through your CommandOS account manager.</div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">' +
-        _summaryCard('Plan', plan.name, plan.description ? plan.description.slice(0, 60) + (plan.description.length > 60 ? '…' : '') : '') +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:18px;">' +
+        _summaryCard('Plan', plan.name, plan.description ? plan.description.slice(0, 60) + (plan.description.length > 60 ? '\u2026' : '') : '') +
         _summaryCard('Price', priceTxt, sub.billing_cycle) +
         _summaryCard('Status', sub.status) +
         _summaryCard('Period start', sub.current_period_start ? new Date(sub.current_period_start).toLocaleDateString() : '\u2014') +
         _summaryCard('Period end', sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '\u2014') +
         (sub.trial_end ? _summaryCard('Trial end', new Date(sub.trial_end).toLocaleDateString()) : '') +
       '</div>' +
+      _renderModulesPanel(entitlements, planModuleKeys, plan) +
     '</div>';
   }).catch(function(err) {
     body.innerHTML = '<div style="padding:20px;color:var(--red);">' + (err.message || 'Load failed') + '</div>';
   });
+}
+
+function _renderModulesPanel(entitlements, planModuleKeys, plan) {
+  var enabled = entitlements.filter(function(e){ return e.enabled; });
+  var bySource = { plan: [], override: [], addon: [], trial: [] };
+  enabled.forEach(function(e){ (bySource[e.source] || (bySource[e.source] = [])).push(e); });
+  var sourceLabels = { plan: 'Included in plan', override: 'Granted manually', addon: 'Add-on', trial: 'Trial access' };
+  var groups = ['plan','override','addon','trial']
+    .filter(function(s){ return bySource[s] && bySource[s].length > 0; })
+    .map(function(s){
+      var chips = bySource[s].map(function(e){
+        var mod = window.Modules && window.Modules.forKey ? window.Modules.forKey(e.module_key) : null;
+        return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--border);color:var(--text2);margin-right:4px;margin-bottom:4px;">' + _brandEscHtml(mod ? mod.label : e.module_key) + '</span>';
+      }).join('');
+      return '<div style="margin-bottom:10px;">' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">' + _brandEscHtml(sourceLabels[s] || s) + ' \u00B7 ' + bySource[s].length + '</div>' +
+        chips +
+      '</div>';
+    }).join('');
+  if (!groups) groups = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">No modules enabled.</div>';
+
+  var enabledKeys = {}; enabled.forEach(function(e){ enabledKeys[e.module_key] = true; });
+  var missingFromPlan = planModuleKeys.filter(function(k){ return !enabledKeys[k]; });
+  var missingPanel = '';
+  if (missingFromPlan.length > 0) {
+    missingPanel = '<div style="margin-top:10px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;color:#d97706;margin-bottom:4px;">Plan includes modules not yet enabled</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-bottom:6px;">These are covered by your ' + (plan ? _brandEscHtml(plan.name) : 'current') + ' plan but have not been provisioned yet. Contact your CommandOS account manager to activate.</div>' +
+      missingFromPlan.map(function(k){
+        var mod = window.Modules && window.Modules.forKey ? window.Modules.forKey(k) : null;
+        return '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-size:11px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px dashed var(--border);color:var(--text3);margin-right:4px;margin-bottom:4px;">' + _brandEscHtml(mod ? mod.label : k) + '</span>';
+      }).join('') +
+    '</div>';
+  }
+
+  return '<div class="brand-form-section" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;">' +
+    '<div class="brand-form-section-title">Module entitlements</div>' +
+    '<div class="brand-form-section-sub">Which capabilities this tenant has access to, and how they were granted. Additions flow through your account manager.</div>' +
+    '<div style="margin-top:10px;">' + groups + '</div>' +
+    missingPanel +
+  '</div>';
 }
 </script>
 </body>

@@ -7051,6 +7051,24 @@ function _renderDashboardMode() {
     '</button>';
   }).join('');
 
+  // Related deep surfaces — the three Setup items on the sidebar
+  // that stayed standalone because they're frequently-edited,
+  // wide-surface editors in their own right. Surfaced here so
+  // admins don't have to hunt for them after using the wizard.
+  var relatedLinks = [
+    { key:'setup-catalog',      title:'Catalog',      sub:'Protocols, categories, product types, packages.' },
+    { key:'setup-compliance',   title:'Compliance',   sub:'Locations, consent documents, clinician licenses.' },
+    { key:'setup-integrations', title:'Integrations', sub:'Per-provider config toggles. Credentials stay platform-owned.' }
+  ].map(function(l) {
+    return '<button type="button" class="wiz-related" onclick="switchTab(\'' + _brandEscAttr(l.key) + '\')">' +
+      '<div class="wiz-related-text">' +
+        '<div class="wiz-related-title">' + _brandEscHtml(l.title) + '</div>' +
+        '<div class="wiz-related-sub">' + _brandEscHtml(l.sub) + '</div>' +
+      '</div>' +
+      '<div class="wiz-related-arrow">&rarr;</div>' +
+    '</button>';
+  }).join('');
+
   return '<style>' + _WIZARD_CSS + _DASHBOARD_CSS + '</style>' +
     '<div class="wiz-dashboard">' +
       '<div class="wiz-dashboard-head">' +
@@ -7061,6 +7079,8 @@ function _renderDashboardMode() {
         '<button type="button" class="wiz-btn" onclick="_wizardStartSequential()">Re-run guided setup &rarr;</button>' +
       '</div>' +
       '<div class="wiz-dashboard-grid">' + cards + '</div>' +
+      '<div class="wiz-related-head">Need something deeper?</div>' +
+      '<div class="wiz-related-grid">' + relatedLinks + '</div>' +
     '</div>';
 }
 
@@ -7083,7 +7103,16 @@ var _DASHBOARD_CSS = [
   '.wiz-focus-back{font-size:11px;font-weight:600;letter-spacing:0.06em;background:none;border:0;color:var(--text2);cursor:pointer;padding:6px 10px;border-radius:999px;}',
   '.wiz-focus-back:hover{color:var(--text);background:var(--card2);}',
   '.wiz-focus-crumb{font-size:12px;color:var(--text3);}',
-  '.wiz-focus-crumb strong{color:var(--text);font-weight:600;}'
+  '.wiz-focus-crumb strong{color:var(--text);font-weight:600;}',
+  '.wiz-related-head{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin:28px 0 10px;}',
+  '.wiz-related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;}',
+  '.wiz-related{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;cursor:pointer;text-align:left;font-family:\'Inter\',sans-serif;transition:all .15s;width:100%;}',
+  '.wiz-related:hover{border-color:var(--wiz-accent-border);background:var(--wiz-accent-tint);}',
+  '.wiz-related-text{flex:1;min-width:0;}',
+  '.wiz-related-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}',
+  '.wiz-related-sub{font-size:11px;color:var(--text3);line-height:1.4;}',
+  '.wiz-related-arrow{font-family:\'Inter\',sans-serif;font-size:16px;color:var(--text4);flex-shrink:0;transition:color .15s, transform .15s;}',
+  '.wiz-related:hover .wiz-related-arrow{color:var(--wiz-accent);transform:translateX(3px);}'
 ].join('');
 
 // ── Summarizers — pull directly from tenant config (live source of

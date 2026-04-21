@@ -27,26 +27,32 @@ moved the system from "Pulse at root + CommandOS in a subtab" to
 | R12 (full) | `8777678` | Config-change timeline (before/after diff rows, change-type filter) above the HIPAA audit table |
 | R13 (full) | `ef23b64` | Module entitlements panel in Subscription view (grouped by source + plan-gap indicator) |
 
-## Migration 022
+## Migrations 022 + 023 — RUN
 
 `supabase/migrations/022_tenant_admin_config_write.sql` added the
 RLS policy + column-guard trigger that lets tenant_owner /
 tenant_admin write their own tenant's config columns (brand,
 terminology, workflow, compliance, features, legal_name) while
 keeping slug / name / lifecycle_state / created_by platform-only.
-Required for every R4+ save path from inside the tenant admin.
+
+`supabase/migrations/023_tenant_admin_integrations_config_write.sql`
+applied the same pattern to `tenant_integrations`: tenant admins
+can now update `config` on their own rows; `credentials` +
+system-managed columns (last_connected_at, last_error, etc.)
+stay platform-only via a BEFORE UPDATE trigger.
+
+Both migrations have been run against the live Supabase instance.
+
+## R2e — Supabase URL allow-list — DONE
+
+Supabase `Site URL` + `Redirect URLs` allow-list has been updated:
+- Site URL: `https://rbpulse.github.io/pulse/`
+- Redirect URLs include a `**` wildcard plus explicit entries for
+  `/commandos/`, `/t/pulse/`, `/t/pulse/admin/`, `/t/pulse/portal/`,
+  `/t/pulse/consultation/`, `/t/pulse/checkout/`, `/t/pulse/quiz/`.
+- Magic-link + OAuth callbacks now resolve to the new paths.
 
 ## Not yet shipped
-
-### R2e — Supabase dashboard (manual)
-
-Supabase's `Site URL` + `Redirect URLs` allow-list must be updated
-by hand in the dashboard before magic-link / OAuth callbacks
-resolve to the new paths. URLs to add are enumerated in
-`URL_MIGRATION.md` → "Supabase-side URLs" section.
-
-Until that's done, password sign-in works everywhere, but
-passwordless flows + OAuth error on the redirect step.
 
 ### R2f — deprecate legacy root URLs
 

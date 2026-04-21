@@ -319,32 +319,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .viewas-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:7px 14px;border-radius:var(--radius-pill);border:1px solid var(--slate);background:var(--card);color:var(--slate);text-decoration:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s,color .15s;}
 .viewas-btn:hover{background:var(--slate);color:#fff;}
 
-/* ── TEMPLATES TOP-LEVEL TAB ── */
-.tmpl-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
-.tmpl-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
-.tmpl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;box-shadow:var(--shadow);}
-.tmpl-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
-.tmpl-card-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
-.tmpl-card-key{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10px;color:var(--text4);font-weight:400;}
-.tmpl-vertical-pill{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);background:var(--slate-tint);color:var(--slate);border:1px solid var(--slate-border);}
-.tmpl-card-desc{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;}
-.tmpl-card-summary{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
-.tmpl-chip{font-family:'Inter',sans-serif;font-size:10px;padding:3px 8px;border-radius:var(--radius-pill);background:var(--card2);border:1px solid var(--border);color:var(--text3);}
-.tmpl-chip strong{color:var(--text);font-weight:600;margin-right:3px;}
-.tmpl-card-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
-.tmpl-card-actions .form-btn{padding:6px 14px;font-size:11px;}
-
-/* Apply picker modal (lightweight overlay over the detail backdrop
-   since we reuse the same z-index stack). */
-.tmpl-picker-backdrop{position:fixed;inset:0;background:rgba(15,20,25,0.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:8600;display:none;}
-.tmpl-picker-backdrop.show{display:block;}
-.tmpl-picker{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px 30px;max-width:520px;width:calc(100% - 60px);z-index:8601;display:none;box-shadow:var(--shadow-lg);}
-.tmpl-picker.show{display:block;}
-.tmpl-picker h3{font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.01em;}
-.tmpl-picker p{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.5;}
-.tmpl-picker .brand-form-field{margin-bottom:14px;}
-.tmpl-picker .brand-actions{justify-content:flex-end;}
-
 /* ── ACTIVITY TAB (per-client) + AUDIT top-level ── */
 .audit-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
 .audit-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
@@ -845,53 +819,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
 
-<!-- SAVE AS TEMPLATE DIALOG -->
-<div class="tmpl-picker-backdrop" id="tmplSaveBackdrop" onclick="closeSaveAsTemplate()"></div>
-<div class="tmpl-picker" id="tmplSave" role="dialog" aria-modal="true">
-  <h3>Save as template</h3>
-  <p>Captures this tenant\u2019s current brand, terminology, workflow, compliance + features layers plus active catalog + comms + regions + consents as a reusable starter. Empty layers are skipped. The template is saved Pulse-wide; any operator can apply it to a new or existing tenant later.</p>
-  <div class="brand-form-grid" style="grid-template-columns:1fr 1fr;">
-    <div class="brand-form-field">
-      <label for="tmplSaveKey">Key</label>
-      <input type="text" id="tmplSaveKey" placeholder="wellness-v2" autocomplete="off"/>
-      <div class="brand-help">Lowercase, slug-style. Used as the template identifier.</div>
-    </div>
-    <div class="brand-form-field">
-      <label for="tmplSaveName">Name</label>
-      <input type="text" id="tmplSaveName" placeholder="Wellness Clinic v2"/>
-    </div>
-    <div class="brand-form-field full">
-      <label for="tmplSaveDesc">Description</label>
-      <textarea id="tmplSaveDesc" style="min-height:60px;" placeholder="What makes this template distinct? When should an operator pick it?"></textarea>
-    </div>
-    <div class="brand-form-field">
-      <label for="tmplSaveVertical">Vertical</label>
-      <input type="text" id="tmplSaveVertical" placeholder="wellness | primary_care | mental_health"/>
-    </div>
-  </div>
-  <div id="tmplSaveError" class="form-err" style="display:none;margin-bottom:10px;"></div>
-  <div class="brand-actions">
-    <button class="form-btn secondary" onclick="closeSaveAsTemplate()">Cancel</button>
-    <button class="form-btn primary" id="tmplSaveBtn" onclick="confirmSaveAsTemplate()">Save template</button>
-  </div>
-</div>
-
-<!-- TEMPLATE APPLY PICKER -->
-<div class="tmpl-picker-backdrop" id="tmplPickerBackdrop" onclick="closeTemplatePicker()"></div>
-<div class="tmpl-picker" id="tmplPicker" role="dialog" aria-modal="true">
-  <h3 id="tmplPickerTitle">Apply template</h3>
-  <p id="tmplPickerDesc">Pick the client to apply this template to. Existing JSONB layers (brand, terminology, workflow, compliance, features) will be merged over; missing seed items (catalog rows, comms templates, operating regions, consents) will be inserted. Existing seed rows are not overwritten.</p>
-  <div class="brand-form-field">
-    <label for="tmplPickerTenant">Client</label>
-    <select id="tmplPickerTenant" class="filter-select" style="width:100%;"></select>
-  </div>
-  <div id="tmplPickerError" class="form-err" style="display:none;margin-bottom:10px;"></div>
-  <div class="brand-actions">
-    <button class="form-btn secondary" onclick="closeTemplatePicker()">Cancel</button>
-    <button class="form-btn primary" id="tmplPickerApply" onclick="confirmApplyTemplate()">Apply</button>
-  </div>
-</div>
-
 <!-- CLIENT DETAIL MODAL -->
 <div class="detail-backdrop" id="clientDetailBackdrop" onclick="closeClientDetail()"></div>
 <div class="detail-panel" id="clientDetailPanel" role="dialog" aria-modal="true" aria-labelledby="clientDetailTitle">
@@ -909,13 +836,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <a class="header-menu-item" id="headerMenu-viewAs-clinician" target="_blank" rel="noopener">Clinician portal</a>
           <a class="header-menu-item" id="headerMenu-viewAs-admin"     target="_blank" rel="noopener">Admin portal</a>
           <div class="header-menu-note">Opens as your user; true view-as is a carry-over.</div>
-        </div>
-      </div>
-      <div class="header-menu-wrap">
-        <button class="wizard-mode-toggle" onclick="toggleHeaderMenu('tpl')">Templates \u25BE</button>
-        <div class="header-menu" id="headerMenu-tpl">
-          <button class="header-menu-item" onclick="closeHeaderMenus(); openApplyTemplateForThis()">Apply template…</button>
-          <button class="header-menu-item" onclick="closeHeaderMenus(); openSaveAsTemplate()">Save as template…</button>
         </div>
       </div>
       <button class="detail-close" onclick="closeClientDetail()">Close</button>
@@ -978,10 +898,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div class="sidebar-item" id="nav-clients" onclick="switchTab('clients')">
           <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg>
           <span class="sidebar-item-label">Clients</span>
-        </div>
-        <div class="sidebar-item" id="nav-templates" onclick="switchTab('templates')">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-          <span class="sidebar-item-label">Templates</span>
         </div>
         <div class="sidebar-section-label">Platform</div>
         <div class="sidebar-item" id="nav-modules" onclick="switchTab('modules')">
@@ -1118,15 +1034,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- TEMPLATES -->
-      <div class="platform-tab" id="tab-templates">
-        <div class="tab-header">
-          <div class="tab-title">Templates</div>
-          <div class="tab-subtitle">Starter packs that seed new tenants. Apply during onboarding or push to an existing tenant to bulk-add missing config.</div>
-        </div>
-        <div id="templatesTabBody"><div class="tmpl-loading">Loading templates…</div></div>
       </div>
 
       <!-- MODULES -->
@@ -1323,7 +1230,6 @@ function switchTab(tabId) {
   if (tabId === 'modules'      && !_modulesTabLoaded)      loadModulesTab();
   if (tabId === 'billing'      && !_billingTabLoaded)      loadBillingTab();
   if (tabId === 'audit'        && !_auditTabLoaded)        loadAuditTab();
-  if (tabId === 'templates'    && !_templatesTabLoaded)    loadTemplatesTab();
   if (tabId === 'support'      && !_supportTabLoaded)      loadSupportTab();
   if (tabId === 'analytics'    && !_analyticsTabLoaded)    loadAnalyticsTab();
   if (tabId === 'integrations' && !_integrationsTabLoaded) loadIntegrationsTab();
@@ -1600,7 +1506,7 @@ function openClientDetail(tenantId, startInWizard) {
   probeWizardCompletion(t);
 }
 
-// Header menu (View-as, Templates dropdowns) open/close handling.
+// Header menu (View-as dropdown) open/close handling.
 function toggleHeaderMenu(key) {
   var menu = document.getElementById('headerMenu-' + key);
   if (!menu) return;
@@ -1618,47 +1524,6 @@ function closeHeaderMenus() {
 document.addEventListener('click', function(e) {
   if (!e.target.closest || !e.target.closest('.header-menu-wrap')) closeHeaderMenus();
 });
-
-// Apply-template shortcut launched from the detail header. Opens the
-// same picker modal the top-level Templates tab uses, but pre-picks
-// this tenant and shows a template dropdown instead of a tenant
-// dropdown. Backed by applyTemplateToTenant which already handles
-// the merge + seeds + audit.
-function openApplyTemplateForThis() {
-  var t = _activeDetailTenant;
-  if (!t) return;
-
-  // Reuse the existing apply-picker modal but repurpose the controls:
-  // the tenant is fixed to this one; the dropdown lists templates.
-  db.from('tenant_templates').select('id, name, vertical').eq('is_archived', false).order('display_order')
-    .then(function(r) {
-      if (r.error) {
-        showToast('Failed to load templates: ' + (r.error.message || ''), 'error');
-        return;
-      }
-      var rows = r.data || [];
-      if (rows.length === 0) {
-        showToast('No templates available. Create one first via "Save as template".', 'warn');
-        return;
-      }
-      _templates = rows; // make archiveTemplate + confirmApplyTemplate see fresh data
-
-      document.getElementById('tmplPickerTitle').textContent = 'Apply template to "' + (t.name || '') + '"';
-      var select = document.getElementById('tmplPickerTenant');
-      // Swap contents to a template-list for this flow.
-      select.innerHTML = rows.map(function(tpl) {
-        var v = tpl.vertical ? ' (' + tpl.vertical + ')' : '';
-        return '<option value="' + escAttr(tpl.id) + '">' + escHtml(tpl.name) + escHtml(v) + '</option>';
-      }).join('');
-      // Mark the picker so confirmApplyTemplate routes this flow.
-      _headerApplyForTenantId = t.id;
-      setPickerError('');
-      document.getElementById('tmplPickerBackdrop').classList.add('show');
-      document.getElementById('tmplPicker').classList.add('show');
-    });
-}
-
-var _headerApplyForTenantId = null;
 
 function toggleWizardMode() {
   _wizardMode = !_wizardMode;
@@ -1941,7 +1806,6 @@ var _REFRESHABLE_TABS = {
   modules:      refreshModulesTab,
   billing:      refreshBillingTab,
   audit:        refreshAuditTab,
-  templates:    refreshTemplatesTab,
   support:      refreshSupportTab,
   analytics:    refreshAnalyticsTab,
   integrations: refreshIntegrationsTab,
@@ -1965,7 +1829,6 @@ function ensureTabRefreshButton(tabId) {
 function refreshModulesTab()      { _modulesTabLoaded      = false; loadModulesTab();      }
 function refreshBillingTab()      { _billingTabLoaded      = false; loadBillingTab();      }
 function refreshAuditTab()        { _auditTabLoaded        = false; loadAuditTab();        }
-function refreshTemplatesTab()    { _templatesTabLoaded    = false; loadTemplatesTab();    }
 function refreshSupportTab()      { _supportTabLoaded      = false; loadSupportTab();      }
 function refreshIntegrationsTab() { _integrationsTabLoaded = false; loadIntegrationsTab(); }
 function refreshSettingsTab()     { _settingsTabLoaded     = false; loadSettingsTab();     }
@@ -2553,91 +2416,12 @@ function renderActivityList() {
   return renderAuditList(filtered, null);
 }
 
-// ── Save-as-template ──
-// Inverse of applyTemplateToTenant. Reads the source tenant's JSONB
-// layers + seed rows across the tenant-scoped catalog/comms/compliance
-// tables, packages them into the config_snapshot shape documented in
-// migration 020, inserts a tenant_templates row.
-function saveTenantAsTemplate(tenantId, opts) {
-  // opts: { key, name, description, vertical }
-  return db.from('tenants').select('brand, terminology, workflow, compliance, features').eq('id', tenantId).single()
-    .then(function(r) {
-      if (r.error) throw r.error;
-      var tenant = r.data;
-
-      // Only include layers that have content — empty {} stays out of
-      // the snapshot so applying a template with no brand defined
-      // doesn't blank a target's brand.
-      var layers = {};
-      ['brand','terminology','workflow','compliance','features'].forEach(function(k) {
-        if (tenant[k] && typeof tenant[k] === 'object' && Object.keys(tenant[k]).length > 0) {
-          layers[k] = tenant[k];
-        }
-      });
-
-      // Pull seed rows. Every query scoped to this tenant + non-
-      // archived; per-query .catch lets missing tables (e.g. operator
-      // on a tenant whose compliance rows are empty, or migration not
-      // run) skip gracefully.
-      function safe(q) { return q.then(function(r) { return r.data || []; }).catch(function() { return []; }); }
-
-      return Promise.all([
-        safe(db.from('protocol_categories').select('name, display_order').eq('tenant_id', tenantId).eq('is_archived', false)),
-        safe(db.from('protocol_product_types').select('name, display_order').eq('tenant_id', tenantId).eq('is_archived', false)),
-        safe(db.from('protocol_templates').select('key, name, product_type, category, compounds, price, refill_price, subscription_cadence').eq('tenant_id', tenantId).eq('is_archived', false)),
-        safe(db.from('communication_templates').select('key, channel, subject, body, variables, cadence').eq('tenant_id', tenantId).eq('is_enabled', true)),
-        safe(db.from('tenant_regions').select('state').eq('tenant_id', tenantId).eq('is_allowed', true)),
-        safe(db.from('tenant_consents').select('key, version, title, body, requires_signature, effective_date').eq('tenant_id', tenantId).eq('is_archived', false).order('version', { ascending: false }))
-      ]).then(function(results) {
-        // Consents: collapse to latest version per key so applying to
-        // a new tenant doesn't duplicate old versions.
-        var consentsRaw = results[5];
-        var consentsByKey = {};
-        consentsRaw.forEach(function(c) {
-          if (!consentsByKey[c.key] || (consentsByKey[c.key].version || 0) < (c.version || 0)) {
-            consentsByKey[c.key] = c;
-          }
-        });
-
-        var seeds = {
-          categories:      results[0],
-          product_types:   results[1],
-          protocols:       results[2],
-          comms_templates: results[3],
-          regions:         results[4].map(function(r) { return r.state; }),
-          consents:        Object.values(consentsByKey)
-        };
-
-        // Strip empty seed arrays for cleanliness.
-        Object.keys(seeds).forEach(function(k) {
-          if (!seeds[k] || seeds[k].length === 0) delete seeds[k];
-        });
-
-        return { layers: layers, seeds: seeds };
-      });
-    })
-    .then(function(snapshot) {
-      return db.from('tenant_templates').insert({
-        key:             opts.key,
-        name:            opts.name,
-        description:     opts.description || null,
-        vertical:        opts.vertical || null,
-        source_tenant_id: tenantId,
-        config_snapshot: snapshot,
-        created_by:      currentUserId
-      }).select().single().then(function(r) {
-        if (r.error) throw r.error;
-        return r.data;
-      });
-    });
-}
-
 // ── Template application ──
-// Shared helper used by the top-level Templates tab and the
-// create-client flow. Takes a template id + target tenant id, merges
-// JSONB layers onto the tenant row, inserts seed items with the
-// target tenant_id. Returns { applied: { layers: [...], seeds: {...} }}
-// on success; rejects the outer promise on fatal error.
+// Called from the Create Client form's "Start from template" flow.
+// Takes a template id + target tenant id, merges JSONB layers onto
+// the tenant row, inserts seed items with the target tenant_id.
+// Returns { applied: { layers: [...], seeds: {...} }} on success;
+// rejects the outer promise on fatal error.
 //
 // Merge semantics:
 //   - Layers (brand, terminology, workflow, compliance, features):
@@ -2789,268 +2573,6 @@ function applyTemplateToTenant(templateId, targetTenantId) {
         details: JSON.stringify(summary)
       }).then(function() { return result; })
         .catch(function(e) { console.warn('[platform] template-apply audit failed', e); return result; });
-    });
-}
-
-// ── Top-level Templates tab ──
-var _templatesTabLoaded = false;
-var _templates = [];
-
-function loadTemplatesTab() {
-  var wrap = document.getElementById('templatesTabBody');
-  if (!wrap) return;
-  _templatesTabLoaded = true;
-
-  db.from('tenant_templates').select('*').eq('is_archived', false).order('display_order')
-    .then(function(r) {
-      if (r.error) {
-        var hint = migrationHint(r.error, '020_tenant_templates.sql');
-        wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load templates</strong><br/>' +
-          escHtml(r.error.message || '') +
-          (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
-        return;
-      }
-      _templates = r.data || [];
-      wrap.innerHTML = renderTemplatesTabBody();
-    })
-    .catch(function(err) {
-      wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-    });
-}
-
-function renderTemplatesTabBody() {
-  if (_templates.length === 0) {
-    return '<div class="catalog-empty">No templates yet. Run migration 020 to seed the Blank + Wellness starters, or save an existing tenant\u2019s config as a template from the tenant\u2019s detail view.</div>';
-  }
-  return '<div class="tmpl-list">' + _templates.map(renderTemplateCard).join('') + '</div>';
-}
-
-function renderTemplateCard(tpl) {
-  var snap   = tpl.config_snapshot || {};
-  var layers = snap.layers || {};
-  var seeds  = snap.seeds  || {};
-
-  var chips = [];
-  ['brand','terminology','workflow','compliance','features'].forEach(function(k) {
-    if (layers[k] && typeof layers[k] === 'object' && Object.keys(layers[k]).length > 0) {
-      chips.push('<span class="tmpl-chip"><strong>' + escHtml(k) + '</strong>' + Object.keys(layers[k]).length + ' keys</span>');
-    }
-  });
-  [
-    ['protocols',       'protocols'],
-    ['categories',      'categories'],
-    ['product_types',   'product types'],
-    ['comms_templates', 'templates'],
-    ['regions',         'regions'],
-    ['consents',        'consents']
-  ].forEach(function(pair) {
-    var arr = seeds[pair[0]];
-    if (Array.isArray(arr) && arr.length > 0) {
-      chips.push('<span class="tmpl-chip"><strong>' + arr.length + '</strong>' + escHtml(pair[1]) + '</span>');
-    }
-  });
-
-  return '<div class="tmpl-card">' +
-    '<div class="tmpl-card-head">' +
-      '<div class="tmpl-card-title">' +
-        escHtml(tpl.name) +
-        '<span class="tmpl-card-key">' + escHtml(tpl.key) + '</span>' +
-        (tpl.vertical ? '<span class="tmpl-vertical-pill">' + escHtml(tpl.vertical) + '</span>' : '') +
-      '</div>' +
-    '</div>' +
-    (tpl.description ? '<div class="tmpl-card-desc">' + escHtml(tpl.description) + '</div>' : '') +
-    (chips.length ? '<div class="tmpl-card-summary">' + chips.join('') + '</div>' : '') +
-    '<div class="tmpl-card-actions">' +
-      '<button class="form-btn secondary" onclick="archiveTemplate(\'' + escAttr(tpl.id) + '\')">Archive</button>' +
-      '<button class="form-btn primary" onclick="openTemplatePicker(\'' + escAttr(tpl.id) + '\')">Apply to tenant</button>' +
-    '</div>' +
-  '</div>';
-}
-
-var _pickerTemplateId = null;
-
-function openTemplatePicker(templateId) {
-  _pickerTemplateId = templateId;
-
-  // Populate tenant options from the cached client list (_clients was
-  // loaded by loadClients at boot; if the operator hasn't visited the
-  // Clients tab yet, re-fetch lightweight).
-  var populate = _clients.length > 0
-    ? Promise.resolve({ data: _clients })
-    : db.from('tenants').select('id, name, slug, lifecycle_state').order('name');
-
-  populate.then(function(r) {
-    var rows = r.data || [];
-    var select = document.getElementById('tmplPickerTenant');
-    select.innerHTML = '<option value="">— Pick a client —</option>' +
-      rows.map(function(t) {
-        return '<option value="' + escAttr(t.id) + '">' + escHtml(t.name) + ' (' + escHtml(t.slug) + ', ' + escHtml(t.lifecycle_state) + ')</option>';
-      }).join('');
-
-    var tpl = _templates.find(function(x) { return x.id === templateId; });
-    document.getElementById('tmplPickerTitle').textContent = 'Apply "' + (tpl ? tpl.name : 'template') + '"';
-
-    setPickerError('');
-    document.getElementById('tmplPickerBackdrop').classList.add('show');
-    document.getElementById('tmplPicker').classList.add('show');
-  });
-}
-
-function closeTemplatePicker() {
-  document.getElementById('tmplPickerBackdrop').classList.remove('show');
-  document.getElementById('tmplPicker').classList.remove('show');
-  _pickerTemplateId = null;
-  _headerApplyForTenantId = null;
-}
-
-function setPickerError(msg) {
-  var el = document.getElementById('tmplPickerError');
-  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function confirmApplyTemplate() {
-  // Two entry points share the picker modal:
-  //   - From the top-level Templates tab: _pickerTemplateId is set,
-  //     the dropdown holds tenant IDs.
-  //   - From the client header's Apply-template: _headerApplyForTenantId
-  //     is set, the dropdown holds template IDs.
-  // Dispatch based on which state var is populated.
-  var selectValue = document.getElementById('tmplPickerTenant').value;
-  var tenantId, templateId;
-  if (_headerApplyForTenantId) {
-    tenantId   = _headerApplyForTenantId;
-    templateId = selectValue;
-    if (!templateId) { setPickerError('Pick a template first.'); return; }
-  } else {
-    tenantId   = selectValue;
-    templateId = _pickerTemplateId;
-    if (!tenantId) { setPickerError('Pick a client first.'); return; }
-    if (!templateId) return;
-  }
-
-  var btn = document.getElementById('tmplPickerApply');
-  btn.disabled = true;
-
-  applyTemplateToTenant(templateId, tenantId)
-    .then(function(result) {
-      btn.disabled = false;
-      closeTemplatePicker();
-      _headerApplyForTenantId = null;
-      var seedMsg = Object.keys(result.counts || {}).length
-        ? Object.keys(result.counts).map(function(k) { return result.counts[k] + ' ' + k.replace('protocol_','').replace('tenant_',''); }).join(', ')
-        : 'no seeds';
-      showToast('Applied. Layers: ' + (result.layers.length ? result.layers.join(', ') : 'none') + '. Seeded: ' + seedMsg + '.', 'success');
-
-      // If we applied to the currently-open tenant, refresh its cached
-      // data + re-render whichever tab is active so changes are visible.
-      if (_activeDetailTenant && _activeDetailTenant.id === tenantId) {
-        loadClients().then(function() {
-          // Replace the cached active tenant with the refreshed row.
-          var refreshed = _clients.find(function(c) { return c.id === tenantId; });
-          if (refreshed) {
-            _activeDetailTenant = refreshed;
-            if (_wizardMode) renderWizard();
-            else renderDetailTabPanels();
-          }
-        });
-      }
-    })
-    .catch(function(err) {
-      btn.disabled = false;
-      console.error('[platform] template apply failed', err);
-      setPickerError((err && err.message) || 'Apply failed.');
-    });
-}
-
-function openSaveAsTemplate() {
-  if (!_activeDetailTenant) return;
-  ['tmplSaveKey','tmplSaveName','tmplSaveDesc','tmplSaveVertical'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  // Pre-fill key + name from the source tenant's slug for a sensible default.
-  document.getElementById('tmplSaveKey').value = (_activeDetailTenant.slug || '') + '-template';
-  document.getElementById('tmplSaveName').value = (_activeDetailTenant.name || '') + ' starter';
-  setSaveError('');
-  document.getElementById('tmplSaveBackdrop').classList.add('show');
-  document.getElementById('tmplSave').classList.add('show');
-}
-
-function closeSaveAsTemplate() {
-  document.getElementById('tmplSaveBackdrop').classList.remove('show');
-  document.getElementById('tmplSave').classList.remove('show');
-}
-
-function setSaveError(msg) {
-  var el = document.getElementById('tmplSaveError');
-  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function confirmSaveAsTemplate() {
-  if (!_activeDetailTenant) return;
-  var key = document.getElementById('tmplSaveKey').value.trim().toLowerCase();
-  var name = document.getElementById('tmplSaveName').value.trim();
-  var desc = document.getElementById('tmplSaveDesc').value.trim();
-  var vertical = document.getElementById('tmplSaveVertical').value.trim().toLowerCase();
-
-  setSaveError('');
-  if (!key)  { setSaveError('Key is required.'); return; }
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(key)) {
-    setSaveError('Key must be lowercase, dash-separated, no leading or trailing dash.');
-    return;
-  }
-  if (!name) { setSaveError('Name is required.'); return; }
-
-  var btn = document.getElementById('tmplSaveBtn');
-  btn.disabled = true;
-
-  saveTenantAsTemplate(_activeDetailTenant.id, {
-    key: key, name: name, description: desc, vertical: vertical || null
-  }).then(function(row) {
-    btn.disabled = false;
-    closeSaveAsTemplate();
-    showToast('Template "' + name + '" saved.', 'success');
-    // Refresh the Templates tab's cache so a visit after save sees the new row.
-    _templatesTabLoaded = false;
-
-    return db.from('audit_logs').insert({
-      action: 'tenant.template_saved',
-      actor_id: currentUserId,
-      actor_email: currentUserEmail,
-      target_id: _activeDetailTenant.id,
-      tenant_id: _activeDetailTenant.id,
-      change_type: 'lifecycle',
-      after_snapshot: { template_id: row.id, template_key: row.key, template_name: row.name },
-      details: JSON.stringify({ template_id: row.id, template_key: row.key })
-    }).catch(function(e){ console.warn('[platform] template-save audit failed', e); });
-  }).catch(function(err) {
-    btn.disabled = false;
-    var msg = (err && err.message) || 'Save failed.';
-    if (/duplicate key|unique/i.test(msg)) {
-      setSaveError('Key "' + key + '" is already taken.');
-    } else {
-      setSaveError(msg);
-    }
-    console.error('[platform] template save failed', err);
-  });
-}
-
-function archiveTemplate(templateId) {
-  if (!window.confirm('Archive this template? It will be hidden from the picker but existing audit trails remain intact.')) return;
-  db.from('tenant_templates').update({ is_archived: true }).eq('id', templateId).select().single()
-    .then(function(r) {
-      if (r.error) throw r.error;
-      _templates = _templates.filter(function(t) { return t.id !== templateId; });
-      var wrap = document.getElementById('templatesTabBody');
-      if (wrap) wrap.innerHTML = renderTemplatesTabBody();
-      showToast('Template archived.', 'success');
-    })
-    .catch(function(err) {
-      showToast('Archive failed: ' + ((err && err.message) || 'unknown'), 'error');
     });
 }
 
@@ -3269,7 +2791,6 @@ function diagFlushCache() {
   if (window.Integrations) window.Integrations.reset();
   if (window.Compliance)  window.Compliance.reset();
   if (window.Modules)     window.Modules.reset();
-  _templatesTabLoaded = false;
   _auditTabLoaded     = false;
   _supportTabLoaded   = false;
   _modulesTabLoaded   = false;
@@ -6901,15 +6422,7 @@ document.addEventListener('keydown', function(e) {
   var anyMenuOpen = document.querySelector('.header-menu.show');
   if (anyMenuOpen) { closeHeaderMenus(); return; }
 
-  // 2. Template picker open? Close it.
-  var picker = document.getElementById('tmplPicker');
-  if (picker && picker.classList.contains('show')) { closeTemplatePicker(); return; }
-
-  // 3. Save-as-template dialog open? Close it.
-  var saveDialog = document.getElementById('tmplSave');
-  if (saveDialog && saveDialog.classList.contains('show')) { closeSaveAsTemplate(); return; }
-
-  // 4. Client detail modal open? Close it.
+  // 2. Client detail modal open? Close it.
   var panel = document.getElementById('clientDetailPanel');
   if (panel && panel.classList.contains('show')) closeClientDetail();
 });

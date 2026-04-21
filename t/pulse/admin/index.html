@@ -5783,8 +5783,8 @@ function _renderWizardScreen() {
     case 'clinicType': body = _wizScreenClinicType();     break;
     case 'workflow':   body = _wizScreenWorkflow();       break;
     case 'comms':      body = _wizScreenComms();          break;
-    case 'territory':  body = _wizScreenTerritoryStub();  break;
-    case 'brand':      body = _wizScreenBrandStub();      break;
+    case 'territory':  body = _wizScreenTerritory();      break;
+    case 'brand':      body = _wizScreenBrand();          break;
     case 'review':     body = _wizScreenReviewStub();     break;
     default:           body = '<div>?</div>';
   }
@@ -6185,8 +6185,136 @@ function _wizCommsSetSlider(key, val) {
   var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
   if (valEl) valEl.textContent = n + ' days';
 }
-function _wizScreenTerritoryStub()  { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Territory selector lands in W2.</div>'; }
-function _wizScreenBrandStub()      { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Brand basics land in W2.</div>'; }
+// ── Screen 5: Territory ────────────────────────────────────────────
+// All 50 US states + DC rendered as toggle chips in a grid. Preset
+// buttons above jump the selection to common starting points.
+var _WIZ_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM',
+  'NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA',
+  'WV','WI','WY'
+];
+var _WIZ_TOP_10 = ['CA','NY','TX','FL','IL','PA','OH','GA','NC','MI'];
+
+function _wizScreenTerritory() {
+  var selected = window._wizardState.answers.territory.states || [];
+  var selSet = {}; selected.forEach(function(s){ selSet[s] = true; });
+  var presets = [
+    { k:'just_ca', t:'Just California',  states:['CA'] },
+    { k:'top_10',  t:'Top 10 states',     states:_WIZ_TOP_10 },
+    { k:'all_50',  t:'All 50 + DC',       states:_WIZ_STATES },
+    { k:'clear',   t:'Clear',             states:[] }
+  ];
+  var presetRow = presets.map(function(p) {
+    return '<button type="button" class="wiz-preset" onclick="_wizTerritoryPreset(\'' + p.k + '\')">' + _brandEscHtml(p.t) + '</button>';
+  }).join('');
+  var chips = _WIZ_STATES.map(function(s) {
+    var sel = selSet[s] ? ' selected' : '';
+    return '<span class="wiz-chip' + sel + '" onclick="_wizTerritoryToggle(\'' + s + '\')">' + s + '</span>';
+  }).join('');
+  return '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Where do you operate?</div>' +
+      '<div class="wiz-q-help">States your clinicians are licensed in — members in other states see a "not available in your area" notice on the intake form. You can change this any time.</div>' +
+      '<div class="wiz-preset-row">' + presetRow + '</div>' +
+      '<div style="padding:14px 16px;background:var(--card2);border:1px solid var(--border);border-radius:10px;line-height:2.2;">' + chips + '</div>' +
+      '<div style="margin-top:8px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);">' +
+        '<strong>' + selected.length + '</strong> selected' +
+      '</div>' +
+    '</div>';
+}
+
+function _wizTerritoryToggle(state) {
+  var list = window._wizardState.answers.territory.states || [];
+  var idx = list.indexOf(state);
+  if (idx >= 0) list.splice(idx, 1); else list.push(state);
+  window._wizardState.answers.territory.states = list;
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+
+function _wizTerritoryPreset(key) {
+  var map = { just_ca:['CA'], top_10:_WIZ_TOP_10.slice(), all_50:_WIZ_STATES.slice(), clear:[] };
+  window._wizardState.answers.territory.states = map[key] || [];
+  _saveWizardState();
+  _repaintWizardScreen();
+}
+
+// ── Screen 6: Brand ────────────────────────────────────────────────
+// Wordmark + accent color + support email/phone. Live preview below
+// shows the chosen brand values composing a mini-nav mock.
+function _wizScreenBrand() {
+  var b = window._wizardState.answers.brand;
+  return '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Clinic name (wordmark)</div>' +
+      '<div class="wiz-q-help">What members see at the top of every portal. Keep it short — fits in nav.</div>' +
+      '<input type="text" class="wiz-input" placeholder="ACME Health" value="' + _brandEscAttr(b.wordmark || '') + '" oninput="_wizBrandInput(\'wordmark\', this.value)" maxlength="32"/>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Accent color</div>' +
+      '<div class="wiz-q-help">Drives primary buttons, active nav state, and brand accents across every portal.</div>' +
+      '<div style="display:flex;gap:10px;align-items:center;">' +
+        '<input type="color" class="wiz-input" style="width:60px;height:46px;padding:4px;" value="' + _brandEscAttr(b.accentColor || '#3a7a5c') + '" oninput="_wizBrandAccentPicker(this.value)"/>' +
+        '<input type="text" class="wiz-input" style="flex:1;max-width:200px;font-family:\'SF Mono\',Menlo,monospace;" placeholder="#3A7A5C" maxlength="7" value="' + _brandEscAttr(b.accentColor || '') + '" oninput="_wizBrandAccentHex(this.value)" id="wizBrandAccentHexInput"/>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wiz-q">' +
+      '<div class="wiz-q-label">Support contact</div>' +
+      '<div class="wiz-q-help">Where members reach out if they have questions. Both optional — shown in footers and auto-generated error pages.</div>' +
+      '<div class="wiz-row">' +
+        '<input type="email" class="wiz-input" placeholder="support@acmehealth.com" value="' + _brandEscAttr(b.supportEmail || '') + '" oninput="_wizBrandInput(\'supportEmail\', this.value)"/>' +
+        '<input type="tel" class="wiz-input" placeholder="+1-555-0100" value="' + _brandEscAttr(b.supportPhone || '') + '" oninput="_wizBrandInput(\'supportPhone\', this.value)"/>' +
+      '</div>' +
+    '</div>' +
+    _wizBrandPreview();
+}
+
+function _wizBrandPreview() {
+  var b = window._wizardState.answers.brand;
+  var wm = (b.wordmark || '').trim() || 'PULSE';
+  var hex = (b.accentColor || '').trim();
+  var validHex = /^#[0-9a-fA-F]{6}$/.test(hex);
+  var accentStyle = validHex ? 'style="--brand-accent:' + hex + ';"' : '';
+  var btnStyle = validHex ? 'background:' + hex + ';' : 'background:var(--amber);';
+  var supp = [];
+  if (b.supportEmail) supp.push(_brandEscHtml(b.supportEmail));
+  if (b.supportPhone) supp.push(_brandEscHtml(b.supportPhone));
+  return '<div class="wiz-preview" ' + accentStyle + '>' +
+    '<div class="wiz-preview-label">Preview</div>' +
+    '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid ' + (validHex ? hex : 'var(--amber)') + ';display:flex;align-items:center;justify-content:center;">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="' + (validHex ? hex : 'var(--amber)') + '" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' +
+        '</div>' +
+        '<span style="font-family:\'Inter\',sans-serif;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text);">' + _brandEscHtml(wm) + '</span>' +
+      '</div>' +
+      '<button type="button" style="' + btnStyle + 'color:#fff;border:0;padding:8px 18px;border-radius:999px;font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;cursor:default;">Primary action</button>' +
+    '</div>' +
+    (supp.length ? '<div style="margin-top:8px;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);">Support: ' + supp.join(' · ') + '</div>' : '') +
+  '</div>';
+}
+
+function _wizBrandInput(key, val) {
+  window._wizardState.answers.brand[key] = val;
+  _saveWizardState();
+  // Partial repaint: preview only. Keeps input focus.
+  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
+  if (preview) preview.outerHTML = _wizBrandPreview();
+}
+
+function _wizBrandAccentPicker(hex) {
+  window._wizardState.answers.brand.accentColor = hex.toUpperCase();
+  _saveWizardState();
+  var textInput = document.getElementById('wizBrandAccentHexInput');
+  if (textInput) textInput.value = hex.toUpperCase();
+  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
+  if (preview) preview.outerHTML = _wizBrandPreview();
+}
+function _wizBrandAccentHex(hex) {
+  window._wizardState.answers.brand.accentColor = hex;
+  _saveWizardState();
+  var preview = document.querySelector('#setup-wizard-body .wiz-preview');
+  if (preview) preview.outerHTML = _wizBrandPreview();
+}
 function _wizScreenReviewStub()     { return '<div style="padding:40px;text-align:center;color:var(--text3);font-family:\'Inter\',sans-serif;font-size:13px;">Review summary lands in W3 once answers are captured.</div>'; }
 
 // ── Navigation ─────────────────────────────────────────────────────────

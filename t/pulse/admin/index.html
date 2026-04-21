@@ -5795,8 +5795,33 @@ function renderSetupWizard() {
   var host = document.getElementById('setup-wizard-body');
   if (!host || !window.Tenant) return;
   if (!window._wizardState) window._wizardState = _loadWizardState();
-  host.innerHTML = _wizardChromeHtml() + '<div id="wizardScreen">' + _renderWizardScreen() + '</div>';
-  _wireWizardShell();
+  var mode = window._wizardMode || _detectWizardMode();
+  if (mode === 'dashboard') {
+    host.innerHTML = _renderDashboardMode();
+  } else if (mode === 'focus') {
+    host.innerHTML = _renderFocusMode(window._wizardFocusStep);
+    _wireWizardShell();
+  } else {
+    // Sequential (first-run or explicit re-run).
+    host.innerHTML = _wizardChromeHtml() + '<div id="wizardScreen">' + _renderWizardScreen() + '</div>';
+    _wireWizardShell();
+  }
+}
+
+// Detect whether this tenant already has configuration. Used to
+// decide whether the Getting Started tab renders the dashboard
+// (has config → let admins tweak individual sections) or the
+// sequential stepper (first-run flow).
+function _detectWizardMode() {
+  var t = window.Tenant;
+  if (!t) return 'sequential';
+  var b = t.brand || {};
+  var hasConfig = !!(
+    b.wordmark || b.wordmark_image_url || b.logo_url || b.accent_color ||
+    (t.terminology && Object.keys(t.terminology).length) ||
+    (t.workflow    && Object.keys(t.workflow).length)
+  );
+  return hasConfig ? 'dashboard' : 'sequential';
 }
 
 function _wizardChromeHtml() {
@@ -7032,6 +7057,289 @@ var _wizardKeyHandler = function(e) {
   var nextBtn = document.querySelector('#setup-wizard-body .wiz-btn-primary');
   if (nextBtn) nextBtn.click();
 };
+
+// ══════════════════════════════════════════════════════════════════
+// Dashboard mode — shown on Getting Started once the tenant has
+// configured anything. Grid of 6 summary cards, each with an Edit
+// action that opens focus mode for that section. A "Re-run guided
+// setup" button at the top re-enters the sequential stepper.
+// ══════════════════════════════════════════════════════════════════
+
+var _DASHBOARD_CARDS = [
+  { key:'language',   title:'Language',     icon:'M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2 M9 21h6 M12 3v18', summary:function(t){ return _summarizeLanguage(t); } },
+  { key:'clinicType', title:'Clinic type',  icon:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10', summary:function(t){ return _summarizeClinicType(t); } },
+  { key:'workflow',   title:'Workflow',     icon:'M4 6h16 M4 12h10 M4 18h16', summary:function(t){ return _summarizeWorkflow(t); } },
+  { key:'comms',      title:'Messages',     icon:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', summary:function(t){ return _summarizeComms(t); } },
+  { key:'territory',  title:'Territory',    icon:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20 M2 12h20 M12 2c3 3 5 7 5 10s-2 7-5 10c-3-3-5-7-5-10s2-7 5-10', summary:function(t){ return _summarizeTerritory(t); } },
+  { key:'brand',      title:'Brand',        icon:'M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z', summary:function(t){ return _summarizeBrand(t); } }
+];
+
+function _renderDashboardMode() {
+  var t = window.Tenant;
+  var cards = _DASHBOARD_CARDS.map(function(def) {
+    var s = def.summary(t);
+    return '<button type="button" class="wiz-tile" onclick="_wizardEditStep(\'' + def.key + '\')">' +
+      '<div class="wiz-tile-head">' +
+        '<div class="wiz-tile-icon">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + def.icon + '"/></svg>' +
+        '</div>' +
+        '<div class="wiz-tile-title">' + _brandEscHtml(def.title) + '</div>' +
+        '<div class="wiz-tile-edit">Edit &rarr;</div>' +
+      '</div>' +
+      '<div class="wiz-tile-body">' + s + '</div>' +
+    '</button>';
+  }).join('');
+
+  return '<style>' + _WIZARD_CSS + _DASHBOARD_CSS + '</style>' +
+    '<div class="wiz-dashboard">' +
+      '<div class="wiz-dashboard-head">' +
+        '<div>' +
+          '<div class="wiz-dashboard-title">Your setup</div>' +
+          '<div class="wiz-dashboard-sub">Click any area to edit. Changes save in place — no need to walk through the full flow again.</div>' +
+        '</div>' +
+        '<button type="button" class="wiz-btn" onclick="_wizardStartSequential()">Re-run guided setup &rarr;</button>' +
+      '</div>' +
+      '<div class="wiz-dashboard-grid">' + cards + '</div>' +
+    '</div>';
+}
+
+var _DASHBOARD_CSS = [
+  '.wiz-dashboard{max-width:960px;margin:0 auto;}',
+  '.wiz-dashboard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}',
+  '.wiz-dashboard-title{font-family:\'Inter\',sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:var(--text);margin-bottom:4px;}',
+  '.wiz-dashboard-sub{font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);line-height:1.55;max-width:560px;}',
+  '.wiz-dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;}',
+  '.wiz-tile{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:all .15s;font-family:\'Inter\',sans-serif;width:100%;}',
+  '.wiz-tile:hover{border-color:var(--wiz-accent-border);background:var(--wiz-accent-tint);}',
+  '.wiz-tile-head{display:flex;align-items:center;gap:10px;}',
+  '.wiz-tile-icon{width:32px;height:32px;border-radius:8px;background:var(--wiz-accent-tint);color:var(--wiz-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}',
+  '.wiz-tile-icon svg{width:18px;height:18px;}',
+  '.wiz-tile-title{flex:1;font-size:14px;font-weight:600;color:var(--text);}',
+  '.wiz-tile-edit{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--wiz-accent);flex-shrink:0;}',
+  '.wiz-tile-body{font-size:12px;color:var(--text2);line-height:1.55;min-height:32px;}',
+  '.wiz-tile-body .wiz-tile-muted{color:var(--text4);font-style:italic;}',
+  '.wiz-focus-head{display:flex;align-items:center;gap:14px;margin-bottom:20px;font-family:\'Inter\',sans-serif;}',
+  '.wiz-focus-back{font-size:11px;font-weight:600;letter-spacing:0.06em;background:none;border:0;color:var(--text2);cursor:pointer;padding:6px 10px;border-radius:999px;}',
+  '.wiz-focus-back:hover{color:var(--text);background:var(--card2);}',
+  '.wiz-focus-crumb{font-size:12px;color:var(--text3);}',
+  '.wiz-focus-crumb strong{color:var(--text);font-weight:600;}'
+].join('');
+
+// ── Summarizers — pull directly from tenant config (live source of
+// truth) rather than wizard answer state, so the dashboard reflects
+// what's actually in effect regardless of whether a wizard session
+// is in progress. ───────────────────────────────────────────────────
+function _summarizeLanguage(t) {
+  var term = t.terminology || {};
+  var parts = [];
+  if (term.member)    parts.push('Members called <strong>' + _brandEscHtml(term.member) + '</strong>');
+  if (term.clinician) parts.push('Clinicians called <strong>' + _brandEscHtml(term.clinician) + '</strong>');
+  if (term.protocol)  parts.push('Protocols called <strong>' + _brandEscHtml(term.protocol) + '</strong>');
+  return parts.length ? parts.join(' · ') : '<span class="wiz-tile-muted">Using defaults (Member / Clinician / Protocol).</span>';
+}
+
+function _summarizeClinicType(t) {
+  // Clinic type isn't directly stored on the tenant — the wizard
+  // only uses it to seed defaults at apply time. Infer from the
+  // features layer for a rough hint.
+  var f = t.features || {};
+  if (f.weight_tracking)        return 'Weight Loss clinic';
+  if (f.lab_tracking)           return 'Hormone Therapy clinic';
+  if (f.telehealth_sessions && f.dose_logging && f.check_in_schedule) return 'Peptide Therapy clinic';
+  if (f.dose_logging && f.check_in_schedule) return 'General Wellness clinic';
+  return '<span class="wiz-tile-muted">Not set — pick a clinic type to seed smart defaults.</span>';
+}
+
+function _summarizeWorkflow(t) {
+  var w = t.workflow || {};
+  var parts = [];
+  if (w.consult && w.consult.policy) {
+    var label = { synchronous_for_first_rx:'Live video consult', either:'Either works', required_for_first_rx:'Async review' }[w.consult.policy] || w.consult.policy;
+    parts.push('First Rx via <strong>' + _brandEscHtml(label) + '</strong>');
+  }
+  if (w.refill && w.refill.eligibility_days_before_runout != null) {
+    parts.push('Refill <strong>' + w.refill.eligibility_days_before_runout + 'd</strong>');
+  }
+  if (w.intake && w.intake.required != null) {
+    parts.push(w.intake.required ? 'Intake required' : 'No intake');
+  }
+  if (w.follow_up && w.follow_up.cadence_days) {
+    parts.push('Follow-up every <strong>' + w.follow_up.cadence_days + 'd</strong>');
+  }
+  return parts.length ? parts.join(' · ') : '<span class="wiz-tile-muted">Using workflow defaults.</span>';
+}
+
+function _summarizeComms(t) {
+  // We don't have live platform_automations here without an extra
+  // fetch — render effective settings from wizard answers if present,
+  // otherwise a generic default hint.
+  var a = (window._wizardState && window._wizardState.answers && window._wizardState.answers.comms) || {};
+  if (!a.tone && !Object.keys(a.enabled || {}).length && !Object.keys(a.customTemplates || {}).length) {
+    return '<span class="wiz-tile-muted">Default tone + all 6 automations enabled.</span>';
+  }
+  var eff = _wizEffectiveComms();
+  var onCount = Object.keys(eff.enabled).filter(function(k){return eff.enabled[k];}).length;
+  var toneLabel = { warm:'Warm', professional:'Professional', clinical:'Clinical', direct:'Direct' }[eff.tone] || eff.tone;
+  return '<strong>' + onCount + ' of ' + _WIZ_AUTO_CATALOG.length + '</strong> enabled · Tone: <strong>' + _brandEscHtml(toneLabel) + '</strong>';
+}
+
+function _summarizeTerritory(t) {
+  // Wizard state has the last-synced states; for accurate live data
+  // we'd need to query tenant_regions. Use wizard answers as best-
+  // effort snapshot.
+  var a = (window._wizardState && window._wizardState.answers && window._wizardState.answers.territory) || {};
+  var states = a.states || [];
+  if (!states.length) return '<span class="wiz-tile-muted">No states configured yet.</span>';
+  var preview = states.slice(0, 6).join(', ');
+  var more = states.length > 6 ? ' +' + (states.length - 6) + ' more' : '';
+  return '<strong>' + states.length + '</strong> state' + (states.length === 1 ? '' : 's') + ': ' + _brandEscHtml(preview) + more;
+}
+
+function _summarizeBrand(t) {
+  var b = t.brand || {};
+  var parts = [];
+  if (b.wordmark_image_url)  parts.push('Wordmark <strong>image</strong>');
+  else if (b.wordmark)       parts.push('Wordmark <strong>' + _brandEscHtml(b.wordmark) + '</strong>');
+  if (b.logo_url)            parts.push('Logo <strong>set</strong>');
+  if (b.accent_color)        parts.push('Accent <strong style="font-family:\'SF Mono\',monospace;">' + _brandEscHtml(b.accent_color) + '</strong> <span style="display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;background:' + _brandEscAttr(b.accent_color) + ';"></span>');
+  return parts.length ? parts.join(' · ') : '<span class="wiz-tile-muted">Using default brand.</span>';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Focus mode — edit a single section without the stepper chrome.
+// Save commits ONLY that section's slice via apply_wizard_answers
+// (the RPC handles partial bundles), then returns to the dashboard.
+// ══════════════════════════════════════════════════════════════════
+
+var _FOCUS_STEP_LABEL = {
+  language:   'Language',
+  clinicType: 'Clinic type',
+  workflow:   'Workflow',
+  comms:      'Messages',
+  territory:  'Territory',
+  brand:      'Brand'
+};
+
+function _renderFocusMode(stepKey) {
+  // Pull fresh state for this step from the current tenant so the
+  // focus editor shows what's actually in effect, not stale wizard
+  // answers from a prior session.
+  _wizardSyncAnswersForFocus(stepKey);
+
+  var body = '';
+  switch (stepKey) {
+    case 'language':   body = _wizScreenLanguage();   break;
+    case 'clinicType': body = _wizScreenClinicType(); break;
+    case 'workflow':   body = _wizScreenWorkflow();   break;
+    case 'comms':      body = _wizScreenComms();      break;
+    case 'territory':  body = _wizScreenTerritory();  break;
+    case 'brand':      body = _wizScreenBrand();      break;
+    default:           body = '<div>Unknown section.</div>';
+  }
+
+  var label = _FOCUS_STEP_LABEL[stepKey] || stepKey;
+  return '<style>' + _WIZARD_CSS + _DASHBOARD_CSS + '</style>' +
+    '<div class="wiz-focus-head">' +
+      '<button type="button" class="wiz-focus-back" onclick="_wizardReturnToDashboard()">&larr; Back to dashboard</button>' +
+      '<div class="wiz-focus-crumb">Editing <strong>' + _brandEscHtml(label) + '</strong></div>' +
+    '</div>' +
+    '<div class="wiz-card">' +
+      body +
+      '<div class="wiz-footer" style="margin-top:28px;">' +
+        '<div class="wiz-footer-left">' +
+          '<button type="button" class="wiz-btn" onclick="_wizardReturnToDashboard()">Cancel</button>' +
+        '</div>' +
+        '<div class="wiz-footer-right">' +
+          '<button type="button" class="wiz-btn wiz-btn-primary" onclick="_wizardSaveSection(\'' + _brandEscAttr(stepKey) + '\')">Save changes</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+// Populate wizard answer state for the section about to be edited
+// from the current tenant's live config. Prevents editors from
+// showing empty fields when the admin has config set but no
+// recent wizard state (e.g. first edit after initial apply).
+function _wizardSyncAnswersForFocus(stepKey) {
+  var s = window._wizardState;
+  if (!s || !window.Tenant) return;
+  var t = window.Tenant;
+  if (stepKey === 'language' || stepKey === 'brand' || stepKey === 'workflow') {
+    // Re-run the prefill helper, but preserve any in-progress edits
+    // for OTHER sections that might exist in localStorage.
+    var fresh = _wizardPrefillFromTenant();
+    s.answers.language = fresh.answers.language;
+    s.answers.brand    = fresh.answers.brand;
+    s.answers.workflow = fresh.answers.workflow;
+  }
+  if (stepKey === 'territory' && !s.answers.territory.states.length) {
+    // Territory fetches async on first load; if empty, leave async
+    // fetch to populate.
+    _wizardPrefillAsync();
+  }
+}
+
+function _wizardEditStep(stepKey) {
+  window._wizardMode = 'focus';
+  window._wizardFocusStep = stepKey;
+  renderSetupWizard();
+}
+
+function _wizardReturnToDashboard() {
+  window._wizardMode = 'dashboard';
+  window._wizardFocusStep = null;
+  renderSetupWizard();
+}
+
+function _wizardStartSequential() {
+  window._wizardMode = 'sequential';
+  window._wizardFocusStep = null;
+  // Reset step to 0 so the admin starts from the top.
+  if (window._wizardState) window._wizardState.step = 0;
+  renderSetupWizard();
+}
+
+// Save ONLY the named section. Calls apply_wizard_answers with a
+// partial bundle; the RPC merges whatever fields are present and
+// leaves everything else untouched. Returns to the dashboard on
+// success.
+function _wizardSaveSection(stepKey) {
+  if (!window._wizardState || !window.Tenant) return;
+  var answers = window._wizardState.answers;
+  var partial = {};
+  if (stepKey === 'language')   partial.language   = answers.language;
+  if (stepKey === 'clinicType') partial.clinicType = answers.clinicType;
+  if (stepKey === 'workflow')   partial.workflow   = answers.workflow;
+  if (stepKey === 'comms')      partial.comms      = answers.comms;
+  if (stepKey === 'territory')  partial.territory  = answers.territory;
+  if (stepKey === 'brand')      partial.brand      = answers.brand;
+
+  // Visual "saving" state on the save button.
+  var btn = document.querySelector('#setup-wizard-body .wiz-btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  db.rpc('apply_wizard_answers', {
+    p_tenant_id: window.Tenant.id,
+    p_answers: partial
+  }).then(function(r) {
+    if (r.error) throw r.error;
+    // Pull the updated tenant so dashboard summarizers reflect the
+    // just-saved config. The RPC returns `after` — merge it onto
+    // window.Tenant directly rather than a full refetch.
+    var after = (r.data && r.data.after) || {};
+    if (after.brand)       window.Tenant.brand       = after.brand;
+    if (after.terminology) window.Tenant.terminology = after.terminology;
+    if (after.workflow)    window.Tenant.workflow    = after.workflow;
+    if (after.features)    window.Tenant.features    = after.features;
+    // Brand.js needs a re-apply so the nav updates immediately.
+    if (window.Brand) window.Brand.apply();
+    showToast && showToast(_FOCUS_STEP_LABEL[stepKey] + ' saved.', 'success');
+    _wizardReturnToDashboard();
+  }).catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+    showToast && showToast('Save failed: ' + ((err && err.message) || 'unknown'), 'error');
+  });
+}
 
 // Legacy shim: the auto-route helper used to check a config-empty
 // signal to redirect new admins to the wizard. Keeping the behavior

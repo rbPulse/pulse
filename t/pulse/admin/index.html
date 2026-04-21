@@ -5658,7 +5658,7 @@ function _wizardDefaultState() {
       language:   { memberTerm: '', clinicianTerm: '', protocolTerm: '' },
       clinicType: '',
       workflow:   { consultPolicy: '', refillDays: null, intakeRequired: null, followUpDays: null },
-      comms:      { enabled: {}, tone: '', inactivityDays: null, checkInCadence: '' },
+      comms:      { enabled: {}, tone: '', customTemplates: {}, perMessage: {} },
       territory:  { states: [] },
       brand:      { wordmark: '', accentColor: '', supportEmail: '', supportPhone: '' }
     },
@@ -5848,6 +5848,26 @@ var _WIZARD_CSS = [
   '.wiz-switch.on{background:var(--wiz-accent);border-color:var(--wiz-accent);}',
   '.wiz-switch::after{content:"";position:absolute;top:1.5px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,0.15);}',
   '.wiz-switch.on::after{transform:translateX(18px);}',
+  '.wiz-auto-list{display:flex;flex-direction:column;gap:8px;}',
+  '.wiz-auto{background:var(--card2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}',
+  '.wiz-auto-row{display:flex;align-items:center;gap:14px;padding:12px 16px;}',
+  '.wiz-auto-text{flex:1;min-width:0;}',
+  '.wiz-auto-title{font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}',
+  '.wiz-auto-custom{font-family:\'Inter\',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--wiz-accent);background:var(--wiz-accent-tint);padding:2px 8px;border-radius:999px;}',
+  '.wiz-auto-sub{font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text3);margin-top:2px;}',
+  '.wiz-auto-edit{font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 12px;cursor:pointer;transition:all .15s;flex-shrink:0;}',
+  '.wiz-auto-edit:hover{border-color:var(--wiz-accent-border);color:var(--text);}',
+  '.wiz-auto-editor{border-top:1px solid var(--border);padding:12px 16px 14px;background:var(--card);}',
+  '.wiz-auto-editor-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);}',
+  '.wiz-auto-reset{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;background:none;border:0;color:var(--wiz-accent);cursor:pointer;padding:0;}',
+  '.wiz-auto-reset:hover{text-decoration:underline;}',
+  '.wiz-auto-textarea{width:100%;min-height:68px;background:var(--card2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);line-height:1.5;transition:border-color .15s;box-sizing:border-box;resize:vertical;}',
+  '.wiz-auto-textarea:focus{outline:none;border-color:var(--wiz-accent);}',
+  '.wiz-auto-editor-help{font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;}',
+  '.wiz-auto-editor-help code{font-family:\'SF Mono\',Menlo,Consolas,monospace;font-size:10px;background:var(--card2);padding:1px 5px;border-radius:4px;border:1px solid var(--border);}',
+  '.wiz-auto-setting{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}',
+  '.wiz-auto-setting-label{font-family:\'Inter\',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}',
+  '.wiz-auto-setting .wiz-slider-val{font-size:14px;}',
   '.wiz-footer{display:flex;align-items:center;justify-content:space-between;margin-top:24px;gap:12px;}',
   '.wiz-footer-left{display:flex;gap:8px;}',
   '.wiz-footer-right{display:flex;gap:8px;}',
@@ -6189,11 +6209,47 @@ function _wizWfToggle(key) {
 var _WIZ_AUTO_CATALOG = [
   { k:'welcome',             t:'Welcome',              s:'First message a new member receives on sign-up. Sets the tone for their care relationship.' },
   { k:'order_confirmation',  t:'Order confirmation',   s:'Confirms their first protocol is being prepared. Merged with welcome on the same portal load.' },
-  { k:'refill_reminder',     t:'Refill reminder',      s:'Heads-up before their current supply runs out. Fires at the refill-window threshold.' },
-  { k:'inactivity_nudge',    t:'Inactivity nudge',     s:'Gentle check-in for members who haven\'t logged activity or replied recently.' },
-  { k:'check_in_reminder',   t:'Check-in reminder',    s:'Prompt to complete scheduled clinical check-ins (weight, symptoms, mood).' },
-  { k:'follow_up',           t:'Follow-up',            s:'Post-protocol outreach on your follow-up cadence.' }
+  { k:'refill_reminder',     t:'Refill reminder',      s:'Heads-up before their current supply runs out. Fires at the refill-window threshold set on the Workflow screen.' },
+  { k:'inactivity_nudge',    t:'Inactivity nudge',     s:'Gentle check-in for members who haven\'t logged activity or replied recently.',
+    threshold: { key:'thresholdDays', label:'Fire after', unit:'days of inactivity', min:3, max:30, default:7 } },
+  { k:'check_in_reminder',   t:'Check-in reminder',    s:'Prompt to complete scheduled clinical check-ins (weight, symptoms, mood).',
+    cadence: { key:'cadence', label:'Cadence', default:'monthly',
+      opts:[{v:'weekly',t:'Weekly',s:'Every 7 days'},{v:'monthly',t:'Monthly',s:'Every 30 days'},{v:'quarterly',t:'Quarterly',s:'Every 90 days'}] } },
+  { k:'follow_up',           t:'Follow-up',            s:'Post-protocol outreach on your follow-up cadence.',
+    cadence: { key:'cadence', label:'Cadence', default:'monthly',
+      opts:[{v:'monthly',t:'Monthly',s:'Every 30 days'},{v:'quarterly',t:'Quarterly',s:'Every 90 days'},{v:'semiannual',t:'Twice a year',s:'Every 180 days'}] } }
 ];
+
+// Effective per-message setting: custom override wins, then the
+// smart-default informed by clinic type (inactivity threshold
+// defaults shorter for weight_loss, longer for hormone), then the
+// catalog's own default baked into the automation config.
+function _wizEffectivePerMessage(autoKey, field) {
+  var a = window._wizardState.answers.comms;
+  if (a && a.perMessage && a.perMessage[autoKey] && a.perMessage[autoKey][field] != null) {
+    return a.perMessage[autoKey][field];
+  }
+  // Smart defaults by clinic type (only for inactivity threshold today).
+  var ct = window._wizardState.answers.clinicType;
+  if (autoKey === 'inactivity_nudge' && field === 'thresholdDays') {
+    if (ct === 'weight_loss')     return 5;
+    if (ct === 'wellness')        return 10;
+    if (ct === 'hormone_therapy') return 14;
+    return 7;
+  }
+  // Fall back to catalog-declared default.
+  var auto = _WIZ_AUTO_CATALOG.find(function(x){ return x.k === autoKey; });
+  if (!auto) return null;
+  if (auto.threshold && auto.threshold.key === field) return auto.threshold.default;
+  if (auto.cadence   && auto.cadence.key   === field) return auto.cadence.default;
+  return null;
+}
+function _wizSetPerMessage(autoKey, field, val) {
+  if (!window._wizardState.answers.comms.perMessage) window._wizardState.answers.comms.perMessage = {};
+  if (!window._wizardState.answers.comms.perMessage[autoKey]) window._wizardState.answers.comms.perMessage[autoKey] = {};
+  window._wizardState.answers.comms.perMessage[autoKey][field] = val;
+  _saveWizardState();
+}
 var _WIZ_TONES = [
   { v:'warm',         t:'Warm',         s:'"Hi {firstName}! We\'re glad you\'re here..."' },
   { v:'professional', t:'Professional', s:'"Welcome to {clinicName}, {firstName}. Your care team is ready..."' },
@@ -6201,48 +6257,90 @@ var _WIZ_TONES = [
   { v:'direct',       t:'Direct',       s:'"{firstName}, you\'re in. Next: {nextStep}."' }
 ];
 
+// Full template text per (automation, tone) — mirrors the seed data
+// in migration 026 so admins can preview + customize each message
+// inline without a DB roundtrip. When the admin edits a template,
+// the result lands in state.answers.comms.customTemplates[key]
+// and the RPC prefers it over the tone-lookup fallback.
+var _WIZ_TONE_TEMPLATES = {
+  welcome: {
+    warm:         'Hi {firstName} — glad you’re here. I’ve scheduled check-ins ({checkInDates}) so we can track how you’re doing together.',
+    professional: 'Welcome to {clinicName}, {firstName}. Your care team is ready. Scheduled check-ins: {checkInDates}.',
+    clinical:     '{firstName}: your intake is complete. Clinician review within 24h. Follow-up check-ins scheduled: {checkInDates}.',
+    direct:       '{firstName}, you’re in. Check-ins: {checkInDates}. Message us anytime.'
+  },
+  order_confirmation: {
+    warm:         'Your order is confirmed — your clinician will follow up shortly to walk through next steps.',
+    professional: 'Order confirmed. Your clinician will follow up with next steps within 24 hours.',
+    clinical:     'Order received. Clinical review in progress. Expect clinician outreach within 24h.',
+    direct:       'Order in. Clinician reply incoming.'
+  },
+  refill_reminder: {
+    warm:         'Heads up, {firstName} — your current supply is running low. Tap here to request a refill whenever you’re ready.',
+    professional: '{firstName}, your protocol is approaching run-out. Request a refill at your convenience.',
+    clinical:     '{firstName}: refill eligibility active. Request refill to continue current protocol.',
+    direct:       'Refill time, {firstName}. Tap to reorder.'
+  },
+  inactivity_nudge: {
+    warm:         'Hey {firstName} — just checking in. Your care team is here if anything’s come up. No pressure, just a quick hello.',
+    professional: '{firstName}, we haven’t seen recent activity. Your care team is available if you have questions or need support.',
+    clinical:     '{firstName}: no recent dose logs detected. Reach out if protocol adjustment is needed.',
+    direct:       '{firstName} — you okay? Reply if you need us.'
+  },
+  check_in_reminder: {
+    warm:         'Time for your check-in, {firstName}. Takes 2 minutes — helps your care team keep everything dialed in.',
+    professional: '{firstName}, your scheduled check-in is due. Please complete it in the portal when convenient.',
+    clinical:     '{firstName}: check-in due. Complete to support clinical monitoring.',
+    direct:       'Check-in time, {firstName}. 2 min.'
+  },
+  follow_up: {
+    warm:         'How’s it going, {firstName}? Your care team would love an update on how your protocol is landing.',
+    professional: '{firstName}, we’d like to check in on your progress. Please share any updates when you can.',
+    clinical:     '{firstName}: scheduled follow-up. Response supports protocol evaluation.',
+    direct:       'Progress update, {firstName}? Quick reply works.'
+  }
+};
+
+// Resolve the effective body for an automation: custom override
+// wins, then tone lookup, then a generic fallback so the UI
+// always has something to show.
+function _wizResolveTemplate(autoKey) {
+  var a = window._wizardState.answers.comms;
+  if (a && a.customTemplates && typeof a.customTemplates[autoKey] === 'string' && a.customTemplates[autoKey].length > 0) {
+    return a.customTemplates[autoKey];
+  }
+  var tone = _wizEffectiveComms().tone;
+  var bank = _WIZ_TONE_TEMPLATES[autoKey];
+  return (bank && bank[tone]) || '';
+}
+function _wizIsTemplateCustom(autoKey) {
+  var a = window._wizardState.answers.comms;
+  return !!(a && a.customTemplates && typeof a.customTemplates[autoKey] === 'string' && a.customTemplates[autoKey].length > 0);
+}
+
 function _wizCommsDefaults() {
   var ct = window._wizardState.answers.clinicType;
   // Every clinic defaults to all automations ON. Tone preset is
-  // clinic-type-informed: hormone therapy is clinical by default,
-  // wellness is warm, everything else is professional.
+  // clinic-type-informed.
   var enabled = {};
   _WIZ_AUTO_CATALOG.forEach(function(a){ enabled[a.k] = true; });
   var tone = 'professional';
   if (ct === 'wellness')         tone = 'warm';
   else if (ct === 'hormone_therapy') tone = 'clinical';
   else if (ct === 'weight_loss')     tone = 'warm';
-  return { enabled: enabled, tone: tone, inactivityDays: 7, checkInCadence: 'monthly' };
+  return { enabled: enabled, tone: tone };
 }
 
 function _wizEffectiveComms() {
   var a = window._wizardState.answers.comms;
   var d = _wizCommsDefaults();
   var enabled = Object.assign({}, d.enabled);
-  // User-set values from a.enabled override defaults. undefined = default.
-  if (a.enabled) {
-    Object.keys(a.enabled).forEach(function(k) { enabled[k] = !!a.enabled[k]; });
-  }
-  return {
-    enabled: enabled,
-    tone: a.tone || d.tone,
-    inactivityDays: a.inactivityDays != null ? a.inactivityDays : d.inactivityDays,
-    checkInCadence: a.checkInCadence || d.checkInCadence
-  };
+  if (a.enabled) Object.keys(a.enabled).forEach(function(k) { enabled[k] = !!a.enabled[k]; });
+  return { enabled: enabled, tone: a.tone || d.tone };
 }
 
 function _wizScreenComms() {
   var e = _wizEffectiveComms();
-  var toggleRows = _WIZ_AUTO_CATALOG.map(function(a) {
-    var on = e.enabled[a.k];
-    return '<div class="wiz-toggle-row">' +
-      '<div class="wiz-toggle-row-text">' +
-        '<div class="wiz-toggle-row-title">' + _brandEscHtml(a.t) + '</div>' +
-        '<div class="wiz-toggle-row-sub">' + _brandEscHtml(a.s) + '</div>' +
-      '</div>' +
-      '<div class="wiz-switch' + (on ? ' on' : '') + '" data-wiz-switch="auto_' + _brandEscAttr(a.k) + '" onclick="_wizCommsToggleAuto(\'' + a.k + '\')" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></div>' +
-    '</div>';
-  }).join('');
 
   var toneCards = _WIZ_TONES.map(function(o) {
     var sel = e.tone === o.v ? ' selected' : '';
@@ -6252,42 +6350,96 @@ function _wizScreenComms() {
     '</button>';
   }).join('');
 
-  var cadenceOpts = [
-    { v:'weekly',    t:'Weekly',    s:'Every 7 days' },
-    { v:'monthly',   t:'Monthly',   s:'Every 30 days' },
-    { v:'quarterly', t:'Quarterly', s:'Every 90 days' }
-  ];
-  var cadenceCards = cadenceOpts.map(function(o) {
-    var sel = e.checkInCadence === o.v ? ' selected' : '';
-    return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="checkInCadence" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizCommsSet(\'checkInCadence\',\'' + o.v + '\')">' +
-      '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
-      '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
-    '</button>';
+  var toggleRows = _WIZ_AUTO_CATALOG.map(function(a) {
+    return _wizRenderAutoRow(a, e);
   }).join('');
 
   return '<div class="wiz-q">' +
-      '<div class="wiz-q-label">Which messages fire automatically?</div>' +
-      '<div class="wiz-q-help">Toggle any message off if you\'d rather send it manually. All default on.</div>' +
-      '<div class="wiz-toggle-list">' + toggleRows + '</div>' +
-    '</div>' +
-    '<div class="wiz-q">' +
       '<div class="wiz-q-label">Tone</div>' +
-      '<div class="wiz-q-help">Sets the voice for every message. Individual templates are editable in Setup → Communications after apply.</div>' +
+      '<div class="wiz-q-help">Sets the voice for every message below. Pick a tone first — each message uses the tone’s default wording, which you can customize per-message.</div>' +
       '<div class="wiz-choices">' + toneCards + '</div>' +
     '</div>' +
     '<div class="wiz-q">' +
-      '<div class="wiz-q-label">Inactivity threshold</div>' +
-      '<div class="wiz-q-help">A member is considered inactive after this many days without a dose log or portal visit. The inactivity nudge fires once they cross it.</div>' +
-      '<div class="wiz-slider-wrap">' +
-        '<input type="range" class="wiz-slider" min="3" max="30" step="1" value="' + e.inactivityDays + '" oninput="_wizCommsSetSlider(\'inactivityDays\', this.value)"/>' +
-        '<div class="wiz-slider-val">' + e.inactivityDays + ' days</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="wiz-q">' +
-      '<div class="wiz-q-label">Check-in reminder cadence</div>' +
-      '<div class="wiz-q-help">How often the scheduled check-in reminder fires. Independent from the follow-up cadence on the Workflow screen.</div>' +
-      '<div class="wiz-choices">' + cadenceCards + '</div>' +
+      '<div class="wiz-q-label">Which messages fire automatically?</div>' +
+      '<div class="wiz-q-help">Toggle any off if you’d rather send it manually. Click <em>Edit message</em> on any row to customize its wording, cadence, or threshold.</div>' +
+      '<div class="wiz-auto-list">' + toggleRows + '</div>' +
     '</div>';
+}
+
+// Render a single automation row — top line with toggle + edit,
+// plus an expandable editor region containing (1) message-body
+// textarea and (2) any per-automation settings declared in
+// _WIZ_AUTO_CATALOG (threshold slider, cadence cards).
+function _wizRenderAutoRow(a, e) {
+  var on = e.enabled[a.k];
+  var body = _wizResolveTemplate(a.k);
+  var custom = _wizIsTemplateCustom(a.k);
+
+  // Per-automation extra fields (cadence / threshold) rendered
+  // inside the editor expander.
+  var extras = '';
+  if (a.threshold) {
+    var tKey = a.threshold.key;
+    var tVal = _wizEffectivePerMessage(a.k, tKey);
+    extras += '<div class="wiz-auto-setting">' +
+      '<div class="wiz-auto-setting-label">' + _brandEscHtml(a.threshold.label) + '</div>' +
+      '<div class="wiz-slider-wrap">' +
+        '<input type="range" class="wiz-slider" data-wiz-pm-slider="' + _brandEscAttr(a.k) + ':' + _brandEscAttr(tKey) + '" min="' + a.threshold.min + '" max="' + a.threshold.max + '" step="1" value="' + tVal + '" oninput="_wizPerMessageSlider(\'' + _brandEscAttr(a.k) + '\', \'' + _brandEscAttr(tKey) + '\', this.value)"/>' +
+        '<div class="wiz-slider-val" data-wiz-pm-val="' + _brandEscAttr(a.k) + ':' + _brandEscAttr(tKey) + '">' + tVal + ' ' + _brandEscHtml(a.threshold.unit) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  if (a.cadence) {
+    var cKey = a.cadence.key;
+    var cVal = _wizEffectivePerMessage(a.k, cKey);
+    var cards = a.cadence.opts.map(function(o) {
+      var sel = cVal === o.v ? ' selected' : '';
+      return '<button type="button" class="wiz-choice' + sel + '" data-wiz-group="' + _brandEscAttr(a.k + ':' + cKey) + '" data-wiz-value="' + _brandEscAttr(o.v) + '" onclick="_wizPerMessageSet(\'' + _brandEscAttr(a.k) + '\', \'' + _brandEscAttr(cKey) + '\', \'' + _brandEscAttr(o.v) + '\')">' +
+        '<div class="wiz-choice-title">' + _brandEscHtml(o.t) + '</div>' +
+        '<div class="wiz-choice-sub">' + _brandEscHtml(o.s) + '</div>' +
+      '</button>';
+    }).join('');
+    extras += '<div class="wiz-auto-setting">' +
+      '<div class="wiz-auto-setting-label">' + _brandEscHtml(a.cadence.label) + '</div>' +
+      '<div class="wiz-choices">' + cards + '</div>' +
+    '</div>';
+  }
+
+  return '<div class="wiz-auto" data-wiz-auto="' + _brandEscAttr(a.k) + '">' +
+    '<div class="wiz-auto-row">' +
+      '<div class="wiz-auto-text">' +
+        '<div class="wiz-auto-title">' + _brandEscHtml(a.t) + (custom ? ' <span class="wiz-auto-custom">Customized</span>' : '') + '</div>' +
+        '<div class="wiz-auto-sub">' + _brandEscHtml(a.s) + '</div>' +
+      '</div>' +
+      '<button type="button" class="wiz-auto-edit" onclick="_wizCommsToggleEditor(\'' + _brandEscAttr(a.k) + '\')">Edit message</button>' +
+      '<div class="wiz-switch' + (on ? ' on' : '') + '" data-wiz-switch="auto_' + _brandEscAttr(a.k) + '" onclick="_wizCommsToggleAuto(\'' + _brandEscAttr(a.k) + '\')" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></div>' +
+    '</div>' +
+    '<div class="wiz-auto-editor" data-wiz-editor="' + _brandEscAttr(a.k) + '" style="display:none;">' +
+      '<div class="wiz-auto-editor-hdr">' +
+        '<span>Message body</span>' +
+        '<button type="button" class="wiz-auto-reset" onclick="_wizCommsResetTemplate(\'' + _brandEscAttr(a.k) + '\')">Reset to ' + _brandEscHtml(e.tone) + ' default</button>' +
+      '</div>' +
+      '<textarea class="wiz-auto-textarea" data-wiz-auto-body="' + _brandEscAttr(a.k) + '" rows="3" placeholder="Enter your custom message body" oninput="_wizCommsEditTemplate(\'' + _brandEscAttr(a.k) + '\', this.value)">' + _brandEscHtml(body) + '</textarea>' +
+      '<div class="wiz-auto-editor-help">Placeholders like <code>{firstName}</code>, <code>{clinicName}</code>, <code>{checkInDates}</code> are filled in at send time.</div>' +
+      extras +
+    '</div>' +
+  '</div>';
+}
+
+// Per-message cadence/threshold click handlers — live on the state
+// and flip .selected on the relevant pills without full repaint.
+function _wizPerMessageSet(autoKey, field, val) {
+  _wizSetPerMessage(autoKey, field, val);
+  _wizSelectExclusive(autoKey + ':' + field, val);
+}
+function _wizPerMessageSlider(autoKey, field, val) {
+  var n = parseInt(val, 10);
+  _wizSetPerMessage(autoKey, field, n);
+  // Find the matching automation to pull its unit label.
+  var auto = _WIZ_AUTO_CATALOG.find(function(x){ return x.k === autoKey; });
+  var unit = (auto && auto.threshold && auto.threshold.unit) ? ' ' + auto.threshold.unit : '';
+  var valEl = document.querySelector('[data-wiz-pm-val="' + autoKey + ':' + field + '"]');
+  if (valEl) valEl.textContent = n + unit;
 }
 
 function _wizCommsToggleAuto(key) {
@@ -6306,13 +6458,65 @@ function _wizCommsSet(key, val) {
   window._wizardState.answers.comms[key] = val;
   _saveWizardState();
   _wizSelectExclusive(key, val);
+  // Tone change: any message NOT customized should reflect the new
+  // tone's default body. Only non-customized rows get their textarea
+  // re-populated so customizations never get silently overwritten.
+  if (key === 'tone') {
+    _WIZ_AUTO_CATALOG.forEach(function(a) {
+      if (_wizIsTemplateCustom(a.k)) return;
+      var ta = document.querySelector('[data-wiz-auto-body="' + a.k + '"]');
+      if (ta) ta.value = _wizResolveTemplate(a.k);
+      // Update the "Reset to <tone> default" label
+      var resetBtn = document.querySelector('[data-wiz-auto="' + a.k + '"] .wiz-auto-reset');
+      if (resetBtn) resetBtn.textContent = 'Reset to ' + val + ' default';
+    });
+  }
 }
-function _wizCommsSetSlider(key, val) {
-  var n = parseInt(val, 10);
-  window._wizardState.answers.comms[key] = n;
+
+// Toggle the inline editor for a given automation row. Sliding
+// display:none/'' rather than re-rendering keeps focus state
+// intact when the user clicks elsewhere while editing.
+function _wizCommsToggleEditor(key) {
+  var el = document.querySelector('[data-wiz-editor="' + key + '"]');
+  if (!el) return;
+  var showing = el.style.display !== 'none';
+  el.style.display = showing ? 'none' : '';
+  if (!showing) {
+    var ta = el.querySelector('textarea');
+    if (ta) ta.focus();
+  }
+}
+
+// Edit handler: store the current textarea value into state as
+// the custom override. Empty strings are treated as "no override"
+// (reset path triggers this explicitly below).
+function _wizCommsEditTemplate(key, val) {
+  if (!window._wizardState.answers.comms.customTemplates) window._wizardState.answers.comms.customTemplates = {};
+  window._wizardState.answers.comms.customTemplates[key] = val;
   _saveWizardState();
-  var valEl = document.querySelector('#setup-wizard-body .wiz-slider-val');
-  if (valEl) valEl.textContent = n + ' days';
+  // Toggle the "Customized" badge without full repaint.
+  var title = document.querySelector('[data-wiz-auto="' + key + '"] .wiz-auto-title');
+  if (title) {
+    var isCustom = _wizIsTemplateCustom(key);
+    var existing = title.querySelector('.wiz-auto-custom');
+    if (isCustom && !existing) {
+      title.insertAdjacentHTML('beforeend', ' <span class="wiz-auto-custom">Customized</span>');
+    } else if (!isCustom && existing) {
+      existing.remove();
+    }
+  }
+}
+
+// Reset: drop the custom override so the tone default wins again.
+function _wizCommsResetTemplate(key) {
+  if (window._wizardState.answers.comms.customTemplates) {
+    delete window._wizardState.answers.comms.customTemplates[key];
+  }
+  _saveWizardState();
+  var ta = document.querySelector('[data-wiz-auto-body="' + key + '"]');
+  if (ta) ta.value = _wizResolveTemplate(key);
+  var badge = document.querySelector('[data-wiz-auto="' + key + '"] .wiz-auto-custom');
+  if (badge) badge.remove();
 }
 // ── Screen 5: Territory ────────────────────────────────────────────
 // All 50 US states + DC rendered as toggle chips in a grid. Preset
@@ -6539,18 +6743,37 @@ function _wizReviewWorkflow(a, skipped) {
 
 function _wizReviewComms(a, skipped) {
   if (skipped.comms) return { skipped:true };
-  var customized = a.comms && (a.comms.tone || a.comms.inactivityDays != null || a.comms.checkInCadence || (a.comms.enabled && Object.keys(a.comms.enabled).length));
+  var comms = a.comms || {};
+  var customized = comms.tone || (comms.enabled && Object.keys(comms.enabled).length) ||
+                    (comms.customTemplates && Object.keys(comms.customTemplates).length) ||
+                    (comms.perMessage && Object.keys(comms.perMessage).length);
   if (!customized) return { html:null };
   var e = _wizEffectiveComms();
   var onCount = Object.keys(e.enabled).filter(function(k){ return e.enabled[k]; }).length;
   var total = _WIZ_AUTO_CATALOG.length;
   var toneLabel = { warm:'Warm', professional:'Professional', clinical:'Clinical', direct:'Direct' }[e.tone] || e.tone;
-  return { html:
-    '<strong>' + onCount + ' of ' + total + '</strong> automations enabled · ' +
-    'Tone: <strong>' + _brandEscHtml(toneLabel) + '</strong> · ' +
-    'Inactivity threshold <strong>' + e.inactivityDays + ' days</strong> · ' +
-    'Check-in <strong>' + _brandEscHtml(e.checkInCadence) + '</strong>'
-  };
+  var customCount = (comms.customTemplates) ? Object.keys(comms.customTemplates).filter(function(k){ return comms.customTemplates[k]; }).length : 0;
+  var parts = [
+    '<strong>' + onCount + ' of ' + total + '</strong> enabled',
+    'Tone: <strong>' + _brandEscHtml(toneLabel) + '</strong>'
+  ];
+  if (customCount > 0) parts.push('<strong>' + customCount + '</strong> custom ' + (customCount === 1 ? 'body' : 'bodies'));
+  // Surface any per-message cadence / threshold overrides.
+  if (comms.perMessage) {
+    Object.keys(comms.perMessage).forEach(function(ak) {
+      var auto = _WIZ_AUTO_CATALOG.find(function(x){ return x.k === ak; });
+      if (!auto) return;
+      var ov = comms.perMessage[ak];
+      if (ov.thresholdDays != null && auto.threshold) {
+        parts.push(_brandEscHtml(auto.t) + ': ' + ov.thresholdDays + ' ' + _brandEscHtml(auto.threshold.unit));
+      }
+      if (ov.cadence && auto.cadence) {
+        var lbl = (auto.cadence.opts.find(function(o){ return o.v === ov.cadence; }) || {}).t || ov.cadence;
+        parts.push(_brandEscHtml(auto.t) + ': ' + _brandEscHtml(lbl));
+      }
+    });
+  }
+  return { html: parts.join(' · ') };
 }
 
 function _wizReviewTerritory(a, skipped) {

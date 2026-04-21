@@ -126,60 +126,15 @@
         { name: 'from_number', label: 'From number', type: 'text', required: true, placeholder: '+15550100', description: 'E.164 format. Must be a Twilio-provisioned number on the account.' }
       ],
       test_action: 'twilio.fetch_account'
-    },
-
-    // ── Clinical: labs ────────────────────────────────────────────────────
-    {
-      key:         'labcorp',
-      label:       'Labcorp',
-      category:    'clinical',
-      description: 'Electronic lab ordering and result delivery. Required for tenants that order labs; skip otherwise.',
-      credentials: [
-        { name: 'api_key',     label: 'API key',    type: 'password', required: true, placeholder: '…', description: 'Vendor-issued API key.' },
-        { name: 'account_id',  label: 'Account ID', type: 'text',     required: true, placeholder: '…', description: 'Vendor account identifier.' }
-      ],
-      config: [
-        { name: 'mode', label: 'Mode', type: 'enum', default: 'test',
-          options: [
-            { value: 'test', label: 'Test / sandbox' },
-            { value: 'live', label: 'Live' }
-          ] }
-      ],
-      test_action: 'labcorp.ping'
-    },
-
-    // ── Clinical: ID verification ─────────────────────────────────────────
-    {
-      key:         'stripe_identity',
-      label:       'Stripe Identity',
-      category:    'clinical',
-      description: 'Document + selfie ID verification. Stripe\u2019s separate product from card processing, but uses the same Stripe account.',
-      credentials: [
-        { name: 'secret_key',     label: 'Secret key',          type: 'password', required: true,  placeholder: 'sk_…', description: 'Can reuse Stripe payments secret key if the same account handles both.' },
-        { name: 'webhook_secret', label: 'Webhook signing secret', type: 'password', required: false, placeholder: 'whsec_…' }
-      ],
-      config: [
-        { name: 'required_for_enrollment', label: 'Require ID at enrolment', type: 'bool', default: false,
-          description: 'If on, members can\u2019t complete enrolment without passing ID verification. Off treats it as an optional step triggered by workflow rules.' }
-      ],
-      test_action: 'stripe_identity.ping_account'
-    },
-
-    // ── Fulfilment: shipping ──────────────────────────────────────────────
-    {
-      key:         'shippo',
-      label:       'Shippo',
-      category:    'fulfilment',
-      description: 'Multi-carrier shipping label generation and tracking. Required for tenants that ship physical product.',
-      credentials: [
-        { name: 'api_token', label: 'API token', type: 'password', required: true, placeholder: 'shippo_live_…' }
-      ],
-      config: [
-        { name: 'default_service',  label: 'Default service', type: 'text', default: 'usps_priority', description: 'Shippo service code. Tenant can override per-order.' },
-        { name: 'ship_from_address', label: 'Ship-from address ID', type: 'text', required: true, placeholder: 'adr_…', description: 'Shippo address ID of the tenant\u2019s origin location.' }
-      ],
-      test_action: 'shippo.fetch_carrier_accounts'
     }
+
+    // ── Archived providers ────────────────────────────────────────────────
+    // Labcorp / Stripe Identity / Shippo were cataloged for earlier phases
+    // but aren\u2019t in the Phase 0 curated set (Stripe / Twilio / Daily /
+    // Resend). They can be re-added here when their phases land. Keeping
+    // them out of PROVIDERS means plans can\u2019t entitle them and the
+    // admin UI won\u2019t render setup cards — a one-line reintroduction
+    // when the time comes.
   ];
 
   var CATEGORIES = [

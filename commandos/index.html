@@ -266,38 +266,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .an-refresh{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:5px 12px;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;float:right;transition:background .15s;}
 .an-refresh:hover{background:rgba(20,20,20,0.04);color:var(--text);}
 
-/* ── SUPPORT TOP-LEVEL TAB ── */
-.sup-loading{padding:40px;text-align:center;color:var(--text3);font-family:'Inter',sans-serif;font-size:13px;}
-.sup-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
-.sup-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;}
-.sup-stat-label{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
-.sup-stat-value{font-family:'Inter',sans-serif;font-size:22px;font-weight:600;color:var(--text);letter-spacing:-0.01em;font-variant-numeric:tabular-nums;}
-.sup-stat-value.warn{color:var(--amber);}
-.sup-stat-value.err{color:var(--red);}
-.sup-list{display:flex;flex-direction:column;gap:6px;}
-.sup-row{display:grid;grid-template-columns:auto 1fr 120px 140px auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'Inter',sans-serif;font-size:12px;}
-.sup-row.open{border-left:3px solid var(--red);}
-.sup-row.in_review{border-left:3px solid var(--amber);}
-.sup-row.resolved{border-left:3px solid var(--green);opacity:0.7;}
-.sup-row.closed{border-left:3px solid var(--text4);opacity:0.55;}
-.sup-row-status{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-pill);}
-.sup-row-status.open{background:var(--red-tint);color:var(--red);border:1px solid var(--red-border);}
-.sup-row-status.in_review{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-border);}
-.sup-row-status.resolved{background:var(--green-tint);color:var(--green);border:1px solid var(--green-border);}
-.sup-row-status.closed{background:rgba(20,20,20,0.04);color:var(--text3);border:1px solid var(--border);}
-.sup-row-msg{min-width:0;}
-.sup-row-type{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;}
-.sup-row-preview{font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sup-row-tenant{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);}
-.sup-row-time{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.sup-row-detail{grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:none;}
-.sup-row.expanded .sup-row-detail{display:block;}
-.sup-msg-full{font-family:'Inter',sans-serif;font-size:12px;color:var(--text);background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;white-space:pre-wrap;line-height:1.5;margin-bottom:10px;max-height:240px;overflow-y:auto;}
-.sup-row-actions{display:flex;gap:6px;flex-wrap:wrap;}
-.sup-row-actions .form-btn{padding:5px 10px;font-size:10px;}
-.sup-row-expand{background:transparent;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 10px;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;transition:background .15s;white-space:nowrap;}
-.sup-row-expand:hover{background:rgba(20,20,20,0.04);color:var(--text);}
-
 /* ── DIAGNOSTICS (per-client Support subtab) ── */
 .diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:18px;}
 .diag-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;flex-direction:column;gap:6px;}
@@ -675,7 +643,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
      <span class="pill pill--err">error</span>
 
    Migration note: legacy classes (.status-pill, .int-status-pill,
-   .sup-row-status, .bill-sub-status-pill) now add `.pill` alongside
+   .bill-sub-status-pill) now add `.pill` alongside
    their original class for base styling; their own definitions keep
    ONLY the color variant overrides. Chip / badge variants (smaller,
    different weight) stay as their own classes for now — this is
@@ -917,10 +885,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <span class="sidebar-item-label">Analytics</span>
         </div>
         <div class="sidebar-section-label">Operations</div>
-        <div class="sidebar-item" id="nav-support" onclick="switchTab('support')">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span class="sidebar-item-label">Support</span>
-        </div>
         <div class="sidebar-item" id="nav-audit" onclick="switchTab('audit')">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span class="sidebar-item-label">Activity Log</span>
@@ -1072,13 +1036,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <div id="analyticsTabBody"><div class="comp-loading">Loading analytics…</div></div>
       </div>
 
-      <!-- SUPPORT -->
-      <div class="platform-tab" id="tab-support">
-        <div class="tab-header">
-          <div class="tab-title">Support</div>
-          <div class="tab-subtitle">Cross-tenant support queue. Per-tenant diagnostics fold into the tenant\u2019s Overview tab.</div>
-        </div>
-        <div id="supportTabBody"><div class="sup-loading">Loading support queue…</div></div>
       </div>
 
       <!-- ACTIVITY LOG (fleet) -->
@@ -1230,7 +1187,6 @@ function switchTab(tabId) {
   if (tabId === 'modules'      && !_modulesTabLoaded)      loadModulesTab();
   if (tabId === 'billing'      && !_billingTabLoaded)      loadBillingTab();
   if (tabId === 'audit'        && !_auditTabLoaded)        loadAuditTab();
-  if (tabId === 'support'      && !_supportTabLoaded)      loadSupportTab();
   if (tabId === 'analytics'    && !_analyticsTabLoaded)    loadAnalyticsTab();
   if (tabId === 'integrations' && !_integrationsTabLoaded) loadIntegrationsTab();
   if (tabId === 'settings'     && !_settingsTabLoaded)     loadSettingsTab();
@@ -1806,7 +1762,6 @@ var _REFRESHABLE_TABS = {
   modules:      refreshModulesTab,
   billing:      refreshBillingTab,
   audit:        refreshAuditTab,
-  support:      refreshSupportTab,
   analytics:    refreshAnalyticsTab,
   integrations: refreshIntegrationsTab,
   settings:     refreshSettingsTab
@@ -1829,7 +1784,6 @@ function ensureTabRefreshButton(tabId) {
 function refreshModulesTab()      { _modulesTabLoaded      = false; loadModulesTab();      }
 function refreshBillingTab()      { _billingTabLoaded      = false; loadBillingTab();      }
 function refreshAuditTab()        { _auditTabLoaded        = false; loadAuditTab();        }
-function refreshSupportTab()      { _supportTabLoaded      = false; loadSupportTab();      }
 function refreshIntegrationsTab() { _integrationsTabLoaded = false; loadIntegrationsTab(); }
 function refreshSettingsTab()     { _settingsTabLoaded     = false; loadSettingsTab();     }
 // refreshAnalyticsTab + refreshDashboard already exist elsewhere.
@@ -2792,7 +2746,6 @@ function diagFlushCache() {
   if (window.Compliance)  window.Compliance.reset();
   if (window.Modules)     window.Modules.reset();
   _auditTabLoaded     = false;
-  _supportTabLoaded   = false;
   _modulesTabLoaded   = false;
   _billingTabLoaded   = false;
   showToast('Local caches flushed. Next tab load refetches from the DB.', 'success');
@@ -3662,193 +3615,6 @@ function renderAnalyticsBody() {
 function refreshAnalyticsTab() {
   _analyticsTabLoaded = false;
   loadAnalyticsTab();
-}
-
-// ── Top-level Support tab (cross-tenant queue) ──
-var _supportTabLoaded = false;
-var _supportTabData = {
-  requests:    [],
-  tenants:     [],
-  tenantsById: {},
-  status:      'open',
-  tenantId:    ''
-};
-
-function loadSupportTab() {
-  var wrap = document.getElementById('supportTabBody');
-  if (!wrap) return;
-  _supportTabLoaded = true;
-
-  Promise.all([
-    db.from('support_requests')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500),
-    db.from('tenants').select('id, name, slug').order('name')
-  ]).then(function(results) {
-    if (results[0].error) {
-      var hint = migrationHint(results[0].error, '012_support_requests.sql');
-      wrap.innerHTML = '<div class="catalog-error"><strong>Failed to load support queue</strong><br/>' +
-        escHtml(results[0].error.message || '') +
-        (hint ? '<br/><br/>' + escHtml(hint) : '') + '</div>';
-      return;
-    }
-    _supportTabData.requests = results[0].data || [];
-    _supportTabData.tenants  = results[1].data || [];
-    _supportTabData.tenantsById = {};
-    _supportTabData.tenants.forEach(function(t) { _supportTabData.tenantsById[t.id] = t; });
-
-    wrap.innerHTML = renderSupportTabBody();
-    wireSupportTabListeners();
-  }).catch(function(err) {
-    wrap.innerHTML = '<div class="catalog-error">' + escHtml((err && err.message) || 'Load failed') + '</div>';
-  });
-}
-
-function renderSupportTabBody() {
-  var byStatus = { open: 0, in_review: 0, resolved: 0, closed: 0 };
-  _supportTabData.requests.forEach(function(r) { byStatus[r.status] = (byStatus[r.status] || 0) + 1; });
-
-  var stats = '<div class="sup-stats">' +
-    '<div class="sup-stat"><div class="sup-stat-label">Open</div>' +
-      '<div class="sup-stat-value' + (byStatus.open > 0 ? ' err' : '') + '">' + byStatus.open + '</div></div>' +
-    '<div class="sup-stat"><div class="sup-stat-label">In review</div>' +
-      '<div class="sup-stat-value' + (byStatus.in_review > 0 ? ' warn' : '') + '">' + byStatus.in_review + '</div></div>' +
-    '<div class="sup-stat"><div class="sup-stat-label">Resolved</div>' +
-      '<div class="sup-stat-value">' + byStatus.resolved + '</div></div>' +
-    '<div class="sup-stat"><div class="sup-stat-label">Closed</div>' +
-      '<div class="sup-stat-value">' + byStatus.closed + '</div></div>' +
-  '</div>';
-
-  var statusOpts = ['', 'open', 'in_review', 'resolved', 'closed'].map(function(s) {
-    var label = s === '' ? 'All statuses' : s;
-    return '<option value="' + s + '"' + (s === _supportTabData.status ? ' selected' : '') + '>' + label + '</option>';
-  }).join('');
-  var tenantOpts = '<option value="">All tenants</option>' +
-    _supportTabData.tenants.map(function(t) {
-      return '<option value="' + escAttr(t.id) + '"' + (t.id === _supportTabData.tenantId ? ' selected' : '') + '>' + escHtml(t.name) + '</option>';
-    }).join('');
-
-  var toolbar = '<div class="audit-toolbar">' +
-    '<select class="filter-select" id="supportStatusFilter">' + statusOpts + '</select>' +
-    '<select class="filter-select" id="supportTenantFilter">' + tenantOpts + '</select>' +
-    '<span class="audit-count" id="supportCount"></span>' +
-  '</div>';
-
-  return stats + toolbar + '<div id="supportListInner">' + renderSupportList() + '</div>';
-}
-
-function wireSupportTabListeners() {
-  var sf = document.getElementById('supportStatusFilter');
-  var tf = document.getElementById('supportTenantFilter');
-  if (sf) sf.addEventListener('change', function() {
-    _supportTabData.status = this.value;
-    document.getElementById('supportListInner').innerHTML = renderSupportList();
-  });
-  if (tf) tf.addEventListener('change', function() {
-    _supportTabData.tenantId = this.value;
-    document.getElementById('supportListInner').innerHTML = renderSupportList();
-  });
-}
-
-function renderSupportList() {
-  var filtered = _supportTabData.requests.filter(function(r) {
-    if (_supportTabData.status && r.status !== _supportTabData.status) return false;
-    if (_supportTabData.tenantId && r.tenant_id !== _supportTabData.tenantId) return false;
-    return true;
-  });
-  var count = filtered.length, total = _supportTabData.requests.length;
-  setTimeout(function() {
-    var c = document.getElementById('supportCount');
-    if (c) c.textContent = (count === total ? total + ' requests' : count + ' of ' + total);
-  }, 0);
-
-  if (filtered.length === 0) return '<div class="catalog-empty">No support requests match.</div>';
-  return '<div class="sup-list">' + filtered.map(function(r, idx) { return renderSupportRow(r, idx); }).join('') + '</div>';
-}
-
-function renderSupportRow(r, idx) {
-  var tenant = _supportTabData.tenantsById[r.tenant_id];
-  var tenantName = tenant ? tenant.name : '(unknown tenant)';
-  var preview = (r.message || '').split(/\r?\n/)[0].slice(0, 140);
-  var actions = renderSupportActions(r);
-
-  return '<div class="sup-row ' + escAttr(r.status) + '" id="supRow-' + idx + '">' +
-    '<span class="sup-row-status ' + escAttr(r.status) + '">' + escHtml(r.status) + '</span>' +
-    '<div class="sup-row-msg">' +
-      '<div class="sup-row-type">' + escHtml(r.type || 'general') + '</div>' +
-      '<div class="sup-row-preview">' + escHtml(preview || '(no message)') + '</div>' +
-    '</div>' +
-    '<span class="sup-row-tenant">' + escHtml(tenantName) + '</span>' +
-    '<span class="sup-row-time">' + formatDateTime(r.created_at) + '</span>' +
-    '<button class="sup-row-expand" onclick="toggleSupportRow(' + idx + ')">Details</button>' +
-    '<div class="sup-row-detail">' +
-      '<div class="sup-msg-full">' + escHtml(r.message || '') + '</div>' +
-      '<div class="sup-row-actions">' + actions + '</div>' +
-    '</div>' +
-  '</div>';
-}
-
-function renderSupportActions(r) {
-  var buttons = [];
-  if (r.status === 'open') {
-    buttons.push('<button class="form-btn secondary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'in_review\')">Start review</button>');
-    buttons.push('<button class="form-btn primary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'resolved\')">Resolve</button>');
-  }
-  if (r.status === 'in_review') {
-    buttons.push('<button class="form-btn secondary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'open\')">Back to open</button>');
-    buttons.push('<button class="form-btn primary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'resolved\')">Resolve</button>');
-  }
-  if (r.status === 'resolved' || r.status === 'closed') {
-    buttons.push('<button class="form-btn secondary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'open\')">Reopen</button>');
-  }
-  if (r.status !== 'closed') {
-    buttons.push('<button class="form-btn secondary" onclick="updateSupportStatus(\'' + escAttr(r.id) + '\',\'closed\')">Close</button>');
-  }
-  return buttons.join('');
-}
-
-function toggleSupportRow(idx) {
-  var el = document.getElementById('supRow-' + idx);
-  if (el) el.classList.toggle('expanded');
-}
-
-function updateSupportStatus(id, nextStatus) {
-  var before = _supportTabData.requests.find(function(r) { return r.id === id; });
-  var update = { status: nextStatus };
-  if (nextStatus === 'resolved') {
-    update.resolved_at = new Date().toISOString();
-    update.resolved_by = currentUserId;
-  } else if (nextStatus === 'open' || nextStatus === 'in_review') {
-    update.resolved_at = null;
-    update.resolved_by = null;
-  }
-
-  db.from('support_requests').update(update).eq('id', id).select().single()
-    .then(function(r) {
-      if (r.error) throw r.error;
-      var i = _supportTabData.requests.findIndex(function(x) { return x.id === id; });
-      if (i >= 0) _supportTabData.requests[i] = r.data;
-
-      var wrap = document.getElementById('supportTabBody');
-      if (wrap) { wrap.innerHTML = renderSupportTabBody(); wireSupportTabListeners(); }
-      showToast('Support request → ' + nextStatus + '.', 'success');
-
-      return db.from('audit_logs').insert({
-        action: 'support.status_changed',
-        actor_id: currentUserId, actor_email: currentUserEmail,
-        target_id: id,
-        tenant_id: r.data.tenant_id,
-        change_type: 'lifecycle',
-        before_snapshot: before ? { status: before.status } : null,
-        after_snapshot:  { status: nextStatus },
-        details: JSON.stringify({ support_request_id: id, from: before && before.status, to: nextStatus })
-      }).catch(function(e){ console.warn('[platform] support audit failed', e); });
-    })
-    .catch(function(err) {
-      console.error('[platform] support status update failed', err);
-      showToast('Status update failed: ' + ((err && err.message) || 'unknown'), 'error');
-    });
 }
 
 // ── Top-level Audit tab (fleet-wide) ──

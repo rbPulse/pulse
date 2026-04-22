@@ -9415,11 +9415,18 @@ function _renderResendModal() {
   }
   var cfg = row.config || {};
   var hasDomain = !!cfg.resend_domain_id;
-  var verified = row.status === 'connected';
+  var connected = row.status === 'connected';
+  var testModeFallback = connected && !hasDomain && cfg.sender_mode === 'test_fallback';
 
-  if (!hasDomain) body.innerHTML = _renderResendStateA();
-  else if (!verified) body.innerHTML = _renderResendStateB(row);
-  else body.innerHTML = _renderResendStateC(row);
+  // Routing:
+  //   - connected + has verified domain  → state C (production ready)
+  //   - connected + no domain (fallback) → state C variant (test mode)
+  //   - has domain, not yet verified     → state B (DNS records)
+  //   - nothing set up                   → state A (choose path)
+  if (connected && hasDomain) body.innerHTML = _renderResendStateC(row);
+  else if (connected && testModeFallback) body.innerHTML = _renderResendStateC(row);
+  else if (hasDomain) body.innerHTML = _renderResendStateB(row);
+  else body.innerHTML = _renderResendStateA();
 }
 
 function _renderResendStateA() {
@@ -9432,8 +9439,12 @@ function _renderResendStateA() {
       '<div class="int-modal-help">Use a subdomain — <code>mail.pulsepeptides.com</code>, not <code>pulsepeptides.com</code>. Subdomains let Resend own the email reputation without touching your primary domain’s records.</div>' +
     '</div>' +
     '<div class="int-modal-actions">' +
-      '<button class="form-btn secondary" onclick="closeResendModal()">Cancel</button>' +
+      '<button class="form-btn secondary" onclick="resendEnableTestMode()">Enable in test mode</button>' +
       '<button class="form-btn primary" id="resendAddBtn" onclick="resendAddDomain()">Add domain</button>' +
+    '</div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text4);line-height:1.55;">' +
+      '<strong>Test mode</strong> uses Unite’s shared <code>onboarding@resend.dev</code> sender — good for demos and staging. ' +
+      '<strong>Add domain</strong> verifies <code>mail.yourclinic.com</code> so real patients see emails from your brand.' +
     '</div>';
 }
 
@@ -9468,18 +9479,77 @@ function _renderResendStateB(row) {
 
 function _renderResendStateC(row) {
   var cfg = row.config || {};
-  return '<div class="int-modal-title">Sender domain verified</div>' +
-    '<div class="int-modal-sub">Transactional emails from this tenant go out as <code>noreply@' + _brandEscHtml(cfg.sender_domain) + '</code>. Send a test to confirm the full pipeline is working.</div>' +
+  var isTestFallback = !cfg.resend_domain_id && cfg.sender_mode === 'test_fallback';
+  var fromAddr = isTestFallback
+    ? 'onboarding@resend.dev'
+    : 'noreply@' + (cfg.sender_domain || 'your-domain');
+  var title = isTestFallback ? 'Email enabled (test mode)' : 'Sender domain verified';
+  var subtitle = isTestFallback
+    ? 'Transactional emails go through Unite’s shared test sender <code>' + _brandEscHtml(fromAddr) + '</code>. Good for demos. Add your own domain before launching to real patients so emails look like they come from your brand.'
+    : 'Transactional emails from this tenant go out as <code>' + _brandEscHtml(fromAddr) + '</code>. Send a test to confirm the full pipeline is working.';
+
+  return '<div class="int-modal-title">' + _brandEscHtml(title) + '</div>' +
+    '<div class="int-modal-sub">' + subtitle + '</div>' +
     '<div class="int-modal-err" id="resendErr"></div>' +
     '<div class="int-modal-field">' +
       '<label>Send test to</label>' +
       '<input type="text" id="resendTestTo" placeholder="you@yourclinic.com" value="' + _brandEscAttr(currentUserEmail || '') + '"/>' +
-      '<div class="int-modal-help">Fires a one-line "Unite test" email from <code>noreply@' + _brandEscHtml(cfg.sender_domain) + '</code>. Check the inbox + spam folder.</div>' +
+      '<div class="int-modal-help">Fires a one-line test email from <code>' + _brandEscHtml(fromAddr) + '</code>. Check the inbox + spam folder.</div>' +
     '</div>' +
     '<div class="int-modal-actions">' +
-      '<button class="form-btn secondary" onclick="resendRemoveDomain()">Remove domain</button>' +
+      (isTestFallback
+        ? '<button class="form-btn secondary" onclick="resendDisable()">Disable</button>' +
+          '<button class="form-btn secondary" onclick="_resendSwitchToDomain()">Add custom domain →</button>'
+        : '<button class="form-btn secondary" onclick="resendRemoveDomain()">Remove domain</button>') +
       '<button class="form-btn primary" id="resendTestBtn" onclick="resendSendTest()">Send test email</button>' +
     '</div>';
+}
+
+// Flip a test-mode row back to disconnected — opposite of
+// resendEnableTestMode. Keeps config around for audit.
+function resendDisable() {
+  if (!confirm('Disable email sending for this tenant? Patients won’t receive confirmation emails until you re-enable.')) return;
+  var row = _intSetupRows['resend'];
+  if (!row) return;
+  db.from('tenant_integrations')
+    .update({ status: 'disconnected' })
+    .eq('id', row.id)
+    .select()
+    .single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['resend'] = r.data;
+      _renderResendModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Email disabled.', 'success');
+    }, function(err) {
+      _resendErr(err.message || 'Disable failed');
+    });
+}
+
+// Drop out of test-mode-connected back to state A so the user can
+// fill in a real sender domain. Clears sender_mode so the render
+// routing falls back to state A.
+function _resendSwitchToDomain() {
+  var row = _intSetupRows['resend'];
+  if (!row) return;
+  var nextConfig = Object.assign({}, row.config || {});
+  delete nextConfig.sender_mode;
+  db.from('tenant_integrations')
+    .update({ config: nextConfig, status: 'disconnected' })
+    .eq('id', row.id)
+    .select()
+    .single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['resend'] = r.data;
+      _renderResendModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+    }, function(err) {
+      _resendErr(err.message || 'Update failed');
+    });
 }
 
 function _resendCopy(idx) {
@@ -9529,6 +9599,34 @@ function _resendInvoke(fnName, body) {
       });
     });
   });
+}
+
+// Flip status to 'connected' without setting up a custom domain.
+// Emails route through the shared onboarding@resend.dev sender (which
+// is what send-email's test-mode fallback already does). Good for
+// demos, staging, and any tenant that just wants to see "email is
+// working" without waiting on DNS propagation. They can add a real
+// domain later from the same modal.
+function resendEnableTestMode() {
+  _resendErr('');
+  var row = _intSetupRows['resend'];
+  if (!row) return;
+  var nextConfig = Object.assign({}, row.config || {}, { sender_mode: 'test_fallback' });
+  db.from('tenant_integrations')
+    .update({ config: nextConfig, status: 'connected', mode: 'test' })
+    .eq('id', row.id)
+    .select()
+    .single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['resend'] = r.data;
+      _renderResendModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Email enabled in test mode.', 'success');
+    }, function(err) {
+      _resendErr(err.message || 'Failed to enable');
+    });
 }
 
 function resendAddDomain() {

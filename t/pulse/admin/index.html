@@ -9868,6 +9868,7 @@ function _renderStripeStateB(row) {
   var chargeOk = cfg.charges_enabled;
   var payoutOk = cfg.payouts_enabled;
   var detailsDone = cfg.details_submitted;
+  var needsOnboarding = !detailsDone || !chargeOk;
 
   function pillClass(ok) { return ok ? 'int-status int-status-ok' : 'int-status int-status-pending'; }
   function pillLabel(ok, name) { return ok ? name + ': ready' : name + ': pending'; }
@@ -9879,16 +9880,18 @@ function _renderStripeStateB(row) {
       '<span class="' + pillClass(chargeOk) + '">'    + _brandEscHtml(pillLabel(chargeOk, 'Charges')) + '</span>' +
       '<span class="' + pillClass(payoutOk) + '">'    + _brandEscHtml(pillLabel(payoutOk, 'Payouts')) + '</span>' +
     '</div>' +
-    (!detailsDone || !chargeOk
+    (needsOnboarding
       ? '<div class="int-modal-sub" style="background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);color:#7a5a00;">' +
-          '<strong>Finish onboarding in Stripe.</strong> Until Stripe verifies your business you can run test charges, but real-money charges are paused. Continue onboarding at the Stripe dashboard.' +
+          '<strong>Finish Stripe onboarding to enable charges.</strong> Click <em>Complete onboarding</em> below — Stripe will walk you through the remaining business / bank / tax fields and return you here when done. Test mode accepts placeholders (SSN 000-00-0000, routing 110000000).' +
         '</div>'
       : '') +
     '<div class="int-modal-err" id="stripeErr"></div>' +
     '<div class="int-modal-actions">' +
       '<button class="form-btn secondary" onclick="stripeDisconnect()">Disconnect</button>' +
       '<button class="form-btn secondary" onclick="stripePing()">Refresh status</button>' +
-      '<a class="form-btn primary" href="https://dashboard.stripe.com" target="_blank" rel="noopener" style="text-decoration:none;">Open Stripe dashboard &rarr;</a>' +
+      (needsOnboarding
+        ? '<button class="form-btn primary" id="stripeOnboardBtn" onclick="stripeOpenOnboarding()">Complete onboarding &rarr;</button>'
+        : '<a class="form-btn primary" href="https://dashboard.stripe.com" target="_blank" rel="noopener" style="text-decoration:none;">Open Stripe dashboard &rarr;</a>') +
     '</div>';
 }
 
@@ -9964,6 +9967,29 @@ function stripeDisconnect() {
     })
     .catch(function(err) {
       _stripeErr(err.message || 'Disconnect failed');
+    });
+}
+
+// Calls Stripe's Account Links API via the edge function and redirects
+// the admin to Stripe's hosted onboarding. Stripe sends them back to
+// this same admin page when done. No dashboard-hunting required.
+function stripeOpenOnboarding() {
+  _stripeErr('');
+  var btn = document.getElementById('stripeOnboardBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening Stripe…'; }
+  var returnUrl = window.location.origin + window.location.pathname + '#integrations';
+
+  _resendInvoke('stripe-onboarding-link', {
+    tenant_id: window.Tenant.id,
+    return_url: returnUrl
+  })
+    .then(function(result) {
+      if (!result || !result.url) throw new Error('Stripe did not return an onboarding URL.');
+      window.location.href = result.url;
+    })
+    .catch(function(err) {
+      _stripeErr(err.message || 'Failed to create onboarding link');
+      if (btn) { btn.disabled = false; btn.textContent = 'Complete onboarding →'; }
     });
 }
 

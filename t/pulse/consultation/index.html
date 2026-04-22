@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <style>
 :root{
   --bg:#050505;--surface:#0e0e0e;--card:#141414;--card2:#1a1a1a;
@@ -282,6 +283,36 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
    elsewhere (bright green with white text, soft drop shadow). */
 .summary-ready-btn{background:#22C55E !important;color:#FFFFFF !important;border:none !important;border-radius:999px !important;padding:16px 40px !important;font-family:'Inter',sans-serif !important;font-size:12px !important;font-weight:600 !important;letter-spacing:0.14em !important;text-transform:uppercase !important;box-shadow:0 4px 14px rgba(34,197,94,0.25) !important;transition:background .2s,box-shadow .2s !important;}
 .summary-ready-btn:hover{background:#16A34A !important;box-shadow:0 6px 18px rgba(34,197,94,0.32) !important;}
+
+/* ── Purchase modal (Stripe Elements inline payment) ── */
+.purchase-modal-backdrop{position:fixed;inset:0;background:rgba(5,5,5,0.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9000;display:none;}
+.purchase-modal-backdrop.show{display:block;}
+.purchase-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:520px;width:calc(100% - 32px);max-height:calc(100vh - 32px);overflow-y:auto;background:#0e0e0e;border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:32px 34px;z-index:9001;display:none;box-shadow:0 30px 80px rgba(0,0,0,0.6);font-family:'Inter',sans-serif;color:#fff;}
+.purchase-modal.show{display:block;}
+.purchase-close{position:absolute;top:16px;right:16px;background:transparent;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;}
+.purchase-close:hover{background:rgba(255,255,255,0.05);color:#fff;}
+.purchase-title{font-size:22px;font-weight:600;margin-bottom:6px;letter-spacing:-0.01em;}
+.purchase-sub{font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:22px;line-height:1.55;}
+.purchase-order{background:#141414;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:18px 20px;margin-bottom:20px;}
+.purchase-order-label{font-family:'DM Mono','SF Mono',Menlo,Consolas,monospace;font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#3a7a5c;margin-bottom:12px;}
+.purchase-line{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:rgba(255,255,255,0.85);}
+.purchase-line + .purchase-line{border-top:1px solid rgba(255,255,255,0.04);}
+.purchase-total-row{display:flex;justify-content:space-between;padding-top:12px;margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);font-size:15px;font-weight:600;color:#fff;}
+.purchase-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:32px 0;font-size:13px;color:rgba(255,255,255,0.55);}
+.purchase-spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.15);border-top-color:#3a7a5c;border-radius:50%;animation:pm-spin 0.8s linear infinite;display:inline-block;}
+@keyframes pm-spin{to{transform:rotate(360deg);}}
+.purchase-card-label{font-family:'DM Mono','SF Mono',Menlo,Consolas,monospace;font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:10px;}
+.purchase-btn-pay{width:100%;margin-top:18px;padding:14px 24px;background:#3a7a5c;color:#fff;border:none;border-radius:999px;font-family:'DM Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;cursor:pointer;transition:background .2s;}
+.purchase-btn-pay:hover:not(:disabled){background:#2d6147;}
+.purchase-btn-pay:disabled{opacity:0.5;cursor:not-allowed;}
+.purchase-err{background:rgba(200,50,50,0.08);border:1px solid rgba(200,50,50,0.25);color:#f0a0a0;border-radius:8px;padding:10px 14px;font-size:12px;margin-top:12px;line-height:1.5;display:none;}
+.purchase-err.show{display:block;}
+.purchase-success{text-align:center;padding:18px 0 6px;}
+.purchase-success-icon{width:52px;height:52px;border-radius:50%;background:rgba(58,122,92,0.15);color:#3a7a5c;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin-bottom:14px;}
+.purchase-success-title{font-size:18px;font-weight:600;margin-bottom:6px;}
+.purchase-success-sub{font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:20px;line-height:1.55;}
+.purchase-btn-portal{display:inline-block;padding:12px 28px;background:#3a7a5c;color:#fff;border-radius:999px;text-decoration:none;font-family:'DM Mono','SF Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;}
+.purchase-btn-portal:hover{background:#2d6147;}
 .summary-withdraw-btn{background:none;border:none;font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:rgba(0,0,0,0.35);cursor:pointer;padding:4px 8px;transition:color .2s;}
 .summary-withdraw-btn:hover{color:rgba(0,0,0,0.6);}
 
@@ -1444,7 +1475,49 @@ label.field-label{color:rgba(0,0,0,0.45);}
 
 </div><!-- end main -->
 
+<!-- PURCHASE MODAL (Stripe Elements — Phase 4b) -->
+<div class="purchase-modal-backdrop" id="purchaseBackdrop" onclick="closePurchaseModal(event)"></div>
+<div class="purchase-modal" id="purchaseModal" role="dialog" aria-modal="true">
+  <button class="purchase-close" onclick="closePurchaseModal()" aria-label="Close">&times;</button>
+  <div class="purchase-title">Activate your protocol</div>
+  <div class="purchase-sub">Complete your purchase to begin treatment. Pulse never sees your card number.</div>
+
+  <div class="purchase-order">
+    <div class="purchase-order-label">Order summary</div>
+    <div id="purchaseOrderLines"></div>
+    <div class="purchase-total-row"><span>Total</span><span id="purchaseTotal">—</span></div>
+  </div>
+
+  <div id="purchaseLoading" class="purchase-loading">
+    <span class="purchase-spinner"></span>Preparing secure payment…
+  </div>
+
+  <div id="purchasePayment" style="display:none;">
+    <div class="purchase-card-label">Payment details</div>
+    <div id="paymentElement"></div>
+    <div id="paymentErr" class="purchase-err"></div>
+    <button class="purchase-btn-pay" id="paymentSubmit" onclick="_submitPayment()">Pay now</button>
+  </div>
+
+  <div id="purchaseSuccess" style="display:none;" class="purchase-success">
+    <div class="purchase-success-icon">✓</div>
+    <div class="purchase-success-title">Payment confirmed</div>
+    <div class="purchase-success-sub" id="paymentSuccessSub">Your protocol is activated.</div>
+    <a href="../portal/" class="purchase-btn-portal">Go to patient portal</a>
+  </div>
+</div>
+
 <script>
+// ── Payment / Supabase constants ──
+// SB_URL + SB_KEY used by the Phase 4b purchase modal's fetch() call
+// to stripe-create-payment-intent. Safe to embed in the page — the
+// anon key is meant to be browser-visible. The Stripe publishable
+// key is NOT hardcoded here — the edge function returns it alongside
+// the PaymentIntent client_secret so rotation happens via a single
+// Supabase Secrets edit (STRIPE_PUBLISHABLE_KEY).
+var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+
 // ── Google OAuth ──
 async function _signUpWithGoogle() {
   var btn = document.getElementById('googleSignUpBtn');
@@ -3593,58 +3666,305 @@ async function _populateStep6() {
   }
 }
 
+// ── Purchase modal + Stripe Elements (Phase 4b) ──
 // Patient clicks "Let's Go. I'm Ready" at the end of the consultation
-// summary. We persist their protocol selection and send them to the
-// checkout page to pay. purchase_status flips to 'completed' only
-// after Stripe confirms payment — NOT here. The intermediate state
-// is 'pending_payment' so downstream surfaces know the patient has
-// committed but hasn't funded yet.
+// summary. We persist their protocol selection (purchase_status =
+// 'pending_payment'), build a Stripe PaymentIntent on the tenant's
+// connected account, and render Stripe's Payment Element inline in a
+// modal. Patient pays without ever leaving this page. Webhooks
+// (Phase 4c) are the authoritative path for marking purchase_status
+// = 'completed'; this modal also writes it optimistically on success
+// so the UI reflects the purchase immediately.
+
+var _pmStripe = null;
+var _pmElements = null;
+var _pmClientSecret = null;
+var _pmConsultId = null;
+var _pmLineItems = [];
+
 async function _activateAndGoToCheckout() {
-  try {
-    var client = window._sbClient;
-    if (!client) { window.location.href = '../checkout/'; return; }
-    var session = (await client.auth.getSession()).data.session;
-    if (!session) { window.location.href = '../checkout/'; return; }
+  var client = window._sbClient;
+  if (!client) return;
+  var session = (await client.auth.getSession()).data.session;
+  if (!session) { window.location.href = '../'; return; }
 
-    // Collect only the checked/selected protocols
-    var selectedProtocols = {};
-    var selectedNames = [];
-    document.querySelectorAll('input[name="selectedProtocols"]:checked').forEach(function(cb) {
-      selectedProtocols[cb.value] = true;
-      var name = cb.value.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-      selectedNames.push(name);
+  // 1. Gather the patient's protocol selection from the checkboxes on
+  //    the summary. Keys round-trip through intersection with the
+  //    active prescriptions for this consultation so we only charge
+  //    for things a clinician actually prescribed.
+  var selectedProtocols = {};
+  var selectedNames = [];
+  document.querySelectorAll('input[name="selectedProtocols"]:checked').forEach(function(cb) {
+    selectedProtocols[cb.value] = true;
+    var name = cb.value.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+    selectedNames.push(name);
+  });
+  var selectedKeys = Object.keys(selectedProtocols);
+
+  var consultId = _consultationId;
+  if (!consultId) {
+    var cLookup = await client.from('consultations').select('id').eq('user_id', session.user.id)
+      .order('created_at', { ascending: false }).limit(1);
+    if (cLookup.data && cLookup.data.length > 0) consultId = cLookup.data[0].id;
+  }
+  if (!consultId) { alert('Consultation not found. Please refresh and try again.'); return; }
+
+  var cFull = await client.from('consultations')
+    .select('id, tenant_id, data')
+    .eq('id', consultId)
+    .limit(1);
+  if (!cFull.data || cFull.data.length === 0) { alert('Consultation not found.'); return; }
+  var consult = cFull.data[0];
+
+  // 2. Intersect with active prescriptions for authoritative "what was prescribed".
+  var rxRes = await client.from('prescriptions')
+    .select('protocol_key, status')
+    .eq('consultation_id', consultId)
+    .eq('status', 'active');
+  var activePrescribedKeys = (rxRes.data || []).map(function(r) { return r.protocol_key; });
+  var buyingKeys = selectedKeys.length > 0
+    ? selectedKeys.filter(function(k) { return activePrescribedKeys.indexOf(k) !== -1; })
+    : activePrescribedKeys;
+  if (buyingKeys.length === 0) {
+    alert('Select at least one protocol to activate.');
+    return;
+  }
+
+  // 3. Price lookup per protocol; fallback to $99 if no price set.
+  var tRes = await client.from('protocol_templates')
+    .select('key, name, price')
+    .eq('tenant_id', consult.tenant_id)
+    .in('key', buyingKeys);
+  var protoByKey = {};
+  (tRes.data || []).forEach(function(t) { protoByKey[t.key] = t; });
+
+  var lineItems = [];
+  var totalCents = 0;
+  buyingKeys.forEach(function(k) {
+    var t = protoByKey[k] || { name: k.replace(/_/g, ' '), price: null };
+    var cents = t.price != null ? Math.round(Number(t.price) * 100) : 9900;
+    totalCents += cents;
+    lineItems.push({
+      key: k,
+      name: t.name || k,
+      description: 'Pulse protocol — ' + ((consult.data && consult.data.duration) || 'initial order'),
+      amount_cents: cents,
+      quantity: 1
     });
+  });
 
-    var consultId = _consultationId;
-    if (!consultId) {
-      var cLookup = await client.from('consultations').select('id').eq('user_id', session.user.id)
-        .order('created_at', { ascending: false }).limit(1);
-      if (cLookup.data && cLookup.data.length > 0) consultId = cLookup.data[0].id;
-    }
+  // 4. Persist the pending-payment state BEFORE opening Stripe so the
+  //    backend knows the patient committed even if payment is canceled.
+  var existingData = consult.data || {};
+  existingData.purchase_status = 'pending_payment';
+  existingData.activated_protocols = selectedProtocols;
+  existingData.activated_protocol_names = selectedNames.join(', ');
+  await client.from('consultations').update({
+    data: existingData,
+    purchase_status: 'pending_payment'
+  }).eq('id', consultId);
 
-    if (consultId) {
-      var cRes = await client.from('consultations').select('data').eq('id', consultId).limit(1);
-      var existingData = (cRes.data && cRes.data.length > 0) ? (cRes.data[0].data || {}) : {};
-      existingData.purchase_status = 'pending_payment';
-      existingData.activated_protocols = selectedProtocols;
-      existingData.activated_protocol_names = selectedNames.join(', ');
-      // Source of truth for which protocols are prescribed is the
-      // prescriptions table. activated_protocols records the member's
-      // purchase selection (which prescribed protocols they chose to
-      // activate) and the checkout page reads this to build the
-      // Stripe line items.
-      await client.from('consultations').update({
-        data: existingData,
-        purchase_status: 'pending_payment'
-      }).eq('id', consultId);
-    }
+  _pmConsultId = consultId;
+  _pmLineItems = lineItems;
 
-    window.location.href = '../checkout/';
-  } catch(e) {
-    console.warn('[Pulse] activate failed:', e);
-    window.location.href = '../checkout/';
+  // 5. Render the order summary + open the modal.
+  var linesHtml = lineItems.map(function(li) {
+    return '<div class="purchase-line"><span>' + _pmEsc(li.name) + '</span><span>$' + (li.amount_cents/100).toFixed(2) + '</span></div>';
+  }).join('');
+  document.getElementById('purchaseOrderLines').innerHTML = linesHtml;
+  document.getElementById('purchaseTotal').textContent = '$' + (totalCents/100).toFixed(2);
+  document.getElementById('purchaseLoading').style.display = 'flex';
+  document.getElementById('purchasePayment').style.display = 'none';
+  document.getElementById('purchaseSuccess').style.display = 'none';
+  document.getElementById('purchaseBackdrop').classList.add('show');
+  document.getElementById('purchaseModal').classList.add('show');
+
+  // 6. Create the PaymentIntent on the tenant's connected account.
+  try {
+    var resp = await fetch('https://zvfqukbbglxongvuymzt.supabase.co/functions/v1/stripe-create-payment-intent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SB_KEY,
+        'apikey': SB_KEY
+      },
+      body: JSON.stringify({
+        tenant_id: consult.tenant_id,
+        consultation_id: consultId,
+        line_items: lineItems,
+        customer_email: session.user.email,
+        userToken: session.access_token
+      })
+    });
+    var pi = await resp.json();
+    if (!resp.ok) throw new Error(pi.error || ('HTTP ' + resp.status));
+
+    _pmClientSecret = pi.client_secret;
+    if (!pi.publishable_key) throw new Error('Stripe publishable key not configured — set STRIPE_PUBLISHABLE_KEY in Supabase Secrets.');
+
+    // Initialize Stripe.js scoped to the tenant's connected account.
+    // The stripeAccount option is what makes Elements render against
+    // the connected account's dashboard config (accepted methods,
+    // branding, etc).
+    _pmStripe = Stripe(pi.publishable_key, { stripeAccount: pi.connected_account_id });
+    _pmElements = _pmStripe.elements({
+      clientSecret: pi.client_secret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#3a7a5c',
+          colorBackground: '#141414',
+          colorText: '#ffffff',
+          colorDanger: '#f08080',
+          fontFamily: "'Inter', sans-serif",
+          borderRadius: '8px',
+          spacingUnit: '4px'
+        }
+      }
+    });
+    var paymentElement = _pmElements.create('payment');
+    paymentElement.mount('#paymentElement');
+
+    document.getElementById('purchaseLoading').style.display = 'none';
+    document.getElementById('purchasePayment').style.display = 'block';
+  } catch(err) {
+    document.getElementById('purchaseLoading').style.display = 'none';
+    document.getElementById('purchasePayment').style.display = 'block';
+    _pmShowErr('Couldn’t initialise payment: ' + (err.message || 'unknown'));
   }
 }
+
+function closePurchaseModal(e) {
+  if (e && e.target && e.target.id !== 'purchaseBackdrop') return;
+  document.getElementById('purchaseBackdrop').classList.remove('show');
+  document.getElementById('purchaseModal').classList.remove('show');
+  if (_pmElements) { try { _pmElements.getElement('payment').unmount(); } catch(_){} }
+  _pmStripe = null; _pmElements = null; _pmClientSecret = null;
+}
+
+function _pmEsc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function _pmShowErr(msg) {
+  var el = document.getElementById('paymentErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function _submitPayment() {
+  if (!_pmStripe || !_pmElements) return;
+  _pmShowErr('');
+  var btn = document.getElementById('paymentSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+
+  try {
+    var result = await _pmStripe.confirmPayment({
+      elements: _pmElements,
+      confirmParams: {
+        return_url: window.location.origin + window.location.pathname
+      },
+      redirect: 'if_required'
+    });
+
+    if (result.error) {
+      _pmShowErr(result.error.message || 'Payment failed');
+      btn.disabled = false;
+      btn.textContent = 'Pay now';
+      return;
+    }
+
+    var pi = result.paymentIntent;
+    if (pi && (pi.status === 'succeeded' || pi.status === 'processing')) {
+      await _pmMarkPaid(pi);
+    } else {
+      _pmShowErr('Unexpected payment status: ' + (pi && pi.status || 'unknown'));
+      btn.disabled = false;
+      btn.textContent = 'Pay now';
+    }
+  } catch(err) {
+    _pmShowErr(err.message || 'Payment failed');
+    btn.disabled = false;
+    btn.textContent = 'Pay now';
+  }
+}
+
+async function _pmMarkPaid(paymentIntent) {
+  // Optimistic DB write — webhooks in Phase 4c will do the same thing
+  // authoritatively. Safe to double-write: both paths set the same
+  // terminal state.
+  try {
+    var client = window._sbClient;
+    if (client && _pmConsultId) {
+      var cRes = await client.from('consultations').select('data').eq('id', _pmConsultId).limit(1);
+      var existingData = (cRes.data && cRes.data[0] && cRes.data[0].data) || {};
+      existingData.purchase_status = 'completed';
+      existingData.stripe_payment_intent_id = paymentIntent.id;
+      existingData.stripe_amount_cents = paymentIntent.amount;
+      existingData.stripe_paid_at = new Date().toISOString();
+      await client.from('consultations').update({
+        data: existingData,
+        purchase_status: 'completed'
+      }).eq('id', _pmConsultId);
+    }
+  } catch(err) {
+    console.warn('[Pulse] mark-paid write failed', err);
+  }
+
+  document.getElementById('purchasePayment').style.display = 'none';
+  document.getElementById('purchaseSuccess').style.display = 'block';
+  var sub = document.getElementById('paymentSuccessSub');
+  if (sub) sub.innerHTML = 'Charged <strong>$' + (paymentIntent.amount/100).toFixed(2) + '</strong> to your card. You’ll get a receipt by email shortly.';
+}
+
+// Handle redirect-back from 3DS authentication. Stripe appends
+// ?payment_intent=...&payment_intent_client_secret=...&redirect_status=...
+// when it has to bounce through an external auth step.
+(async function _handleStripeReturn() {
+  var params = new URLSearchParams(window.location.search);
+  var piClientSecret = params.get('payment_intent_client_secret');
+  if (!piClientSecret) return;
+
+  // Wait for Stripe.js to load.
+  if (typeof Stripe !== 'function') {
+    await new Promise(function(r) { var i = setInterval(function() { if (typeof Stripe === 'function') { clearInterval(i); r(); } }, 100); });
+  }
+
+  // We don't know the connected_account_id at this point — the URL
+  // doesn't carry it. Fetch most recent consultation to grab tenant
+  // and derive account_id via the same edge-function pattern.
+  try {
+    var client = window._sbClient;
+    if (!client) return;
+    var session = (await client.auth.getSession()).data.session;
+    if (!session) return;
+
+    var cRes = await client.from('consultations').select('id, tenant_id, data').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(1);
+    if (!cRes.data || !cRes.data[0]) return;
+    var consult = cRes.data[0];
+
+    // Ask the tenant-integrations public view for the stripe account
+    // config (non-secret connected_account_id lives on config.connected_account_hint
+    // but that's masked). Safest path: re-issue a tiny PaymentIntent
+    // lookup via a new edge function — but we already have one! We
+    // can reuse stripe-checkout-session? No, that's checkout sessions.
+    //
+    // Simpler: since the return URL was hit, we KNOW the patient was
+    // mid-payment. Re-query the paymentIntent using default Stripe.js
+    // (no stripeAccount) — that works if the PI was created on the
+    // platform account. For direct charges we DO need stripeAccount.
+    //
+    // Workaround: the tenant_integrations_public view exposes config.
+    // connected_account_hint is masked, but we stored livemode there.
+    // For now, fall back to a page reload showing whatever state the
+    // DB has. The purchase_status flip happens inline in _submitPayment
+    // when redirect is NOT required; 3DS redirects are edge-cases we
+    // polish in Phase 4c webhooks (which are authoritative anyway).
+    location.replace(location.pathname);
+  } catch(err) {
+    console.warn('[Pulse] stripe return handler failed', err);
+  }
+})();
 
 // Init calendar on load (only if calendar DOM exists — removed in consolidated flow)
 if (document.getElementById('calGrid')) buildCalendar();

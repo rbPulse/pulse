@@ -1479,13 +1479,18 @@ label.field-label{color:rgba(0,0,0,0.45);}
 <div class="purchase-modal-backdrop" id="purchaseBackdrop" onclick="closePurchaseModal(event)"></div>
 <div class="purchase-modal" id="purchaseModal" role="dialog" aria-modal="true">
   <button class="purchase-close" onclick="closePurchaseModal()" aria-label="Close">&times;</button>
-  <div class="purchase-title">Activate your protocol</div>
-  <div class="purchase-sub">Complete your purchase to begin treatment. Pulse never sees your card number.</div>
 
-  <div class="purchase-order">
-    <div class="purchase-order-label">Order summary</div>
-    <div id="purchaseOrderLines"></div>
-    <div class="purchase-total-row"><span>Total</span><span id="purchaseTotal">—</span></div>
+  <!-- Pre-payment header (title + subtitle + order summary). Hidden
+       on the success state so the confirmation stands on its own. -->
+  <div id="purchaseHeader">
+    <div class="purchase-title">Activate your protocol</div>
+    <div class="purchase-sub">Complete your purchase to begin treatment. Pulse never sees your card number.</div>
+
+    <div class="purchase-order">
+      <div class="purchase-order-label">Order summary</div>
+      <div id="purchaseOrderLines"></div>
+      <div class="purchase-total-row"><span>Total</span><span id="purchaseTotal">—</span></div>
+    </div>
   </div>
 
   <div id="purchaseLoading" class="purchase-loading">
@@ -3739,6 +3744,7 @@ async function _activateAndGoToCheckout() {
   // even when the patient's own RLS can't read protocol_templates.
   document.getElementById('purchaseOrderLines').innerHTML = '';
   document.getElementById('purchaseTotal').textContent = '—';
+  document.getElementById('purchaseHeader').style.display = 'block';
   document.getElementById('purchaseLoading').style.display = 'flex';
   document.getElementById('purchasePayment').style.display = 'none';
   document.getElementById('purchaseSuccess').style.display = 'none';
@@ -3906,6 +3912,7 @@ async function _pmMarkPaid(paymentIntent) {
     console.warn('[Pulse] mark-paid write failed', err);
   }
 
+  document.getElementById('purchaseHeader').style.display = 'none';
   document.getElementById('purchasePayment').style.display = 'none';
   document.getElementById('purchaseSuccess').style.display = 'block';
   var sub = document.getElementById('paymentSuccessSub');

@@ -81,7 +81,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { tenant_id, consultation_id, line_items, selected_keys, customer_email } = body || {};
+    const { tenant_id, consultation_id, line_items, selected_keys, customer_email, refill_request_id } = body || {};
     if (!tenant_id) return json({ error: "tenant_id is required" }, 400);
 
     // Authz: accept ANY of three proofs that this user has a
@@ -174,16 +174,50 @@ serve(async (req) => {
       return json({ error: "Stripe charges are not enabled yet — finish onboarding first" }, 409);
     }
 
-    // Two ways to specify what's being bought:
-    //   1. selected_keys: ["repair", "growth"] — server looks up
-    //      catalog name + price from protocol_templates (authoritative,
-    //      bypasses any RLS on the client side).
-    //   2. line_items: [{name, amount_cents, quantity}] — caller has
-    //      already prepared line items; server trusts them.
-    // At least one required.
+    // Three ways to specify what's being bought:
+    //   1. refill_request_id — server looks up the refill row, uses
+    //      protocol_templates.refill_price (falls back to .price)
+    //      for the single line item. Charged against the same
+    //      consultation as the refill's original prescription.
+    //   2. selected_keys: ["repair", "growth"] — server looks up
+    //      catalog name + price from protocol_templates.
+    //   3. line_items: [{name, amount_cents, quantity}] — caller
+    //      has prepared line items; server trusts them.
+    // Exactly one path is required.
     let resolvedLineItems: Array<{ name: string; description?: string; amount_cents: number; quantity: number }> = [];
+    let resolvedConsultationId: string | undefined = consultation_id;
 
-    if (Array.isArray(selected_keys) && selected_keys.length > 0) {
+    if (refill_request_id) {
+      const { data: refill } = await supabase
+        .from("refill_requests")
+        .select("id, tenant_id, consultation_id, protocol_key, status, patient_user_id")
+        .eq("id", refill_request_id)
+        .maybeSingle();
+      if (!refill) return json({ error: "Refill request not found" }, 404);
+      if (refill.tenant_id !== tenant_id) return json({ error: "Refill tenant_id mismatch" }, 400);
+      if (refill.patient_user_id !== user.id) return json({ error: "Refill belongs to a different patient" }, 403);
+      if (refill.status !== "approved") {
+        return json({ error: `Refill is not approved yet (status: ${refill.status})` }, 409);
+      }
+      resolvedConsultationId = refill.consultation_id;
+
+      const { data: t } = await supabase
+        .from("protocol_templates")
+        .select("key, name, price, refill_price")
+        .eq("tenant_id", tenant_id)
+        .eq("key", refill.protocol_key)
+        .maybeSingle();
+      const displayName = t?.name || refill.protocol_key;
+      const cents = t?.refill_price != null
+        ? Math.round(Number(t.refill_price) * 100)
+        : (t?.price != null ? Math.round(Number(t.price) * 100) : 9900);
+      resolvedLineItems.push({
+        name: displayName,
+        description: "Pulse protocol refill",
+        amount_cents: cents,
+        quantity: 1,
+      });
+    } else if (Array.isArray(selected_keys) && selected_keys.length > 0) {
       const { data: templates } = await supabase
         .from("protocol_templates")
         .select("key, name, price")
@@ -235,7 +269,8 @@ serve(async (req) => {
       unite_tenant_id: tenant_id,
       unite_user_id: user.id,
     };
-    if (consultation_id) metadata.pulse_consultation_id = consultation_id;
+    if (resolvedConsultationId) metadata.pulse_consultation_id = resolvedConsultationId;
+    if (refill_request_id) metadata.pulse_refill_request_id = refill_request_id;
     metadata.line_item_count = String(resolvedLineItems.length);
     metadata.line_item_names = resolvedLineItems.map((li) => li.name).join(", ").slice(0, 500);
     Object.entries(metadata).forEach(([k, v]) => form.set(`metadata[${k}]`, v));

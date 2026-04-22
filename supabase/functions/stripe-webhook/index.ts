@@ -184,8 +184,20 @@ serve(async (req) => {
 // ── Handlers ───────────────────────────────────────────────────────────
 
 async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentIntent) {
-  const consultId = (pi.metadata as any)?.pulse_consultation_id;
-  const tenantId  = (pi.metadata as any)?.unite_tenant_id;
+  const consultId       = (pi.metadata as any)?.pulse_consultation_id;
+  const tenantId        = (pi.metadata as any)?.unite_tenant_id;
+  const refillRequestId = (pi.metadata as any)?.pulse_refill_request_id;
+
+  // Refill path: different DB shape than initial consultations. A
+  // refill_request row gets flipped to 'paid', a new prescription
+  // row is created for tracking, and we fire the same confirmation
+  // email (which works because the refill is still linked to a
+  // consultation).
+  if (refillRequestId) {
+    await handleRefillPaid(supabase, pi, refillRequestId, tenantId);
+    return;
+  }
+
   if (!consultId) {
     console.log(`[stripe-webhook] payment_intent.succeeded ${pi.id} has no pulse_consultation_id`);
     return;
@@ -360,6 +372,86 @@ function escapeHtml(s: string): string {
 }
 function escapeAttr(s: string): string {
   return escapeHtml(s);
+}
+
+// Handle the payment_intent.succeeded event for a refill. Flips the
+// refill_requests row to 'paid', creates a new active prescription
+// row so the clinical record reflects the refill, and fires the
+// same confirmation email used for initial purchases.
+async function handleRefillPaid(
+  supabase: any,
+  pi: Stripe.PaymentIntent,
+  refillRequestId: string,
+  tenantId: string | undefined,
+) {
+  const { data: refill } = await supabase
+    .from("refill_requests")
+    .select("id, tenant_id, consultation_id, patient_user_id, protocol_key, clinician_id, status")
+    .eq("id", refillRequestId)
+    .maybeSingle();
+  if (!refill) {
+    console.warn(`[stripe-webhook] refill_request ${refillRequestId} not found for ${pi.id}`);
+    return;
+  }
+  if (refill.status === "paid" || refill.status === "fulfilled") {
+    console.log(`[stripe-webhook] refill ${refillRequestId} already ${refill.status} — webhook replay`);
+    return;
+  }
+
+  // Create the new prescription row for this refill. The existing
+  // active prescription for the same (consultation_id, protocol_key)
+  // is fine to leave in place — prescriptions can co-exist per that
+  // unique index's WHERE clause (status='active' dedup). If the old
+  // one is also 'active', keep it; this simply adds another active
+  // row. Real-world: clinical teams may want to discontinue the
+  // prior row before issuing a new one; that's a workflow choice
+  // they can make via the admin UI.
+  const { data: newRx, error: rxErr } = await supabase
+    .from("prescriptions")
+    .insert({
+      consultation_id: refill.consultation_id,
+      user_id:         refill.patient_user_id,
+      clinician_id:    refill.clinician_id,
+      protocol_key:    refill.protocol_key,
+      status:          "active",
+    })
+    .select("id")
+    .single();
+  if (rxErr) {
+    // Unique-violation on (consultation_id, protocol_key, status='active')
+    // is OK — means an active rx already covers this. Any other error
+    // bubbles up.
+    if ((rxErr as any).code !== "23505") {
+      throw rxErr;
+    }
+    console.log(`[stripe-webhook] active prescription already exists for consult ${refill.consultation_id} + ${refill.protocol_key} — skipping insert`);
+  }
+
+  const { error: updateErr } = await supabase
+    .from("refill_requests")
+    .update({
+      status: "paid",
+      stripe_payment_intent_id: pi.id,
+      paid_at: new Date().toISOString(),
+      amount_cents: pi.amount_received || pi.amount,
+      new_prescription_id: newRx?.id || null,
+    })
+    .eq("id", refillRequestId);
+  if (updateErr) throw updateErr;
+
+  // Confirmation email for the refill. Reuses the same helper; the
+  // tenant's Resend config + shared-fallback logic all apply.
+  try {
+    await sendPurchaseConfirmationEmail(supabase, {
+      tenantId: tenantId || refill.tenant_id,
+      recipientEmail: pi.receipt_email || null,
+      amountCents: pi.amount_received || pi.amount,
+      lineItemNames: (pi.metadata as any)?.line_item_names || "your refill",
+      paymentIntentId: pi.id,
+    });
+  } catch (emailErr) {
+    console.warn(`[stripe-webhook] refill confirmation email failed for ${pi.id}:`, (emailErr as Error).message);
+  }
 }
 
 async function handlePaymentIntentFailed(supabase: any, pi: Stripe.PaymentIntent) {

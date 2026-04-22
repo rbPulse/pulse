@@ -121,7 +121,24 @@ serve(async (req) => {
     ]);
 
     const authorized = !!memRes.data || !!enrRes.data || !!consultRes.data;
-    if (!authorized) return json({ error: "Not authorised on this tenant" }, 403);
+    if (!authorized) {
+      // Diagnostic payload — surfaces why all three checks missed so
+      // we can see from the UI instead of guessing. Trimmed later.
+      return json({
+        error: "Not authorised on this tenant",
+        diag: {
+          user_id: user.id,
+          tenant_id: tenant_id,
+          consultation_id: consultation_id || null,
+          membership_row: memRes.data || null,
+          enrollment_row: enrRes.data || null,
+          consultation_match: consultRes.data || null,
+          membership_err: memRes.error?.message || null,
+          enrollment_err: enrRes.error?.message || null,
+          consultation_err: consultRes.error?.message || null,
+        },
+      }, 403);
+    }
 
     // Self-heal: if we authed via consultation and there's no
     // patient_enrollments row, create one so the rest of the system

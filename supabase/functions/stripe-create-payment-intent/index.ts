@@ -76,10 +76,20 @@ serve(async (req) => {
     const { tenant_id, consultation_id, line_items, selected_keys, customer_email } = body || {};
     if (!tenant_id) return json({ error: "tenant_id is required" }, 400);
 
-    // Authz: accept EITHER a staff tenant_membership OR an active
-    // patient_enrollments row. Patients buying their own protocol are
-    // in patient_enrollments, not tenant_memberships.
-    const [memRes, enrRes] = await Promise.all([
+    // Authz: accept ANY of three proofs that this user has a
+    // relationship with this tenant:
+    //   1. Staff membership (tenant_memberships)
+    //   2. Active patient enrollment (patient_enrollments)
+    //   3. They OWN a consultation on this tenant — if a consultation
+    //      was created for them with matching tenant_id + user_id,
+    //      they have an established relationship even if the
+    //      patient_enrollments row wasn't created (common upstream
+    //      gap during the consultation flow).
+    //
+    // When #3 is the proof, we also UPSERT a patient_enrollments row
+    // so downstream systems (member portal, messaging, RLS) see the
+    // relationship cleanly. Self-healing data.
+    const [memRes, enrRes, consultRes] = await Promise.all([
       supabase
         .from("tenant_memberships")
         .select("role")
@@ -93,9 +103,38 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle(),
+      consultation_id
+        ? supabase
+            .from("consultations")
+            .select("id")
+            .eq("id", consultation_id)
+            .eq("user_id", user.id)
+            .eq("tenant_id", tenant_id)
+            .maybeSingle()
+        : supabase
+            .from("consultations")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .maybeSingle(),
     ]);
-    const authorized = !!memRes.data || !!enrRes.data;
+
+    const authorized = !!memRes.data || !!enrRes.data || !!consultRes.data;
     if (!authorized) return json({ error: "Not authorised on this tenant" }, 403);
+
+    // Self-heal: if we authed via consultation and there's no
+    // patient_enrollments row, create one so the rest of the system
+    // treats them as a real patient going forward. upsert handles
+    // race conditions cleanly.
+    if (!enrRes.data && consultRes.data && !memRes.data) {
+      await supabase
+        .from("patient_enrollments")
+        .upsert(
+          { user_id: user.id, tenant_id, status: "active" },
+          { onConflict: "user_id,tenant_id" }
+        );
+    }
 
     const { data: intRow } = await supabase
       .from("tenant_integrations")

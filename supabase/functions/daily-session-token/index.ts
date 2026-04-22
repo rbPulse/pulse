@@ -131,6 +131,31 @@ serve(async (req) => {
       }
     }
 
+    // 5b. Tenant-side video integration must be enabled. Unite's
+    // Daily account backs every tenant, but a tenant admin can
+    // toggle video off for their tenant via the Integrations tab
+    // (tenant_integrations.status = 'disconnected'). Respect that
+    // at the runtime layer — don't mint new rooms for disabled
+    // tenants. Existing appointments with a pre-created
+    // daily_room_name still work; only fresh room creation is
+    // gated.
+    if (appt.tenant_id && !appt.daily_room_name) {
+      const { data: dailyRow } = await supabase
+        .from("tenant_integrations")
+        .select("status")
+        .eq("tenant_id", appt.tenant_id)
+        .eq("provider", "dailyco")
+        .maybeSingle();
+      if (!dailyRow || dailyRow.status !== "connected") {
+        return new Response(JSON.stringify({
+          error: "Video is not enabled for this clinic. Ask your admin to enable it in the Integrations tab."
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // 6. Get or create Daily room for this appointment (idempotent)
     let roomName = appt.daily_room_name;
     let roomUrl = appt.daily_room_url;

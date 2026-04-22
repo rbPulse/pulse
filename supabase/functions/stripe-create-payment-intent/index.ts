@@ -44,6 +44,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// VERSION_MARKER — bump this string every time we redeploy so the
+// browser response tells us which code is actually running on the
+// server. If this value doesn't appear in the Network response, the
+// old code is still live and the redeploy didn't take.
+const FN_VERSION = "4b-authz-consult-v3";
+
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 // Publishable key is safe to ship to the browser — Stripe designs it
 // for client-side use. We pass it through a secret + function rather
@@ -65,11 +71,13 @@ function json(body: unknown, status = 200) {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
+  console.log(`[stripe-create-payment-intent] ${FN_VERSION} request received`);
+
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const body = await req.json();
     const token = body?.userToken || (req.headers.get("Authorization") || "").replace("Bearer ", "");
-    if (!token) return json({ error: "Missing authentication" }, 401);
+    if (!token) return json({ error: "Missing authentication", version: FN_VERSION }, 401);
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
@@ -122,10 +130,9 @@ serve(async (req) => {
 
     const authorized = !!memRes.data || !!enrRes.data || !!consultRes.data;
     if (!authorized) {
-      // Diagnostic payload — surfaces why all three checks missed so
-      // we can see from the UI instead of guessing. Trimmed later.
       return json({
         error: "Not authorised on this tenant",
+        version: FN_VERSION,
         diag: {
           user_id: user.id,
           tenant_id: tenant_id,

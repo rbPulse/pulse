@@ -49,6 +49,10 @@ const FN_VERSION = "4c-webhook-v1";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+// Used by the post-payment confirmation email. Not required — if
+// missing, the webhook still processes the payment; we just skip
+// the email send with a log line.
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -181,6 +185,7 @@ serve(async (req) => {
 
 async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentIntent) {
   const consultId = (pi.metadata as any)?.pulse_consultation_id;
+  const tenantId  = (pi.metadata as any)?.unite_tenant_id;
   if (!consultId) {
     console.log(`[stripe-webhook] payment_intent.succeeded ${pi.id} has no pulse_consultation_id`);
     return;
@@ -188,7 +193,7 @@ async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentInt
 
   const { data: consultRow } = await supabase
     .from("consultations")
-    .select("data, purchase_status")
+    .select("data, purchase_status, tenant_id")
     .eq("id", consultId)
     .maybeSingle();
   if (!consultRow) {
@@ -210,6 +215,151 @@ async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentInt
     })
     .eq("id", consultId);
   if (error) throw error;
+
+  // Fire a confirmation email. Non-blocking on errors — if the send
+  // fails (Resend down, sender not configured, etc.) we still want
+  // the payment to be recorded as successful. The patient already
+  // got Stripe's auto-receipt separately; this is Pulse-branded nice-to-have.
+  try {
+    await sendPurchaseConfirmationEmail(supabase, {
+      tenantId: tenantId || consultRow.tenant_id,
+      recipientEmail: pi.receipt_email || null,
+      amountCents: pi.amount_received || pi.amount,
+      lineItemNames: (pi.metadata as any)?.line_item_names || "your protocol",
+      paymentIntentId: pi.id,
+    });
+  } catch (emailErr) {
+    console.warn(`[stripe-webhook] confirmation email send failed for ${pi.id}:`, (emailErr as Error).message);
+  }
+}
+
+// Fires a Pulse-branded "payment confirmed, protocol active" email
+// via Resend. Uses the tenant's configured sender domain when
+// verified; falls back to onboarding@resend.dev for tenants still
+// in test mode. Called from the payment_intent.succeeded handler —
+// the browser-side modal also shows a success state, but this is the
+// durable record that lands in the patient's inbox.
+async function sendPurchaseConfirmationEmail(
+  supabase: any,
+  opts: {
+    tenantId: string | null;
+    recipientEmail: string | null;
+    amountCents: number;
+    lineItemNames: string;
+    paymentIntentId: string;
+  },
+) {
+  if (!RESEND_API_KEY) {
+    console.log(`[stripe-webhook] RESEND_API_KEY not set — skipping confirmation email`);
+    return;
+  }
+  if (!opts.recipientEmail) {
+    console.log(`[stripe-webhook] no recipient email on PI ${opts.paymentIntentId} — skipping confirmation email`);
+    return;
+  }
+  if (!opts.tenantId) {
+    console.log(`[stripe-webhook] no tenant_id resolved for PI ${opts.paymentIntentId} — skipping confirmation email`);
+    return;
+  }
+
+  // Look up the tenant's Resend configuration. Skip if integration
+  // isn't connected (tenant hasn't set up email yet — no point
+  // trying to send on their behalf).
+  const { data: resendRow } = await supabase
+    .from("tenant_integrations")
+    .select("status, mode, config")
+    .eq("tenant_id", opts.tenantId)
+    .eq("provider", "resend")
+    .maybeSingle();
+  if (!resendRow || resendRow.status !== "connected") {
+    console.log(`[stripe-webhook] Resend not enabled for tenant ${opts.tenantId} — skipping confirmation email`);
+    return;
+  }
+
+  // Tenant + brand for From-address and body personalization.
+  const { data: tenantRow } = await supabase
+    .from("tenants")
+    .select("name, brand")
+    .eq("id", opts.tenantId)
+    .maybeSingle();
+  const brandName = tenantRow?.brand?.wordmark || tenantRow?.name || "Your clinic";
+  const supportEmail = tenantRow?.brand?.support_email || "";
+
+  // Derive from-address. Verified domain → noreply@{domain};
+  // test-mode fallback → onboarding@resend.dev.
+  const senderDomain = resendRow.config?.sender_domain;
+  const useTestFallback = !senderDomain || resendRow.config?.sender_mode === "test_fallback";
+  const fromAddress = useTestFallback
+    ? `${brandName} <onboarding@resend.dev>`
+    : `${brandName} <noreply@${senderDomain}>`;
+
+  const amount = (opts.amountCents / 100).toFixed(2);
+
+  // Simple single-tenant-safe template. Tenants wanting to customize
+  // can add a communication_templates row with key
+  // 'consultation_purchased' in a follow-up phase.
+  const subject = `Your ${brandName} protocol is active`;
+  const html = `
+<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;max-width:560px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.55;">
+  <h1 style="font-size:22px;font-weight:600;letter-spacing:-0.01em;margin:0 0 18px;">Payment confirmed</h1>
+  <p>Thanks for activating your ${escapeHtml(brandName)} protocol — your payment of <strong>$${amount}</strong> cleared successfully.</p>
+  <div style="background:#f7f5f0;border:1px solid rgba(20,25,35,0.06);border-radius:10px;padding:16px 20px;margin:22px 0;">
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#3a7a5c;font-weight:600;margin-bottom:8px;">Order</div>
+    <div style="font-size:14px;">${escapeHtml(opts.lineItemNames)}</div>
+    <div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:10px;border-top:1px solid rgba(20,25,35,0.08);font-weight:600;">
+      <span>Total</span><span>$${amount}</span>
+    </div>
+  </div>
+  <p>Your clinician will be in touch shortly with next steps. You can also log into your patient portal at any time to view your protocol, book a follow-up, or message the care team.</p>
+  ${supportEmail ? `<p style="font-size:12px;color:#666;">Questions? Reply to this email or write to <a href="mailto:${escapeAttr(supportEmail)}" style="color:#3a7a5c;">${escapeHtml(supportEmail)}</a>.</p>` : ""}
+  <p style="font-size:11px;color:#999;margin-top:28px;">Reference: ${escapeHtml(opts.paymentIntentId)}</p>
+</body></html>`.trim();
+
+  const text = `Payment confirmed — thanks for activating your ${brandName} protocol.
+
+Your payment of $${amount} cleared successfully.
+
+Order: ${opts.lineItemNames}
+Total: $${amount}
+
+Your clinician will be in touch shortly with next steps. Log into your patient portal any time to view your protocol, book a follow-up, or message the care team.
+
+${supportEmail ? `Questions? Write to ${supportEmail}.\n\n` : ""}Reference: ${opts.paymentIntentId}`;
+
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: [opts.recipientEmail],
+      subject,
+      html,
+      text,
+      tags: [
+        { name: "source", value: "stripe-webhook" },
+        { name: "event_type", value: "payment_intent.succeeded" },
+      ],
+    }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text();
+    throw new Error(`Resend returned ${resp.status}: ${detail.slice(0, 200)}`);
+  }
+  const result = await resp.json();
+  console.log(`[stripe-webhook] confirmation email sent for PI ${opts.paymentIntentId}: ${result.id}`);
+}
+
+function escapeHtml(s: string): string {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function escapeAttr(s: string): string {
+  return escapeHtml(s);
 }
 
 async function handlePaymentIntentFailed(supabase: any, pi: Stripe.PaymentIntent) {

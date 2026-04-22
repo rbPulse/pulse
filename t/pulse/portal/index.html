@@ -10996,6 +10996,16 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         if (_rfRows.length) _rfMedHtml = _rfRows.map(function(r) { return '<div class="crw-req-card-detail-row">' + r + '</div>'; }).join('');
       }
       if (!_rfMedHtml) _rfMedHtml = '<div class="crw-req-card-detail-row" style="color:rgba(0,0,0,0.35);">No medical changes reported</div>';
+      // Approve / Deny live inside the refill card so the clinician
+      // sees the patient's context + action together. Hidden once the
+      // refill has already been decided.
+      var _rfActionsHtml = isDecided
+        ? ''
+        : '<div class="crw-req-card-actions" style="display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);">' +
+            '<button class="' + pCls + '" onclick="_attnApproveRefill(\'' + consultId + '\',\'' + userId + '\')">Approve Refill</button>' +
+            '<button class="' + dCls + '" onclick="_attnDenyRefill(\'' + consultId + '\',\'' + userId + '\')">Deny Refill</button>' +
+          '</div>';
+      var _rfActionArea = isDecided ? '' : '<div id="attn-action-area-' + consultId + '"></div>';
       _reqCardHtml =
         '<div class="crw-req-card">' +
           '<div class="crw-req-card-hdr">' +
@@ -11008,12 +11018,20 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
                 (_rfNotes ? '<div class="crw-req-card-detail-row"><span class="crw-req-card-detail-label">Notes:</span> ' + escapeHtml(_rfNotes) + '</div>' : '') +
                 _rfMedHtml +
               '</div>' +
+              _rfActionArea +
+              _rfActionsHtml +
             '</div>' +
           '</div>' +
         '</div>';
     }
-    var decidedTopHtml = isDecided ? '<div class="crw-decided-top">' + _reqCardHtml + outcomeTopHtml + '</div>' : '';
-    var topAlertHtml   = isDecided ? '' : riskHtml;
+    // Refill cards always show at the top regardless of decided state —
+    // clinician needs the context visible when they hit Approve. Risk
+    // card is redundant for a refill (patient already treated).
+    var _refillAlwaysTop = (_consultType === 'refill_request') && _reqCardHtml;
+    var decidedTopHtml = (isDecided || _refillAlwaysTop)
+      ? '<div class="crw-decided-top">' + _reqCardHtml + outcomeTopHtml + '</div>'
+      : '';
+    var topAlertHtml   = (isDecided || _consultType === 'refill_request') ? '' : riskHtml;
 
     // Patient Details block — for decided patients it lives at the bottom
     // of the LEFT column (under Session Notes) so the messaging thread
@@ -11082,16 +11100,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           // consultations skip the buttons (clinician uses "+ Add Protocol").
           if (isDecided) return '';
           if (_consultType === 'protocol_request') return '';
-          // Refill requests get their own Approve/Deny pair — they
-          // update refill_requests.status alongside the consultation
-          // row. No new prescription is issued; the webhook creates
-          // one only after payment lands.
-          if (_consultType === 'refill_request') {
-            return '<div class="crw-actions">'+
-              '<button class="'+pCls+'" onclick="_attnApproveRefill(\''+consultId+'\',\''+userId+'\')">Approve Refill</button>'+
-              '<button class="'+dCls+'" onclick="_attnDenyRefill(\''+consultId+'\',\''+userId+'\')">Deny Refill</button>'+
-            '</div>';
-          }
+          // Refill requests render Approve/Deny inside the refill card
+          // itself (see _rfActionsHtml above) — skip the bottom action
+          // bar so the buttons don't render twice.
+          if (_consultType === 'refill_request') return '';
           return '<div class="crw-actions">'+
             '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
             '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
@@ -11106,7 +11118,10 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             })()+
           '</div>';
         })()+
-        '<div id="attn-action-area-'+consultId+'"></div>'+
+        // Refill-request cards own their own attn-action-area inside
+        // the refill card so Deny Refill's reason textarea shows right
+        // there. Skip the bottom div to avoid a duplicate id.
+        (_consultType === 'refill_request' ? '' : '<div id="attn-action-area-'+consultId+'"></div>')+
       '</div>'+
       '<div class="crw-right">'+
         '<div class="crw-right-msg" id="attn-msg-'+consultId+'">'+

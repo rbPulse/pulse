@@ -279,6 +279,18 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .ov-supply-refill-btn.is-denied{background:rgba(239,68,68,0.12);color:#b42318;border:1px solid rgba(239,68,68,0.3);cursor:default;}
 .ov-supply-refill-btn.is-paid{background:rgba(58,122,92,0.12);color:#2F6F55;border:1px solid rgba(58,122,92,0.25);cursor:default;}
 
+/* Patient-detail modal: tab switcher for patients with multiple
+   open request-type consultations. Light theme so it sits cleanly
+   above the refill / protocol-request card. */
+.crw-tabs-host{margin-bottom:12px;}
+.crw-tabs{display:flex;gap:6px;border-bottom:1px solid rgba(0,0,0,0.08);padding-bottom:0;}
+.crw-tab{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:none;border:none;padding:10px 14px;margin-bottom:-1px;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;color:rgba(0,0,0,0.55);transition:color .15s,border-color .15s;}
+.crw-tab:hover{color:#1a1a1a;}
+.crw-tab.is-active{color:#2F6F55;border-bottom-color:#2F6F55;cursor:default;}
+.crw-tab-label{font-size:12px;font-weight:600;letter-spacing:0.04em;}
+.crw-tab-sub{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:rgba(0,0,0,0.38);}
+.crw-tab.is-active .crw-tab-sub{color:rgba(47,111,85,0.65);}
+
 .proto-history-card{overflow:hidden;padding:0 !important;margin-top:16px;}
 .proto-history-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
 .proto-history-eyebrow{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--green,#2F6F55);}
@@ -11007,8 +11019,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       var _rfActionsHtml = isDecided
         ? ''
         : '<div class="crw-req-card-actions" id="crw-req-card-actions-' + consultId + '" style="display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);">' +
-            '<button class="' + pCls + '" onclick="_attnApproveRefill(\'' + consultId + '\',\'' + userId + '\')">Approve Refill</button>' +
-            '<button class="' + dCls + '" onclick="_attnDenyRefill(\'' + consultId + '\',\'' + userId + '\')">Deny Refill</button>' +
+            '<button class="' + pCls + '" onclick="_attnApproveRefill(\'' + consultId + '\',\'' + userId + '\')">Approve</button>' +
+            '<button class="' + dCls + '" onclick="_attnDenyRefill(\'' + consultId + '\',\'' + userId + '\')">Deny</button>' +
           '</div>';
       var _rfActionArea = isDecided ? '' : '<div id="attn-action-area-' + consultId + '"></div>';
       _reqCardHtml =
@@ -11057,6 +11069,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
         '</div>'+
       '</div>';
     var html='<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
+      '<div id="crw-tabs-' + consultId + '" class="crw-tabs-host"></div>'+
       decidedTopHtml+
       '<div class="crw-left">'+
         topAlertHtml+
@@ -11152,6 +11165,9 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     '</div>';
 
     bodyEl.innerHTML=html;
+    // Tab switcher for other open request-type consultations on this
+    // patient. Populates async so the main card paints first.
+    try { _renderOpenRequestTabs(consultId, userId); } catch (_) {}
     _refreshAttnMsgs(consultId,userId);
     if(_attnMsgPollers[consultId])clearInterval(_attnMsgPollers[consultId]);
     _attnMsgPollers[consultId]=setInterval(function(){_refreshAttnMsgs(consultId,userId);},10000);
@@ -11165,6 +11181,71 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     console.warn('[Pulse] card body load failed:', e);
     bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
   }
+}
+
+// When a patient has multiple open request-type consultations (e.g.
+// a pending refill AND a pending protocol request), surface a tab
+// strip above the top card so the clinician can pivot between them
+// without closing + reopening the modal. No tabs render when 0 or 1
+// open requests exist (the common case).
+async function _renderOpenRequestTabs(currentConsultId, userId) {
+  var host = document.getElementById('crw-tabs-' + currentConsultId);
+  if (!host || !userId) return;
+  try {
+    var r = await db.from('consultations')
+      .select('id, consultation_type, review_status, data, created_at')
+      .eq('user_id', userId)
+      .in('consultation_type', ['refill_request','protocol_request'])
+      .eq('review_status', 'pending_review')
+      .order('created_at', { ascending: false });
+    var rows = (r && r.data) || [];
+    if (rows.length < 2) { host.innerHTML = ''; return; }
+
+    var escA = (typeof escapeAttr === 'function') ? escapeAttr : function(s){ return String(s||''); };
+    var escH = (typeof escapeHtml === 'function') ? escapeHtml : function(s){ return String(s||''); };
+    var tabsHtml = rows.map(function(c) {
+      var label, sub;
+      if (c.consultation_type === 'refill_request') {
+        label = 'Refill';
+        sub = (c.data && c.data.refill_protocol) ? String(c.data.refill_protocol) : '';
+      } else {
+        label = 'Protocol Request';
+        sub = (c.data && c.data.request_category) ? String(c.data.request_category) : '';
+      }
+      var isActive = c.id === currentConsultId;
+      var activeCls = isActive ? ' is-active' : '';
+      var onclick = isActive ? '' : ' onclick="_pdSwitchConsult(\'' + escA(c.id) + '\',\'' + escA(userId) + '\')"';
+      return '<button type="button" class="crw-tab' + activeCls + '"' + onclick + '>' +
+               '<span class="crw-tab-label">' + escH(label) + '</span>' +
+               (sub ? '<span class="crw-tab-sub">' + escH(sub) + '</span>' : '') +
+             '</button>';
+    }).join('');
+    host.innerHTML = '<div class="crw-tabs">' + tabsHtml + '</div>';
+  } catch (err) {
+    console.warn('[Pulse] open-request tabs load failed:', err);
+    host.innerHTML = '';
+  }
+}
+
+// Switch the patient-detail modal body to a different consultation
+// for the same patient. Re-runs _loadAttentionCardBody against the
+// new consultId so every render path (request card, outcome, msg
+// poller, notes) stays in sync.
+function _pdSwitchConsult(newConsultId, userId) {
+  if (!newConsultId || newConsultId === _pdModalActiveConsultId) return;
+  // Tear down the current consultation's message poller before
+  // switching — _loadAttentionCardBody starts a fresh one on the
+  // next paint.
+  if (_pdModalActiveConsultId && typeof _attnMsgPollers !== 'undefined' && _attnMsgPollers[_pdModalActiveConsultId]) {
+    try { clearInterval(_attnMsgPollers[_pdModalActiveConsultId]); } catch (_) {}
+    delete _attnMsgPollers[_pdModalActiveConsultId];
+  }
+  _activePatientConsultId = newConsultId;
+  _pdModalActiveConsultId = newConsultId;
+  var bodyEl = document.getElementById('pdModalBody');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '<div style="padding:32px;font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);">Loading…</div>';
+  _loadAttentionCardBody(bodyEl, newConsultId, userId);
 }
 
 function _calcAge(dobStr) {
@@ -22495,15 +22576,28 @@ function _rfCancelInlineForm(consultId) {
   _rfToggleCardActions(consultId, true);
 }
 
+// Per-consult scratch for any Rx overrides the clinician set via the
+// "Edit prescription details" sub-modal. Keyed by consultId so two
+// different refills can be in progress simultaneously across tabs.
+window._rfRxOverridesByConsult = window._rfRxOverridesByConsult || {};
+
 function _attnApproveRefill(consultId, userId) {
   var areaEl = document.getElementById('attn-action-area-' + consultId);
   if (!areaEl) return;
   _rfToggleCardActions(consultId, false);
+  var overrides = window._rfRxOverridesByConsult[consultId] || null;
+  var editedLine = overrides
+    ? '<div id="rf-edit-indicator-' + consultId + '" style="margin-top:10px;font-size:11px;color:#2F6F55;">&check; Prescription edits saved — will apply when the patient pays.</div>'
+    : '<div id="rf-edit-indicator-' + consultId + '" style="display:none;"></div>';
   areaEl.innerHTML =
     '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06);">' +
       '<div style="' + _RF_INLINE_LABEL_STYLE_BASE + 'color:#2F6F55;">Approve — Note to Patient (optional)</div>' +
       '<textarea id="attn-approve-note-' + consultId + '" placeholder="Anything the patient should know about this refill..." rows="3" style="' + _RF_INLINE_TEXTAREA_STYLE + '"></textarea>' +
-      '<div style="display:flex;gap:10px;margin-top:10px;">' +
+      '<div style="margin-top:8px;">' +
+        '<button type="button" onclick="_openRxEditModal(\'' + consultId + '\',\'' + userId + '\')" style="background:none;border:none;padding:0;font-family:\'Inter\',sans-serif;font-size:12px;font-weight:500;color:#2F6F55;cursor:pointer;text-decoration:underline;">Edit prescription details &rsaquo;</button>' +
+      '</div>' +
+      editedLine +
+      '<div style="display:flex;gap:10px;margin-top:14px;">' +
         '<button onclick="_confirmAttnApproveRefill(\'' + consultId + '\',\'' + userId + '\')" class="crw-btn crw-btn-grn">Confirm Approval</button>' +
         '<button onclick="_rfCancelInlineForm(\'' + consultId + '\')" style="' + _RF_INLINE_CANCEL_STYLE + '">Cancel</button>' +
       '</div>' +
@@ -22522,13 +22616,16 @@ async function _confirmAttnApproveRefill(consultId, userId) {
       .maybeSingle();
     if (!rr || !rr.data) { alert('Refill request row not found for this consultation.'); return; }
 
+    var overrides = (window._rfRxOverridesByConsult || {})[consultId] || null;
     var rrUpdate = await db.from('refill_requests').update({
       status: 'approved',
       clinician_id: clinicianId,
       clinician_note: note || null,
-      reviewed_at: new Date().toISOString()
+      reviewed_at: new Date().toISOString(),
+      custom_rx_overrides: overrides
     }).eq('id', rr.data.id);
     if (rrUpdate && rrUpdate.error) throw new Error(rrUpdate.error.message);
+    if (window._rfRxOverridesByConsult) delete window._rfRxOverridesByConsult[consultId];
 
     // Mirror into consultations so the existing attention queue clears
     // this row out (review_status='prescribed' removes it from pending).
@@ -22576,7 +22673,7 @@ function _attnDenyRefill(consultId, userId) {
   _rfToggleCardActions(consultId, false);
   areaEl.innerHTML =
     '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06);">' +
-      '<div style="' + _RF_INLINE_LABEL_STYLE_BASE + 'color:#b42318;">Deny Refill — Provide Reason</div>' +
+      '<div style="' + _RF_INLINE_LABEL_STYLE_BASE + 'color:#b42318;">Deny — Provide Reason</div>' +
       '<textarea id="attn-deny-refill-reason-' + consultId + '" placeholder="Explain why a refill is not appropriate..." rows="3" style="' + _RF_INLINE_TEXTAREA_STYLE + '"></textarea>' +
       '<div style="display:flex;gap:10px;margin-top:10px;">' +
         '<button onclick="_confirmAttnDenyRefill(\'' + consultId + '\',\'' + userId + '\')" class="crw-btn crw-btn-red">Confirm Deny</button>' +
@@ -22632,6 +22729,125 @@ async function _confirmAttnDenyRefill(consultId, userId) {
   } catch (e) {
     console.warn('[Pulse] deny refill failed:', e);
     alert('Failed to deny refill. Please try again.');
+  }
+}
+
+// ── Edit prescription details (refill approval sub-modal) ───────────
+// Lets the clinician tweak dose/freq/timing/duration before confirming
+// approval. Values get stashed on window._rfRxOverridesByConsult and
+// persist to refill_requests.custom_rx_overrides at Confirm Approval.
+// The webhook reads that column when it creates the new prescription
+// after payment.
+async function _openRxEditModal(consultId, userId) {
+  var rr = await db.from('refill_requests')
+    .select('prescription_id, protocol_key, custom_rx_overrides')
+    .eq('consultation_id', consultId)
+    .maybeSingle();
+  if (!rr || !rr.data) { alert('Refill request row not found.'); return; }
+
+  var current = {};
+  if (rr.data.prescription_id) {
+    var vRes = await db.from('prescription_versions')
+      .select('dose_amount, dose_unit, frequency_amount, frequency_cadence, timing, duration_value, duration_unit, other_notes')
+      .eq('prescription_id', rr.data.prescription_id)
+      .is('effective_to', null)
+      .maybeSingle();
+    if (vRes && vRes.data) current = vRes.data;
+  }
+  var scratch = (window._rfRxOverridesByConsult || {})[consultId] || {};
+  var merged = Object.assign({}, current, scratch);
+
+  var old = document.getElementById('rfRxEditOverlay');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  var protoLabel = (rr.data.protocol_key || 'Protocol').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  var esc = function(v) { return v == null ? '' : (typeof escapeAttr === 'function' ? escapeAttr(String(v)) : String(v)); };
+
+  var overlay = document.createElement('div');
+  overlay.className = 'pr-modal-overlay';
+  overlay.id = 'rfRxEditOverlay';
+  overlay.innerHTML =
+    '<div class="pr-modal" style="max-width:520px;">' +
+      '<button type="button" class="pr-modal-close" aria-label="Close" onclick="_closeRxEditModal()">&times;</button>' +
+      '<div class="pr-modal-title">Edit prescription details</div>' +
+      '<div class="pr-modal-sub">' + escapeHtml(protoLabel) + ' refill &middot; changes apply to the new prescription when the patient pays.</div>' +
+      '<div class="pr-med-row">' +
+        '<div class="pr-med-col"><label>Dose amount</label><input type="number" id="rfRxDoseAmt" step="any" value="' + esc(merged.dose_amount) + '" placeholder="e.g. 10"></div>' +
+        '<div class="pr-med-col"><label>Dose unit</label><input type="text" id="rfRxDoseUnit" value="' + esc(merged.dose_unit) + '" placeholder="mg, iu, mcg"></div>' +
+      '</div>' +
+      '<div class="pr-med-row">' +
+        '<div class="pr-med-col"><label>Frequency</label><input type="number" id="rfRxFreqAmt" value="' + esc(merged.frequency_amount) + '" placeholder="e.g. 2"></div>' +
+        '<div class="pr-med-col"><label>Cadence</label><input type="text" id="rfRxFreqCad" value="' + esc(merged.frequency_cadence) + '" placeholder="per day, per week"></div>' +
+      '</div>' +
+      '<div class="pr-med-row">' +
+        '<div class="pr-med-col" style="flex:2;"><label>Timing</label><input type="text" id="rfRxTiming" value="' + esc(merged.timing) + '" placeholder="morning, with food…"></div>' +
+      '</div>' +
+      '<div class="pr-med-row">' +
+        '<div class="pr-med-col"><label>Duration</label><input type="number" id="rfRxDurVal" value="' + esc(merged.duration_value) + '" placeholder="e.g. 8"></div>' +
+        '<div class="pr-med-col"><label>Unit</label><input type="text" id="rfRxDurUnit" value="' + esc(merged.duration_unit) + '" placeholder="weeks, days, months"></div>' +
+      '</div>' +
+      '<div class="pr-med-row">' +
+        '<div class="pr-med-col" style="flex:2;"><label>Clinician notes (optional)</label><textarea id="rfRxNotes" placeholder="Anything to note about this Rx…">' + (merged.other_notes ? escapeHtml(String(merged.other_notes)) : '') + '</textarea></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">' +
+        '<button type="button" onclick="_closeRxEditModal()" style="' + _RF_INLINE_CANCEL_STYLE + '">Cancel</button>' +
+        '<button type="button" class="pr-submit" style="margin:0;" onclick="_saveRxEditModal(\'' + consultId + '\',\'' + userId + '\')">Save</button>' +
+      '</div>' +
+    '</div>';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) _closeRxEditModal();
+  });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() { overlay.classList.add('open'); });
+}
+
+function _closeRxEditModal() {
+  var overlay = document.getElementById('rfRxEditOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 230);
+}
+
+function _saveRxEditModal(consultId, userId) {
+  var pick = function(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var v = (el.value || '').trim();
+    return v === '' ? null : v;
+  };
+  var toNum = function(v) {
+    if (v == null) return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  };
+  var overrides = {};
+  var doseAmt  = toNum(pick('rfRxDoseAmt'));   if (doseAmt  !== null) overrides.dose_amount       = doseAmt;
+  var doseUnit =        pick('rfRxDoseUnit');  if (doseUnit !== null) overrides.dose_unit         = doseUnit;
+  var freqAmt  = toNum(pick('rfRxFreqAmt'));   if (freqAmt  !== null) overrides.frequency_amount  = freqAmt;
+  var freqCad  =        pick('rfRxFreqCad');   if (freqCad  !== null) overrides.frequency_cadence = freqCad;
+  var timing   =        pick('rfRxTiming');    if (timing   !== null) overrides.timing            = timing;
+  var durVal   = toNum(pick('rfRxDurVal'));    if (durVal   !== null) overrides.duration_value    = durVal;
+  var durUnit  =        pick('rfRxDurUnit');   if (durUnit  !== null) overrides.duration_unit     = durUnit;
+  var notes    =        pick('rfRxNotes');     if (notes    !== null) overrides.other_notes       = notes;
+
+  window._rfRxOverridesByConsult = window._rfRxOverridesByConsult || {};
+  if (Object.keys(overrides).length === 0) {
+    delete window._rfRxOverridesByConsult[consultId];
+  } else {
+    window._rfRxOverridesByConsult[consultId] = overrides;
+  }
+  _closeRxEditModal();
+  // Refresh the indicator in the Approve form so the clinician sees
+  // that edits are staged.
+  var ind = document.getElementById('rf-edit-indicator-' + consultId);
+  if (ind) {
+    if (Object.keys(overrides).length) {
+      ind.style.display = '';
+      ind.innerHTML = '&check; Prescription edits saved — will apply when the patient pays.';
+    } else {
+      ind.style.display = 'none';
+      ind.innerHTML = '';
+    }
   }
 }
 

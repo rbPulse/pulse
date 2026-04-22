@@ -45,7 +45,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
 
-const FN_VERSION = "4c-webhook-v1";
+const FN_VERSION = "9-refill-custom-rx-v1";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -386,7 +386,7 @@ async function handleRefillPaid(
 ) {
   const { data: refill } = await supabase
     .from("refill_requests")
-    .select("id, tenant_id, consultation_id, patient_user_id, protocol_key, clinician_id, status")
+    .select("id, tenant_id, consultation_id, patient_user_id, prescription_id, protocol_key, clinician_id, clinician_note, status, custom_rx_overrides")
     .eq("id", refillRequestId)
     .maybeSingle();
   if (!refill) {
@@ -425,6 +425,45 @@ async function handleRefillPaid(
       throw rxErr;
     }
     console.log(`[stripe-webhook] active prescription already exists for consult ${refill.consultation_id} + ${refill.protocol_key} — skipping insert`);
+  }
+
+  // Stamp a v=1 prescription_versions row on the new Rx. Values come
+  // from the previous prescription's latest version (so Vitality
+  // refills carry the same dose/freq by default) with any clinician
+  // edits on refill_requests.custom_rx_overrides layered on top.
+  if (newRx?.id) {
+    let baseRx: Record<string, any> = {};
+    if (refill.prescription_id) {
+      const { data: prevVer } = await supabase
+        .from("prescription_versions")
+        .select("dose_amount, dose_unit, frequency_amount, frequency_cadence, timing, duration_value, duration_unit, other_notes")
+        .eq("prescription_id", refill.prescription_id)
+        .is("effective_to", null)
+        .maybeSingle();
+      if (prevVer) baseRx = prevVer;
+    }
+    const overrides = (refill.custom_rx_overrides as Record<string, any>) || {};
+    const merged = { ...baseRx, ...overrides };
+    const verErr = await supabase
+      .from("prescription_versions")
+      .insert({
+        prescription_id:   newRx.id,
+        version:           1,
+        effective_from:    new Date().toISOString(),
+        dose_amount:       merged.dose_amount ?? null,
+        dose_unit:         merged.dose_unit ?? null,
+        frequency_amount:  merged.frequency_amount ?? null,
+        frequency_cadence: merged.frequency_cadence ?? null,
+        timing:            merged.timing ?? null,
+        duration_value:    merged.duration_value ?? null,
+        duration_unit:     merged.duration_unit ?? null,
+        other_notes:       merged.other_notes ?? refill.clinician_note ?? null,
+        adjustment_types:  Object.keys(overrides).length ? ["refill_adjustment"] : ["refill"],
+        prescribed_by:     refill.clinician_id || null,
+      });
+    if ((verErr as any)?.error && (verErr as any).error.code !== "23505") {
+      console.warn(`[stripe-webhook] prescription_version insert failed:`, (verErr as any).error.message);
+    }
   }
 
   const { error: updateErr } = await supabase

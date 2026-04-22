@@ -7691,6 +7691,14 @@ function _continuePortalInit(user, role) {
 
   if (role === 'clinician' || role === 'admin') {
     document.body.classList.add('clinician-mode');
+    // Update the browser tab title to reflect the actual role the
+    // user is signed in as. applyTenantBrand() fires at boot with
+    // role='member' fallback, so without this the tab still says
+    // "Member Portal | Pulse" for clinicians.
+    try {
+      var _wm = ((window.Tenant && window.Tenant.brand && window.Tenant.brand.wordmark) || 'PULSE').trim();
+      document.title = 'Clinician Portal | ' + _wm;
+    } catch (_) {}
     // Load the clinician's stored timezone (if any) so other surfaces
     // that render appointment times can use it. Falls back to the
     // browser timezone silently if the column is missing or empty.

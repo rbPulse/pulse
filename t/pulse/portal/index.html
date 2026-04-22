@@ -15260,6 +15260,24 @@ function _renderRefillBtn(rxId, protocolName, dosesRemaining, cls) {
   return '<button class="' + baseCls + '" onclick="_requestRefill(\'' + esc(rxId) + '\',\'' + esc(protocolName) + '\',' + (dosesRemaining||0) + ')">Request Refill</button>';
 }
 
+// Phase 8 — fire-and-forget RPC into emit_event() so the calling
+// flow doesn't block on broadcast. Failures are warned but never
+// surface to the user — the worker has its own retry policy and
+// the source-of-truth DB writes already succeeded by the time we
+// get here.
+function _emitEvent(tenantId, type, data) {
+  if (!tenantId || !type || PREVIEW_MODE) return;
+  try {
+    db.rpc('emit_event', { p_tenant_id: tenantId, p_type: type, p_data: data || {} })
+      .then(function(r) {
+        if (r && r.error) console.warn('[Pulse] emit_event ' + type + ' failed:', r.error.message);
+      })
+      .catch(function(err) { console.warn('[Pulse] emit_event ' + type + ' threw:', err); });
+  } catch (e) {
+    console.warn('[Pulse] emit_event ' + type + ' sync error:', e);
+  }
+}
+
 async function _loadRefillRequests() {
   if (!currentUserId || PREVIEW_MODE) return;
   try {
@@ -15694,6 +15712,19 @@ async function _submitRefillRequest() {
         if (newRefillId) {
           window._refillStateByRxId = window._refillStateByRxId || {};
           window._refillStateByRxId[rxId] = { id: newRefillId, status: 'requested', protocol_key: protoKey };
+          // Phase 8 — broadcast to subscribers.
+          _emitEvent(refillTenantId, 'refill.requested', {
+            refill_request_id: newRefillId,
+            consultation_id:   newConsultId,
+            prescription_id:   rxId || null,
+            patient_user_id:   currentUserId,
+            clinician_id:      clinicianId,
+            protocol_key:      protoKey,
+            doses_remaining:   dosesRemaining,
+            patient_note:      notes || null,
+            medical_update:    medVal,
+            medical_changes:   medChanges
+          });
         }
       }
 
@@ -22510,6 +22541,9 @@ async function _confirmAttnDecline(consultId, userId) {
   }
 
   try {
+    var cRes = await db.from('consultations').select('tenant_id').eq('id', consultId).maybeSingle();
+    var declineTenantId = (cRes && cRes.data && cRes.data.tenant_id) || null;
+
     await db.from('consultations').update({
       review_status: 'not_prescribed',
       prescription_given: false,
@@ -22519,6 +22553,14 @@ async function _confirmAttnDecline(consultId, userId) {
       clinician_notes: reason,
       consult_required: false
     }).eq('id', consultId);
+
+    // Phase 8 — broadcast on the event pipe.
+    _emitEvent(declineTenantId, 'consultation.declined', {
+      consultation_id: consultId,
+      patient_user_id: userId,
+      reason:          reason,
+      clinician_id:    currentUserId || null
+    });
 
     // Notify patient
     db.from('notifications').insert({
@@ -22642,6 +22684,17 @@ async function _confirmAttnApproveRefill(consultId, userId) {
       consult_required: false
     }).eq('id', consultId);
 
+    // Phase 8 — broadcast to subscribers.
+    _emitEvent(rr.data.tenant_id, 'refill.approved', {
+      refill_request_id:  rr.data.id,
+      consultation_id:    consultId,
+      patient_user_id:    userId,
+      clinician_id:       clinicianId,
+      protocol_key:       rr.data.protocol_key,
+      clinician_note:     note || null,
+      custom_rx_overrides: overrides
+    });
+
     db.from('notifications').insert({
       user_id: userId,
       type: 'refill_approved',
@@ -22694,7 +22747,7 @@ async function _confirmAttnDenyRefill(consultId, userId) {
   var clinicianId = currentUserId || null;
   try {
     var rr = await db.from('refill_requests')
-      .select('id')
+      .select('id, tenant_id, protocol_key')
       .eq('consultation_id', consultId)
       .maybeSingle();
     if (!rr || !rr.data) { alert('Refill request row not found for this consultation.'); return; }
@@ -22717,6 +22770,16 @@ async function _confirmAttnDenyRefill(consultId, userId) {
       clinician_notes: reason,
       consult_required: false
     }).eq('id', consultId);
+
+    // Phase 8 — broadcast to subscribers.
+    _emitEvent(rr.data.tenant_id, 'refill.denied', {
+      refill_request_id: rr.data.id,
+      consultation_id:   consultId,
+      patient_user_id:   userId,
+      clinician_id:      clinicianId,
+      protocol_key:      rr.data.protocol_key,
+      denial_reason:     reason
+    });
 
     db.from('notifications').insert({
       user_id: userId,

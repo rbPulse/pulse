@@ -45,7 +45,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
 
-const FN_VERSION = "9-refill-custom-rx-v1";
+const FN_VERSION = "8-events-emit-v1";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -243,6 +243,19 @@ async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentInt
   } catch (emailErr) {
     console.warn(`[stripe-webhook] confirmation email send failed for ${pi.id}:`, (emailErr as Error).message);
   }
+
+  // Phase 8 — broadcast on the generic event pipe. Subscribers fan
+  // out via webhook-dispatch; if there are none, emit_event marks
+  // the outbox row 'skipped' so this is a no-op for tenants without
+  // outbound webhooks.
+  await emitEvent(supabase, tenantId || consultRow.tenant_id, "consultation.purchased", {
+    consultation_id:        consultId,
+    payment_intent_id:      pi.id,
+    amount_cents:           pi.amount_received || pi.amount,
+    currency:               pi.currency,
+    line_item_names:        (pi.metadata as any)?.line_item_names || null,
+    patient_email:          pi.receipt_email || null,
+  });
 }
 
 // Fires a Pulse-branded "payment confirmed, protocol active" email
@@ -491,15 +504,29 @@ async function handleRefillPaid(
   } catch (emailErr) {
     console.warn(`[stripe-webhook] refill confirmation email failed for ${pi.id}:`, (emailErr as Error).message);
   }
+
+  // Phase 8 — fan out to subscribers.
+  await emitEvent(supabase, tenantId || refill.tenant_id, "refill.paid", {
+    refill_request_id:      refillRequestId,
+    consultation_id:        refill.consultation_id,
+    new_prescription_id:    newRx?.id || null,
+    protocol_key:           refill.protocol_key,
+    payment_intent_id:      pi.id,
+    amount_cents:           pi.amount_received || pi.amount,
+    currency:               pi.currency,
+    patient_email:          pi.receipt_email || null,
+    custom_rx_overrides:    (refill as any).custom_rx_overrides || null,
+  });
 }
 
 async function handlePaymentIntentFailed(supabase: any, pi: Stripe.PaymentIntent) {
   const consultId = (pi.metadata as any)?.pulse_consultation_id;
+  const tenantId  = (pi.metadata as any)?.unite_tenant_id;
   if (!consultId) return;
 
   const { data: consultRow } = await supabase
     .from("consultations")
-    .select("data")
+    .select("data, tenant_id")
     .eq("id", consultId)
     .maybeSingle();
   if (!consultRow) return;
@@ -519,6 +546,42 @@ async function handlePaymentIntentFailed(supabase: any, pi: Stripe.PaymentIntent
     })
     .eq("id", consultId);
   if (error) throw error;
+
+  await emitEvent(supabase, tenantId || consultRow.tenant_id, "payment.failed", {
+    consultation_id:    consultId,
+    payment_intent_id:  pi.id,
+    amount_cents:       pi.amount,
+    currency:           pi.currency,
+    failure_code:       pi.last_payment_error?.code || null,
+    failure_message:    pi.last_payment_error?.message || null,
+  });
+}
+
+// Phase 8 — thin wrapper around the emit_event() RPC. Centralised so
+// every handler that fires an event uses the same error-handling
+// shape (best-effort, never blocks the calling flow).
+async function emitEvent(
+  supabase: any,
+  tenantId: string | null | undefined,
+  type: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  if (!tenantId) {
+    console.warn(`[stripe-webhook] emitEvent ${type} — no tenant_id, skipping`);
+    return;
+  }
+  try {
+    const { error } = await supabase.rpc("emit_event", {
+      p_tenant_id: tenantId,
+      p_type:      type,
+      p_data:      data,
+    });
+    if (error) {
+      console.warn(`[stripe-webhook] emit_event(${type}) failed:`, error.message);
+    }
+  } catch (err) {
+    console.warn(`[stripe-webhook] emit_event(${type}) threw:`, (err as Error).message);
+  }
 }
 
 async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {

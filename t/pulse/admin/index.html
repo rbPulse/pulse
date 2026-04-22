@@ -9281,7 +9281,223 @@ function _buildIntegrationsSetupBody() {
     entitled.map(_renderIntegrationSetupCard).join('') +
   '</div>';
 
-  return intro + cards;
+  // Phase 8 — generic event-webhook section appended below the
+  // curated provider grid. Lives async via _renderEventWebhooksSection
+  // so the cards above paint immediately while the subscriptions
+  // query runs.
+  var webhooksSection = '<div id="event-webhooks-section" style="margin-top:36px;"></div>';
+  setTimeout(function() { _renderEventWebhooksSection(); }, 0);
+
+  return intro + cards + webhooksSection;
+}
+
+// ── Event Webhooks (Phase 8) ────────────────────────────────────────
+// Generic outbound HTTPS pipe: tenant admins point any URL at one or
+// more event types. webhook-dispatch fires a signed JSON envelope when
+// a matching event lands in events_outbox.
+
+var EVENT_CATALOG = [
+  { type: 'consultation.purchased', label: 'Consultation purchased',  hint: 'Initial protocol payment landed.' },
+  { type: 'consultation.declined',  label: 'Consultation declined',   hint: 'Clinician declined an intake.' },
+  { type: 'refill.requested',       label: 'Refill requested',        hint: 'Patient submitted a refill request.' },
+  { type: 'refill.approved',        label: 'Refill approved',         hint: 'Clinician approved a refill.' },
+  { type: 'refill.denied',          label: 'Refill denied',           hint: 'Clinician denied a refill.' },
+  { type: 'refill.paid',            label: 'Refill paid',             hint: 'Patient paid for an approved refill; new Rx issued.' },
+  { type: 'payment.failed',         label: 'Payment failed',          hint: 'Stripe reported a payment failure.' },
+];
+
+function _renderEventWebhooksSection() {
+  var host = document.getElementById('event-webhooks-section');
+  if (!host || !window.Tenant) return;
+  host.innerHTML =
+    '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;">' +
+      '<div>' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;">Event webhooks</div>' +
+        '<div style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--text2);line-height:1.55;max-width:640px;">' +
+          'Wire any external endpoint (Zapier, Make, n8n, Slack incoming webhook, your backend) to events that fire in your portal. Each delivery is signed with HMAC-SHA256 so the receiver can verify it came from us.' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="form-btn primary" onclick="openWebhookEditor(null)">+ Add webhook</button>' +
+    '</div>' +
+    '<div id="event-webhooks-list" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 0;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text2);">Loading…</div>';
+  loadEventWebhooks();
+}
+
+function loadEventWebhooks() {
+  var listEl = document.getElementById('event-webhooks-list');
+  if (!listEl || !window.Tenant) return;
+  db.from('webhook_subscriptions')
+    .select('id, label, target_url, event_types, enabled, created_at')
+    .eq('tenant_id', window.Tenant.id)
+    .order('created_at', { ascending: false })
+    .then(function(r) {
+      if (r.error) {
+        listEl.innerHTML = '<div style="padding:14px 18px;color:var(--red);">' + _brandEscHtml(r.error.message) + '</div>';
+        return;
+      }
+      var rows = r.data || [];
+      if (!rows.length) {
+        listEl.innerHTML = '<div style="padding:18px 20px;text-align:center;color:var(--text3);">No webhooks yet. Add one above to start streaming events.</div>';
+        return;
+      }
+      listEl.innerHTML = rows.map(_renderWebhookRow).join('');
+    })
+    .catch(function(err) {
+      listEl.innerHTML = '<div style="padding:14px 18px;color:var(--red);">' + _brandEscHtml(err.message || 'Load failed') + '</div>';
+    });
+}
+
+function _renderWebhookRow(row) {
+  var label = row.label || _shortenUrl(row.target_url);
+  var types = (row.event_types || []).map(_brandEscHtml).join(', ');
+  var statusBadge = row.enabled
+    ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,0.12);color:#16A34A;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">Enabled</span>'
+    : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,0.06);color:var(--text3);font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">Disabled</span>';
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);">' +
+    '<div style="min-width:0;flex:1;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+        '<span style="font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;color:var(--text);">' + _brandEscHtml(label) + '</span>' +
+        statusBadge +
+      '</div>' +
+      '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;">' + _brandEscHtml(row.target_url) + '</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text2);">' + types + '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-shrink:0;">' +
+      '<button type="button" class="form-btn secondary" onclick="openWebhookEditor(\'' + _brandEscAttr(row.id) + '\')">Edit</button>' +
+      '<button type="button" class="form-btn secondary" style="color:var(--red);" onclick="deleteWebhook(\'' + _brandEscAttr(row.id) + '\')">Delete</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function _shortenUrl(u) {
+  if (!u) return '(no URL)';
+  try { var p = new URL(u); return p.host + p.pathname.replace(/\/+$/, ''); }
+  catch (_) { return u; }
+}
+
+function _genWebhookSecret() {
+  var bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function openWebhookEditor(id) {
+  var existing = null;
+  var openOverlay = function() {
+    var overlay = document.createElement('div');
+    overlay.id = 'webhookEditorOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.42);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:30px;';
+    var label = (existing && existing.label) || '';
+    var url   = (existing && existing.target_url) || '';
+    var enabled = existing ? !!existing.enabled : true;
+    var selected = (existing && existing.event_types) || [];
+    var secret = (existing && existing.secret) || _genWebhookSecret();
+    var checkboxes = EVENT_CATALOG.map(function(e) {
+      var checked = selected.indexOf(e.type) !== -1 ? ' checked' : '';
+      return '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 4px;cursor:pointer;border-radius:6px;">' +
+        '<input type="checkbox" value="' + _brandEscAttr(e.type) + '" name="wh-event-types"' + checked + ' style="margin-top:2px;flex-shrink:0;">' +
+        '<span style="min-width:0;flex:1;">' +
+          '<span style="display:block;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:500;color:var(--text);">' + _brandEscHtml(e.label) + '</span>' +
+          '<span style="display:block;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text3);margin:2px 0 1px;">' + _brandEscHtml(e.type) + '</span>' +
+          '<span style="display:block;font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text2);">' + _brandEscHtml(e.hint) + '</span>' +
+        '</span>' +
+      '</label>';
+    }).join('');
+    overlay.innerHTML =
+      '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(680px,100%);max-height:calc(100vh - 60px);overflow-y:auto;font-family:\'Inter\',sans-serif;color:var(--text);box-shadow:0 30px 80px rgba(0,0,0,0.32);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">' +
+          '<div style="font-size:18px;font-weight:600;">' + (existing ? 'Edit webhook' : 'Add webhook') + '</div>' +
+          '<button type="button" onclick="closeWebhookEditor()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;">&times;</button>' +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Label (optional)</label>' +
+          '<input type="text" id="wh-label" value="' + _brandEscAttr(label) + '" placeholder="e.g. Slack #refills" style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:13px;color:var(--text);outline:none;">' +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Target URL</label>' +
+          '<input type="url" id="wh-url" value="' + _brandEscAttr(url) + '" placeholder="https://hooks.zapier.com/…" style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text);outline:none;">' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:6px;">Must be HTTPS in production.</div>' +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Signing secret</label>' +
+          '<div style="display:flex;gap:8px;align-items:center;">' +
+            '<input type="text" id="wh-secret" value="' + _brandEscAttr(secret) + '" readonly style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text);outline:none;">' +
+            '<button type="button" class="form-btn secondary" onclick="(function(){document.getElementById(\'wh-secret\').select();document.execCommand(\'copy\');if(typeof showToast===\'function\')showToast(\'Secret copied\');})()">Copy</button>' +
+            '<button type="button" class="form-btn secondary" onclick="(function(){document.getElementById(\'wh-secret\').value=_genWebhookSecret();})()">Regenerate</button>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:6px;">Use this to verify the X-Pulse-Signature header on your receiver. Save it now — we don\'t show it in plaintext after.</div>' +
+        '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<label style="display:block;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Event types</label>' +
+          '<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">' + checkboxes + '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:18px;">' +
+          '<label style="display:flex;gap:10px;align-items:center;cursor:pointer;">' +
+            '<input type="checkbox" id="wh-enabled"' + (enabled ? ' checked' : '') + '>' +
+            '<span style="font-size:13px;color:var(--text);">Enabled — fire deliveries when events match</span>' +
+          '</label>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+          '<button type="button" class="form-btn secondary" onclick="closeWebhookEditor()">Cancel</button>' +
+          '<button type="button" class="form-btn primary" onclick="saveWebhook(' + (existing ? '\'' + _brandEscAttr(existing.id) + '\'' : 'null') + ')">Save</button>' +
+        '</div>' +
+      '</div>';
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeWebhookEditor(); });
+    document.body.appendChild(overlay);
+  };
+  if (!id) { openOverlay(); return; }
+  db.from('webhook_subscriptions').select('*').eq('id', id).maybeSingle().then(function(r) {
+    if (r.error || !r.data) { if (typeof showToast === 'function') showToast('Webhook not found', 'error'); return; }
+    existing = r.data;
+    openOverlay();
+  });
+}
+
+function closeWebhookEditor() {
+  var o = document.getElementById('webhookEditorOverlay');
+  if (o && o.parentNode) o.parentNode.removeChild(o);
+}
+
+function saveWebhook(id) {
+  var url = (document.getElementById('wh-url').value || '').trim();
+  var label = (document.getElementById('wh-label').value || '').trim() || null;
+  var secret = (document.getElementById('wh-secret').value || '').trim();
+  var enabled = !!document.getElementById('wh-enabled').checked;
+  var types = Array.from(document.querySelectorAll('input[name="wh-event-types"]:checked')).map(function(el) { return el.value; });
+
+  if (!/^https?:\/\//i.test(url)) { if (typeof showToast === 'function') showToast('Target URL must start with https://', 'error'); return; }
+  if (!secret || secret.length < 16) { if (typeof showToast === 'function') showToast('Secret too short', 'error'); return; }
+  if (!types.length) { if (typeof showToast === 'function') showToast('Pick at least one event type', 'error'); return; }
+  if (!window.Tenant) { if (typeof showToast === 'function') showToast('Tenant not loaded', 'error'); return; }
+
+  var payload = {
+    tenant_id:   window.Tenant.id,
+    label:       label,
+    target_url:  url,
+    secret:      secret,
+    event_types: types,
+    enabled:     enabled
+  };
+  var p = id
+    ? db.from('webhook_subscriptions').update(payload).eq('id', id)
+    : db.from('webhook_subscriptions').insert(payload);
+  p.then(function(r) {
+    if (r.error) { if (typeof showToast === 'function') showToast(r.error.message, 'error'); return; }
+    if (typeof showToast === 'function') showToast(id ? 'Webhook updated' : 'Webhook added');
+    closeWebhookEditor();
+    loadEventWebhooks();
+  }).catch(function(err) {
+    if (typeof showToast === 'function') showToast(err.message || 'Save failed', 'error');
+  });
+}
+
+function deleteWebhook(id) {
+  if (!confirm('Delete this webhook? Future events won\'t be delivered to its endpoint.')) return;
+  db.from('webhook_subscriptions').delete().eq('id', id).then(function(r) {
+    if (r.error) { if (typeof showToast === 'function') showToast(r.error.message, 'error'); return; }
+    if (typeof showToast === 'function') showToast('Webhook deleted');
+    loadEventWebhooks();
+  });
 }
 
 function _renderIntegrationSetupCard(provider) {

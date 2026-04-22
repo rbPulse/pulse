@@ -3700,6 +3700,10 @@ async function _activateAndGoToCheckout() {
     selectedNames.push(name);
   });
   var selectedKeys = Object.keys(selectedProtocols);
+  if (selectedKeys.length === 0) {
+    alert('Select at least one protocol to activate.');
+    return;
+  }
 
   var consultId = _consultationId;
   if (!consultId) {
@@ -3716,32 +3720,25 @@ async function _activateAndGoToCheckout() {
   if (!cFull.data || cFull.data.length === 0) { alert('Consultation not found.'); return; }
   var consult = cFull.data[0];
 
-  // 2. Intersect with active prescriptions for authoritative "what was prescribed".
-  var rxRes = await client.from('prescriptions')
-    .select('protocol_key, status')
-    .eq('consultation_id', consultId)
-    .eq('status', 'active');
-  var activePrescribedKeys = (rxRes.data || []).map(function(r) { return r.protocol_key; });
-  var buyingKeys = selectedKeys.length > 0
-    ? selectedKeys.filter(function(k) { return activePrescribedKeys.indexOf(k) !== -1; })
-    : activePrescribedKeys;
-  if (buyingKeys.length === 0) {
-    alert('Select at least one protocol to activate.');
-    return;
-  }
-
-  // 3. Price lookup per protocol; fallback to $99 if no price set.
+  // 2. Price lookup. Match against protocol_templates on either the
+  //    `key` or the `name` column — the consultation summary's checkbox
+  //    value may come through as a display name rather than a stable
+  //    key (e.g. "Repair" instead of "repair_v1"). Falls back to $99
+  //    per protocol if no price set, so the payment flow still works
+  //    in demo / freshly-seeded environments.
   var tRes = await client.from('protocol_templates')
     .select('key, name, price')
-    .eq('tenant_id', consult.tenant_id)
-    .in('key', buyingKeys);
-  var protoByKey = {};
-  (tRes.data || []).forEach(function(t) { protoByKey[t.key] = t; });
+    .eq('tenant_id', consult.tenant_id);
+  var byKeyOrName = {};
+  (tRes.data || []).forEach(function(t) {
+    if (t.key) byKeyOrName[t.key.toLowerCase()] = t;
+    if (t.name) byKeyOrName[t.name.toLowerCase()] = t;
+  });
 
   var lineItems = [];
   var totalCents = 0;
-  buyingKeys.forEach(function(k) {
-    var t = protoByKey[k] || { name: k.replace(/_/g, ' '), price: null };
+  selectedKeys.forEach(function(k) {
+    var t = byKeyOrName[String(k).toLowerCase()] || { name: String(k).replace(/_/g, ' '), price: null };
     var cents = t.price != null ? Math.round(Number(t.price) * 100) : 9900;
     totalCents += cents;
     lineItems.push({

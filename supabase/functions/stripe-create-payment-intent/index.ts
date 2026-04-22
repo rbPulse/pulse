@@ -73,17 +73,29 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { tenant_id, consultation_id, line_items, customer_email } = body || {};
+    const { tenant_id, consultation_id, line_items, selected_keys, customer_email } = body || {};
     if (!tenant_id) return json({ error: "tenant_id is required" }, 400);
-    if (!Array.isArray(line_items) || line_items.length === 0) return json({ error: "line_items is required" }, 400);
 
-    const { data: membership } = await supabase
-      .from("tenant_memberships")
-      .select("role")
-      .eq("tenant_id", tenant_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!membership) return json({ error: "Not a member of this tenant" }, 403);
+    // Authz: accept EITHER a staff tenant_membership OR an active
+    // patient_enrollments row. Patients buying their own protocol are
+    // in patient_enrollments, not tenant_memberships.
+    const [memRes, enrRes] = await Promise.all([
+      supabase
+        .from("tenant_memberships")
+        .select("role")
+        .eq("tenant_id", tenant_id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("patient_enrollments")
+        .select("status")
+        .eq("tenant_id", tenant_id)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle(),
+    ]);
+    const authorized = !!memRes.data || !!enrRes.data;
+    if (!authorized) return json({ error: "Not authorised on this tenant" }, 403);
 
     const { data: intRow } = await supabase
       .from("tenant_integrations")
@@ -99,15 +111,50 @@ serve(async (req) => {
       return json({ error: "Stripe charges are not enabled yet — finish onboarding first" }, 409);
     }
 
-    // Sum line items into a single PI amount. Stripe's PaymentIntent
-    // API doesn't take itemized lines — it's one charge for one
-    // amount. Keep item breakdown in metadata for bookkeeping + future
-    // receipt generation; the summary shows in the patient's inline
-    // order-summary panel, not on the Stripe side.
+    // Two ways to specify what's being bought:
+    //   1. selected_keys: ["repair", "growth"] — server looks up
+    //      catalog name + price from protocol_templates (authoritative,
+    //      bypasses any RLS on the client side).
+    //   2. line_items: [{name, amount_cents, quantity}] — caller has
+    //      already prepared line items; server trusts them.
+    // At least one required.
+    let resolvedLineItems: Array<{ name: string; description?: string; amount_cents: number; quantity: number }> = [];
+
+    if (Array.isArray(selected_keys) && selected_keys.length > 0) {
+      const { data: templates } = await supabase
+        .from("protocol_templates")
+        .select("key, name, price")
+        .eq("tenant_id", tenant_id);
+      const byKeyOrName: Record<string, { key: string; name: string; price: number | null }> = {};
+      (templates || []).forEach((t: any) => {
+        if (t.key)  byKeyOrName[String(t.key).toLowerCase()]  = t;
+        if (t.name) byKeyOrName[String(t.name).toLowerCase()] = t;
+      });
+      selected_keys.forEach((rawKey: string) => {
+        const lookup = byKeyOrName[String(rawKey).toLowerCase()];
+        const name = lookup?.name || String(rawKey);
+        const cents = lookup?.price != null ? Math.round(Number(lookup.price) * 100) : 9900;
+        resolvedLineItems.push({
+          name,
+          description: body?.description_suffix ? `Pulse protocol — ${body.description_suffix}` : undefined,
+          amount_cents: cents,
+          quantity: 1,
+        });
+      });
+    } else if (Array.isArray(line_items) && line_items.length > 0) {
+      resolvedLineItems = line_items.map((li: any) => ({
+        name: li.name,
+        description: li.description,
+        amount_cents: Math.round(Number(li.amount_cents)),
+        quantity: Number(li.quantity || 1),
+      }));
+    } else {
+      return json({ error: "selected_keys or line_items is required" }, 400);
+    }
+
     let totalCents = 0;
-    line_items.forEach((li: any) => {
-      const q = Number(li.quantity || 1);
-      totalCents += Math.round(Number(li.amount_cents) * q);
+    resolvedLineItems.forEach((li) => {
+      totalCents += li.amount_cents * li.quantity;
     });
     if (totalCents <= 0) return json({ error: "Total amount must be > 0" }, 400);
 
@@ -126,8 +173,8 @@ serve(async (req) => {
       unite_user_id: user.id,
     };
     if (consultation_id) metadata.pulse_consultation_id = consultation_id;
-    metadata.line_item_count = String(line_items.length);
-    metadata.line_item_names = line_items.map((li: any) => li.name).join(", ").slice(0, 500);
+    metadata.line_item_count = String(resolvedLineItems.length);
+    metadata.line_item_names = resolvedLineItems.map((li) => li.name).join(", ").slice(0, 500);
     Object.entries(metadata).forEach(([k, v]) => form.set(`metadata[${k}]`, v));
 
     const resp = await fetch("https://api.stripe.com/v1/payment_intents", {
@@ -154,6 +201,7 @@ serve(async (req) => {
       payment_intent_id: data.id,
       amount: data.amount,
       currency: data.currency,
+      line_items: resolvedLineItems,
     });
   } catch (err) {
     return json({ error: (err as Error).message || "Internal error" }, 500);

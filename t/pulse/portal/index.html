@@ -17,6 +17,7 @@
 <script src="../../../modules.js"></script>
 <script src="../../../brand.js"></script>
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <script>
 // Early preview-mode guard — runs before any other JS.
 // Prevents any redirect to index.html or consultation.html when ?preview=1.
@@ -240,6 +241,44 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pr-submit{display:block;margin:24px auto 0;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;padding:12px 28px;border-radius:999px;background:#2F6F55;color:#fff;border:none;cursor:pointer;transition:background .15s;}
 .pr-submit:hover{background:#1a4a35;}
 .pr-submit:disabled{background:rgba(47,111,85,0.25);color:rgba(255,255,255,0.7);cursor:default;}
+
+/* ── Refill payment modal (Stripe Elements inline) — light theme shared with consultation-page purchase modal ── */
+.purchase-modal-backdrop{position:fixed;inset:0;background:rgba(20,25,35,0.42);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9000;display:none;}
+.purchase-modal-backdrop.show{display:block;}
+.purchase-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:560px;width:calc(100% - 32px);max-height:calc(100vh - 32px);overflow-y:auto;background:#ffffff;border:1px solid rgba(20,25,35,0.08);border-radius:18px;padding:32px 34px;z-index:9001;display:none;box-shadow:0 30px 80px rgba(20,25,35,0.18);font-family:'Inter',sans-serif;color:#1a1a1a;}
+.purchase-modal.show{display:block;}
+.purchase-close{position:absolute;top:16px;right:16px;background:transparent;border:none;color:rgba(20,25,35,0.45);font-size:22px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;}
+.purchase-close:hover{background:rgba(20,25,35,0.05);color:#1a1a1a;}
+.purchase-title{font-size:22px;font-weight:600;margin-bottom:6px;letter-spacing:-0.01em;color:#111;}
+.purchase-sub{font-size:13px;color:#666;margin-bottom:22px;line-height:1.55;}
+.purchase-order{background:#f7f5f0;border:1px solid rgba(20,25,35,0.06);border-radius:12px;padding:18px 20px;margin-bottom:20px;}
+.purchase-order-label{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#3a7a5c;margin-bottom:12px;font-weight:600;}
+.purchase-line{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;font-size:13px;color:#222;}
+.purchase-line + .purchase-line{border-top:1px solid rgba(20,25,35,0.05);}
+.purchase-total-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;margin-top:8px;border-top:1px solid rgba(20,25,35,0.1);font-size:15px;font-weight:600;color:#111;}
+.purchase-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:32px 0;font-size:13px;color:#666;}
+.purchase-spinner{width:14px;height:14px;border:2px solid rgba(20,25,35,0.12);border-top-color:#3a7a5c;border-radius:50%;animation:pm-spin 0.8s linear infinite;display:inline-block;}
+@keyframes pm-spin{to{transform:rotate(360deg);}}
+.purchase-card-label{font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#666;margin-bottom:10px;font-weight:600;}
+.purchase-btn-pay{width:100%;margin-top:18px;padding:14px 24px;background:#3a7a5c;color:#fff;border:none;border-radius:999px;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(58,122,92,0.24);}
+.purchase-btn-pay:hover:not(:disabled){background:#2d6147;box-shadow:0 4px 12px rgba(58,122,92,0.32);}
+.purchase-btn-pay:disabled{opacity:0.5;cursor:not-allowed;box-shadow:none;}
+.purchase-err{background:rgba(200,50,50,0.06);border:1px solid rgba(200,50,50,0.2);color:#a83232;border-radius:8px;padding:10px 14px;font-size:12px;margin-top:12px;line-height:1.5;display:none;}
+.purchase-err.show{display:block;}
+.purchase-success{text-align:center;padding:18px 0 6px;}
+.purchase-success-icon{width:52px;height:52px;border-radius:50%;background:rgba(58,122,92,0.12);color:#3a7a5c;display:inline-flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin-bottom:14px;}
+.purchase-success-title{font-size:18px;font-weight:600;margin-bottom:6px;color:#111;}
+.purchase-success-sub{font-size:13px;color:#666;margin-bottom:20px;line-height:1.55;}
+.purchase-btn-portal{display:inline-block;padding:12px 28px;background:#3a7a5c;color:#fff;border-radius:999px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;transition:background .2s;}
+.purchase-btn-portal:hover{background:#2d6147;}
+
+/* Refill state modifiers on the Supply-card refill button */
+.ov-supply-refill-btn.is-review{background:rgba(234,179,8,0.12);color:#92710a;border:1px solid rgba(234,179,8,0.3);cursor:default;}
+.ov-supply-refill-btn.is-approved{background:#22C55E;color:#fff;border:1px solid #22C55E;}
+.ov-supply-refill-btn.is-approved:hover{background:#16A34A;}
+.ov-supply-refill-btn.is-denied{background:rgba(239,68,68,0.12);color:#b42318;border:1px solid rgba(239,68,68,0.3);cursor:default;}
+.ov-supply-refill-btn.is-paid{background:rgba(58,122,92,0.12);color:#2F6F55;border:1px solid rgba(58,122,92,0.25);cursor:default;}
+
 .proto-history-card{overflow:hidden;padding:0 !important;margin-top:16px;}
 .proto-history-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
 .proto-history-eyebrow{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--green,#2F6F55);}
@@ -11029,7 +11068,17 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           // render in the full-width .crw-bottom row. Protocol-request
           // consultations skip the buttons (clinician uses "+ Add Protocol").
           if (isDecided) return '';
-          if (_consultType === 'protocol_request' || _consultType === 'refill_request') return '';
+          if (_consultType === 'protocol_request') return '';
+          // Refill requests get their own Approve/Deny pair — they
+          // update refill_requests.status alongside the consultation
+          // row. No new prescription is issued; the webhook creates
+          // one only after payment lands.
+          if (_consultType === 'refill_request') {
+            return '<div class="crw-actions">'+
+              '<button class="'+pCls+'" onclick="_attnApproveRefill(\''+consultId+'\',\''+userId+'\')">Approve Refill</button>'+
+              '<button class="'+dCls+'" onclick="_attnDenyRefill(\''+consultId+'\',\''+userId+'\')">Deny Refill</button>'+
+            '</div>';
+          }
           return '<div class="crw-actions">'+
             '<button class="'+pCls+'" onclick="_attnPrescribe(\''+consultId+'\',\''+userId+'\')">Prescribe</button>'+
             '<button class="'+dCls+'" onclick="_attnDecline(\''+consultId+'\',\''+userId+'\')">Decline</button>'+
@@ -14129,11 +14178,10 @@ function _refreshProtoProgress() {
     var _rfDaysLeft = (adh.freqPerDay > 0) ? (dosesRemaining / adh.freqPerDay) : dosesRemaining;
     var _rfRxId = primaryRxId || '';
     var _rfName = window._protoKey || 'Protocol';
-    var _rfPending = window._refillPendingRxIds && window._refillPendingRxIds[_rfRxId];
     if (_rfRxId) {
       _rfWrap.style.display = '';
-      _rfWrap.innerHTML = _rfPending
-        ? '<button class="proto-refill-btn" disabled>Refill Requested</button>'
+      _rfWrap.innerHTML = (typeof _renderRefillBtn === 'function')
+        ? _renderRefillBtn(_rfRxId, _rfName, dosesRemaining, 'proto-refill-btn')
         : '<button class="proto-refill-btn" onclick="_requestRefill(\'' + escapeAttr(_rfRxId) + '\',\'' + escapeAttr(_rfName) + '\',' + dosesRemaining + ')">Request Refill</button>';
     } else {
       _rfWrap.style.display = 'none';
@@ -14508,15 +14556,14 @@ function _buildSlideRefillBtn(rxId) {
   for (var i = 0; i < rxList.length; i++) { if (rxList[i].id === rxId) { rx = rxList[i]; break; } }
   var protoName = (rx && rx.protocol_key) || 'Protocol';
   var dosesRemaining = _computeDosesRemainingForRx(rx);
-  var isPending = window._refillPendingRxIds && window._refillPendingRxIds[rxId];
-  var btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'proto-slide-log-btn proto-slide-refill-btn';
-  btn.setAttribute('data-rx-id', rxId);
-  btn.disabled = !!isPending;
-  btn.innerHTML = '<span>' + (isPending ? 'Refill Requested' : 'Request Refill') + '</span>';
-  btn.setAttribute('onclick', '_requestRefill(\''+escapeAttr(rxId)+'\',\''+escapeAttr(protoName)+'\','+dosesRemaining+')');
-  return btn;
+  var state = (window._refillStateByRxId || {})[rxId] || null;
+  var wrapper = document.createElement('div');
+  wrapper.className = 'proto-slide-log-btn proto-slide-refill-btn';
+  wrapper.setAttribute('data-rx-id', rxId);
+  wrapper.innerHTML = (typeof _renderRefillBtn === 'function')
+    ? _renderRefillBtn(rxId, protoName, dosesRemaining, 'proto-refill-btn')
+    : '<button class="proto-refill-btn" onclick="_requestRefill(\''+escapeAttr(rxId)+'\',\''+escapeAttr(protoName)+'\','+dosesRemaining+')">Request Refill</button>';
+  return wrapper.firstChild || wrapper;
 }
 
 // Compute doses remaining for a given Rx using the same logic as the
@@ -15058,7 +15105,235 @@ async function _submitProtocolRequest() {
 
 // ══ Refill request ═══════════════════════════════════════════════════
 window._refillPendingRxIds = {};
+window._refillStateByRxId = window._refillStateByRxId || {};
 var _refillCtx = null;
+
+// Phase 9 — load the patient's in-flight refill_requests rows so the
+// Supply card renders state-aware buttons (Under Review / Pay for Refill /
+// Denied / Processing) instead of plain "Request Refill". Called from
+// _continuePortalInit after the prescriptions load.
+// Shared refill-button renderer used by Supply card + protocol tab.
+// Branches on window._refillStateByRxId[rxId] populated by
+// _loadRefillRequests. When the refill is approved, the button opens
+// the pay-for-refill modal; when pending it's muted/disabled with
+// copy that matches the current lifecycle state.
+function _renderRefillBtn(rxId, protocolName, dosesRemaining, cls) {
+  var state = (window._refillStateByRxId || {})[rxId] || null;
+  var baseCls = cls || 'ov-supply-refill-btn';
+  var esc = function(s) { return (typeof escapeAttr === 'function') ? escapeAttr(s) : String(s||'').replace(/"/g,'&quot;'); };
+  if (!state) {
+    return '<button class="' + baseCls + '" onclick="_requestRefill(\'' + esc(rxId) + '\',\'' + esc(protocolName) + '\',' + (dosesRemaining||0) + ')">Request Refill</button>';
+  }
+  if (state.status === 'requested') {
+    return '<button class="' + baseCls + ' is-review" disabled>Under Review</button>';
+  }
+  if (state.status === 'approved') {
+    var amt = state.amount_cents ? ' ($' + (state.amount_cents/100).toFixed(2) + ')' : '';
+    return '<button class="' + baseCls + ' is-approved" onclick="_openRefillPayment(\'' + esc(state.id) + '\')">Pay for Refill' + amt + '</button>';
+  }
+  if (state.status === 'denied') {
+    return '<button class="' + baseCls + ' is-denied" disabled title="' + esc(state.denial_reason || 'Denied by your clinician') + '">Request Denied</button>';
+  }
+  if (state.status === 'paid') {
+    return '<button class="' + baseCls + ' is-paid" disabled>Processing&hellip;</button>';
+  }
+  return '<button class="' + baseCls + '" onclick="_requestRefill(\'' + esc(rxId) + '\',\'' + esc(protocolName) + '\',' + (dosesRemaining||0) + ')">Request Refill</button>';
+}
+
+async function _loadRefillRequests() {
+  if (!currentUserId || PREVIEW_MODE) return;
+  try {
+    var r = await db.from('refill_requests')
+      .select('id, prescription_id, protocol_key, status, amount_cents, clinician_note, denial_reason, tenant_id')
+      .eq('patient_user_id', currentUserId)
+      .in('status', ['requested','approved','denied','paid'])
+      .order('requested_at', { ascending: false });
+    var rows = (r && r.data) || [];
+    window._refillStateByRxId = {};
+    rows.forEach(function(row) {
+      if (!row.prescription_id) return;
+      // Keep the latest row per rxId (rows are already desc by requested_at)
+      if (!window._refillStateByRxId[row.prescription_id]) {
+        window._refillStateByRxId[row.prescription_id] = row;
+      }
+      if (row.status === 'requested' || row.status === 'approved' || row.status === 'paid') {
+        window._refillPendingRxIds[row.prescription_id] = true;
+      }
+    });
+    try { _renderOverviewMulti(); } catch (_) {}
+    try { _refreshProtoProgress(); } catch (_) {}
+  } catch (err) {
+    console.warn('[Pulse] _loadRefillRequests failed:', err);
+  }
+}
+
+// ══ Refill payment modal — Stripe Elements inline ═══════════════════
+// Patient clicks "Pay for Refill" after a clinician approves their
+// refill_requests row. Opens the same modal shape the consultation
+// page uses for initial purchases, but keyed on refill_request_id
+// instead of selected_keys. The edge function resolves the price
+// via protocol_templates.refill_price (falls back to .price).
+var _pmStripe = null;
+var _pmElements = null;
+var _pmClientSecret = null;
+var _pmRefillId = null;
+
+function _pmEsc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function _pmShowErr(msg) {
+  var el = document.getElementById('paymentErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function _openRefillPayment(refillId) {
+  if (!refillId || PREVIEW_MODE) return;
+  if (typeof Stripe !== 'function') { showToast('Payment system still loading — try again in a moment.'); return; }
+
+  var sessRes = await db.auth.getSession();
+  var session = sessRes && sessRes.data && sessRes.data.session;
+  if (!session) { showToast('Please sign in again to complete payment.'); return; }
+
+  var rr = await db.from('refill_requests')
+    .select('id, tenant_id, status, protocol_key, amount_cents')
+    .eq('id', refillId).maybeSingle();
+  if (!rr || !rr.data) { showToast('Refill not found.'); return; }
+  if (rr.data.status !== 'approved') { showToast('This refill is not ready for payment.'); return; }
+
+  _pmRefillId = refillId;
+
+  document.getElementById('purchaseOrderLines').innerHTML = '';
+  document.getElementById('purchaseTotal').textContent = '—';
+  document.getElementById('purchaseHeader').style.display = 'block';
+  document.getElementById('purchaseLoading').style.display = 'flex';
+  document.getElementById('purchasePayment').style.display = 'none';
+  document.getElementById('purchaseSuccess').style.display = 'none';
+  document.getElementById('purchaseBackdrop').classList.add('show');
+  document.getElementById('purchaseModal').classList.add('show');
+
+  try {
+    var resp = await fetch(SUPABASE_FUNCTIONS_URL + '/stripe-create-payment-intent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        tenant_id: rr.data.tenant_id,
+        refill_request_id: refillId,
+        customer_email: currentUserEmail,
+        userToken: session.access_token
+      })
+    });
+    var pi = await resp.json();
+    if (!resp.ok) throw new Error(pi.error || ('HTTP ' + resp.status));
+    if (!pi.publishable_key) throw new Error('Stripe publishable key not configured.');
+
+    _pmClientSecret = pi.client_secret;
+    var lineItems = pi.line_items || [];
+    var linesHtml = lineItems.map(function(li) {
+      return '<div class="purchase-line"><span>' + _pmEsc(li.name) + '</span><span>$' + (li.amount_cents/100).toFixed(2) + '</span></div>';
+    }).join('');
+    document.getElementById('purchaseOrderLines').innerHTML = linesHtml || '<div class="purchase-line"><span>Refill</span><span>$' + (pi.amount/100).toFixed(2) + '</span></div>';
+    document.getElementById('purchaseTotal').textContent = '$' + (pi.amount/100).toFixed(2);
+
+    _pmStripe = Stripe(pi.publishable_key, { stripeAccount: pi.connected_account_id });
+    _pmElements = _pmStripe.elements({
+      clientSecret: pi.client_secret,
+      appearance: {
+        theme: 'stripe',
+        variables: {
+          colorPrimary:        '#3a7a5c',
+          colorBackground:     '#ffffff',
+          colorText:           '#1a1a1a',
+          colorTextSecondary:  '#666666',
+          colorTextPlaceholder:'#9aa0a6',
+          colorDanger:         '#c83232',
+          colorSuccess:        '#3a7a5c',
+          fontFamily:          "'Inter', sans-serif",
+          fontSizeBase:        '14px',
+          fontWeightNormal:    '400',
+          fontWeightMedium:    '500',
+          fontWeightBold:      '600',
+          borderRadius:        '8px',
+          spacingUnit:         '4px'
+        }
+      }
+    });
+    var paymentElement = _pmElements.create('payment', {
+      layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: false }
+    });
+    paymentElement.mount('#paymentElement');
+    document.getElementById('purchaseLoading').style.display = 'none';
+    document.getElementById('purchasePayment').style.display = 'block';
+  } catch (err) {
+    document.getElementById('purchaseLoading').style.display = 'none';
+    document.getElementById('purchasePayment').style.display = 'block';
+    _pmShowErr('Couldn’t initialise payment: ' + (err.message || 'unknown'));
+  }
+}
+
+function _closeRefillPayment(e) {
+  if (e && e.target && e.target.id !== 'purchaseBackdrop') return;
+  var bd = document.getElementById('purchaseBackdrop');
+  var md = document.getElementById('purchaseModal');
+  if (bd) bd.classList.remove('show');
+  if (md) md.classList.remove('show');
+  if (_pmElements) { try { _pmElements.getElement('payment').unmount(); } catch(_) {} }
+  _pmStripe = null; _pmElements = null; _pmClientSecret = null; _pmRefillId = null;
+}
+
+async function _submitRefillPayment() {
+  if (!_pmStripe || !_pmElements) return;
+  _pmShowErr('');
+  var btn = document.getElementById('paymentSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  try {
+    var result = await _pmStripe.confirmPayment({
+      elements: _pmElements,
+      confirmParams: { return_url: window.location.origin + window.location.pathname },
+      redirect: 'if_required'
+    });
+    if (result.error) {
+      _pmShowErr(result.error.message || 'Payment failed');
+      btn.disabled = false; btn.textContent = 'Pay now';
+      return;
+    }
+    var pi = result.paymentIntent;
+    if (pi && (pi.status === 'succeeded' || pi.status === 'processing')) {
+      // Optimistic — the stripe-webhook handler is the source of truth
+      // and will flip the refill_requests row to paid + create the new
+      // prescription. We flip the UI immediately so the member sees
+      // success without waiting for the webhook round trip.
+      if (_pmRefillId) {
+        try {
+          await db.from('refill_requests').update({
+            status: 'paid',
+            stripe_payment_intent_id: pi.id,
+            paid_at: new Date().toISOString(),
+            amount_cents: pi.amount
+          }).eq('id', _pmRefillId);
+        } catch (_) {}
+      }
+      document.getElementById('purchaseHeader').style.display = 'none';
+      document.getElementById('purchasePayment').style.display = 'none';
+      document.getElementById('purchaseSuccess').style.display = 'block';
+      var sub = document.getElementById('paymentSuccessSub');
+      if (sub) sub.innerHTML = 'Charged <strong>$' + (pi.amount/100).toFixed(2) + '</strong> to your card. Your refill is on the way.';
+      // Refresh state so the Supply card flips to Processing
+      try { await _loadRefillRequests(); } catch (_) {}
+    } else {
+      _pmShowErr('Unexpected payment status: ' + (pi && pi.status || 'unknown'));
+      btn.disabled = false; btn.textContent = 'Pay now';
+    }
+  } catch (err) {
+    _pmShowErr(err.message || 'Payment failed');
+    btn.disabled = false; btn.textContent = 'Pay now';
+  }
+}
 
 async function _requestRefill(rxId, protocolName, dosesRemaining) {
   if (!rxId || !currentUserId || PREVIEW_MODE) return;
@@ -15202,12 +15477,38 @@ async function _submitRefillRequest() {
         },
         created_at: new Date().toISOString()
       };
-      await db.from('consultations').insert(consultPayload);
+      var cRes = await db.from('consultations').insert(consultPayload).select('id, tenant_id').single();
+      var newConsultId = (cRes && cRes.data && cRes.data.id) || null;
+      var refillTenantId = (cRes && cRes.data && cRes.data.tenant_id) || null;
+
+      // Phase 9 — canonical refill lifecycle row. Links to the newly
+      // created review-queue consultation (so the clinician sees it in
+      // the existing attention list) AND to the underlying prescription.
+      // Status flow: requested → approved|denied → paid → fulfilled.
+      var newRefillId = null;
+      if (newConsultId && refillTenantId) {
+        var protoKey = (protocolName || '').toLowerCase().replace(/\s+/g, '_');
+        var rrRes = await db.from('refill_requests').insert({
+          tenant_id: refillTenantId,
+          patient_user_id: currentUserId,
+          consultation_id: newConsultId,
+          prescription_id: rxId || null,
+          protocol_key: protoKey,
+          status: 'requested',
+          clinician_id: clinicianId,
+          patient_note: notes || (medVal === 'yes' && medChanges ? JSON.stringify(medChanges) : null)
+        }).select('id').single();
+        newRefillId = (rrRes && rrRes.data && rrRes.data.id) || null;
+        if (newRefillId) {
+          window._refillStateByRxId = window._refillStateByRxId || {};
+          window._refillStateByRxId[rxId] = { id: newRefillId, status: 'requested', protocol_key: protoKey };
+        }
+      }
 
       db.from('patient_events').insert({
         user_id: currentUserId,
         event_type: 'refill_request',
-        event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining, medical_update: medVal, medical_changes: medChanges, notes: notes || null },
+        event_data: { prescription_id: rxId, protocol: protocolName, doses_remaining: dosesRemaining, medical_update: medVal, medical_changes: medChanges, notes: notes || null, refill_request_id: newRefillId },
         created_by: currentUserId,
         created_by_name: window._memberFirstName || null
       }).then(function(){}).catch(function(){});
@@ -15783,13 +16084,7 @@ function _ovBuildMultiPlanHtml(activeRxs) {
   var rowsHtml = rowsWithMeta.map(function(r) {
     var name = escapeHtml(r.rx.protocol_key || 'Protocol');
     var rxId = r.rx.id || '';
-    var _pending = window._refillPendingRxIds && window._refillPendingRxIds[rxId];
-    var refillBtnHtml = '';
-    if (true) {
-      refillBtnHtml = _pending
-        ? '<button class="ov-supply-refill-btn" disabled>Refill Requested</button>'
-        : '<button class="ov-supply-refill-btn" onclick="_requestRefill(\'' + escapeAttr(rxId) + '\',\'' + escapeAttr(name) + '\',' + r.remaining + ')">Request Refill</button>';
-    }
+    var refillBtnHtml = _renderRefillBtn(rxId, name, r.remaining, 'ov-supply-refill-btn');
     return '<div class="ov-supply-row' + (r.isLow ? ' is-low' : '') + '">' +
              '<div class="ov-supply-row-name">' + name + '</div>' +
              '<div class="ov-supply-row-count">' + r.remaining + ' doses</div>' +
@@ -16403,25 +16698,11 @@ function populatePortal(user, consultation, greeting) {
           }
         }).catch(function(){});
 
-      // Check for pending refill requests (patient_events with no
-      // corresponding "refill resolved" event yet). Simple approach:
-      // if a refill_request event exists in the last 30 days, treat
-      // that Rx as pending.
-      db.from('patient_events').select('event_data')
-        .eq('user_id', currentUserId)
-        .eq('event_type', 'refill_request')
-        .order('created_at', { ascending: false }).limit(20)
-        .then(function(rfRes) {
-          var rows = rfRes.data || [];
-          rows.forEach(function(r) {
-            var ed = r.event_data || {};
-            if (ed.prescription_id) window._refillPendingRxIds[ed.prescription_id] = true;
-          });
-          if (rows.length) {
-            try { _renderOverviewMulti(); } catch (_) {}
-            try { _refreshProtoProgress(); } catch (_) {}
-          }
-        }).catch(function(){});
+      // Phase 9 — canonical refill state lives in refill_requests.
+      // Populates window._refillStateByRxId so the Supply-card refill
+      // button renders status-aware copy (Under Review / Pay for Refill /
+      // Denied / Processing).
+      _loadRefillRequests();
     }
 
     // Multi-protocol Overview override — runs after _renderProtoCarousel
@@ -22082,6 +22363,150 @@ function _attnRequestLive(consultId, userId) {
   _requestLiveConsult();
 }
 
+// ── Refill approve / deny (Phase 9) ──────────────────────────────────
+// Clinician action on a consultation_type='refill_request' card. Both
+// handlers dual-write: consultations.review_status for the existing
+// attention-queue lifecycle, AND refill_requests.status for the refill
+// lifecycle. Approval hands the patient a Pay-for-Refill button in
+// their Supply card; denial surfaces the reason on the same card.
+function _attnApproveRefill(consultId, userId) {
+  var areaEl = document.getElementById('attn-action-area-' + consultId);
+  if (!areaEl) return;
+  areaEl.innerHTML =
+    '<div style="margin-top:16px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(34,197,94,0.75);margin-bottom:8px;">Approve — Note to Patient (optional)</div>' +
+      '<textarea id="attn-approve-note-' + consultId + '" placeholder="Anything the patient should know about this refill..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:12px;color:#fff;outline:none;resize:vertical;min-height:60px;"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button onclick="_confirmAttnApproveRefill(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:#22C55E;color:#fff;font-weight:600;">Confirm Approval</button>' +
+        '<button onclick="document.getElementById(\'attn-action-area-' + consultId + '\').innerHTML=\'\';" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;">Cancel</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function _confirmAttnApproveRefill(consultId, userId) {
+  var noteEl = document.getElementById('attn-approve-note-' + consultId);
+  var note = noteEl ? noteEl.value.trim() : '';
+  var clinicianId = currentUserId || null;
+  try {
+    // Find the refill_requests row linked to this consultation.
+    var rr = await db.from('refill_requests')
+      .select('id, tenant_id, protocol_key')
+      .eq('consultation_id', consultId)
+      .maybeSingle();
+    if (!rr || !rr.data) { alert('Refill request row not found for this consultation.'); return; }
+
+    var rrUpdate = await db.from('refill_requests').update({
+      status: 'approved',
+      clinician_id: clinicianId,
+      clinician_note: note || null,
+      reviewed_at: new Date().toISOString()
+    }).eq('id', rr.data.id);
+    if (rrUpdate && rrUpdate.error) throw new Error(rrUpdate.error.message);
+
+    // Mirror into consultations so the existing attention queue clears
+    // this row out (review_status='prescribed' removes it from pending).
+    await db.from('consultations').update({
+      review_status: 'prescribed',
+      clinician_decision: 'approved_refill',
+      clinician_notes: note || null,
+      evaluation_date: new Date().toISOString(),
+      consult_required: false
+    }).eq('id', consultId);
+
+    db.from('notifications').insert({
+      user_id: userId,
+      type: 'refill_approved',
+      body: 'Your refill was approved. Complete payment from your Supply card to ship.',
+      read: false
+    }).then(function(){}).catch(function(){});
+
+    if (note) {
+      db.from('messages').insert({
+        thread_id: userId,
+        sender_id: clinicianId,
+        sender_role: 'clinician',
+        recipient_id: userId,
+        body: 'Refill approved. Note: ' + note,
+        read: false
+      }).then(function(){}).catch(function(){});
+    }
+
+    var card = document.querySelector('.cl-attn-card[data-consult-id="' + consultId + '"]');
+    if (card) { card.style.opacity = '0.5'; card.style.transition = 'opacity 0.3s'; setTimeout(function() { card.remove(); }, 300); }
+    if (typeof _loadClOverviewStats === 'function') _loadClOverviewStats();
+    if (typeof loadRecentlyEvaluated === 'function') loadRecentlyEvaluated();
+    if (typeof loadAttentionCards === 'function') loadAttentionCards();
+    if (typeof _closePatientDetailModal === 'function') _closePatientDetailModal();
+  } catch (e) {
+    console.warn('[Pulse] approve refill failed:', e);
+    alert('Failed to approve refill. Please try again.');
+  }
+}
+
+function _attnDenyRefill(consultId, userId) {
+  var areaEl = document.getElementById('attn-action-area-' + consultId);
+  if (!areaEl) return;
+  areaEl.innerHTML =
+    '<div style="margin-top:16px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,130,130,0.7);margin-bottom:8px;">Deny Refill — Provide Reason</div>' +
+      '<textarea id="attn-deny-refill-reason-' + consultId + '" placeholder="Explain why a refill is not appropriate..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:12px;color:#fff;outline:none;resize:vertical;min-height:60px;"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button onclick="_confirmAttnDenyRefill(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,100,100,0.15);color:rgba(255,130,130,0.9);">Confirm Deny</button>' +
+        '<button onclick="document.getElementById(\'attn-action-area-' + consultId + '\').innerHTML=\'\';" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;">Cancel</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function _confirmAttnDenyRefill(consultId, userId) {
+  var reasonEl = document.getElementById('attn-deny-refill-reason-' + consultId);
+  var reason = reasonEl ? reasonEl.value.trim() : '';
+  if (!reason) { reasonEl.style.borderColor = 'rgba(255,100,100,0.5)'; return; }
+  var clinicianId = currentUserId || null;
+  try {
+    var rr = await db.from('refill_requests')
+      .select('id')
+      .eq('consultation_id', consultId)
+      .maybeSingle();
+    if (!rr || !rr.data) { alert('Refill request row not found for this consultation.'); return; }
+
+    var rrUpdate = await db.from('refill_requests').update({
+      status: 'denied',
+      clinician_id: clinicianId,
+      denial_reason: reason,
+      clinician_note: reason,
+      reviewed_at: new Date().toISOString()
+    }).eq('id', rr.data.id);
+    if (rrUpdate && rrUpdate.error) throw new Error(rrUpdate.error.message);
+
+    await db.from('consultations').update({
+      review_status: 'not_prescribed',
+      prescription_given: false,
+      no_prescription_reason: reason,
+      evaluation_date: new Date().toISOString(),
+      clinician_decision: 'denied_refill',
+      clinician_notes: reason,
+      consult_required: false
+    }).eq('id', consultId);
+
+    db.from('notifications').insert({
+      user_id: userId,
+      type: 'refill_denied',
+      body: 'Your refill request was not approved. See your clinician note for details.',
+      read: false
+    }).then(function(){}).catch(function(){});
+
+    var card = document.querySelector('.cl-attn-card[data-consult-id="' + consultId + '"]');
+    if (card) { card.style.opacity = '0.5'; card.style.transition = 'opacity 0.3s'; setTimeout(function() { card.remove(); }, 300); }
+    if (typeof _loadClOverviewStats === 'function') _loadClOverviewStats();
+    if (typeof loadRecentlyEvaluated === 'function') loadRecentlyEvaluated();
+    if (typeof loadAttentionCards === 'function') loadAttentionCards();
+    if (typeof _closePatientDetailModal === 'function') _closePatientDetailModal();
+  } catch (e) {
+    console.warn('[Pulse] deny refill failed:', e);
+    alert('Failed to deny refill. Please try again.');
+  }
+}
+
 // ── ASYNC REVIEW: Start evaluation without an appointment ──
 async function _startAsyncEvaluation() {
   if (!_activePatientConsultId || !_activePatientUserId) {
@@ -22435,5 +22860,36 @@ function _showClSessionError(msg) {
   END SMOKE TEST CHECKLIST
 ══════════════════════════════════════════════════════════════════════════════════
 -->
+
+<!-- PURCHASE MODAL (Stripe Elements — Phase 9 refill payment) -->
+<div class="purchase-modal-backdrop" id="purchaseBackdrop" onclick="_closeRefillPayment(event)"></div>
+<div class="purchase-modal" id="purchaseModal" role="dialog" aria-modal="true">
+  <button class="purchase-close" onclick="_closeRefillPayment()" aria-label="Close">&times;</button>
+  <div id="purchaseHeader">
+    <div class="purchase-title">Pay for your refill</div>
+    <div class="purchase-sub">Complete this one-time charge to ship your refill. Pulse never sees your card number.</div>
+    <div class="purchase-order">
+      <div class="purchase-order-label">Order summary</div>
+      <div id="purchaseOrderLines"></div>
+      <div class="purchase-total-row"><span>Total</span><span id="purchaseTotal">—</span></div>
+    </div>
+  </div>
+  <div id="purchaseLoading" class="purchase-loading">
+    <span class="purchase-spinner"></span>Preparing secure payment…
+  </div>
+  <div id="purchasePayment" style="display:none;">
+    <div class="purchase-card-label">Payment details</div>
+    <div id="paymentElement"></div>
+    <div id="paymentErr" class="purchase-err"></div>
+    <button class="purchase-btn-pay" id="paymentSubmit" onclick="_submitRefillPayment()">Pay now</button>
+  </div>
+  <div id="purchaseSuccess" style="display:none;" class="purchase-success">
+    <div class="purchase-success-icon">✓</div>
+    <div class="purchase-success-title">Payment confirmed</div>
+    <div class="purchase-success-sub" id="paymentSuccessSub">Your refill is on the way.</div>
+    <button class="purchase-btn-portal" onclick="_closeRefillPayment()">Back to portal</button>
+  </div>
+</div>
+
 </body>
 </html>

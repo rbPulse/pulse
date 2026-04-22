@@ -1628,6 +1628,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div id="twilioModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
 </div>
 
+<!-- STRIPE SETUP MODAL (Phase 4a) -->
+<div class="int-modal-backdrop" id="stripeModalBackdrop" onclick="closeStripeModal()"></div>
+<div class="int-modal" id="stripeModal" role="dialog" aria-modal="true" aria-labelledby="stripeModalTitle">
+  <button class="int-modal-close" onclick="closeStripeModal()" aria-label="Close">&times;</button>
+  <div id="stripeModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-box">
@@ -9349,15 +9356,22 @@ function provider_display_name(providerKey) {
 }
 
 // Dispatches setup CTA clicks to per-provider setup surfaces.
-// Resend (P2) and Twilio (P3) are wired; other providers still toast
-// their phase hint until their phases land.
+// Resend (P2), Twilio (P3), and Stripe Connect OAuth (P4a) are wired;
+// other providers still toast their phase hint until their phases land.
 function openIntegrationSetup(providerKey) {
   if (providerKey === 'resend') { openResendModal(); return; }
   if (providerKey === 'twilio') { openTwilioModal(); return; }
+  if (providerKey === 'stripe') { openStripeModal(); return; }
   var ui = _INT_CARD_UI[providerKey] || {};
   var hint = ui.phase_hint || 'Setup wizard not yet wired.';
   if (typeof showToast === 'function') showToast(hint, 'warn');
 }
+
+// Stripe Connect Client ID is safe to expose to the browser — it's in
+// every OAuth URL by design. Secret key stays server-side in Supabase
+// secrets (see supabase/functions/stripe-connect-oauth/index.ts).
+var STRIPE_CONNECT_CLIENT_ID = 'ca_UNnRIcGOw5E6aTs1PH9NIlpUr43oamN0';
+var STRIPE_OAUTH_REDIRECT    = 'https://rbpulse.github.io/pulse/stripe-return.html';
 
 // ── Resend setup modal (Phase 2) ──
 // Three states driven off the tenant_integrations.config bag:
@@ -9794,6 +9808,162 @@ function twilioRemoveCreds() {
       if (typeof showToast === 'function') showToast('Twilio disconnected. (Credentials remain stored — re-paste to reconnect or ask an operator to clear them.)', 'warn');
     }, function(err) {
       _twilioErr(err.message || 'Remove failed');
+    });
+}
+
+// ── Stripe Connect OAuth modal (Phase 4a) ──
+// Two states driven off tenant_integrations.status + the
+// connected_account_hint on config:
+//   A. Not connected → "Connect Stripe" button that launches OAuth
+//   B. Connected → business name + account hint + health pings +
+//      disconnect
+//
+// OAuth kickoff path:
+//   1. Generate a single-use nonce; state = "{tenant_id}.{nonce}"
+//   2. Stash nonce in sessionStorage (CSRF defense) + return URL
+//   3. window.location to connect.stripe.com/oauth/authorize
+// Return path: stripe-return.html at the repo root handles the
+// code exchange via the stripe-connect-oauth edge function.
+
+function openStripeModal() {
+  document.getElementById('stripeModalBackdrop').classList.add('show');
+  document.getElementById('stripeModal').classList.add('show');
+  _renderStripeModal();
+}
+
+function closeStripeModal() {
+  document.getElementById('stripeModalBackdrop').classList.remove('show');
+  document.getElementById('stripeModal').classList.remove('show');
+}
+
+function _renderStripeModal() {
+  var row = _intSetupRows['stripe'];
+  var body = document.getElementById('stripeModalBody');
+  if (!row) {
+    body.innerHTML = '<div class="int-modal-title">Stripe not available</div>' +
+      '<div class="int-modal-sub">Your plan doesn’t entitle Stripe yet. Contact your Unite operator to upgrade.</div>' +
+      '<div class="int-modal-actions"><button class="form-btn secondary" onclick="closeStripeModal()">Close</button></div>';
+    return;
+  }
+  var connected = row.status === 'connected';
+  body.innerHTML = connected ? _renderStripeStateB(row) : _renderStripeStateA();
+}
+
+function _renderStripeStateA() {
+  return '<div class="int-modal-title">Connect your Stripe account</div>' +
+    '<div class="int-modal-sub">Pulse charges patients through its own Stripe account — payouts go directly to you, not through Unite. Click below to authorize Unite to create charges on your Stripe account via Stripe Connect.</div>' +
+    '<div class="int-modal-sub" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">' +
+      '<strong>What happens next:</strong><br/>' +
+      '<span style="font-size:11px;">You’ll be redirected to Stripe. Log into the Pulse Stripe account (create one during the flow if you haven’t yet) and click <em>Connect my Stripe account</em>. Stripe sends you back here and Unite stores the connection ID — never your secret key.</span>' +
+    '</div>' +
+    '<div class="int-modal-err" id="stripeErr"></div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="closeStripeModal()">Cancel</button>' +
+      '<button class="form-btn primary" id="stripeConnectBtn" onclick="stripeStartOAuth()">Connect Stripe &rarr;</button>' +
+    '</div>';
+}
+
+function _renderStripeStateB(row) {
+  var cfg = row.config || {};
+  var chargeOk = cfg.charges_enabled;
+  var payoutOk = cfg.payouts_enabled;
+  var detailsDone = cfg.details_submitted;
+
+  function pillClass(ok) { return ok ? 'int-status int-status-ok' : 'int-status int-status-pending'; }
+  function pillLabel(ok, name) { return ok ? name + ': ready' : name + ': pending'; }
+
+  return '<div class="int-modal-title">Stripe connected</div>' +
+    '<div class="int-modal-sub">Charges route to <code>' + _brandEscHtml(cfg.business_name || 'your Stripe account') + '</code> (account ' + _brandEscHtml(cfg.connected_account_hint || '—') + ').</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' +
+      '<span class="' + pillClass(detailsDone) + '">' + _brandEscHtml(pillLabel(detailsDone, 'Onboarding')) + '</span>' +
+      '<span class="' + pillClass(chargeOk) + '">'    + _brandEscHtml(pillLabel(chargeOk, 'Charges')) + '</span>' +
+      '<span class="' + pillClass(payoutOk) + '">'    + _brandEscHtml(pillLabel(payoutOk, 'Payouts')) + '</span>' +
+    '</div>' +
+    (!detailsDone || !chargeOk
+      ? '<div class="int-modal-sub" style="background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);color:#7a5a00;">' +
+          '<strong>Finish onboarding in Stripe.</strong> Until Stripe verifies your business you can run test charges, but real-money charges are paused. Continue onboarding at the Stripe dashboard.' +
+        '</div>'
+      : '') +
+    '<div class="int-modal-err" id="stripeErr"></div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="stripeDisconnect()">Disconnect</button>' +
+      '<button class="form-btn secondary" onclick="stripePing()">Refresh status</button>' +
+      '<a class="form-btn primary" href="https://dashboard.stripe.com" target="_blank" rel="noopener" style="text-decoration:none;">Open Stripe dashboard &rarr;</a>' +
+    '</div>';
+}
+
+function _stripeErr(msg) {
+  var el = document.getElementById('stripeErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function stripeStartOAuth() {
+  if (!window.Tenant || !window.Tenant.id) { _stripeErr('Tenant not loaded yet.'); return; }
+
+  // Single-use nonce for CSRF defense. Stashed in sessionStorage and
+  // verified by stripe-return.html.
+  var nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('stripe_oauth_nonce', nonce);
+  sessionStorage.setItem('stripe_oauth_return_to', window.location.pathname + window.location.hash);
+
+  var state = window.Tenant.id + '.' + nonce;
+
+  var params = new URLSearchParams();
+  params.set('response_type', 'code');
+  params.set('client_id', STRIPE_CONNECT_CLIENT_ID);
+  params.set('scope', 'read_write');
+  params.set('redirect_uri', STRIPE_OAUTH_REDIRECT);
+  params.set('state', state);
+  // Prefill hints — Stripe uses these if the user signs up fresh
+  // during the OAuth flow.
+  var brand = window.Tenant.brand || {};
+  if (brand.legal_name) params.set('stripe_user[business_name]', brand.legal_name);
+  if (brand.support_email) params.set('stripe_user[email]', brand.support_email);
+  params.set('stripe_user[country]', 'US');
+
+  window.location.href = 'https://connect.stripe.com/oauth/authorize?' + params.toString();
+}
+
+function stripePing() {
+  _stripeErr('');
+  _resendInvoke('stripe-ping', { tenant_id: window.Tenant.id })
+    .then(function(result) {
+      if (typeof showToast === 'function') showToast('Stripe reachable. ' + (result.business_name || ''), 'success');
+      return db.rpc('tenant_integrations_for_my_tenants');
+    })
+    .then(function(r) {
+      if (!r) return;
+      var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+      rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+      _renderStripeModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+    })
+    .catch(function(err) {
+      _stripeErr(err.message || 'Ping failed');
+    });
+}
+
+function stripeDisconnect() {
+  if (!confirm('Disconnect Stripe from this tenant? Outstanding subscriptions keep running on Stripe’s side, but Pulse will stop being able to create new charges until you reconnect.')) return;
+  _stripeErr('');
+  _resendInvoke('stripe-disconnect', { tenant_id: window.Tenant.id })
+    .then(function() {
+      return db.rpc('tenant_integrations_for_my_tenants');
+    })
+    .then(function(r) {
+      var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+      rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+      _renderStripeModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Stripe disconnected.', 'success');
+    })
+    .catch(function(err) {
+      _stripeErr(err.message || 'Disconnect failed');
     });
 }
 

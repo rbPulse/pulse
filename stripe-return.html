@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Connecting Stripe · Unite</title>
+<!--
+  Stripe Connect OAuth return landing page.
+
+  Flow:
+    1. Tenant admin on /t/{slug}/admin/ clicks "Connect Stripe".
+    2. JS there generates a state token of the form "{tenant_id}.{nonce}"
+       and stashes {nonce} in sessionStorage under a known key.
+    3. Browser redirects to connect.stripe.com/oauth/authorize?...&state={state}
+    4. Tenant admin authorizes on Stripe.
+    5. Stripe redirects back to THIS page with ?code=...&state=...
+    6. This page:
+         - Re-reads state, extracts tenant_id + nonce
+         - Validates nonce against sessionStorage (CSRF defense)
+         - Calls stripe-connect-oauth edge function with {tenant_id, code}
+         - Shows success / failure
+         - On success, redirects back to the admin Integrations tab
+-->
+<style>
+  html,body{height:100%;margin:0;}
+  body{display:flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,-apple-system,sans-serif;background:#f5f3ef;color:#1a1a1a;padding:20px;line-height:1.55;}
+  .card{max-width:460px;width:100%;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:32px 36px;box-shadow:0 20px 60px rgba(20,25,35,0.08);text-align:center;}
+  h1{font-size:18px;font-weight:600;margin:0 0 8px;letter-spacing:-0.01em;}
+  p{font-size:13px;color:#555;margin:0 0 14px;}
+  .spinner{width:28px;height:28px;border-radius:50%;border:3px solid rgba(58,74,92,0.15);border-top-color:#3A4A5C;animation:spin 0.8s linear infinite;margin:8px auto 16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .ok-icon{width:40px;height:40px;border-radius:50%;background:rgba(58,122,92,0.12);color:#3a7a5c;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin:8px auto 14px;}
+  .err-icon{width:40px;height:40px;border-radius:50%;background:rgba(200,50,50,0.10);color:#c83232;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin:8px auto 14px;}
+  .err{background:rgba(200,50,50,0.06);border:1px solid rgba(200,50,50,0.2);color:#7a1f1f;border-radius:8px;padding:10px 14px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;margin:14px 0;text-align:left;word-break:break-word;}
+  a.btn{display:inline-block;margin-top:6px;padding:10px 18px;background:#3A4A5C;color:#fff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:500;}
+  a.btn:hover{background:#2b3947;}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="spinner" id="spinner"></div>
+  <h1 id="title">Connecting your Stripe account…</h1>
+  <p id="msg">Exchanging the authorization code with Stripe. One moment.</p>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
+var db = createClient(SB_URL, SB_KEY);
+
+function setState(kind, title, detail) {
+  document.getElementById('title').textContent = title || '';
+  document.getElementById('msg').textContent = detail || '';
+  var spin = document.getElementById('spinner');
+  if (spin) spin.remove();
+  if (kind === 'ok') {
+    var ok = document.createElement('div');
+    ok.className = 'ok-icon';
+    ok.textContent = '✓';
+    document.getElementById('card').insertBefore(ok, document.getElementById('title'));
+  } else if (kind === 'err') {
+    var er = document.createElement('div');
+    er.className = 'err-icon';
+    er.textContent = '!';
+    document.getElementById('card').insertBefore(er, document.getElementById('title'));
+  }
+}
+
+function showError(msg, detail) {
+  setState('err', 'Couldn’t finish connecting', msg);
+  if (detail) {
+    var box = document.createElement('div');
+    box.className = 'err';
+    box.textContent = detail;
+    document.getElementById('card').appendChild(box);
+  }
+  var back = sessionStorage.getItem('stripe_oauth_return_to') || '/pulse/unite/';
+  var link = document.createElement('a');
+  link.href = back;
+  link.className = 'btn';
+  link.textContent = 'Back';
+  document.getElementById('card').appendChild(link);
+}
+
+(async function() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    var state = params.get('state');
+    var error = params.get('error');
+    var errorDescription = params.get('error_description');
+
+    if (error) {
+      showError('Stripe reported an error during authorization.', errorDescription || error);
+      return;
+    }
+    if (!code || !state) {
+      showError('Missing code or state in the redirect URL.', 'Stripe did not return an authorization code.');
+      return;
+    }
+
+    // state shape: "{tenant_id}.{nonce}"
+    var stateParts = state.split('.');
+    if (stateParts.length !== 2) {
+      showError('State parameter is malformed.', state);
+      return;
+    }
+    var tenantId = stateParts[0];
+    var nonce = stateParts[1];
+
+    var expectedNonce = sessionStorage.getItem('stripe_oauth_nonce');
+    if (!expectedNonce || expectedNonce !== nonce) {
+      showError('CSRF check failed — the state nonce doesn’t match.', 'Close this tab and start the connection again from the Integrations tab.');
+      return;
+    }
+
+    var sess = await db.auth.getSession();
+    if (!sess.data || !sess.data.session) {
+      showError('Your Unite session has expired.', 'Sign back in and restart the Stripe connection.');
+      return;
+    }
+
+    var resp = await fetch(SB_URL + '/functions/v1/stripe-connect-oauth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SB_KEY,
+        'apikey': SB_KEY
+      },
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        code: code,
+        userToken: sess.data.session.access_token
+      })
+    });
+    var data = await resp.json();
+    if (!resp.ok) {
+      showError(data.error || ('HTTP ' + resp.status), JSON.stringify(data.detail || data));
+      return;
+    }
+
+    // Clear single-use nonce.
+    sessionStorage.removeItem('stripe_oauth_nonce');
+
+    setState('ok', 'Stripe connected',
+      'Connected ' + (data.business_name || data.connected_account_hint || 'account') + '. Heading back to Integrations…');
+
+    var back = sessionStorage.getItem('stripe_oauth_return_to') || '/pulse/unite/';
+    sessionStorage.removeItem('stripe_oauth_return_to');
+    setTimeout(function() { window.location.replace(back); }, 1800);
+  } catch (err) {
+    showError(err && err.message || 'Unexpected error', String(err));
+  }
+})();
+</script>
+</body>
+</html>

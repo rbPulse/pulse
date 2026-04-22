@@ -1621,6 +1621,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div id="resendModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
 </div>
 
+<!-- TWILIO SETUP MODAL (Phase 3) -->
+<div class="int-modal-backdrop" id="twilioModalBackdrop" onclick="closeTwilioModal()"></div>
+<div class="int-modal" id="twilioModal" role="dialog" aria-modal="true" aria-labelledby="twilioModalTitle">
+  <button class="int-modal-close" onclick="closeTwilioModal()" aria-label="Close">&times;</button>
+  <div id="twilioModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-box">
@@ -9342,13 +9349,11 @@ function provider_display_name(providerKey) {
 }
 
 // Dispatches setup CTA clicks to per-provider setup surfaces.
-// Resend is wired in Phase 2; other providers still toast their
-// phase hint until their phases land.
+// Resend (P2) and Twilio (P3) are wired; other providers still toast
+// their phase hint until their phases land.
 function openIntegrationSetup(providerKey) {
-  if (providerKey === 'resend') {
-    openResendModal();
-    return;
-  }
+  if (providerKey === 'resend') { openResendModal(); return; }
+  if (providerKey === 'twilio') { openTwilioModal(); return; }
   var ui = _INT_CARD_UI[providerKey] || {};
   var hint = ui.phase_hint || 'Setup wizard not yet wired.';
   if (typeof showToast === 'function') showToast(hint, 'warn');
@@ -9601,6 +9606,194 @@ function resendRemoveDomain() {
       if (typeof showToast === 'function') showToast('Domain removed.', 'success');
     }, function(err) {
       _resendErr(err.message || 'Remove failed');
+    });
+}
+
+// ── Twilio setup modal (Phase 3) ──
+// Two states driven off tenant_integrations.status + presence of
+// the account_sid_hint on config:
+//   A. Not connected → paste-keys form (SID + Auth Token + Messaging SID)
+//   B. Connected → status + send-test-SMS + re-test + remove
+//
+// Credentials go through the twilio-save-creds edge function which
+// validates against Twilio's API before writing. They never touch
+// the browser's DB client directly (tenant_integrations.credentials
+// is platform-write-only per migration 023).
+
+function openTwilioModal() {
+  document.getElementById('twilioModalBackdrop').classList.add('show');
+  document.getElementById('twilioModal').classList.add('show');
+  _renderTwilioModal();
+}
+
+function closeTwilioModal() {
+  document.getElementById('twilioModalBackdrop').classList.remove('show');
+  document.getElementById('twilioModal').classList.remove('show');
+}
+
+function _renderTwilioModal() {
+  var row = _intSetupRows['twilio'];
+  var body = document.getElementById('twilioModalBody');
+  if (!row) {
+    body.innerHTML = '<div class="int-modal-title">Twilio not available</div>' +
+      '<div class="int-modal-sub">Your plan doesn’t entitle Twilio yet. Contact your Unite operator to upgrade.</div>' +
+      '<div class="int-modal-actions"><button class="form-btn secondary" onclick="closeTwilioModal()">Close</button></div>';
+    return;
+  }
+  var connected = row.status === 'connected';
+  body.innerHTML = connected ? _renderTwilioStateB(row) : _renderTwilioStateA();
+}
+
+function _renderTwilioStateA() {
+  return '<div class="int-modal-title">Connect your Twilio account</div>' +
+    '<div class="int-modal-sub">Pulse uses your own Twilio account to send SMS — not a Unite-shared pool. Paste your keys; Unite validates them with Twilio before saving, and stores them encrypted server-side only.</div>' +
+    '<div class="int-modal-sub" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">' +
+      '<strong>Where to find these:</strong><br/>' +
+      '<span style="font-size:11px;">• <b>Account SID</b> + <b>Auth Token</b> — Twilio Console home, "Account Info" panel.<br/>' +
+      '• <b>Messaging Service SID</b> — Messaging → Services. Create a service, attach your phone number, copy its SID (starts with <code>MG</code>).</span>' +
+    '</div>' +
+    '<div class="int-modal-err" id="twilioErr"></div>' +
+    '<div class="int-modal-field">' +
+      '<label for="twilioAccountSid">Account SID</label>' +
+      '<input type="text" id="twilioAccountSid" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>' +
+    '</div>' +
+    '<div class="int-modal-field">' +
+      '<label for="twilioAuthToken">Auth Token</label>' +
+      '<input type="text" id="twilioAuthToken" placeholder="(paste the shared secret from the Twilio console)" autocomplete="off"/>' +
+      '<div class="int-modal-help">Treat this like a password. Unite stores it server-side only and never sends it back to the browser.</div>' +
+    '</div>' +
+    '<div class="int-modal-field">' +
+      '<label for="twilioMsgSid">Messaging Service SID <span style="font-weight:400;color:var(--text4);">(recommended)</span></label>' +
+      '<input type="text" id="twilioMsgSid" placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>' +
+      '<div class="int-modal-help">Leaves Twilio room to rotate numbers + handle A2P registration. Skip only if you just want a single from-number.</div>' +
+    '</div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="closeTwilioModal()">Cancel</button>' +
+      '<button class="form-btn primary" id="twilioSaveBtn" onclick="twilioSaveCreds()">Save &amp; test</button>' +
+    '</div>';
+}
+
+function _renderTwilioStateB(row) {
+  var cfg = row.config || {};
+  return '<div class="int-modal-title">Twilio connected</div>' +
+    '<div class="int-modal-sub">Sending SMS as <code>' + _brandEscHtml(cfg.friendly_name || 'your Twilio account') + '</code> (SID ' + _brandEscHtml(cfg.account_sid_hint || '—') + '). Send a test to confirm the full pipeline works.</div>' +
+    '<div class="int-modal-err" id="twilioErr"></div>' +
+    '<div class="int-modal-field">' +
+      '<label for="twilioTestTo">Send test SMS to</label>' +
+      '<input type="text" id="twilioTestTo" placeholder="+15551234567" autocomplete="off"/>' +
+      '<div class="int-modal-help">E.164 format. Trial accounts can only text <em>verified</em> numbers — add your phone under Verified Caller IDs in the Twilio console first.</div>' +
+    '</div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="twilioRemoveCreds()">Remove credentials</button>' +
+      '<button class="form-btn secondary" onclick="twilioPing()">Re-test connection</button>' +
+      '<button class="form-btn primary" id="twilioTestBtn" onclick="twilioSendTest()">Send test SMS</button>' +
+    '</div>';
+}
+
+function _twilioErr(msg) {
+  var el = document.getElementById('twilioErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function twilioSaveCreds() {
+  _twilioErr('');
+  var sid = (document.getElementById('twilioAccountSid').value || '').trim();
+  var tok = (document.getElementById('twilioAuthToken').value || '').trim();
+  var msg = (document.getElementById('twilioMsgSid').value || '').trim();
+  if (!sid || !tok) return _twilioErr('Account SID and Auth Token are required.');
+
+  var btn = document.getElementById('twilioSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
+
+  _resendInvoke('twilio-save-creds', {
+    tenant_id: window.Tenant.id,
+    account_sid: sid,
+    auth_token: tok,
+    messaging_service_sid: msg || undefined
+  })
+    .then(function() {
+      return db.rpc('tenant_integrations_for_my_tenants');
+    })
+    .then(function(r) {
+      var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+      rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+      _renderTwilioModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Twilio connected.', 'success');
+    })
+    .catch(function(err) {
+      _twilioErr(err.message || 'Save failed');
+      if (btn) { btn.disabled = false; btn.textContent = 'Save & test'; }
+    });
+}
+
+function twilioPing() {
+  _twilioErr('');
+  _resendInvoke('twilio-ping', { tenant_id: window.Tenant.id })
+    .then(function(result) {
+      if (typeof showToast === 'function') showToast('Twilio reachable. Account: ' + (result.friendly_name || 'ok') + '.', 'success');
+      return db.rpc('tenant_integrations_for_my_tenants');
+    })
+    .then(function(r) {
+      if (!r) return;
+      var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+      rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+    })
+    .catch(function(err) {
+      _twilioErr(err.message || 'Ping failed');
+    });
+}
+
+function twilioSendTest() {
+  _twilioErr('');
+  var to = (document.getElementById('twilioTestTo').value || '').trim();
+  if (!to) return _twilioErr('Enter an E.164 phone number (e.g. +15551234567).');
+  if (!/^\+[1-9]\d{7,14}$/.test(to)) return _twilioErr('Phone number must be in E.164 format (start with +, then country code + number, no spaces).');
+
+  var btn = document.getElementById('twilioTestBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  _resendInvoke('send-sms', {
+    tenant_id: window.Tenant.id,
+    to: to,
+    body: 'Unite + Twilio test — if you got this, your SMS pipeline is live.'
+  })
+    .then(function(result) {
+      if (typeof showToast === 'function') showToast('Test SMS sent (status: ' + result.status + ').', 'success');
+      if (btn) { btn.disabled = false; btn.textContent = 'Send test SMS'; }
+    })
+    .catch(function(err) {
+      _twilioErr(err.message || 'Send failed');
+      if (btn) { btn.disabled = false; btn.textContent = 'Send test SMS'; }
+    });
+}
+
+function twilioRemoveCreds() {
+  if (!confirm('Remove Twilio credentials from this tenant? Outbound SMS will stop until you re-paste the keys.')) return;
+  // We clear credentials via the save endpoint pattern: set a service-role
+  // update directly. The tenant admin normally can't null credentials, so
+  // we go through the same edge-function path on the twilio-save-creds
+  // endpoint with empty strings. Simplest: use a dedicated "clear" call
+  // via twilio-save-creds with empty body rejected — instead just update
+  // status via normal DB update (status flip IS allowed by the guard).
+  var row = _intSetupRows['twilio'];
+  if (!row) return;
+  db.from('tenant_integrations').update({ status: 'disconnected' }).eq('id', row.id).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['twilio'] = r.data;
+      _renderTwilioModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Twilio disconnected. (Credentials remain stored — re-paste to reconnect or ask an operator to clear them.)', 'warn');
+    }, function(err) {
+      _twilioErr(err.message || 'Remove failed');
     });
 }
 

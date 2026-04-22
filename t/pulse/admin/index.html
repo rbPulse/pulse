@@ -9473,22 +9473,26 @@ function _resendErr(msg) {
 }
 
 function _resendInvoke(fnName, body) {
-  return db.auth.getSession().then(function(sess) {
-    if (!sess || !sess.data || !sess.data.session) throw new Error('Not authenticated');
-    return fetch(_SB_FUNCTIONS_URL + '/' + fnName, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + sess.data.session.access_token,
-        'apikey': SB_KEY
-      },
-      body: JSON.stringify(body)
-    }).then(function(res) {
-      return res.json().then(function(data) {
-        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-        return data;
-      });
-    });
+  // Use the SDK's functions.invoke — it wires apikey + user JWT headers
+  // correctly against Supabase's edge-function gateway. Raw fetch with
+  // just Authorization: Bearer <access_token> gets rejected at the
+  // gateway with 401 even when the token is valid.
+  return db.functions.invoke(fnName, { body: body }).then(function(r) {
+    if (r.error) {
+      // r.error.context is a Response object on HTTP failures — drill
+      // into the JSON body to surface our function's specific error
+      // message rather than a generic "Function returned non-2xx".
+      var ctx = r.error.context;
+      if (ctx && typeof ctx.json === 'function') {
+        return ctx.json().then(function(body) {
+          throw new Error((body && body.error) || r.error.message || 'invoke failed');
+        }, function() {
+          throw new Error(r.error.message || 'invoke failed');
+        });
+      }
+      throw new Error(r.error.message || 'invoke failed');
+    }
+    return r.data;
   });
 }
 

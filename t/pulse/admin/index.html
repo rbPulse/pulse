@@ -1635,6 +1635,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div id="stripeModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
 </div>
 
+<!-- DAILY SETUP MODAL (Phase 5) -->
+<div class="int-modal-backdrop" id="dailyModalBackdrop" onclick="closeDailyModal()"></div>
+<div class="int-modal" id="dailyModal" role="dialog" aria-modal="true" aria-labelledby="dailyModalTitle">
+  <button class="int-modal-close" onclick="closeDailyModal()" aria-label="Close">&times;</button>
+  <div id="dailyModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-box">
@@ -9356,12 +9363,14 @@ function provider_display_name(providerKey) {
 }
 
 // Dispatches setup CTA clicks to per-provider setup surfaces.
-// Resend (P2), Twilio (P3), and Stripe Connect OAuth (P4a) are wired;
-// other providers still toast their phase hint until their phases land.
+// Resend (P2), Twilio (P3), Stripe Connect OAuth (P4a), and
+// Daily (P5) are wired; other providers still toast their phase
+// hint until their phases land.
 function openIntegrationSetup(providerKey) {
   if (providerKey === 'resend') { openResendModal(); return; }
   if (providerKey === 'twilio') { openTwilioModal(); return; }
   if (providerKey === 'stripe') { openStripeModal(); return; }
+  if (providerKey === 'dailyco') { openDailyModal(); return; }
   var ui = _INT_CARD_UI[providerKey] || {};
   var hint = ui.phase_hint || 'Setup wizard not yet wired.';
   if (typeof showToast === 'function') showToast(hint, 'warn');
@@ -9990,6 +9999,99 @@ function stripeOpenOnboarding() {
     .catch(function(err) {
       _stripeErr(err.message || 'Failed to create onboarding link');
       if (btn) { btn.disabled = false; btn.textContent = 'Complete onboarding →'; }
+    });
+}
+
+// ── Daily.co setup modal (Phase 5) ──
+// Daily is Unite-platform-managed — no keys, no domain verification.
+// The only real state the tenant controls is enable/disable: whether
+// their clinicians + members can launch video consults at all. Status
+// 'connected' means video is live; 'disconnected' means the UI hides
+// the video buttons.
+//
+// Runtime video room creation happens in the daily-session-token
+// edge function. That function should also consult tenant_integrations
+// .status before minting a room (polished in a follow-up; Pulse's
+// flow already works because Pulse's status gets toggled to
+// 'connected' the first time an operator clicks Enable).
+
+function openDailyModal() {
+  document.getElementById('dailyModalBackdrop').classList.add('show');
+  document.getElementById('dailyModal').classList.add('show');
+  _renderDailyModal();
+}
+
+function closeDailyModal() {
+  document.getElementById('dailyModalBackdrop').classList.remove('show');
+  document.getElementById('dailyModal').classList.remove('show');
+}
+
+function _renderDailyModal() {
+  var row = _intSetupRows['dailyco'];
+  var body = document.getElementById('dailyModalBody');
+  if (!row) {
+    body.innerHTML = '<div class="int-modal-title">Video not available</div>' +
+      '<div class="int-modal-sub">Your plan doesn’t entitle video consults yet. Contact your Unite operator to upgrade.</div>' +
+      '<div class="int-modal-actions"><button class="form-btn secondary" onclick="closeDailyModal()">Close</button></div>';
+    return;
+  }
+  var connected = row.status === 'connected';
+  body.innerHTML = connected ? _renderDailyStateB() : _renderDailyStateA();
+}
+
+function _renderDailyStateA() {
+  return '<div class="int-modal-title">Enable video consults</div>' +
+    '<div class="int-modal-sub">Video runs on a Unite-managed Daily.co account with per-tenant room scoping. No API keys, no billing setup on your end — click enable and your clinicians can start consults immediately.</div>' +
+    '<div class="int-modal-err" id="dailyErr"></div>' +
+    '<div class="int-modal-sub" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">' +
+      '<strong>What happens when you enable:</strong><br/>' +
+      '<span style="font-size:11px;">Clinician portal surfaces a <em>Start video</em> button on scheduled consultations. Members get a join link in their portal. Rooms are auto-provisioned per appointment and expire after the call.</span>' +
+    '</div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="closeDailyModal()">Cancel</button>' +
+      '<button class="form-btn primary" id="dailyEnableBtn" onclick="dailyToggleStatus(\'connected\')">Enable video</button>' +
+    '</div>';
+}
+
+function _renderDailyStateB() {
+  return '<div class="int-modal-title">Video is live</div>' +
+    '<div class="int-modal-sub">Clinicians and members can start video consults from their portals. Usage counts against your plan’s monthly allowance.</div>' +
+    '<div class="int-modal-err" id="dailyErr"></div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="dailyToggleStatus(\'disconnected\')">Disable video</button>' +
+      '<button class="form-btn primary" onclick="closeDailyModal()">Done</button>' +
+    '</div>';
+}
+
+function _dailyErr(msg) {
+  var el = document.getElementById('dailyErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function dailyToggleStatus(nextStatus) {
+  var row = _intSetupRows['dailyco'];
+  if (!row) return;
+  _dailyErr('');
+
+  db.from('tenant_integrations')
+    .update({ status: nextStatus })
+    .eq('id', row.id)
+    .select()
+    .single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['dailyco'] = r.data;
+      _renderDailyModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') {
+        showToast(nextStatus === 'connected' ? 'Video enabled.' : 'Video disabled.', 'success');
+      }
+    }, function(err) {
+      _dailyErr(err.message || 'Failed to update status');
     });
 }
 

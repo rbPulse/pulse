@@ -11001,7 +11001,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       // refill has already been decided.
       var _rfActionsHtml = isDecided
         ? ''
-        : '<div class="crw-req-card-actions" style="display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);">' +
+        : '<div class="crw-req-card-actions" id="crw-req-card-actions-' + consultId + '" style="display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);">' +
             '<button class="' + pCls + '" onclick="_attnApproveRefill(\'' + consultId + '\',\'' + userId + '\')">Approve Refill</button>' +
             '<button class="' + dCls + '" onclick="_attnDenyRefill(\'' + consultId + '\',\'' + userId + '\')">Deny Refill</button>' +
           '</div>';
@@ -22397,16 +22397,37 @@ function _attnRequestLive(consultId, userId) {
 // attention-queue lifecycle, AND refill_requests.status for the refill
 // lifecycle. Approval hands the patient a Pay-for-Refill button in
 // their Supply card; denial surfaces the reason on the same card.
+// Shared styles for the inline approve/deny form inside the refill
+// card. Matches the card's light theme so it doesn't look like a
+// dark-mode popover bolted onto a cream background.
+var _RF_INLINE_TEXTAREA_STYLE = 'width:100%;box-sizing:border-box;background:#ffffff;border:1px solid rgba(0,0,0,0.12);border-radius:10px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:13px;color:#1a1a1a;outline:none;resize:vertical;min-height:64px;line-height:1.5;';
+var _RF_INLINE_LABEL_STYLE_BASE = 'font-family:\'Inter\',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;';
+var _RF_INLINE_CANCEL_STYLE = 'font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid rgba(0,0,0,0.12);background:transparent;color:rgba(0,0,0,0.55);cursor:pointer;font-weight:500;';
+
+// Toggle the Approve/Deny button row so it hides while the clinician
+// is in the note-form state and reappears on Cancel.
+function _rfToggleCardActions(consultId, show) {
+  var row = document.getElementById('crw-req-card-actions-' + consultId);
+  if (row) row.style.display = show ? 'flex' : 'none';
+}
+
+function _rfCancelInlineForm(consultId) {
+  var areaEl = document.getElementById('attn-action-area-' + consultId);
+  if (areaEl) areaEl.innerHTML = '';
+  _rfToggleCardActions(consultId, true);
+}
+
 function _attnApproveRefill(consultId, userId) {
   var areaEl = document.getElementById('attn-action-area-' + consultId);
   if (!areaEl) return;
+  _rfToggleCardActions(consultId, false);
   areaEl.innerHTML =
-    '<div style="margin-top:16px;">' +
-      '<div style="font-family:\'Inter\',sans-serif;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(34,197,94,0.75);margin-bottom:8px;">Approve — Note to Patient (optional)</div>' +
-      '<textarea id="attn-approve-note-' + consultId + '" placeholder="Anything the patient should know about this refill..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:12px;color:#fff;outline:none;resize:vertical;min-height:60px;"></textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:10px;">' +
-        '<button onclick="_confirmAttnApproveRefill(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:#22C55E;color:#fff;font-weight:600;">Confirm Approval</button>' +
-        '<button onclick="document.getElementById(\'attn-action-area-' + consultId + '\').innerHTML=\'\';" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;">Cancel</button>' +
+    '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06);">' +
+      '<div style="' + _RF_INLINE_LABEL_STYLE_BASE + 'color:#2F6F55;">Approve — Note to Patient (optional)</div>' +
+      '<textarea id="attn-approve-note-' + consultId + '" placeholder="Anything the patient should know about this refill..." rows="3" style="' + _RF_INLINE_TEXTAREA_STYLE + '"></textarea>' +
+      '<div style="display:flex;gap:10px;margin-top:10px;">' +
+        '<button onclick="_confirmAttnApproveRefill(\'' + consultId + '\',\'' + userId + '\')" class="crw-btn crw-btn-grn">Confirm Approval</button>' +
+        '<button onclick="_rfCancelInlineForm(\'' + consultId + '\')" style="' + _RF_INLINE_CANCEL_STYLE + '">Cancel</button>' +
       '</div>' +
     '</div>';
 }
@@ -22474,13 +22495,14 @@ async function _confirmAttnApproveRefill(consultId, userId) {
 function _attnDenyRefill(consultId, userId) {
   var areaEl = document.getElementById('attn-action-area-' + consultId);
   if (!areaEl) return;
+  _rfToggleCardActions(consultId, false);
   areaEl.innerHTML =
-    '<div style="margin-top:16px;">' +
-      '<div style="font-family:\'Inter\',sans-serif;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,130,130,0.7);margin-bottom:8px;">Deny Refill — Provide Reason</div>' +
-      '<textarea id="attn-deny-refill-reason-' + consultId + '" placeholder="Explain why a refill is not appropriate..." rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'Inter\',sans-serif;font-size:12px;color:#fff;outline:none;resize:vertical;min-height:60px;"></textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:10px;">' +
-        '<button onclick="_confirmAttnDenyRefill(\'' + consultId + '\',\'' + userId + '\')" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,100,100,0.15);color:rgba(255,130,130,0.9);">Confirm Deny</button>' +
-        '<button onclick="document.getElementById(\'attn-action-area-' + consultId + '\').innerHTML=\'\';" style="font-family:\'Inter\',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;">Cancel</button>' +
+    '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06);">' +
+      '<div style="' + _RF_INLINE_LABEL_STYLE_BASE + 'color:#b42318;">Deny Refill — Provide Reason</div>' +
+      '<textarea id="attn-deny-refill-reason-' + consultId + '" placeholder="Explain why a refill is not appropriate..." rows="3" style="' + _RF_INLINE_TEXTAREA_STYLE + '"></textarea>' +
+      '<div style="display:flex;gap:10px;margin-top:10px;">' +
+        '<button onclick="_confirmAttnDenyRefill(\'' + consultId + '\',\'' + userId + '\')" class="crw-btn crw-btn-red">Confirm Deny</button>' +
+        '<button onclick="_rfCancelInlineForm(\'' + consultId + '\')" style="' + _RF_INLINE_CANCEL_STYLE + '">Cancel</button>' +
       '</div>' +
     '</div>';
 }

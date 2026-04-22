@@ -287,7 +287,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.4);}
 /* ── Purchase modal (Stripe Elements inline) — light theme matching the consultation summary ── */
 .purchase-modal-backdrop{position:fixed;inset:0;background:rgba(20,25,35,0.42);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9000;display:none;}
 .purchase-modal-backdrop.show{display:block;}
-.purchase-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:520px;width:calc(100% - 32px);max-height:calc(100vh - 32px);overflow-y:auto;background:#ffffff;border:1px solid rgba(20,25,35,0.08);border-radius:18px;padding:32px 34px;z-index:9001;display:none;box-shadow:0 30px 80px rgba(20,25,35,0.18);font-family:'Inter',sans-serif;color:#1a1a1a;}
+.purchase-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:560px;width:calc(100% - 32px);max-height:calc(100vh - 32px);overflow-y:auto;background:#ffffff;border:1px solid rgba(20,25,35,0.08);border-radius:18px;padding:32px 34px;z-index:9001;display:none;box-shadow:0 30px 80px rgba(20,25,35,0.18);font-family:'Inter',sans-serif;color:#1a1a1a;}
 .purchase-modal.show{display:block;}
 .purchase-close{position:absolute;top:16px;right:16px;background:transparent;border:none;color:rgba(20,25,35,0.45);font-size:22px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;}
 .purchase-close:hover{background:rgba(20,25,35,0.05);color:#1a1a1a;}
@@ -3786,21 +3786,38 @@ async function _activateAndGoToCheckout() {
       appearance: {
         theme: 'stripe',
         variables: {
-          colorPrimary: '#3a7a5c',
-          colorBackground: '#ffffff',
-          colorText: '#1a1a1a',
-          colorDanger: '#c83232',
-          fontFamily: "'Inter', sans-serif",
-          borderRadius: '8px',
-          spacingUnit: '4px'
+          colorPrimary:        '#3a7a5c',
+          colorBackground:     '#ffffff',
+          colorText:           '#1a1a1a',
+          colorTextSecondary:  '#666666',
+          colorTextPlaceholder:'#9aa0a6',
+          colorDanger:         '#c83232',
+          colorSuccess:        '#3a7a5c',
+          fontFamily:          "'Inter', sans-serif",
+          fontSizeBase:        '14px',
+          fontWeightNormal:    '400',
+          fontWeightMedium:    '500',
+          fontWeightBold:      '600',
+          borderRadius:        '8px',
+          spacingUnit:         '4px'
         },
         rules: {
-          '.Input': { border: '1px solid rgba(20,25,35,0.15)' },
-          '.Input:focus': { border: '1px solid #3a7a5c', boxShadow: '0 0 0 3px rgba(58,122,92,0.12)' }
+          '.Label':          { fontSize: '12px', fontWeight: '500', color: '#333' },
+          '.Input':          { border: '1px solid rgba(20,25,35,0.15)', padding: '10px 12px', fontSize: '14px' },
+          '.Input:focus':    { border: '1px solid #3a7a5c', boxShadow: '0 0 0 3px rgba(58,122,92,0.12)' },
+          '.Tab':            { border: '1px solid rgba(20,25,35,0.10)', padding: '10px 12px' },
+          '.Tab--selected':  { border: '1.5px solid #3a7a5c', boxShadow: '0 0 0 2px rgba(58,122,92,0.08)' },
+          '.AccordionItem':  { border: '1px solid rgba(20,25,35,0.10)' },
+          '.AccordionItem--selected': { borderColor: '#3a7a5c' }
         }
       }
     });
-    var paymentElement = _pmElements.create('payment');
+    // Accordion layout stacks payment methods vertically, so
+    // everything fits cleanly even in a narrow modal — no more
+    // truncated tabs.
+    var paymentElement = _pmElements.create('payment', {
+      layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: false }
+    });
     paymentElement.mount('#paymentElement');
 
     document.getElementById('purchaseLoading').style.display = 'none';

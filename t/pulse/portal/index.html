@@ -280,16 +280,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .ov-supply-refill-btn.is-paid{background:rgba(58,122,92,0.12);color:#2F6F55;border:1px solid rgba(58,122,92,0.25);cursor:default;}
 
 /* Patient-detail modal: tab switcher for patients with multiple
-   open request-type consultations. Light theme so it sits cleanly
-   above the refill / protocol-request card. */
-.crw-tabs-host{margin-bottom:12px;}
-.crw-tabs{display:flex;gap:6px;border-bottom:1px solid rgba(0,0,0,0.08);padding-bottom:0;}
-.crw-tab{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:none;border:none;padding:10px 14px;margin-bottom:-1px;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;color:rgba(0,0,0,0.55);transition:color .15s,border-color .15s;}
-.crw-tab:hover{color:#1a1a1a;}
+   open request-type consultations. Light theme, sits above the
+   refill / protocol-request card and spans the full body width
+   (not inside .crw's 2-column grid). */
+.crw-tabs-host{padding:16px 24px 0;}
+.crw-tabs-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:8px;}
+.crw-tabs{display:flex;gap:2px;border-bottom:1px solid rgba(0,0,0,0.08);}
+.crw-tab{background:none;border:none;padding:10px 16px;margin-bottom:-1px;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;color:rgba(0,0,0,0.55);transition:color .15s,border-color .15s;}
+.crw-tab:hover:not(.is-active){color:#1a1a1a;}
 .crw-tab.is-active{color:#2F6F55;border-bottom-color:#2F6F55;cursor:default;}
-.crw-tab-label{font-size:12px;font-weight:600;letter-spacing:0.04em;}
-.crw-tab-sub{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:rgba(0,0,0,0.38);}
-.crw-tab.is-active .crw-tab-sub{color:rgba(47,111,85,0.65);}
+.crw-tab-label{font-size:13px;font-weight:600;letter-spacing:0.02em;}
 
 .proto-history-card{overflow:hidden;padding:0 !important;margin-top:16px;}
 .proto-history-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
@@ -11068,8 +11068,8 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+
         '</div>'+
       '</div>';
-    var html='<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
-      '<div id="crw-tabs-' + consultId + '" class="crw-tabs-host"></div>'+
+    var html='<div id="crw-tabs-' + consultId + '" class="crw-tabs-host"></div>' +
+      '<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
       decidedTopHtml+
       '<div class="crw-left">'+
         topAlertHtml+
@@ -11204,23 +11204,16 @@ async function _renderOpenRequestTabs(currentConsultId, userId) {
     var escA = (typeof escapeAttr === 'function') ? escapeAttr : function(s){ return String(s||''); };
     var escH = (typeof escapeHtml === 'function') ? escapeHtml : function(s){ return String(s||''); };
     var tabsHtml = rows.map(function(c) {
-      var label, sub;
-      if (c.consultation_type === 'refill_request') {
-        label = 'Refill';
-        sub = (c.data && c.data.refill_protocol) ? String(c.data.refill_protocol) : '';
-      } else {
-        label = 'Protocol Request';
-        sub = (c.data && c.data.request_category) ? String(c.data.request_category) : '';
-      }
+      var label = c.consultation_type === 'refill_request' ? 'Refill' : 'Protocol Request';
       var isActive = c.id === currentConsultId;
       var activeCls = isActive ? ' is-active' : '';
       var onclick = isActive ? '' : ' onclick="_pdSwitchConsult(\'' + escA(c.id) + '\',\'' + escA(userId) + '\')"';
       return '<button type="button" class="crw-tab' + activeCls + '"' + onclick + '>' +
                '<span class="crw-tab-label">' + escH(label) + '</span>' +
-               (sub ? '<span class="crw-tab-sub">' + escH(sub) + '</span>' : '') +
              '</button>';
     }).join('');
-    host.innerHTML = '<div class="crw-tabs">' + tabsHtml + '</div>';
+    var eyebrow = '<div class="crw-tabs-eyebrow">Requests</div>';
+    host.innerHTML = eyebrow + '<div class="crw-tabs">' + tabsHtml + '</div>';
   } catch (err) {
     console.warn('[Pulse] open-request tabs load failed:', err);
     host.innerHTML = '';
@@ -11228,23 +11221,33 @@ async function _renderOpenRequestTabs(currentConsultId, userId) {
 }
 
 // Switch the patient-detail modal body to a different consultation
-// for the same patient. Re-runs _loadAttentionCardBody against the
-// new consultId so every render path (request card, outcome, msg
-// poller, notes) stays in sync.
+// for the same patient. Does NOT clear bodyEl first — the old
+// content stays visible until _loadAttentionCardBody paints the new
+// one so there's no Loading flash. Immediately updates the tab
+// active state so the click feels responsive.
 function _pdSwitchConsult(newConsultId, userId) {
   if (!newConsultId || newConsultId === _pdModalActiveConsultId) return;
-  // Tear down the current consultation's message poller before
-  // switching — _loadAttentionCardBody starts a fresh one on the
-  // next paint.
+  // Tear down the current consultation's message poller — the new
+  // card paint starts a fresh one for the new consultId.
   if (_pdModalActiveConsultId && typeof _attnMsgPollers !== 'undefined' && _attnMsgPollers[_pdModalActiveConsultId]) {
     try { clearInterval(_attnMsgPollers[_pdModalActiveConsultId]); } catch (_) {}
     delete _attnMsgPollers[_pdModalActiveConsultId];
   }
   _activePatientConsultId = newConsultId;
   _pdModalActiveConsultId = newConsultId;
+  // Give instant visual feedback — flip active-class on the tabs so
+  // the user sees the change before the fetch returns.
+  var tabs = document.querySelectorAll('.crw-tabs .crw-tab');
+  tabs.forEach(function(btn) {
+    btn.classList.remove('is-active');
+    if ((btn.getAttribute('onclick') || '').indexOf("'" + newConsultId + "'") !== -1) {
+      btn.classList.add('is-active');
+    }
+  });
   var bodyEl = document.getElementById('pdModalBody');
   if (!bodyEl) return;
-  bodyEl.innerHTML = '<div style="padding:32px;font-family:\'Inter\',sans-serif;font-size:13px;color:rgba(0,0,0,0.4);">Loading…</div>';
+  // Keep the old body visible until the new content is ready — swap
+  // in place when _loadAttentionCardBody sets bodyEl.innerHTML.
   _loadAttentionCardBody(bodyEl, newConsultId, userId);
 }
 

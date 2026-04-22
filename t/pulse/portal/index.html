@@ -22834,6 +22834,9 @@ async function _openRxEditModal(consultId, userId) {
   var overlay = document.createElement('div');
   overlay.className = 'pr-modal-overlay';
   overlay.id = 'rfRxEditOverlay';
+  // The Rx edit modal opens on top of the patient-detail modal
+  // (.pd-modal-overlay z-index 9600), so bump above it.
+  overlay.style.zIndex = '9700';
   overlay.innerHTML =
     '<div class="pr-modal" style="max-width:520px;">' +
       '<button type="button" class="pr-modal-close" aria-label="Close" onclick="_closeRxEditModal()">&times;</button>' +

@@ -10658,6 +10658,15 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     if (!_consultType && d.request_category) _consultType = 'protocol_request';
     if (!_consultType && d.refill_protocol) _consultType = 'refill_request';
 
+    // Preserve the refill/protocol-request consultation's OWN
+    // review_status before the overwrite below. isDecided is
+    // computed off consultRow.review_status which gets replaced
+    // with the original intake's status (so the card renders the
+    // "Prescribed" outcome section). Without this stash, an
+    // in-flight refill request looks "decided" and the Approve
+    // Refill / Deny Refill buttons get suppressed.
+    var _ownReviewStatus = consultRow.review_status || 'pending_review';
+
     // Protocol-request and refill-request consultations: Rxs belong to the ORIGINAL
     // intake consultation (different ID). Fetch ALL Rxs for this
     // USER, load the original consultation for demographics +
@@ -10772,7 +10781,12 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // Once a decision has been made (prescribed / declined / discontinued),
     // the Submitted timing + Overdue flag are no longer meaningful and the
     // outcome box replaces the Risk box at the top of the left column.
-    var isDecided = (consultReviewStatus === 'prescribed' || consultReviewStatus === 'not_prescribed' || consultReviewStatus === 'discontinued');
+    // Refill/protocol-request consultations inherit the original intake's
+    // status for outcome rendering, but the refill itself is pending —
+    // use the consultation's own status so Approve/Deny shows up.
+    var isDecided = (_consultType === 'refill_request' || _consultType === 'protocol_request')
+      ? (_ownReviewStatus === 'prescribed' || _ownReviewStatus === 'not_prescribed' || _ownReviewStatus === 'discontinued' || _ownReviewStatus === 'withdrawn')
+      : (consultReviewStatus === 'prescribed' || consultReviewStatus === 'not_prescribed' || consultReviewStatus === 'discontinued');
 
     // Detail field
     function _df(l,v){return '<div><div class="crw-det-lbl">'+l+'</div><div class="crw-det-val">'+escapeHtml(v)+'</div></div>';}

@@ -10976,8 +10976,13 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
             '</div>' +
           '</div>' +
         '</div>';
-    } else if (_consultType === 'refill_request' && d.refill_protocol) {
-      var _rfProto = escapeHtml(d.refill_protocol);
+    } else if (_consultType === 'refill_request') {
+      // Defensive: don't gate on d.refill_protocol — if the refill
+      // insert didn't carry its protocol name into data, we still want
+      // to render the refill card (with the Approve/Deny actions) so
+      // the clinician can act. Fall back to the refill_requests row
+      // for protocol_key if needed.
+      var _rfProto = escapeHtml(d.refill_protocol || 'Refill');
       var _rfRemaining = d.refill_doses_remaining != null ? d.refill_doses_remaining : '';
       var _rfMedUp = d.medical_update || 'no';
       var _rfChanges = d.medical_changes || null;

@@ -279,17 +279,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .ov-supply-refill-btn.is-denied{background:rgba(239,68,68,0.12);color:#b42318;border:1px solid rgba(239,68,68,0.3);cursor:default;}
 .ov-supply-refill-btn.is-paid{background:rgba(58,122,92,0.12);color:#2F6F55;border:1px solid rgba(58,122,92,0.25);cursor:default;}
 
-/* Patient-detail modal: tab switcher for patients with multiple
-   open request-type consultations. Light theme, sits above the
-   refill / protocol-request card and spans the full body width
-   (not inside .crw's 2-column grid). */
-.crw-tabs-host{padding:16px 24px 0;}
-.crw-tabs-eyebrow{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:8px;}
-.crw-tabs{display:flex;gap:2px;border-bottom:1px solid rgba(0,0,0,0.08);}
-.crw-tab{background:none;border:none;padding:10px 16px;margin-bottom:-1px;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;color:rgba(0,0,0,0.55);transition:color .15s,border-color .15s;}
-.crw-tab:hover:not(.is-active){color:#1a1a1a;}
-.crw-tab.is-active{color:#2F6F55;border-bottom-color:#2F6F55;cursor:default;}
-.crw-tab-label{font-size:13px;font-weight:600;letter-spacing:0.02em;}
+/* Patient-detail modal: when a patient has >1 open request-type
+   consultation, the refill / protocol-request card's header badge
+   becomes an inline tab row. Styling mirrors the single-badge look
+   so the active tab feels like the original badge; inactive tab is
+   muted and clickable. */
+.crw-req-card-tabs{display:inline-flex;align-items:center;gap:8px;}
+.crw-req-card-tab{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(0,0,0,0.35);cursor:pointer;transition:color .15s;}
+.crw-req-card-tab:hover:not(.is-active){color:#1a1a1a;}
+.crw-req-card-tab.is-active{color:#92710a;cursor:default;}
+.crw-req-card-tab-sep{color:rgba(0,0,0,0.2);font-weight:400;font-size:10px;letter-spacing:0;}
 
 .proto-history-card{overflow:hidden;padding:0 !important;margin-top:16px;}
 .proto-history-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:18px 24px;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;color:inherit;text-align:left;}
@@ -10655,8 +10654,19 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       .select('data, created_at, risk_status, risk_flag_reasons, review_status, no_prescription_reason, session_notes')
       .eq('id', consultId).limit(1);
     var rxPromise = pxGetAllForConsultation(consultId);
+    // Also pull the patient's OTHER open request-type consultations
+    // so the request card's header can render tabs when there are
+    // multiple open requests on the same patient.
+    var openReqsPromise = db.from('consultations')
+      .select('id, consultation_type')
+      .eq('user_id', userId)
+      .in('consultation_type', ['refill_request','protocol_request'])
+      .eq('review_status', 'pending_review')
+      .order('created_at', { ascending: false });
     var res = await consultPromise;
     var allRxs = await rxPromise;
+    var openReqsRes = await openReqsPromise;
+    var openRequests = (openReqsRes && openReqsRes.data) || [];
     if (!res.data || !res.data.length) { bodyEl.innerHTML = '<div style="font-size:12px;">No intake data found.</div>'; return; }
     var consultRow = res.data[0];
     var d = consultRow.data || {};
@@ -10949,6 +10959,31 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     // .crw-decided-top → grid-column: 1 / -1, so the Rx stack doesn't
     // create variable empty space next to the messaging column. Pending
     // patients still show Risk inside .crw-left.
+    // Inline header for the refill / protocol-request card. When the
+    // patient has >1 open request-type consultation, the badge becomes
+    // a tab row in-place (Refill | Protocol Request) so the clinician
+    // can pivot by clicking within the card header itself. Otherwise
+    // it's just the original single badge + dot.
+    function _buildReqCardHdr(activeType) {
+      if (openRequests.length < 2) {
+        var label = activeType === 'refill_request' ? 'Refill Request' : 'Protocol Request';
+        return '<span class="crw-req-card-badge"><span class="crw-req-card-dot"></span>' + label + '</span>';
+      }
+      // Preserve a stable order: refill first, then protocol request.
+      var ordered = openRequests.slice().sort(function(a, b) {
+        if (a.consultation_type === b.consultation_type) return 0;
+        return a.consultation_type === 'refill_request' ? -1 : 1;
+      });
+      var tabs = ordered.map(function(c) {
+        var lbl = c.consultation_type === 'refill_request' ? 'Refill Request' : 'Protocol Request';
+        var active = c.id === consultId;
+        if (active) {
+          return '<span class="crw-req-card-tab is-active"><span class="crw-req-card-dot"></span>' + lbl + '</span>';
+        }
+        return '<button type="button" class="crw-req-card-tab" onclick="_pdSwitchConsult(\'' + escapeAttr(c.id) + '\',\'' + escapeAttr(userId) + '\')">' + lbl + '</button>';
+      }).join('<span class="crw-req-card-tab-sep">|</span>');
+      return '<div class="crw-req-card-tabs">' + tabs + '</div>';
+    }
     var _reqCardHtml = '';
     if (_consultType === 'protocol_request' && d.request_category) {
       var _rcCat = escapeHtml(d.request_category);
@@ -10975,7 +11010,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       _reqCardHtml =
         '<div class="crw-req-card">' +
           '<div class="crw-req-card-hdr">' +
-            '<span class="crw-req-card-badge"><span class="crw-req-card-dot"></span>Protocol Request</span>' +
+            _buildReqCardHdr('protocol_request') +
             '<button type="button" class="crw-outcome-adjust-btn" onclick="_openAddProtocolModal(\'' + escapeAttr(consultId) + '\',\'' + escapeAttr(userId) + '\',event)">+ Add Protocol</button>' +
           '</div>' +
           '<div class="crw-req-card-body">' +
@@ -11026,7 +11061,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
       _reqCardHtml =
         '<div class="crw-req-card">' +
           '<div class="crw-req-card-hdr">' +
-            '<span class="crw-req-card-badge"><span class="crw-req-card-dot"></span>Refill Request</span>' +
+            _buildReqCardHdr('refill_request') +
           '</div>' +
           '<div class="crw-req-card-body">' +
             '<div class="crw-req-card-info">' +
@@ -11068,8 +11103,7 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
           _df('Consent',d.signature||d.sig||'\u2014')+_df('Submitted',submittedStr)+
         '</div>'+
       '</div>';
-    var html='<div id="crw-tabs-' + consultId + '" class="crw-tabs-host"></div>' +
-      '<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
+    var html='<div class="crw' + (isDecided ? ' crw-decided' : '') + '">'+
       decidedTopHtml+
       '<div class="crw-left">'+
         topAlertHtml+
@@ -11165,9 +11199,6 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
     '</div>';
 
     bodyEl.innerHTML=html;
-    // Tab switcher for other open request-type consultations on this
-    // patient. Populates async so the main card paints first.
-    try { _renderOpenRequestTabs(consultId, userId); } catch (_) {}
     _refreshAttnMsgs(consultId,userId);
     if(_attnMsgPollers[consultId])clearInterval(_attnMsgPollers[consultId]);
     _attnMsgPollers[consultId]=setInterval(function(){_refreshAttnMsgs(consultId,userId);},10000);
@@ -11180,43 +11211,6 @@ async function _loadAttentionCardBody(bodyEl, consultId, userId) {
   } catch(e) {
     console.warn('[Pulse] card body load failed:', e);
     bodyEl.innerHTML = '<div style="color:rgba(255,130,130,0.7);font-size:12px;">Failed to load intake data.</div>';
-  }
-}
-
-// When a patient has multiple open request-type consultations (e.g.
-// a pending refill AND a pending protocol request), surface a tab
-// strip above the top card so the clinician can pivot between them
-// without closing + reopening the modal. No tabs render when 0 or 1
-// open requests exist (the common case).
-async function _renderOpenRequestTabs(currentConsultId, userId) {
-  var host = document.getElementById('crw-tabs-' + currentConsultId);
-  if (!host || !userId) return;
-  try {
-    var r = await db.from('consultations')
-      .select('id, consultation_type, review_status, data, created_at')
-      .eq('user_id', userId)
-      .in('consultation_type', ['refill_request','protocol_request'])
-      .eq('review_status', 'pending_review')
-      .order('created_at', { ascending: false });
-    var rows = (r && r.data) || [];
-    if (rows.length < 2) { host.innerHTML = ''; return; }
-
-    var escA = (typeof escapeAttr === 'function') ? escapeAttr : function(s){ return String(s||''); };
-    var escH = (typeof escapeHtml === 'function') ? escapeHtml : function(s){ return String(s||''); };
-    var tabsHtml = rows.map(function(c) {
-      var label = c.consultation_type === 'refill_request' ? 'Refill' : 'Protocol Request';
-      var isActive = c.id === currentConsultId;
-      var activeCls = isActive ? ' is-active' : '';
-      var onclick = isActive ? '' : ' onclick="_pdSwitchConsult(\'' + escA(c.id) + '\',\'' + escA(userId) + '\')"';
-      return '<button type="button" class="crw-tab' + activeCls + '"' + onclick + '>' +
-               '<span class="crw-tab-label">' + escH(label) + '</span>' +
-             '</button>';
-    }).join('');
-    var eyebrow = '<div class="crw-tabs-eyebrow">Requests</div>';
-    host.innerHTML = eyebrow + '<div class="crw-tabs">' + tabsHtml + '</div>';
-  } catch (err) {
-    console.warn('[Pulse] open-request tabs load failed:', err);
-    host.innerHTML = '';
   }
 }
 

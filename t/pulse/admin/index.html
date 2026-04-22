@@ -730,6 +730,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .int-card-actions .form-btn{padding:8px 18px;font-size:11px;}
 .int-phase-hint{font-family:'Inter',sans-serif;font-size:10px;color:var(--text4);font-style:italic;}
 
+/* Integration setup modal (shared shell, provider-specific body) */
+.int-modal-backdrop{position:fixed;inset:0;background:rgba(15,20,25,0.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:8600;display:none;}
+.int-modal-backdrop.show{display:block;}
+.int-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;max-width:640px;width:calc(100% - 48px);max-height:calc(100vh - 48px);overflow-y:auto;z-index:8601;display:none;box-shadow:var(--shadow-lg);}
+.int-modal.show{display:block;}
+.int-modal-close{position:absolute;top:14px;right:14px;background:transparent;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;}
+.int-modal-close:hover{background:rgba(20,20,20,0.05);color:var(--text);}
+.int-modal-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:var(--text);margin-bottom:4px;letter-spacing:-0.01em;}
+.int-modal-sub{font-family:'Inter',sans-serif;font-size:12px;color:var(--text3);margin-bottom:20px;line-height:1.55;}
+.int-modal-field{margin-bottom:16px;}
+.int-modal-field label{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:6px;}
+.int-modal-field input[type="text"]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13px;color:var(--text);background:var(--card2);}
+.int-modal-field input[type="text"]:focus{outline:none;border-color:var(--green);}
+.int-modal-help{font-family:'Inter',sans-serif;font-size:11px;color:var(--text4);margin-top:4px;line-height:1.5;}
+.int-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.int-modal-err{background:rgba(200,50,50,0.08);border:1px solid rgba(200,50,50,0.25);border-radius:8px;padding:10px 14px;font-family:'Inter',sans-serif;font-size:12px;color:var(--red);margin-bottom:14px;display:none;}
+.int-modal-err.show{display:block;}
+.int-dns-table{width:100%;border-collapse:collapse;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;margin-bottom:14px;}
+.int-dns-table th{text-align:left;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);}
+.int-dns-table td{padding:10px;border-bottom:1px solid var(--border);word-break:break-all;vertical-align:top;}
+.int-dns-table tr:last-child td{border-bottom:none;}
+.int-dns-copy{background:transparent;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:'Inter',sans-serif;font-size:10px;color:var(--text2);cursor:pointer;}
+.int-dns-copy:hover{background:rgba(20,20,20,0.04);}
+.int-dns-status{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;}
+.int-dns-status-verified{color:var(--green);background:rgba(58,122,92,0.10);border:1px solid rgba(58,122,92,0.28);}
+.int-dns-status-pending{color:var(--text3);background:rgba(120,120,120,0.08);border:1px solid var(--border);}
+.int-dns-status-failed{color:var(--red);background:rgba(200,50,50,0.08);border:1px solid rgba(200,50,50,0.25);}
+
 /* ══════════════════════════════════════════════════════════════════
    R9: COMPLIANCE — states grid + locations + consents + licenses
    ══════════════════════════════════════════════════════════════════ */
@@ -1585,6 +1613,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- RESEND SETUP MODAL (Phase 2) -->
+<div class="int-modal-backdrop" id="resendModalBackdrop" onclick="closeResendModal()"></div>
+<div class="int-modal" id="resendModal" role="dialog" aria-modal="true" aria-labelledby="resendModalTitle">
+  <button class="int-modal-close" onclick="closeResendModal()" aria-label="Close">&times;</button>
+  <div id="resendModalBody"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">Loading…</div></div>
+</div>
 
 <!-- CONFIRM MODAL -->
 <div class="modal-overlay" id="confirmModal">
@@ -9306,13 +9341,256 @@ function provider_display_name(providerKey) {
   return p ? p.label : providerKey;
 }
 
-// Phase 1 stub — each provider's real setup surface lands in its own
-// phase (Resend: P2, Twilio: P3, Stripe: P4, Daily reconciliation: P5).
-// For now, clicking any setup CTA shows a toast naming the phase.
+// Dispatches setup CTA clicks to per-provider setup surfaces.
+// Resend is wired in Phase 2; other providers still toast their
+// phase hint until their phases land.
 function openIntegrationSetup(providerKey) {
+  if (providerKey === 'resend') {
+    openResendModal();
+    return;
+  }
   var ui = _INT_CARD_UI[providerKey] || {};
   var hint = ui.phase_hint || 'Setup wizard not yet wired.';
   if (typeof showToast === 'function') showToast(hint, 'warn');
+}
+
+// ── Resend setup modal (Phase 2) ──
+// Three states driven off the tenant_integrations.config bag:
+//   A. No domain added yet → form to enter a sender domain
+//   B. Domain added, not verified → DNS record table + Verify button
+//   C. Verified → domain confirmation + Send-test-email + Remove
+//
+// All backend work goes through edge functions so RESEND_API_KEY
+// never reaches the browser. See supabase/functions/resend-*.
+
+var _SB_FUNCTIONS_URL = SB_URL.replace(/\/+$/,'') + '/functions/v1';
+
+function openResendModal() {
+  document.getElementById('resendModalBackdrop').classList.add('show');
+  document.getElementById('resendModal').classList.add('show');
+  _renderResendModal();
+}
+
+function closeResendModal() {
+  document.getElementById('resendModalBackdrop').classList.remove('show');
+  document.getElementById('resendModal').classList.remove('show');
+}
+
+function _renderResendModal() {
+  var row = _intSetupRows['resend'];
+  var body = document.getElementById('resendModalBody');
+  if (!row) {
+    body.innerHTML = '<div class="int-modal-title">Resend not available</div>' +
+      '<div class="int-modal-sub">Your plan doesn’t entitle Resend yet. Contact your Unite operator to upgrade.</div>' +
+      '<div class="int-modal-actions"><button class="form-btn secondary" onclick="closeResendModal()">Close</button></div>';
+    return;
+  }
+  var cfg = row.config || {};
+  var hasDomain = !!cfg.resend_domain_id;
+  var verified = row.status === 'connected';
+
+  if (!hasDomain) body.innerHTML = _renderResendStateA();
+  else if (!verified) body.innerHTML = _renderResendStateB(row);
+  else body.innerHTML = _renderResendStateC(row);
+}
+
+function _renderResendStateA() {
+  return '<div class="int-modal-title">Configure sender email</div>' +
+    '<div class="int-modal-sub">Emails to your patients look like they come from your own domain (e.g. <code>mail.yourclinic.com</code>), not from Unite. You add DNS records once; Resend + Unite handle the rest.</div>' +
+    '<div class="int-modal-err" id="resendErr"></div>' +
+    '<div class="int-modal-field">' +
+      '<label for="resendDomainInput">Sender domain</label>' +
+      '<input type="text" id="resendDomainInput" placeholder="mail.pulsepeptides.com" autocomplete="off" autocapitalize="off"/>' +
+      '<div class="int-modal-help">Use a subdomain — <code>mail.pulsepeptides.com</code>, not <code>pulsepeptides.com</code>. Subdomains let Resend own the email reputation without touching your primary domain’s records.</div>' +
+    '</div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="closeResendModal()">Cancel</button>' +
+      '<button class="form-btn primary" id="resendAddBtn" onclick="resendAddDomain()">Add domain</button>' +
+    '</div>';
+}
+
+function _renderResendStateB(row) {
+  var cfg = row.config || {};
+  var records = Array.isArray(cfg.dns_records) ? cfg.dns_records : [];
+
+  var rows = records.map(function(r, idx) {
+    var recStatus = (r.status || 'pending').toLowerCase();
+    var statusClass = recStatus === 'verified' ? 'int-dns-status-verified' :
+                      recStatus === 'failed'   ? 'int-dns-status-failed'   : 'int-dns-status-pending';
+    return '<tr>' +
+      '<td>' + _brandEscHtml(r.record || r.type || '—') + '</td>' +
+      '<td>' + _brandEscHtml(r.name || '—') + '</td>' +
+      '<td>' + _brandEscHtml(r.value || '—') +
+        ' <button class="int-dns-copy" onclick="_resendCopy(' + idx + ')" title="Copy value">Copy</button></td>' +
+      '<td><span class="int-dns-status ' + statusClass + '">' + _brandEscHtml(r.status || 'pending') + '</span></td>' +
+    '</tr>';
+  }).join('');
+
+  return '<div class="int-modal-title">Verify DNS for ' + _brandEscHtml(cfg.sender_domain || '') + '</div>' +
+    '<div class="int-modal-sub">Add these records to your DNS provider. Propagation usually takes 10–60 minutes. Click Verify once the records resolve — Unite asks Resend to re-check.</div>' +
+    '<div class="int-modal-err" id="resendErr"></div>' +
+    (records.length
+      ? '<table class="int-dns-table"><thead><tr><th>Type</th><th>Host</th><th>Value</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>'
+      : '<div style="padding:16px;background:var(--card2);border-radius:8px;font-size:12px;color:var(--text3);margin-bottom:14px;">No DNS records returned from Resend. Try removing the domain and re-adding it.</div>') +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="resendRemoveDomain()">Remove domain</button>' +
+      '<button class="form-btn primary" id="resendVerifyBtn" onclick="resendVerifyDomain()">Verify now</button>' +
+    '</div>';
+}
+
+function _renderResendStateC(row) {
+  var cfg = row.config || {};
+  return '<div class="int-modal-title">Sender domain verified</div>' +
+    '<div class="int-modal-sub">Transactional emails from this tenant go out as <code>noreply@' + _brandEscHtml(cfg.sender_domain) + '</code>. Send a test to confirm the full pipeline is working.</div>' +
+    '<div class="int-modal-err" id="resendErr"></div>' +
+    '<div class="int-modal-field">' +
+      '<label>Send test to</label>' +
+      '<input type="text" id="resendTestTo" placeholder="you@yourclinic.com" value="' + _brandEscAttr(currentUserEmail || '') + '"/>' +
+      '<div class="int-modal-help">Fires a one-line "Unite test" email from <code>noreply@' + _brandEscHtml(cfg.sender_domain) + '</code>. Check the inbox + spam folder.</div>' +
+    '</div>' +
+    '<div class="int-modal-actions">' +
+      '<button class="form-btn secondary" onclick="resendRemoveDomain()">Remove domain</button>' +
+      '<button class="form-btn primary" id="resendTestBtn" onclick="resendSendTest()">Send test email</button>' +
+    '</div>';
+}
+
+function _resendCopy(idx) {
+  var row = _intSetupRows['resend'];
+  var records = (row && row.config && row.config.dns_records) || [];
+  var val = records[idx] && records[idx].value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(function() {
+    if (typeof showToast === 'function') showToast('Copied.', 'success');
+  });
+}
+
+function _resendErr(msg) {
+  var el = document.getElementById('resendErr');
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function _resendInvoke(fnName, body) {
+  return db.auth.getSession().then(function(sess) {
+    if (!sess || !sess.data || !sess.data.session) throw new Error('Not authenticated');
+    return fetch(_SB_FUNCTIONS_URL + '/' + fnName, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + sess.data.session.access_token,
+        'apikey': SB_KEY
+      },
+      body: JSON.stringify(body)
+    }).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        return data;
+      });
+    });
+  });
+}
+
+function resendAddDomain() {
+  _resendErr('');
+  var domain = (document.getElementById('resendDomainInput').value || '').trim().toLowerCase();
+  if (!domain) return _resendErr('Enter a domain first.');
+  var btn = document.getElementById('resendAddBtn');
+  if (btn) btn.disabled = true;
+
+  _resendInvoke('resend-domain-add', { tenant_id: window.Tenant.id, domain: domain })
+    .then(function() {
+      return db.rpc('tenant_integrations_for_my_tenants');
+    })
+    .then(function(r) {
+      var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+      rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+      _renderResendModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Domain added. Now add the DNS records.', 'success');
+    })
+    .catch(function(err) {
+      _resendErr(err.message || 'Failed to add domain');
+      if (btn) btn.disabled = false;
+    });
+}
+
+function resendVerifyDomain() {
+  _resendErr('');
+  var btn = document.getElementById('resendVerifyBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+
+  _resendInvoke('resend-domain-verify', { tenant_id: window.Tenant.id })
+    .then(function(result) {
+      return db.rpc('tenant_integrations_for_my_tenants').then(function(r) {
+        var rows = (r.data || []).filter(function(x){ return x.tenant_id === window.Tenant.id; });
+        rows.forEach(function(row) { _intSetupRows[row.provider] = row; });
+        _renderResendModal();
+        var body = document.getElementById('integrations-setup-body');
+        if (body) body.innerHTML = _buildIntegrationsSetupBody();
+        if (result.verified) {
+          if (typeof showToast === 'function') showToast('Domain verified. Email is live.', 'success');
+        } else {
+          if (typeof showToast === 'function') showToast('Not verified yet. Check that DNS records have propagated.', 'warn');
+        }
+      });
+    })
+    .catch(function(err) {
+      _resendErr(err.message || 'Verify failed');
+      if (btn) { btn.disabled = false; btn.textContent = 'Verify now'; }
+    });
+}
+
+function resendSendTest() {
+  _resendErr('');
+  var to = (document.getElementById('resendTestTo').value || '').trim();
+  if (!to) return _resendErr('Enter an address to send to.');
+  var btn = document.getElementById('resendTestBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  _resendInvoke('send-email', {
+    tenant_id: window.Tenant.id,
+    to: to,
+    subject: 'Unite + Resend: test email',
+    html: '<p>This is a test email from your Unite tenant admin. If you can read this, your Resend integration is wired correctly.</p><p>— Unite</p>',
+    text: 'This is a test email from your Unite tenant admin. If you can read this, your Resend integration is wired correctly. — Unite'
+  })
+    .then(function(result) {
+      if (typeof showToast === 'function') showToast('Test sent from ' + result.from + '.', 'success');
+      if (btn) { btn.disabled = false; btn.textContent = 'Send test email'; }
+    })
+    .catch(function(err) {
+      _resendErr(err.message || 'Send failed');
+      if (btn) { btn.disabled = false; btn.textContent = 'Send test email'; }
+    });
+}
+
+function resendRemoveDomain() {
+  if (!confirm('Remove the sender domain from this tenant? You’ll need to add + re-verify if you change your mind.')) return;
+  var row = _intSetupRows['resend'];
+  if (!row) return;
+
+  // Clear config + flip status. We keep the tenant_integrations row
+  // itself (plan still entitles Resend) but wipe the domain linkage.
+  var cleanConfig = {};
+  Object.keys(row.config || {}).forEach(function(k) {
+    if (k !== 'sender_domain' && k !== 'resend_domain_id' && k !== 'dns_records' && k !== 'resend_domain_status') {
+      cleanConfig[k] = row.config[k];
+    }
+  });
+  db.from('tenant_integrations').update({ config: cleanConfig, status: 'disconnected' }).eq('id', row.id).select().single()
+    .then(function(r) {
+      if (r.error) throw r.error;
+      _intSetupRows['resend'] = r.data;
+      _renderResendModal();
+      var body = document.getElementById('integrations-setup-body');
+      if (body) body.innerHTML = _buildIntegrationsSetupBody();
+      if (typeof showToast === 'function') showToast('Domain removed.', 'success');
+    }, function(err) {
+      _resendErr(err.message || 'Remove failed');
+    });
 }
 
 // ── R11: Analytics (per-tenant operational pulse) ──

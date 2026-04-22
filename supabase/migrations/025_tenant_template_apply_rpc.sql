@@ -12,7 +12,7 @@
 --   2. Creates apply_tenant_template(p_template_id, p_tenant_id) as a
 --      SECURITY DEFINER RPC so a tenant admin clicking "Apply template"
 --      in the Getting Started wizard can run the merge without needing
---      a cross-product CommandOS roundtrip.
+--      a cross-product Unite roundtrip.
 --
 --      The RPC:
 --        - Verifies the caller is a tenant_owner or tenant_admin of

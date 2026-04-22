@@ -15,7 +15,7 @@ still contain URL references that need updating:
 - `checkout.html`
 - `quiz.html`
 - `index.html`
-- `commandos/index.html`
+- `unite/index.html`
 - `messaging.js` (template variables)
 
 ## Categories
@@ -51,9 +51,9 @@ Every reference falls into one of five categories:
 | `portal.html` | 7556 | `'index.html'` | auth catch |
 | `portal.html` | 20300 | `'index.html'` | `doSignOut` |
 | `portal.html` | 20343 | `'index.html?session_expired=1'` | session expiry |
-| `commandos/index.html` | 1218 | `'index.html'` | auth-gate fallback |
-| `commandos/index.html` | 1257 | `'index.html'` | denied fallback |
-| `commandos/index.html` | 1332 | `'index.html'` | general catch |
+| `unite/index.html` | 1218 | `'index.html'` | auth-gate fallback |
+| `unite/index.html` | 1257 | `'index.html'` | denied fallback |
+| `unite/index.html` | 1332 | `'index.html'` | general catch |
 
 **Rewrite rule:** every `'index.html'` used as an auth destination becomes `'/'`. The `?session_expired=1` query string is preserved; the router honours it.
 
@@ -127,12 +127,12 @@ Every reference falls into one of five categories:
 
 **Rewrite rule:** `new URL('portal.html', …)` constructs are typically going into email-template substitution — the resulting URL is what the recipient clicks. These must resolve to the CORRECT tenant's portal, not the sender's file path. Post-R2c all Pulse-originated templates produce `/t/pulse/portal/`. When a future tenant sends, their portals produce `/t/{their-slug}/portal/`. Consider replacing with `Tenant.portalUrl()` helper that reads from `window.Tenant.slug` — future-proof against this same pattern breaking again.
 
-### CommandOS view-as links (already tenant-parameterised)
+### Unite view-as links (already tenant-parameterised)
 
 | File | Line | Current | Target |
 |---|---|---|---|
-| `commandos/index.html` | 1577 | `slug === 'pulse' ? '/portal.html' : '/t/' + slug + '/portal.html'` | `'/t/' + slug + '/portal/'` (drop the Pulse special-case) |
-| `commandos/index.html` | 1578 | same shape for admin | `'/t/' + slug + '/admin/'` |
+| `unite/index.html` | 1577 | `slug === 'pulse' ? '/portal.html' : '/t/' + slug + '/portal.html'` | `'/t/' + slug + '/portal/'` (drop the Pulse special-case) |
+| `unite/index.html` | 1578 | same shape for admin | `'/t/' + slug + '/admin/'` |
 
 **Rewrite rule:** the `slug === 'pulse'` branch was the root-URL accommodation for Pulse. Once Pulse moves in R2c, the branch becomes dead code and should go.
 
@@ -148,7 +148,7 @@ The Supabase dashboard has `Site URL` and `Redirect URLs` settings used for magi
 - Add `https://<host>/t/pulse/admin/`
 - Add `https://<host>/t/pulse/consultation/`
 - Add `https://<host>/` (for the universal router)
-- Add `https://<host>/commandos/` (platform ops)
+- Add `https://<host>/unite/` (platform ops)
 - Remove root-level entries once R2f retires the redirects
 
 **Not done automatically.** Requires manual dashboard update. Flag in the R2c execution checklist.
@@ -172,7 +172,7 @@ The Supabase dashboard has `Site URL` and `Redirect URLs` settings used for magi
 
 4. **Absolute vs relative paths.** Files moving into `/t/pulse/` can use relative paths (`./consultation/`, `../admin/`) OR absolute paths (`/t/pulse/consultation/`). Absolute is more robust against files moving further in the future (wizard flow into a subfolder, etc.) but couples to the exact path structure. **Decision: use absolute for cross-file navigation (admin ↔ portal ↔ consultation ↔ checkout). Use relative for fragment links (`#pods`, `#waitlist`) and same-file navigation.**
 
-5. **Deep-link backwards-compat.** Existing bookmarks like `/admin.html` and `/portal.html` must keep working during the transition. R2c ships redirect stubs at each old URL (same pattern as `platform.html` → `/commandos/`). R2f retires the stubs after 30 days of no traffic.
+5. **Deep-link backwards-compat.** Existing bookmarks like `/admin.html` and `/portal.html` must keep working during the transition. R2c ships redirect stubs at each old URL (same pattern as `platform.html` → `/unite/`). R2f retires the stubs after 30 days of no traffic.
 
 ---
 

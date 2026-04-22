@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- CommandOS — Phase 0 migration: plan-level integration entitlement
+-- Unite — Phase 0 migration: plan-level integration entitlement
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES
@@ -173,7 +173,7 @@ CREATE TRIGGER tenant_subscriptions_auto_provision_integrations
 -- ── 4. Backfill ───────────────────────────────────────────────────────
 --
 -- Every existing plan gets the four active providers. Operators can
--- trim per-plan later from CommandOS (Phase 4 wires the UI for this).
+-- trim per-plan later from Unite (Phase 4 wires the UI for this).
 UPDATE plans
    SET included_integrations = ARRAY['stripe','twilio','dailyco','resend']
  WHERE (included_integrations IS NULL OR array_length(included_integrations, 1) IS NULL);

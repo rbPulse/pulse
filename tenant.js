@@ -31,7 +31,7 @@
 //   to 'pulse' so the existing Pulse URLs (/admin.html, /portal.html)
 //   keep working during the transition phase.
 //
-//   The operator portal (/platform.html, soon /commandos/) is NOT
+//   The operator portal (/platform.html, soon /unite/) is NOT
 //   tenant-scoped and should not load this file.
 //
 // MULTI-TENANT USERS

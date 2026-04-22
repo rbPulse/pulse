@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Sign in — CommandOS</title>
+<title>Sign in — Unite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/dist/umd/supabase.js"></script>
 <style>
 /* ══════════════════════════════════════════════════════════════════
-   Universal root router for CommandOS.
+   Universal root router for Unite.
 
    Every authenticated user lands here if they hit '/'. The router:
 
@@ -24,10 +24,10 @@
         Slug resolved from the first tenant the user belongs to.
 
         Note: platform_role is intentionally NOT auto-dispatched.
-        CommandOS is a separate entry point; operators reach it by
-        navigating to /commandos/ directly. If a user has only
+        Unite is a separate entry point; operators reach it by
+        navigating to /unite/ directly. If a user has only
         platform_role (no tenant membership + no legacy role), we
-        show the sign-in page with a hint to open /commandos/.
+        show the sign-in page with a hint to open /unite/.
      3. If not authenticated: renders a minimal sign-in form. No
         tenant branding, no marketing — the root is tenant-agnostic.
         Pulse (and future tenants) have their own marketing at
@@ -69,7 +69,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="router-icon">
       <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
     </div>
-    <span class="router-wordmark">COMMANDOS</span>
+    <span class="router-wordmark">UNITE</span>
   </div>
 
   <div id="routerLoading" class="router-loading">Checking session…</div>
@@ -164,7 +164,7 @@ function doSignIn() {
 
 // Route the authenticated user to their destination portal.
 // Dispatch priority (platform_role is intentionally absent — per
-// policy CommandOS is a separate entry point that operators
+// policy Unite is a separate entry point that operators
 // navigate to explicitly. The root never auto-routes to it.):
 //   1. tenant_memberships row → /t/{slug}/admin/ (for owner/admin)
 //      or /t/{slug}/portal/ (everything else staff-side)
@@ -173,7 +173,7 @@ function doSignIn() {
 //      assume Pulse tenant. Future: surface a "no tenant assigned"
 //      state with support-contact copy.
 //   4. No matching row AND platform_role set → stay on the splash;
-//      operator types /commandos/ into the URL themselves.
+//      operator types /unite/ into the URL themselves.
 function dispatch(user) {
   db.from('profiles').select('role, platform_role').eq('user_id', user.id).limit(1)
     .then(function(pr) {
@@ -216,9 +216,9 @@ function dispatch(user) {
           dest = base + '/t/pulse/portal/';
         } else if (profile.platform_role) {
           // Platform operator with no tenant membership and no legacy
-          // role. Per policy we never auto-route to CommandOS; show
-          // the splash so they can navigate to /commandos/ themselves.
-          showErr('Signed in as a platform operator. Open /commandos/ directly.');
+          // role. Per policy we never auto-route to Unite; show
+          // the splash so they can navigate to /unite/ themselves.
+          showErr('Signed in as a platform operator. Open /unite/ directly.');
           showSignin();
           return;
         } else {

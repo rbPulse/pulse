@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- CommandOS — R6 carry-over: tenant-admin write access to catalog tables
+-- Unite — R6 carry-over: tenant-admin write access to catalog tables
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES
@@ -10,7 +10,7 @@
 --
 --   Prior state (migration 005): the "admin write" policy gated writes
 --   on legacy profiles.role = 'admin' — the pre-multi-tenant admin
---   concept. Under CommandOS that maps to platform users only, so
+--   concept. Under Unite that maps to platform users only, so
 --   tenant admins couldn't write catalog rows even though the catalog
 --   has been tenant-scoped since migration 011.
 --

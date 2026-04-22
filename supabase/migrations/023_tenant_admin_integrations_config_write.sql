@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- CommandOS — R10 migration: tenant-admin write access to integrations config
+-- Unite — R10 migration: tenant-admin write access to integrations config
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES

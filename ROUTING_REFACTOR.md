@@ -1,24 +1,24 @@
 # Routing refactor — completion log
 
 Companion to `ARCHITECTURE.md`. Tracks the R1-R14 refactor that
-moved the system from "Pulse at root + CommandOS in a subtab" to
-"CommandOS at /commandos + every tenant (including Pulse) at
+moved the system from "Pulse at root + Unite in a subtab" to
+"Unite at /unite + every tenant (including Pulse) at
 /t/{slug}/".
 
 ## Shipped
 
 | Phase | Commit(s) | Summary |
 |---|---|---|
-| R1 | `a4a0198` | platform.html → commandos/index.html; CommandOS branding; ARCHITECTURE.md rewrite |
+| R1 | `a4a0198` | platform.html → unite/index.html; Unite branding; ARCHITECTURE.md rewrite |
 | R2a | `964b464` | URL migration manifest (URL_MIGRATION.md) |
 | R2b | `90e7d53` | Deleted 11 marketing + prototype files |
 | R2c | `67dd47d`, `da12819` | Tenant.url() helper; 5 Pulse files moved to /t/pulse/; ~70 URL references swept; root redirect stubs |
 | R2d | `cb8d632` | index.html split — universal router at /, Pulse marketing at /t/pulse/ |
 | R3 | `ac45ccc` | Tenant admin shell — Setup / Operations / Insights / Billing / Legacy sidebar groups |
-| R4 | `a62bc70` (migration 022), `e1c0cb3` | Brand editor migrated to tenant admin; CommandOS collapsed to read-only summary |
-| R5 | `80cb99b` | Terminology editor migrated; CommandOS summary |
+| R4 | `a62bc70` (migration 022), `e1c0cb3` | Brand editor migrated to tenant admin; Unite collapsed to read-only summary |
+| R5 | `80cb99b` | Terminology editor migrated; Unite summary |
 | R6 | `f9455b5` | Catalog live-count summary; CRUD stays in Legacy → Configuration (full reconciliation is R6 carry-over) |
-| R7 | `f080a61` | Workflow editor migrated; CommandOS summary |
+| R7 | `f080a61` | Workflow editor migrated; Unite summary |
 | R8 | `56d1abc`, `6dc7725` | Comms template editor ported into tenant admin |
 | R9 | `56d1abc`, `9bb5552` | Compliance editor ported into tenant admin |
 | R10 | `56d1abc`, `59f5a55` + migration 023 | Integrations config editor (credentials remain platform-only via trigger guard) |
@@ -48,7 +48,7 @@ Both migrations have been run against the live Supabase instance.
 Supabase `Site URL` + `Redirect URLs` allow-list has been updated:
 - Site URL: `https://rbpulse.github.io/pulse/`
 - Redirect URLs include a `**` wildcard plus explicit entries for
-  `/commandos/`, `/t/pulse/`, `/t/pulse/admin/`, `/t/pulse/portal/`,
+  `/unite/`, `/t/pulse/`, `/t/pulse/admin/`, `/t/pulse/portal/`,
   `/t/pulse/consultation/`, `/t/pulse/checkout/`, `/t/pulse/quiz/`.
 - Magic-link + OAuth callbacks now resolve to the new paths.
 
@@ -101,9 +101,9 @@ R8 (Comms), R9 (Compliance), R10 (Integrations), R11 (Analytics),
 R12 (Activity) and R13 (Subscription) all shipped their full
 ports. Nothing pending here.
 
-### CommandOS cleanup
+### Unite cleanup
 
-Every `READ_ONLY_PLACEHOLDER = true` guard in CommandOS's
+Every `READ_ONLY_PLACEHOLDER = true` guard in Unite's
 `buildXxxTab` functions has the legacy full-editor code
 preserved below it. Once the corresponding tenant-admin editor
 proves stable (30+ days), delete the legacy code paths. Single
@@ -112,12 +112,12 @@ commit per surface.
 ## Known architectural invariants preserved
 
 - Pulse has no URL privileges. Every tenant lives at /t/{slug}/.
-- CommandOS is not tenant-scoped. It never renders a single
+- Unite is not tenant-scoped. It never renders a single
   tenant's config as its own.
 - Credentials never enter the tenant admin portal — Phase 7's
   security posture held through R10.
 - The four-helper JS contract (tenant.js, terminology.js,
   workflow.js, messaging.js, integrations.js, compliance.js,
-  modules.js) is the stable interface between CommandOS and
+  modules.js) is the stable interface between Unite and
   every tenant admin. Every migration reused the helpers
   without duplicating catalog state.

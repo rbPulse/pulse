@@ -1,4 +1,4 @@
-# CommandOS — Architecture
+# Unite — Architecture
 
 Living doc for the multi-tenant clinical-operations platform. Every
 downstream decision should be consistent with what's below. If reality
@@ -6,21 +6,21 @@ diverges from this doc, update the doc, not reality.
 
 ## Naming
 
-- **CommandOS** is the platform — the global control plane. Authored
+- **Unite** is the platform — the global control plane. Authored
   by Pulse internal ops; manages every tenant on the system.
-- **Pulse** is tenant #1. It runs on CommandOS the same way any future
+- **Pulse** is tenant #1. It runs on Unite the same way any future
   tenant would. Pulse is not special. No root URL privileges, no
   schema exceptions, no code paths that check for `slug === 'pulse'`
   beyond the transition fallback in `tenant.js`.
 
-Do not refer to CommandOS as "Pulse" anywhere in product copy, URLs,
+Do not refer to Unite as "Pulse" anywhere in product copy, URLs,
 code comments, docs, or conversation. "Platform" is acceptable as a
 role qualifier (`platform_role`, `platform_admin`) because it's a
-neutral scoping term; the product name is CommandOS.
+neutral scoping term; the product name is Unite.
 
 ## Purpose
 
-CommandOS lets a platform operator provision and manage independent
+Unite lets a platform operator provision and manage independent
 clinic tenants from a single control plane. Each tenant runs its own
 configured instance of two downstream portals:
 
@@ -39,7 +39,7 @@ configured instance of two downstream portals:
   portal.html unless the two experiences diverge enough that they'd
   share very little code.
 
-The three portals above run PER TENANT. CommandOS itself runs ONCE
+The three portals above run PER TENANT. Unite itself runs ONCE
 and is NOT tenant-scoped — it sees every tenant.
 
 ## Core decisions
@@ -78,13 +78,13 @@ on every downstream portal:
 ```
 /                     Universal root router.
                       Checks the Supabase session, dispatches by
-                      profile: platform_role → /commandos/,
+                      profile: platform_role → /unite/,
                       tenant staff → /t/{slug}/admin/, patient →
                       /t/{slug}/portal/. Shows a minimal sign-in
                       form if no session. No tenant branding. No
                       marketing. ~10KB target.
 
-/commandos/           CommandOS — the platform control plane.
+/unite/           Unite — the platform control plane.
                       Gated by profiles.platform_role IS NOT NULL.
                       NOT tenant-scoped; sees every tenant.
 
@@ -110,7 +110,7 @@ Pulse has no URL privileges. Its admin portal lives at
 `/t/pulse/admin/`. Its marketing lives at `/t/pulse/`. Other tenants
 use the same shape with their own slug.
 
-Subdomain routing (`acme.commandos.app`) is explicitly deferred. DNS
+Subdomain routing (`acme.unite.app`) is explicitly deferred. DNS
 and SSL overhead with no functional gain over path-based. Revisit if
 a client contractually demands a vanity domain AND tenant count
 crosses ~20 (the point at which path collisions between tenants
@@ -121,8 +121,8 @@ become a design concern).
 Root should eventually hold only the universal router + shared
 assets. Today it contains the following transitional files:
 
-- `commandos/index.html` — CommandOS. **Final location.**
-- `platform.html` — redirect stub pointing at `/commandos/`.
+- `unite/index.html` — Unite. **Final location.**
+- `platform.html` — redirect stub pointing at `/unite/`.
   Removed in R2f.
 - `admin.html` — Pulse's admin portal at root. Moves to
   `/t/pulse/admin/` in R2c.
@@ -369,9 +369,9 @@ A full database dump is taken before running 011. Rollback = restore
 the dump. This is the only phase where a full restore is the
 disaster-recovery plan; every later phase is forward-fixable.
 
-## CommandOS specifics
+## Unite specifics
 
-`commandos/index.html` served from `/commandos/`. Lives outside the
+`unite/index.html` served from `/unite/`. Lives outside the
 `/t/{slug}/` path tree. Access gated by `profiles.platform_role IS
 NOT NULL`. Never tenant-scoped; never renders a single tenant's
 config as if it were its own.
@@ -379,7 +379,7 @@ config as if it were its own.
 Design system: cream/beige theme shared with the tenant portals via
 `tokens.css`. Accent colour is **slate** (`#3a4a5c`) — visually
 distinct from the tenant admin portal's amber so operators never
-confuse the two surfaces. A "CommandOS" role badge uses the slate
+confuse the two surfaces. A "Unite" role badge uses the slate
 accent.
 
 A shared `tokens.css` (extracted from admin.html in Phase 1) will

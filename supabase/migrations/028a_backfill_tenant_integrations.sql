@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- CommandOS — Phase 0 repair: backfill tenant_integrations directly
+-- Unite — Phase 0 repair: backfill tenant_integrations directly
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES

@@ -108,14 +108,14 @@
 
   // data-brand="logo-mark" lives on the circular brand-mark container
   // in each portal's nav (and the loading screens). Rendering rules
-  // use the RAW tenant brand (not the CommandOS-augmented version)
+  // use the RAW tenant brand (not the Unite-augmented version)
   // to decide what to paint:
   //
   //   1. tenant configured logo_url → replace innerHTML with <img>
   //   2. tenant.slug === 'pulse' OR no tenant customization at all
   //      → no-op (keep the baked-in heartbeat SVG). Pulse is its own
   //        brand; non-Pulse tenants that haven't customized fall
-  //        back to CommandOS, which uses the same heartbeat mark
+  //        back to Unite, which uses the same heartbeat mark
   //        today — so no-op is the right call for both.
   //   3. non-Pulse tenant WITH a custom wordmark but no logo_url
   //      → render initials ("Acme Health" → "AH") in the brand
@@ -129,9 +129,9 @@
     }
     if (slug === 'pulse' || !rawBrand.wordmark) {
       // Pulse keeps its heartbeat. Any other tenant without a
-      // customized wordmark gets the CommandOS fallback, which —
-      // since CommandOS currently uses the heartbeat too — is also
-      // a no-op. Once CommandOS gets its own distinct visual mark,
+      // customized wordmark gets the Unite fallback, which —
+      // since Unite currently uses the heartbeat too — is also
+      // a no-op. Once Unite gets its own distinct visual mark,
       // this branch should swap in that mark.
       return;
     }
@@ -140,13 +140,13 @@
     el.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:1.1em;font-weight:700;letter-spacing:0;color:var(--brand-accent, currentColor);">' + escHtml(initials) + '</span>';
   }
 
-  // CommandOS platform fallback: non-Pulse tenants with no customized
-  // brand should see CommandOS (the platform) as the visual identity,
+  // Unite platform fallback: non-Pulse tenants with no customized
+  // brand should see Unite (the platform) as the visual identity,
   // not Pulse (which is just tenant #1). Customized values always
   // win; this only fills gaps.
-  var COMMANDOS_FALLBACK = {
-    wordmark:     'COMMANDOS',
-    accent_color: '#3A4A5C' // slate, same as commandos/index.html's tokens
+  var UNITE_FALLBACK = {
+    wordmark:     'UNITE',
+    accent_color: '#3A4A5C' // slate, same as unite/index.html's tokens
   };
 
   function _effectiveBrand(rawBrand, slug) {
@@ -155,8 +155,8 @@
     var merged = {};
     // Start from raw so all configured values pass through.
     for (var k in rawBrand) { if (rawBrand.hasOwnProperty(k)) merged[k] = rawBrand[k]; }
-    if (!merged.wordmark && !merged.wordmark_image_url) merged.wordmark = COMMANDOS_FALLBACK.wordmark;
-    if (!merged.accent_color) merged.accent_color = COMMANDOS_FALLBACK.accent_color;
+    if (!merged.wordmark && !merged.wordmark_image_url) merged.wordmark = UNITE_FALLBACK.wordmark;
+    if (!merged.accent_color) merged.accent_color = UNITE_FALLBACK.accent_color;
     return merged;
   }
 

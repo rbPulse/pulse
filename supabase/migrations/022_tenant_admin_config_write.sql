@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- CommandOS — R4 migration: tenant-admin write access to config columns
+-- Unite — R4 migration: tenant-admin write access to config columns
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHAT THIS DOES
@@ -13,7 +13,7 @@
 --
 --   This unlocks the R4+ migration sequence: each tenant-owned
 --   configuration surface (Brand, Terminology, Catalog, Workflow,
---   Comms, Compliance, etc.) moves from CommandOS into the tenant
+--   Comms, Compliance, etc.) moves from Unite into the tenant
 --   admin portal, and the tenant admin needs RLS permission to save.
 --
 -- HOW THE POLICY WORKS

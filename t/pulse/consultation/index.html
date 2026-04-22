@@ -1385,7 +1385,7 @@ label.field-label{color:rgba(0,0,0,0.45);}
       <div id="step6ProtocolCards"></div>
 
       <div style="margin:40px 0 16px;text-align:center;">
-        <button class="btn-primary summary-ready-btn" onclick="_activateAndGoToPortal()">Let's Go. I'm Ready</button>
+        <button class="btn-primary summary-ready-btn" onclick="_activateAndGoToCheckout()">Let's Go. I'm Ready</button>
       </div>
       <div style="text-align:center;margin-bottom:32px;">
         <button onclick="withdrawConsultation()" class="summary-withdraw-btn">Withdraw application</button>
@@ -3593,12 +3593,18 @@ async function _populateStep6() {
   }
 }
 
-async function _activateAndGoToPortal() {
+// Patient clicks "Let's Go. I'm Ready" at the end of the consultation
+// summary. We persist their protocol selection and send them to the
+// checkout page to pay. purchase_status flips to 'completed' only
+// after Stripe confirms payment — NOT here. The intermediate state
+// is 'pending_payment' so downstream surfaces know the patient has
+// committed but hasn't funded yet.
+async function _activateAndGoToCheckout() {
   try {
     var client = window._sbClient;
-    if (!client) { window.location.href = '../portal/'; return; }
+    if (!client) { window.location.href = '../checkout/'; return; }
     var session = (await client.auth.getSession()).data.session;
-    if (!session) { window.location.href = '../portal/'; return; }
+    if (!session) { window.location.href = '../checkout/'; return; }
 
     // Collect only the checked/selected protocols
     var selectedProtocols = {};
@@ -3609,7 +3615,6 @@ async function _activateAndGoToPortal() {
       selectedNames.push(name);
     });
 
-    // Update consultation with purchase status and activated protocols
     var consultId = _consultationId;
     if (!consultId) {
       var cLookup = await client.from('consultations').select('id').eq('user_id', session.user.id)
@@ -3620,22 +3625,24 @@ async function _activateAndGoToPortal() {
     if (consultId) {
       var cRes = await client.from('consultations').select('data').eq('id', consultId).limit(1);
       var existingData = (cRes.data && cRes.data.length > 0) ? (cRes.data[0].data || {}) : {};
-      existingData.purchase_status = 'completed';
+      existingData.purchase_status = 'pending_payment';
       existingData.activated_protocols = selectedProtocols;
       existingData.activated_protocol_names = selectedNames.join(', ');
-      // protocol_assigned column is gone — source of truth is the
-      // prescriptions table. activated_protocol_names in the JSONB
-      // records the member's purchase selection for reference.
+      // Source of truth for which protocols are prescribed is the
+      // prescriptions table. activated_protocols records the member's
+      // purchase selection (which prescribed protocols they chose to
+      // activate) and the checkout page reads this to build the
+      // Stripe line items.
       await client.from('consultations').update({
         data: existingData,
-        purchase_status: 'completed'
+        purchase_status: 'pending_payment'
       }).eq('id', consultId);
     }
 
-    window.location.href = '../portal/';
+    window.location.href = '../checkout/';
   } catch(e) {
     console.warn('[Pulse] activate failed:', e);
-    window.location.href = '../portal/';
+    window.location.href = '../checkout/';
   }
 }
 

@@ -45,12 +45,18 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const token = (req.headers.get("Authorization") || "").replace("Bearer ", "");
+    const body = (await req.json()) || {};
+
+    // See resend-domain-add for the auth pattern — anon key in header,
+    // real user JWT in the body as userToken.
+    const bodyToken = body.userToken as string | undefined;
+    const headerToken = (req.headers.get("Authorization") || "").replace("Bearer ", "");
+    const token = bodyToken || headerToken;
     if (!token) return json({ error: "Missing authentication" }, 401);
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { tenant_id } = (await req.json()) || {};
+    const { tenant_id } = body;
     if (!tenant_id) return json({ error: "tenant_id is required" }, 400);
 
     const { data: membership } = await supabase

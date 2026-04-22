@@ -57,14 +57,20 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace("Bearer ", "");
+    const body = await req.json();
+
+    // Pattern: anon key rides in Authorization to satisfy the gateway's
+    // verify_jwt check. The real user JWT is inside the body (userToken)
+    // and we use it here to identify the caller. Falls back to the
+    // Authorization header if someone invokes without the body shim.
+    const bodyToken = (body && body.userToken) as string | undefined;
+    const headerToken = (req.headers.get("Authorization") || "").replace("Bearer ", "");
+    const token = bodyToken || headerToken;
     if (!token) return json({ error: "Missing authentication" }, 401);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const body = await req.json();
     const { tenant_id, domain } = body || {};
     if (!tenant_id || !domain) return json({ error: "tenant_id and domain are required" }, 400);
 

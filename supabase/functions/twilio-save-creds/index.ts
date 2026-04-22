@@ -122,7 +122,7 @@ serve(async (req) => {
       account_sid_hint: account_sid.slice(0, 6) + "…" + account_sid.slice(-4),
     };
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("tenant_integrations")
       .update({
         credentials: nextCredentials,
@@ -133,6 +133,7 @@ serve(async (req) => {
         last_error_at: null,
       })
       .eq("id", intRow.id);
+    if (updateErr) return json({ error: `Save failed: ${updateErr.message}` }, 500);
 
     return json({
       ok: true,

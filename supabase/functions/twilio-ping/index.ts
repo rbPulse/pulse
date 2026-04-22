@@ -82,7 +82,7 @@ serve(async (req) => {
 
     if (!twResp.ok) {
       const errText = await twResp.text();
-      await supabase
+      const { error: e } = await supabase
         .from("tenant_integrations")
         .update({
           status: "error",
@@ -90,11 +90,12 @@ serve(async (req) => {
           last_error_at: new Date().toISOString(),
         })
         .eq("id", intRow.id);
+      if (e) return json({ error: `Annotate-failure failed: ${e.message}` }, 500);
       return json({ error: `Twilio returned ${twResp.status}`, detail: errText }, 400);
     }
     const twAccount = await twResp.json();
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("tenant_integrations")
       .update({
         status: "connected",
@@ -103,6 +104,7 @@ serve(async (req) => {
         last_error_at: null,
       })
       .eq("id", intRow.id);
+    if (updateErr) return json({ error: `Ping-succeed write failed: ${updateErr.message}` }, 500);
 
     return json({ ok: true, friendly_name: twAccount.friendly_name || null });
   } catch (err) {

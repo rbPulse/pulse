@@ -122,10 +122,11 @@ serve(async (req) => {
       dns_records: resendJson.records || [],
     };
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("tenant_integrations")
       .update({ config: nextConfig, status: "disconnected" })  // status flips to connected after verify
       .eq("id", intRow.id);
+    if (updateErr) return json({ error: `Save failed: ${updateErr.message}` }, 500);
 
     return json({
       domain_id: resendJson.id,

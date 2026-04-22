@@ -104,7 +104,7 @@ serve(async (req) => {
       resend_domain_status: domain.status,
     };
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("tenant_integrations")
       .update({
         config: nextConfig,
@@ -112,6 +112,7 @@ serve(async (req) => {
         last_connected_at: verified ? new Date().toISOString() : null,
       })
       .eq("id", intRow.id);
+    if (updateErr) return json({ error: `Verify-write failed: ${updateErr.message}` }, 500);
 
     return json({
       verified,

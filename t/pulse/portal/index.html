@@ -15190,9 +15190,81 @@ async function _loadRefillRequests() {
     });
     try { _renderOverviewMulti(); } catch (_) {}
     try { _refreshProtoProgress(); } catch (_) {}
+    // Announce approved refills to the patient on page load. Shown
+    // once per refill via localStorage flag so it doesn't nag on
+    // every tab open. User can dismiss or pay right from the modal.
+    try { _maybeAnnounceApprovedRefill(rows); } catch (_) {}
   } catch (err) {
     console.warn('[Pulse] _loadRefillRequests failed:', err);
   }
+}
+
+function _maybeAnnounceApprovedRefill(rows) {
+  if (!rows || !rows.length || PREVIEW_MODE) return;
+  var approved = null;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].status === 'approved') { approved = rows[i]; break; }
+  }
+  if (!approved) return;
+  var key = 'pulseRefillApprovedSeen:' + approved.id;
+  try { if (localStorage.getItem(key) === '1') return; } catch (_) {}
+  _openRefillApprovedAnnouncement(approved);
+}
+
+function _openRefillApprovedAnnouncement(row) {
+  var old = document.getElementById('rfApprovedOverlay');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  var protocolName = (row.protocol_key || 'your protocol').replace(/_/g, ' ')
+    .replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  var amountStr = row.amount_cents ? '$' + (row.amount_cents/100).toFixed(2) : '';
+  var note = row.clinician_note ? escapeHtml(row.clinician_note) : '';
+
+  var overlay = document.createElement('div');
+  overlay.className = 'pr-modal-overlay';
+  overlay.id = 'rfApprovedOverlay';
+  overlay.innerHTML =
+    '<div class="pr-modal" style="max-width:460px;">' +
+      '<button type="button" class="pr-modal-close" aria-label="Close" onclick="_closeRefillApprovedAnnouncement()">&times;</button>' +
+      '<div style="width:52px;height:52px;border-radius:50%;background:rgba(58,122,92,0.12);color:#2F6F55;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin:4px auto 14px;">&check;</div>' +
+      '<div class="pr-modal-title" style="text-align:center;">Your refill is approved</div>' +
+      '<div class="pr-modal-sub" style="text-align:center;margin-bottom:20px;">' +
+        'Your clinician approved your refill for <strong>' + escapeHtml(protocolName) + '</strong>.' +
+        (amountStr ? ' Complete payment to ship your next supply.' : ' Complete payment to ship your next supply.') +
+      '</div>' +
+      (note
+        ? '<div style="background:#f7f5f0;border:1px solid rgba(0,0,0,0.06);border-radius:10px;padding:12px 14px;margin-bottom:18px;">' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#2F6F55;margin-bottom:6px;">Note from your clinician</div>' +
+            '<div style="font-size:13px;line-height:1.5;color:#1a1a1a;">' + note + '</div>' +
+          '</div>'
+        : '') +
+      '<button type="button" class="pr-submit" style="margin-top:4px;" onclick="_payFromApprovedAnnouncement(\'' + escapeAttr(row.id) + '\')">' +
+        'Pay' + (amountStr ? ' ' + amountStr : ' for refill') +
+      '</button>' +
+      '<button type="button" onclick="_closeRefillApprovedAnnouncement()" style="display:block;margin:12px auto 0;background:none;border:none;font-family:\'Inter\',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:rgba(0,0,0,0.45);cursor:pointer;">I\'ll pay later</button>' +
+    '</div>';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) _closeRefillApprovedAnnouncement();
+  });
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() { overlay.classList.add('open'); });
+  // Mark seen on open so the user doesn't get the same pop repeatedly
+  // if they close + refresh. They can still pay via the Supply card.
+  try { localStorage.setItem('pulseRefillApprovedSeen:' + row.id, '1'); } catch (_) {}
+}
+
+function _closeRefillApprovedAnnouncement() {
+  var overlay = document.getElementById('rfApprovedOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 230);
+}
+
+function _payFromApprovedAnnouncement(refillId) {
+  _closeRefillApprovedAnnouncement();
+  // Small delay so the announcement closes before the payment modal
+  // opens — otherwise the two transitions clash visually.
+  setTimeout(function() { _openRefillPayment(refillId); }, 240);
 }
 
 // ══ Refill payment modal — Stripe Elements inline ═══════════════════

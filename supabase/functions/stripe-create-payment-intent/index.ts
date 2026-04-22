@@ -48,7 +48,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // browser response tells us which code is actually running on the
 // server. If this value doesn't appear in the Network response, the
 // old code is still live and the redeploy didn't take.
-const FN_VERSION = "4b-authz-consult-v3";
+const FN_VERSION = "9-refill-v1";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 // Publishable key is safe to ship to the browser — Stripe designs it

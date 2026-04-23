@@ -9380,7 +9380,17 @@ function openIntegrationSetup(providerKey) {
 // every OAuth URL by design. Secret key stays server-side in Supabase
 // secrets (see supabase/functions/stripe-connect-oauth/index.ts).
 var STRIPE_CONNECT_CLIENT_ID = 'ca_UNnRIcGOw5E6aTs1PH9NIlpUr43oamN0';
-var STRIPE_OAUTH_REDIRECT    = 'https://rbpulse.github.io/pulse/stripe-return.html';
+// Must match a URI registered in the Stripe Connect app. Derived from
+// origin so the same code works on github.io (repo-path deploy) and on
+// *.iamunited.co (root deploy). Each new tenant subdomain's
+// stripe-return.html needs its own entry in Connect → Redirect URIs.
+var STRIPE_OAUTH_REDIRECT = (function() {
+  if (/\.github\.io$/i.test(window.location.hostname)) {
+    var m = window.location.pathname.match(/^\/([^\/]+)\//);
+    return window.location.origin + (m ? '/' + m[1] : '') + '/stripe-return.html';
+  }
+  return window.location.origin + '/stripe-return.html';
+})();
 
 // ── Resend setup modal (Phase 2) ──
 // Three states driven off the tenant_integrations.config bag:

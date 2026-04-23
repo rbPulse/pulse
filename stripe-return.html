@@ -50,6 +50,17 @@ var SB_URL = 'https://zvfqukbbglxongvuymzt.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZnF1a2JiZ2x4b25ndnV5bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTQyOTMsImV4cCI6MjA5MDEzMDI5M30.UUfF8CjM0Y4WWFRcXs1hn4jDtRXyoMu2lMrda8YfRBw';
 var db = createClient(SB_URL, SB_KEY);
 
+// Safety fallback when sessionStorage lost the return-to URL mid-OAuth.
+// Base-aware so it works on github.io (repo-path deploy) and on root-
+// served subdomains (*.iamunited.co).
+function fallbackHome() {
+  if (/\.github\.io$/i.test(window.location.hostname)) {
+    var m = window.location.pathname.match(/^\/([^\/]+)\//);
+    return m ? '/' + m[1] + '/' : '/';
+  }
+  return '/';
+}
+
 function setState(kind, title, detail) {
   document.getElementById('title').textContent = title || '';
   document.getElementById('msg').textContent = detail || '';
@@ -76,7 +87,7 @@ function showError(msg, detail) {
     box.textContent = detail;
     document.getElementById('card').appendChild(box);
   }
-  var back = sessionStorage.getItem('stripe_oauth_return_to') || '/pulse/unite/';
+  var back = sessionStorage.getItem('stripe_oauth_return_to') || fallbackHome();
   var link = document.createElement('a');
   link.href = back;
   link.className = 'btn';
@@ -147,7 +158,7 @@ function showError(msg, detail) {
     setState('ok', 'Stripe connected',
       'Connected ' + (data.business_name || data.connected_account_hint || 'account') + '. Heading back to Integrations…');
 
-    var back = sessionStorage.getItem('stripe_oauth_return_to') || '/pulse/unite/';
+    var back = sessionStorage.getItem('stripe_oauth_return_to') || fallbackHome();
     sessionStorage.removeItem('stripe_oauth_return_to');
     setTimeout(function() { window.location.replace(back); }, 1800);
   } catch (err) {

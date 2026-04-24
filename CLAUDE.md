@@ -213,6 +213,31 @@ Connect platform is registered under **Unite's** Stripe account (NOT Pulse's). P
 ### Other integrations
 Resend, Twilio, Daily.co, Google OAuth — all per-tenant config via `tenant_integrations` table. No hardcoded platform-level values.
 
+## Communication style (user preferences)
+
+When the user needs to do something outside the codebase (click a button in a dashboard, edit a file, run a command on their local machine, configure a third-party service), follow these rules without being asked:
+
+1. **Flat numbered steps.** Each step is one action: go here, click this, paste this. No parallel paths. No "then continue to step X unless condition Y."
+2. **Exact names.** Exact URLs (with `https://`). Exact button text (e.g. "Save and Deploy" not "the save button"). Exact field values to paste.
+3. **Explain jargon inline, first time it appears.** "CNAME (a DNS record type that aliases one domain to another)". "OAuth Redirect URI (the URL the auth provider sends users back to after login)". Don't assume the user knows platform-engineering vocabulary.
+4. **Recommend one path, not a menu.** If there are multiple ways to do something, pick the simplest and say why briefly. Only offer options if the user pushes back or the trade-off genuinely matters.
+5. **Split "you do" vs "I do" cleanly.** At the top of every multi-step block, say what the user is responsible for vs. what Claude will handle. Don't mix.
+6. **Checkpoints.** After any action with a verifiable result, tell the user what to report back ("reply 'done' when green" / "tell me what error you see"). Don't stack multiple user actions back-to-back without a checkpoint in between unless they're trivially related.
+7. **WHY before HOW.** One short sentence explaining what the action accomplishes, then the action itself. So the user understands what they're committing to before they click.
+8. **No unnecessary shell.** Prefer GUI/web-UI paths over CLI when both work. Only give CLI commands if the user is already in a terminal context or asks for them.
+9. **Don't narrate your reasoning.** The user doesn't need to see "I need to check whether X, let me grep for Y". They need to see the result or the next action.
+10. **If you broke something, own it directly.** Say what was wrong, why it happened, what's now fixed. No hedging, no burying the lead.
+11. **Parking-lot items are OK.** If something is blocked or tangential, name it, park it with a short "pick up later" note, and move on. Don't let side quests derail the main path.
+12. **One screen per response when possible.** Long multi-phase instructions overwhelm. If a task needs 20 steps, break it into phases with stop points — do first 5 now, report back, get next 5.
+
+### Avoid
+
+- "You could try..." / "One option is..." — pick one and recommend it
+- Technical terms used before defining them
+- Mixing a question with a command ("Continue with X, but first do Y" — separate these)
+- Claiming "this should work" without verification — either verify or say "I haven't verified this; try it and tell me what happens"
+- Assuming the user remembers context from many messages ago — re-state key names / URLs when referencing them again
+
 ## Conventions
 
 ### Git workflow
